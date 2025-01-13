@@ -1,0 +1,212 @@
+import React, { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faFacebookF,
+  faInstagram,
+  faTwitter,
+} from "@fortawesome/free-brands-svg-icons";
+
+const Header: React.FC = () => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  return (
+    <>
+      {/* Desktop Header */}
+      <header className="bg-transparent sticky top-0 z-50 mt-4">
+        <div className="container mx-auto px-4">
+          <nav className="flex justify-between items-center py-3">
+            {/* Logo */}
+            <a href="#" className="text-3xl font-semibold">
+              Inspectly
+            </a>
+
+            {/* Desktop Menu */}
+            <ul className="hidden lg:flex lg:items-center lg:space-x-12">
+              <li>
+                <a
+                  href="#"
+                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                >
+                  Home
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                >
+                  About
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                >
+                  Technology
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#"
+                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                >
+                  Contact Us
+                </a>
+              </li>
+            </ul>
+
+            {/* Buttons */}
+            <div className="hidden lg:flex space-x-4">
+              <a
+                href="#"
+                className="py-2 px-4 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-lg"
+              >
+                Log In
+              </a>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="py-2 px-3 text-blueGray-600 hover:text-blueGray-700 rounded border border-blueGray-300 hover:border-blueGray-400"
+              >
+                <svg
+                  className="fill-current h-4 w-4"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <title>Mobile menu</title>
+                  <path d="M0 3h20v2H0V3zm0 6h20v2H0V9zm0 6h20v2H0v-2z"></path>
+                </svg>
+              </button>
+            </div>
+          </nav>
+        </div>
+      </header>
+
+      {/* Mobile Menu (Slide-in from the Left) */}
+      <div
+        className={`fixed inset-0 z-50 bg-black bg-opacity-50 transition-opacity duration-300 ${
+          isMobileMenuOpen ? "opacity-100 visible" : "opacity-0 invisible"
+        }`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      ></div>
+      <div
+        className={`fixed top-0 left-0 z-50 h-full w-5/6 max-w-sm bg-white border-r overflow-y-auto shadow-lg transform transition-transform duration-300 ${
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <nav className="py-6 px-6">
+          {/* Logo and Close Button */}
+          <div className="flex items-center justify-between mb-8">
+            <a href="#" className="mr-auto text-3xl font-semibold">
+              Inspectly
+            </a>
+            <button
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-blueGray-400 hover:text-blue-500"
+            >
+              <svg
+                className="h-6 w-6"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* Menu Links */}
+          <ul className="space-y-1">
+            <li className="menu-item-has-children">
+              <a
+                href="#"
+                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+              >
+                Home
+              </a>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+              >
+                About
+              </a>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+              >
+                Technology
+              </a>
+            </li>
+            <li>
+              <a
+                href="#"
+                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+              >
+                Contact Us
+              </a>
+            </li>
+          </ul>
+
+          {/* Signup and Login Buttons */}
+          <div className="mt-4 pt-6 border-t border-blueGray-100">
+            <a
+              href="#"
+              className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
+            >
+              Log In
+            </a>
+          </div>
+
+          {/* Footer with Social Links */}
+          <div className="mt-auto">
+            <p className="my-4 text-xs text-blueGray-400">
+              <span>Get in Touch </span>
+              <a
+                href="#"
+                className="text-blue-400 hover:text-blue-500 underline"
+              >
+                contact@example.com
+              </a>
+            </p>
+            <div className="flex space-x-2">
+              <a
+                href="#"
+                className="inline-block px-1 text-blue-400 hover:text-blue-500"
+              >
+                <FontAwesomeIcon icon={faFacebookF} className="fa-lg " />
+              </a>
+              <a
+                href="#"
+                className="inline-block px-1 text-blue-400 hover:text-blue-500"
+              >
+                <FontAwesomeIcon icon={faTwitter} className="fa-lg" />
+              </a>
+              <a
+                href="#"
+                className="inline-block px-1 text-blue-400 hover:text-blue-500"
+              >
+                <FontAwesomeIcon icon={faInstagram} className="fa-lg" />
+              </a>
+            </div>
+          </div>
+        </nav>
+      </div>
+    </>
+  );
+};
+
+export default Header;
