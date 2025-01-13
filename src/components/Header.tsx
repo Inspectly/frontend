@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faFacebookF,
@@ -7,12 +7,45 @@ import {
 } from "@fortawesome/free-brands-svg-icons";
 
 const Header: React.FC = () => {
+  const [isSticky, setIsSticky] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY >= 100) {
+        if (!headerRef.current?.classList.contains("translate-y-0")) {
+          headerRef.current?.classList.add("translate-y-[-100%]");
+        }
+        setTimeout(() => {
+          headerRef.current?.classList.remove("translate-y-[-100%]");
+          headerRef.current?.classList.add("translate-y-0");
+          setIsSticky(true); // Trigger sticky header after scrolling 100px
+        });
+      } else {
+        setIsSticky(false); // Remove sticky header when back to top
+        headerRef.current?.classList.remove("translate-y-[-100%]");
+        headerRef.current?.classList.remove("translate-y-0");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
 
   return (
     <>
-      {/* Desktop Header */}
-      <header className="bg-transparent sticky top-0 z-50 mt-4">
+      <header
+        ref={headerRef}
+        className={`${
+          isSticky
+            ? "sticky top-0 z-50 bg-white shadow-md transition-transform duration-500 transform "
+            : "relative bg-transparent "
+        }`}
+      >
         <div className="container mx-auto px-4">
           <nav className="flex justify-between items-center py-3">
             {/* Logo */}
@@ -21,35 +54,35 @@ const Header: React.FC = () => {
             </a>
 
             {/* Desktop Menu */}
-            <ul className="hidden lg:flex lg:items-center lg:space-x-12">
-              <li>
+            <ul className="hidden lg:flex lg:items-center lg:space-x-12 text-gray-600">
+              <li className="py-4">
                 <a
                   href="#"
-                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                  className="text-sm font-semibold hover:text-gray-500"
                 >
                   Home
                 </a>
               </li>
-              <li>
+              <li className="py-4">
                 <a
                   href="#"
-                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                  className="text-sm font-semibold hover:text-gray-500"
                 >
                   About
                 </a>
               </li>
-              <li>
+              <li className="py-4">
                 <a
                   href="#"
-                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                  className="text-sm font-semibold hover:text-gray-500"
                 >
                   Technology
                 </a>
               </li>
-              <li>
+              <li className="py-4">
                 <a
                   href="#"
-                  className="text-sm font-semibold text-blueGray-600 hover:text-blueGray-500"
+                  className="text-sm font-semibold hover:text-gray-500"
                 >
                   Contact Us
                 </a>
@@ -60,7 +93,7 @@ const Header: React.FC = () => {
             <div className="hidden lg:flex space-x-4">
               <a
                 href="#"
-                className="py-2 px-4 text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 rounded-lg"
+                className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg"
               >
                 Log In
               </a>
@@ -70,7 +103,7 @@ const Header: React.FC = () => {
             <div className="lg:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="py-2 px-3 text-blueGray-600 hover:text-blueGray-700 rounded border border-blueGray-300 hover:border-blueGray-400"
+                className="py-2 px-3 text-blue-500 hover:text-blue-700 rounded border border-blue-300 hover:border-blue-400"
               >
                 <svg
                   className="fill-current h-4 w-4"
@@ -106,7 +139,7 @@ const Header: React.FC = () => {
             </a>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="text-blueGray-400 hover:text-blue-500"
+              className="text-gray-400 hover:text-blue-500"
             >
               <svg
                 className="h-6 w-6"
@@ -130,7 +163,7 @@ const Header: React.FC = () => {
             <li className="menu-item-has-children">
               <a
                 href="#"
-                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
               >
                 Home
               </a>
@@ -138,7 +171,7 @@ const Header: React.FC = () => {
             <li>
               <a
                 href="#"
-                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
               >
                 About
               </a>
@@ -146,7 +179,7 @@ const Header: React.FC = () => {
             <li>
               <a
                 href="#"
-                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
               >
                 Technology
               </a>
@@ -154,7 +187,7 @@ const Header: React.FC = () => {
             <li>
               <a
                 href="#"
-                className="block p-4 text-sm text-blueGray-500 hover:bg-blue-50 hover:text-blueGray-700 rounded-xl"
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
               >
                 Contact Us
               </a>
@@ -162,7 +195,7 @@ const Header: React.FC = () => {
           </ul>
 
           {/* Signup and Login Buttons */}
-          <div className="mt-4 pt-6 border-t border-blueGray-100">
+          <div className="mt-4 pt-6 border-t border-gray-100">
             <a
               href="#"
               className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
@@ -173,7 +206,7 @@ const Header: React.FC = () => {
 
           {/* Footer with Social Links */}
           <div className="mt-auto">
-            <p className="my-4 text-xs text-blueGray-400">
+            <p className="my-4 text-xs text-gray-400">
               <span>Get in Touch </span>
               <a
                 href="#"
