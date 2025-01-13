@@ -75,15 +75,15 @@ const Home: React.FC = () => {
               AI Platform for Home Inspections and Buyer Confidence
             </p>
           </div>
-          <div className="flex justify-center">
+          <div className="flex flex-wrap justify-center gap-2">
             <a
-              className="text-xs font-semibold btn-white py-4 px-8 mr-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+              className="text-xs font-semibold btn-white py-4 px-8 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
               href="#how-we-work"
             >
               Key Features
             </a>
             <a
-              className="text-xs font-semibold btn-primary py-4 px-8  bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+              className="text-xs font-semibold btn-primary py-4 px-8 bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
               href="#key-features"
             >
               Get Started
@@ -99,6 +99,7 @@ const Home: React.FC = () => {
             className="rounded animate-slideInThenBounce"
             src="images/dashboard.png"
             alt="Dashboard"
+            style={{ animationDelay: "1s" }} // Delays animation by 1 seconds
           />
         </div>
       </div>
