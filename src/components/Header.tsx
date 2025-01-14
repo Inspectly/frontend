@@ -38,6 +38,7 @@ const Header: React.FC = () => {
 
   return (
     <>
+      {/* Header */}
       <header
         ref={headerRef}
         className={`${
@@ -46,7 +47,7 @@ const Header: React.FC = () => {
             : "relative bg-transparent "
         }`}
       >
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 xl:px-32">
           <nav className="flex justify-between items-center py-3">
             {/* Logo */}
             <a href="#" className="text-3xl font-semibold">
