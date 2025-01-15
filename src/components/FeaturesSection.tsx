@@ -25,7 +25,7 @@ const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
       ([entry]) => {
         setIsFeatureTitleInView(entry.isIntersecting); // Set to true when in view
       },
-      { threshold: 0.1 } // Trigger when 20% of the section is visible
+      { threshold: 0.1 } // Trigger when 10% of the section is visible
     );
 
     if (featuresRef.current) {
@@ -58,7 +58,7 @@ const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
           }
         });
       },
-      { threshold: 0.1 } // Trigger when 20% of the card is visible
+      { threshold: 0.1 } // Trigger when 10% of the card is visible
     );
 
     featureCardsRef.current.forEach((card, index) => {

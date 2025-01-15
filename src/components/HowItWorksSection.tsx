@@ -30,7 +30,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
       ([entry]) => {
         setIsHowitworksInView(entry.isIntersecting); // Set to true when in view
       },
-      { threshold: 0.1 } // Trigger when 20% of the section is visible
+      { threshold: 0.1 } // Trigger when 10% of the section is visible
     );
 
     if (howitworksRef.current) {
@@ -63,7 +63,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
           }
         });
       },
-      { threshold: 0.1 } // Trigger when 20% of the card is visible
+      { threshold: 0.1 } // Trigger when 10% of the card is visible
     );
 
     stepsCardsRef.current.forEach((card, index) => {
@@ -159,13 +159,13 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
                   alt={step.title}
                 />
                 <h3 className="mb-2 font-bold font-heading">{step.title}</h3>
-                <p
+                <div
                   className={`text-sm text-gray-400 leading-relaxed transition-all duration-500 ${
                     expandedCard === index ? "line-clamp-none" : "line-clamp-4"
                   }`}
                 >
                   {step.description}
-                </p>
+                </div>
               </div>
             </div>
           ))}

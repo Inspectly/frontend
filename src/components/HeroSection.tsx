@@ -58,12 +58,12 @@ const HeroSection: React.FC<HeroProps> = ({ words }) => {
     <section className="xl:bg-contain bg-top bg-no-repeat -mt-24 pt-24 bg-[url('/images/intersect.svg')]">
       <div className="container px-4 mx-auto">
         <div className="pt-16 text-center">
-          <div className="max-w-3xl mx-auto mb-8">
+          <div className="max-w-3xl mx-auto mb-4 sm:mb-8">
             <h2 className="text-3xl lg:text-5xl lg:leading-normal mb-4 font-extrabold font-heading">
               Inspect <span className="text-blue-500">Smarter</span> <br />
               Buy <span className="text-blue-500">Better</span>
             </h2>
-            <p className="text-gray-400 leading-relaxed">
+            <p className="text-gray-400 leading-relaxed min-h-20 sm:min-h-fit">
               We are <strong className="text-blue-500">Inspectly</strong>, an{" "}
               <span className="text-blue-500">
                 {displayedText}

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
   faClock,
   faLightbulb,
@@ -10,6 +10,8 @@ import {
 import HeroSection from "../components/HeroSection";
 import FeaturesSection from "../components/FeaturesSection";
 import HowItWorksSection from "../components/HowItWorksSection";
+import TeamSection from "../components/TeamSection";
+import PriceSection from "../components/PriceSection";
 
 const Home: React.FC = () => {
   const words = ["accelerated", "accurate", "intelligent"];
@@ -143,11 +145,72 @@ const Home: React.FC = () => {
     },
   ];
 
+  const team = [
+    {
+      image: "images/Manzur.jpeg",
+      quote:
+        "It seems that only fragments of the original text remain in the Lorem Ipsum texts used today.",
+      name: "Manzur Mulk",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Sharhad.jpg",
+      quote:
+        "The most well-known dummy text is the 'Lorem Ipsum', which is said to have originated in the 16th century.",
+      name: "Sharhad Bashar",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Yousef.png",
+      quote:
+        "One disadvantage of Lorem Ipsum is that in Latin certain letters appear more frequently than others.",
+      name: "Yousef Ouda",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Mohammed_Hussein.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Mohammed Hussein",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "One disadvantage of Lorem Ipsum is that in Latin certain letters appear more frequently than others.",
+      name: "Abdel Malek Fadel",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Moe Mohasseb",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Abdullah Anwar",
+      position: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Mohammed Alaa",
+      position: "Staff Engineer, Algolia",
+    },
+  ];
+
   return (
     <>
       <HeroSection words={words} />
       <FeaturesSection features={features} />
       <HowItWorksSection steps={steps} />
+      <TeamSection team={team} />
+      <PriceSection />
     </>
   );
 };
