@@ -5,11 +5,25 @@ import {
   faInstagram,
   faTwitter,
 } from "@fortawesome/free-brands-svg-icons";
+import { SectionRefs } from "../types";
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
+  refs: SectionRefs;
+}
+
+const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  const handleMenuOptionClick = (
+    section: React.RefObject<HTMLElement>,
+    offset: number
+  ) => {
+    scrollToSection(section, offset);
+    setIsMobileMenuOpen(false);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,7 +64,10 @@ const Header: React.FC = () => {
         <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
           <nav className="flex justify-between items-center py-3">
             {/* Logo */}
-            <a href="#" className="text-3xl font-semibold">
+            <a
+              onClick={() => scrollToSection(refs.heroRef, 0)}
+              className="text-3xl font-semibold"
+            >
               Inspectly
             </a>
 
@@ -58,44 +75,57 @@ const Header: React.FC = () => {
             <ul className="hidden lg:flex lg:items-center lg:space-x-12 text-gray-600">
               <li className="py-4">
                 <a
-                  href="#"
-                  className="text-sm font-semibold hover:text-gray-500"
+                  onClick={() => scrollToSection(refs.heroRef, 0)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   Home
                 </a>
               </li>
               <li className="py-4">
                 <a
-                  href="#"
-                  className="text-sm font-semibold hover:text-gray-500"
+                  onClick={() => scrollToSection(refs.featuresRef, -50)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
-                  About
+                  Features
                 </a>
               </li>
               <li className="py-4">
                 <a
-                  href="#"
-                  className="text-sm font-semibold hover:text-gray-500"
+                  onClick={() => scrollToSection(refs.howItWorksRef, -10)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
-                  Technology
+                  How It Works
                 </a>
               </li>
               <li className="py-4">
                 <a
-                  href="#"
-                  className="text-sm font-semibold hover:text-gray-500"
+                  onClick={() => scrollToSection(refs.teamRef, -50)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
-                  Contact Us
+                  The Team
+                </a>
+              </li>
+              <li className="py-4">
+                <a
+                  onClick={() => scrollToSection(refs.plansRef, -20)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
+                >
+                  Plans
+                </a>
+              </li>
+              <li className="py-4">
+                <a
+                  onClick={() => scrollToSection(refs.faqsRef, -80)}
+                  className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
+                >
+                  FAQs
                 </a>
               </li>
             </ul>
 
             {/* Buttons */}
             <div className="hidden lg:flex space-x-4">
-              <a
-                href="#"
-                className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg"
-              >
+              <a className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg">
                 Log In
               </a>
             </div>
@@ -135,7 +165,10 @@ const Header: React.FC = () => {
         <nav className="py-6 px-6">
           {/* Logo and Close Button */}
           <div className="flex items-center justify-between mb-8">
-            <a href="#" className="mr-auto text-3xl font-semibold">
+            <a
+              onClick={() => handleMenuOptionClick(refs.heroRef, 0)}
+              className="mr-auto text-3xl font-semibold"
+            >
               Inspectly
             </a>
             <button
@@ -163,44 +196,57 @@ const Header: React.FC = () => {
           <ul className="space-y-1">
             <li className="menu-item-has-children">
               <a
-                href="#"
-                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
+                onClick={() => handleMenuOptionClick(refs.heroRef, 0)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 Home
               </a>
             </li>
             <li>
               <a
-                href="#"
-                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
+                onClick={() => handleMenuOptionClick(refs.featuresRef, -50)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
-                About
+                Features
               </a>
             </li>
             <li>
               <a
-                href="#"
-                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
+                onClick={() => handleMenuOptionClick(refs.howItWorksRef, -10)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
-                Technology
+                How It Works
               </a>
             </li>
             <li>
               <a
-                href="#"
-                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl"
+                onClick={() => handleMenuOptionClick(refs.teamRef, -50)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
-                Contact Us
+                The Team
+              </a>
+            </li>
+            <li>
+              <a
+                onClick={() => handleMenuOptionClick(refs.plansRef, -20)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
+              >
+                Plans
+              </a>
+            </li>
+            <li>
+              <a
+                onClick={() => handleMenuOptionClick(refs.faqsRef, -80)}
+                className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
+              >
+                FAQs
               </a>
             </li>
           </ul>
 
           {/* Signup and Login Buttons */}
           <div className="mt-4 pt-6 border-t border-gray-100">
-            <a
-              href="#"
-              className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
-            >
+            <a className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded">
               Log In
             </a>
           </div>
@@ -209,30 +255,18 @@ const Header: React.FC = () => {
           <div className="mt-auto">
             <p className="my-4 text-xs text-gray-400">
               <span>Get in Touch </span>
-              <a
-                href="#"
-                className="text-blue-400 hover:text-blue-500 underline"
-              >
+              <a className="text-blue-400 hover:text-blue-500 underline">
                 inspectlyai@gmail.com
               </a>
             </p>
             <div className="flex space-x-2">
-              <a
-                href="#"
-                className="inline-block px-1 text-blue-400 hover:text-blue-500"
-              >
+              <a className="inline-block px-1 text-blue-400 hover:text-blue-500">
                 <FontAwesomeIcon icon={faFacebookF} className="fa-lg " />
               </a>
-              <a
-                href="#"
-                className="inline-block px-1 text-blue-400 hover:text-blue-500"
-              >
+              <a className="inline-block px-1 text-blue-400 hover:text-blue-500">
                 <FontAwesomeIcon icon={faTwitter} className="fa-lg" />
               </a>
-              <a
-                href="#"
-                className="inline-block px-1 text-blue-400 hover:text-blue-500"
-              >
+              <a className="inline-block px-1 text-blue-400 hover:text-blue-500">
                 <FontAwesomeIcon icon={faInstagram} className="fa-lg" />
               </a>
             </div>

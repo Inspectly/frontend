@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   faClock,
   faLightbulb,
@@ -15,7 +15,16 @@ import PriceSection from "../components/PriceSection";
 import NewsletterSection from "../components/NewsletterSection";
 import FaqSection from "../components/FaqsSection";
 
-const Home: React.FC = () => {
+import { SectionRefs } from "../types";
+
+interface HomeProps {
+  refs: SectionRefs;
+}
+
+const Home: React.FC<HomeProps> = ({ refs }) => {
+  const { heroRef, featuresRef, howItWorksRef, teamRef, plansRef, faqsRef } =
+    refs;
+
   const words = ["accelerated", "accurate", "intelligent"];
 
   const features = [
@@ -287,13 +296,25 @@ const Home: React.FC = () => {
 
   return (
     <>
-      <HeroSection words={words} />
-      <FeaturesSection features={features} />
-      <HowItWorksSection steps={steps} />
-      <TeamSection team={team} />
-      <PriceSection plans={plans} />
+      <div ref={heroRef}>
+        <HeroSection words={words} />
+      </div>
+      <div ref={featuresRef}>
+        <FeaturesSection features={features} />
+      </div>
+      <div ref={howItWorksRef}>
+        <HowItWorksSection steps={steps} />
+      </div>
+      <div ref={teamRef}>
+        <TeamSection team={team} />
+      </div>
+      <div ref={plansRef}>
+        <PriceSection plans={plans} />
+      </div>
       <NewsletterSection />
-      <FaqSection faqs={faqs} />
+      <div ref={faqsRef}>
+        <FaqSection faqs={faqs} />
+      </div>
     </>
   );
 };
