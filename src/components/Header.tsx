@@ -47,7 +47,7 @@ const Header: React.FC = () => {
             : "relative bg-transparent "
         }`}
       >
-        <div className="container mx-auto px-4 xl:px-32">
+        <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
           <nav className="flex justify-between items-center py-3">
             {/* Logo */}
             <a href="#" className="text-3xl font-semibold">
@@ -213,7 +213,7 @@ const Header: React.FC = () => {
                 href="#"
                 className="text-blue-400 hover:text-blue-500 underline"
               >
-                contact@example.com
+                inspectlyai@gmail.com
               </a>
             </p>
             <div className="flex space-x-2">

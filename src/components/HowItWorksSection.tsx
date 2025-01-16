@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import ReactDOM from "react-dom";
 
 interface Step {
   number: number;
@@ -16,12 +17,23 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
   const [isHowitworksInView, setIsHowitworksInView] = useState(false);
   const [visibleStepCards, setVisibleStepCards] = useState<number[]>([]);
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
-  const [hasAnimated, setHasAnimated] = useState(false); // Track if animation has already occurred
 
   const howitworksRef = useRef<HTMLDivElement | null>(null);
   const stepsCardsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const descriptionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const handleCardClick = (index: number) => {
+    const descriptionElement = descriptionRefs.current[index];
+    if (descriptionElement) {
+      const lineHeight = parseFloat(
+        window.getComputedStyle(descriptionElement).lineHeight || "0"
+      );
+      const maxHeight = lineHeight * 4; // Height for 4 lines
+      if (descriptionElement.scrollHeight <= maxHeight) {
+        // If description fits within 4 lines, do not open modal
+        return;
+      }
+    }
     setExpandedCard((prev) => (prev === index ? null : index));
   };
 
@@ -30,7 +42,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
       ([entry]) => {
         setIsHowitworksInView(entry.isIntersecting); // Set to true when in view
       },
-      { threshold: 0.1 } // Trigger when 10% of the section is visible
+      { threshold: 0.1 }
     );
 
     if (howitworksRef.current) {
@@ -45,8 +57,6 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
   }, [isHowitworksInView]);
 
   useEffect(() => {
-    if (hasAnimated) return; // Prevent further animations after the first run
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -57,13 +67,10 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
 
           if (entry.isIntersecting) {
             setVisibleStepCards((prev) => [...new Set([...prev, index])]);
-
-            // Stop observing individual card after it's animated
-            observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.1 } // Trigger when 10% of the card is visible
+      { threshold: 0.1 }
     );
 
     stepsCardsRef.current.forEach((card, index) => {
@@ -76,7 +83,47 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
     return () => {
       observer.disconnect();
     };
-  }, [hasAnimated]);
+  }, []);
+
+  const renderExpandedCard = () => {
+    if (expandedCard === null) return null;
+
+    const step = steps[expandedCard];
+
+    return ReactDOM.createPortal(
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
+        onClick={() => setExpandedCard(null)} // Close on backdrop click
+      >
+        <div
+          className="relative bg-white p-6 shadow-lg rounded-lg z-50 w-full max-w-3xl"
+          onClick={(e) => e.stopPropagation()} // Prevent backdrop close
+        >
+          <div className="flex w-12 h-12 mx-auto items-center justify-center text-blue-800 font-bold font-heading bg-blue-200 rounded-full">
+            {step.number}
+          </div>
+          <img
+            className="h-48 mx-auto my-4 object-cover rounded-lg"
+            src={step.image}
+            alt={step.title}
+          />
+          <h3 className="mb-2 font-bold font-heading text-center">
+            {step.title}
+          </h3>
+          <div className="text-sm text-gray-400 leading-relaxed">
+            {step.description}
+          </div>
+          <button
+            className="absolute top-3 right-4 text-gray-400 hover:text-gray-600"
+            onClick={() => setExpandedCard(null)} // Close on button click
+          >
+            ✕
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <section
@@ -90,11 +137,9 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
           className="w-full -scale-x-100"
         />
       </div>
-
-      <div className="container mx-auto px-4 sm:pt-16 sm:pb-4 xl:px-32">
+      <div className="container mx-auto sm:pt-16 sm:pb-4 px-4 md:px-8 xl:px-16 2xl:px-32">
         <div className="flex flex-wrap justify-center">
           <div className="flex flex-wrap items-center justify-center container px-4 mx-auto mb-12">
-            {/* Heading */}
             <div
               className={`w-full lg:w-1/2 mb-4 lg:mb-0 transition-all duration-700 ${
                 isHowitworksInView
@@ -107,8 +152,6 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
                 <span className="text-blue-500">home buying decisions</span>
               </h2>
             </div>
-
-            {/* Paragraph */}
             <div
               className={`w-full lg:w-1/2 transition-all duration-700 ${
                 isHowitworksInView
@@ -132,24 +175,17 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
               key={index}
               ref={(el) => (stepsCardsRef.current[index] = el)}
               onClick={() => handleCardClick(index)}
-              className={`cursor-pointer w-full h-auto sm:w-1/2 lg:w-1/3 px-3 mb-6 transition-all duration-500 ${
+              className={`relative cursor-pointer w-full h-auto sm:w-1/2 lg:w-1/3 px-3 mb-6 transition-all duration-500 ${
                 visibleStepCards.includes(index)
                   ? "opacity-100 translate-y-0"
                   : "opacity-0 translate-y-20"
               }`}
               style={{
-                transition: "transform 1s ease, opacity 1s ease", // Smooth animation for translate and opacity
-                transitionDelay: `${index * 0.2}s`, // Stagger animation
+                transition: "transform 1s ease, opacity 1s ease",
+                transitionDelay: `${index * 0.2}s`,
               }}
             >
-              <div
-                className={`p-6 bg-white shadow rounded flex flex-col justify-between transition-transform duration-500 ${
-                  expandedCard === index
-                    ? "scale-105 shadow-lg"
-                    : "hover:scale-105 hover:shadow-lg"
-                }`}
-              >
-                {" "}
+              <div className="p-6 bg-white shadow rounded flex flex-col justify-between hover:scale-105 hover:shadow-lg transition-transform duration-500">
                 <div className="flex w-12 h-12 mx-auto items-center justify-center text-blue-800 font-bold font-heading bg-blue-200 rounded-full">
                   {step.number}
                 </div>
@@ -160,9 +196,8 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
                 />
                 <h3 className="mb-2 font-bold font-heading">{step.title}</h3>
                 <div
-                  className={`text-sm text-gray-400 leading-relaxed transition-all duration-500 ${
-                    expandedCard === index ? "line-clamp-none" : "line-clamp-4"
-                  }`}
+                  ref={(el) => (descriptionRefs.current[index] = el)}
+                  className="text-sm text-gray-400 leading-relaxed transition-all duration-500 line-clamp-4"
                 >
                   {step.description}
                 </div>
@@ -171,6 +206,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
           ))}
         </div>
       </div>
+      {renderExpandedCard()}
       <div className="absolute bottom-0 inset-x-0 hidden sm:block">
         <img
           src="/images/white-wave.svg"

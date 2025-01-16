@@ -12,6 +12,7 @@ import FeaturesSection from "../components/FeaturesSection";
 import HowItWorksSection from "../components/HowItWorksSection";
 import TeamSection from "../components/TeamSection";
 import PriceSection from "../components/PriceSection";
+import NewsletterSection from "../components/NewsletterSection";
 
 const Home: React.FC = () => {
   const words = ["accelerated", "accurate", "intelligent"];
@@ -59,8 +60,13 @@ const Home: React.FC = () => {
     {
       number: 1,
       title: "Upload Your Inspection Report",
-      description:
-        "Easily upload your property inspection report (PDF or other supported formats) to our platform. Our AI-driven system starts analyzing the document immediately.",
+      description: (
+        <div className="text-center">
+          Easily upload your property inspection report (PDF or other supported
+          formats) to our platform. Our AI-driven system starts analyzing the
+          document immediately.
+        </div>
+      ),
       image: "images/undraw_upload.svg",
       delay: "0.3s",
     },
@@ -138,8 +144,13 @@ const Home: React.FC = () => {
     {
       number: 5,
       title: "Download or Share Your Results",
-      description:
-        "Once the report is processed, you can download the summarized results or share them directly with stakeholders, ensuring everyone is aligned for smarter decisions.",
+      description: (
+        <div className="text-center">
+          Once the report is processed, you can download the summarized results
+          or share them directly with stakeholders, ensuring everyone is aligned
+          for smarter decisions.
+        </div>
+      ),
       image: "images/undraw_sharing-articles.svg",
       delay: "1.1s",
     },
@@ -204,13 +215,55 @@ const Home: React.FC = () => {
     },
   ];
 
+  const plans = [
+    {
+      title: "Premium",
+      price: "99.95",
+      bgColor: "bg-blue-500 text-white",
+      textColor: "",
+      priceTextColor: "text-white",
+      buttonBg: "bg-white",
+      buttonTextColor: "text-blue-500",
+      buttonHover: "hover:bg-gray-100",
+      features: [
+        { text: "Detailed repair costs", isAvailable: true },
+        { text: "PDF report format", isAvailable: true },
+        { text: "RUSH upgrade time", isAvailable: true },
+        { text: "Fire claim history", isAvailable: true },
+        { text: "Flood zone info", isAvailable: true },
+        { text: "Permit details active", isAvailable: true },
+        { text: "Sales lien info", isAvailable: true },
+      ],
+    },
+    {
+      title: "Basic",
+      price: "69.95",
+      bgColor: "bg-white",
+      textColor: "text-gray-400",
+      priceTextColor: "text-blue-500",
+      buttonBg: "bg-blue-400",
+      buttonTextColor: "text-white",
+      buttonHover: "hover:bg-blue-500",
+      features: [
+        { text: "Detailed repair costs", isAvailable: true },
+        { text: "PDF report format", isAvailable: true },
+        { text: "RUSH upgrade time", isAvailable: false },
+        { text: "Fire claim history", isAvailable: false },
+        { text: "Flood zone info", isAvailable: false },
+        { text: "Permit details active", isAvailable: false },
+        { text: "Sales lien info", isAvailable: false },
+      ],
+    },
+  ];
+
   return (
     <>
       <HeroSection words={words} />
       <FeaturesSection features={features} />
       <HowItWorksSection steps={steps} />
       <TeamSection team={team} />
-      <PriceSection />
+      <PriceSection plans={plans} />
+      <NewsletterSection />
     </>
   );
 };

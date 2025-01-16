@@ -76,7 +76,7 @@ const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
   return (
     <section
       ref={featuresRef}
-      className="container pt-16 pb-20 mx-auto px-4 xl:px-32"
+      className="container pt-16 pb-20 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32"
     >
       <div className="flex flex-wrap justify-center">
         <div className="flex flex-wrap items-center justify-center container px-4 mx-auto mb-12">

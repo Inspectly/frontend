@@ -56,7 +56,7 @@ const HeroSection: React.FC<HeroProps> = ({ words }) => {
 
   return (
     <section className="xl:bg-contain bg-top bg-no-repeat -mt-24 pt-24 bg-[url('/images/intersect.svg')]">
-      <div className="container px-4 mx-auto">
+      <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
         <div className="pt-16 text-center">
           <div className="max-w-3xl mx-auto mb-4 sm:mb-8">
             <h2 className="text-3xl lg:text-5xl lg:leading-normal mb-4 font-extrabold font-heading">
@@ -80,14 +80,14 @@ const HeroSection: React.FC<HeroProps> = ({ words }) => {
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             <a
-              className="text-xs font-semibold btn-white py-4 px-8 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
-              href="#how-we-work"
-            >
-              Key Features
-            </a>
-            <a
               className="text-xs font-semibold btn-primary py-4 px-8 bg-blue-400 text-white rounded-lg hover:bg-blue-500 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
               href="#key-features"
+            >
+              Book a Demo
+            </a>
+            <a
+              className="text-xs font-semibold btn-white py-4 px-8 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+              href="#how-we-work"
             >
               Get Started
             </a>

@@ -3,6 +3,7 @@ import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
 import Header from "./components/Header";
+import Footer from "./components/Footer";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -25,6 +26,7 @@ function App() {
       >
         <Header />
         <Home />
+        <Footer />
       </div>
     </>
   );
