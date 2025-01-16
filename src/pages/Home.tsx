@@ -13,6 +13,7 @@ import HowItWorksSection from "../components/HowItWorksSection";
 import TeamSection from "../components/TeamSection";
 import PriceSection from "../components/PriceSection";
 import NewsletterSection from "../components/NewsletterSection";
+import FaqSection from "../components/FaqsSection";
 
 const Home: React.FC = () => {
   const words = ["accelerated", "accurate", "intelligent"];
@@ -256,6 +257,34 @@ const Home: React.FC = () => {
     },
   ];
 
+  const faqs = [
+    {
+      question: "What is Inspectly?",
+      answer:
+        "Inspectly is an AI powered platform that simplifies property inspection reports.",
+    },
+    {
+      question: "Can I upload any type of inspection report?",
+      answer:
+        "Yes, Inspectly supports a wide range of formats, including PDFs.",
+    },
+    {
+      question: "How much does it cost to use Inspectly?",
+      answer:
+        "Our pricing is simple and flexible, starting at $69.95 per report.",
+    },
+    {
+      question: "Is my data secure?",
+      answer:
+        "All uploaded reports are processed securely and handled in compliance with industry standards.",
+    },
+    {
+      question: "How long does it take to process a report?",
+      answer:
+        "Reports are processed in minutes, giving you instant access to insights and recommendations.",
+    },
+  ];
+
   return (
     <>
       <HeroSection words={words} />
@@ -264,6 +293,7 @@ const Home: React.FC = () => {
       <TeamSection team={team} />
       <PriceSection plans={plans} />
       <NewsletterSection />
+      <FaqSection faqs={faqs} />
     </>
   );
 };

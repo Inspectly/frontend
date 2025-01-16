@@ -1,22 +1,69 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 const NewsletterSection = () => {
+  const [isInView, setIsInView] = useState(false);
+  const sectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true); // Trigger animation when section is in view
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => {
+      if (sectionRef.current) {
+        observer.unobserve(sectionRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <section className="py-20 bg-top bg-no-repeat bg-[url('/images/blob.svg')]">
+    <section
+      className="py-20 bg-top bg-no-repeat bg-[url('/images/blob.svg')]"
+      ref={sectionRef}
+    >
       <div className="container px-4 mx-auto">
         <div className="relative py-20 px-4 lg:p-20">
           <div className="max-w-lg mx-auto text-center">
-            <h2 className="mb-4 text-3xl lg:text-4xl font-bold font-heading">
+            {/* Title */}
+            <h2
+              className={`mb-4 text-3xl lg:text-4xl font-bold font-heading transition-all duration-700 ${
+                isInView
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
+            >
               <span>Subscribe now to </span>
               <span className="text-blue-500">Our Newsletter</span>
               <span> to stay updated.</span>
             </h2>
-            <p className="mb-8 text-gray-400" data-wow-delay=".3s">
+
+            {/* Subtitle */}
+            <p
+              className={`mb-8 text-gray-400 transition-all duration-700 delay-500 ${
+                isInView
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
+            >
               All your information is completely confidential
             </p>
+
+            {/* Input Section */}
             <div
-              className="p-4 bg-white rounded-lg flex flex-wrap max-w-md mx-auto"
-              data-wow-delay=".5s"
+              className={`p-4 bg-white rounded-lg flex flex-wrap max-w-md mx-auto transition-all duration-700 delay-1000 ${
+                isInView
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-10"
+              }`}
             >
               <div className="flex w-full md:w-2/3 px-3 mb-3 md:mb-0 md:mr-6 bg-gray-100 rounded">
                 <svg

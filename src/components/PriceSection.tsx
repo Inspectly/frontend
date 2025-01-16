@@ -1,9 +1,9 @@
+import React, { useEffect, useRef, useState } from "react";
 import {
   faCircleCheck,
   faCircleXmark,
 } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useEffect, useRef, useState } from "react";
 
 interface Feature {
   text: string;
@@ -17,7 +17,7 @@ interface Plan {
   textColor: string;
   priceTextColor: string;
   buttonBg: string;
-  buttonTextColor: String;
+  buttonTextColor: string;
   buttonHover: string;
   features: Feature[];
 }
@@ -28,8 +28,13 @@ interface PriceProps {
 
 const PriceSection: React.FC<PriceProps> = ({ plans }) => {
   const [isPriceInView, setIsPriceInView] = useState(false);
+  const [hasAnimatedEnterprise, setHasAnimatedEnterprise] = useState(false);
+  const [hasAnimatedCards, setHasAnimatedCards] = useState(false);
 
   const priceRef = useRef<HTMLDivElement | null>(null);
+
+  const enterpriseRef = useRef<HTMLDivElement | null>(null);
+  const cardsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -49,6 +54,48 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
       }
     };
   }, [isPriceInView]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimatedEnterprise) {
+          setHasAnimatedEnterprise(true); // Trigger animation once
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (enterpriseRef.current) {
+      observer.observe(enterpriseRef.current);
+    }
+
+    return () => {
+      if (enterpriseRef.current) {
+        observer.unobserve(enterpriseRef.current);
+      }
+    };
+  }, [hasAnimatedEnterprise]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimatedCards) {
+          setHasAnimatedCards(true); // Trigger animation once
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (cardsRef.current) {
+      observer.observe(cardsRef.current);
+    }
+
+    return () => {
+      if (cardsRef.current) {
+        observer.unobserve(cardsRef.current);
+      }
+    };
+  }, [hasAnimatedCards]);
 
   return (
     <section
@@ -83,8 +130,16 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap -mx-3">
-          <div className="flex w-full md:w-1/2 lg:w-1/3 px-3 mb-6 justify-center items-center">
+        <div className="flex flex-wrap -mx-3" ref={cardsRef}>
+          {/* Enterprise Plan */}
+          <div
+            ref={enterpriseRef}
+            className={`flex w-full md:w-1/2 lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
+              hasAnimatedEnterprise
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-20"
+            }`}
+          >
             <div className="lg:text-start text-center">
               <h3 className="mb-6 md:text-3xl text-2xl md:leading-normal leading-normal font-semibold">
                 Enterprise Plan
@@ -103,10 +158,25 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
               </div>
             </div>
           </div>
+
+          {/* Price Cards */}
           {plans.map((plan, index) => (
-            <div key={index} className="w-full md:w-1/2 lg:w-1/3 px-3 mb-6">
+            <div
+              key={index}
+              className={`w-full lg:w-1/3 px-3 mb-6 transition-all duration-700 
+                ${index !== plans.length - 1 ? "md:w-1/2" : ""}
+               ${
+                 hasAnimatedCards
+                   ? "opacity-100 translate-y-0"
+                   : "opacity-0 translate-y-40"
+               }`}
+              style={{
+                transition: "transform 1s ease, opacity 1s ease",
+                transitionDelay: `${index * 0.2}s`,
+              }}
+            >
               <div
-                className={`hover-up-5 pt-16 pb-8 px-4 text-center rounded shadow ${plan.bgColor}`}
+                className={`hover:-translate-y-2 hover:shadow-lg transition duration-300 transform pt-16 pb-8 px-4 text-center rounded shadow ${plan.bgColor}`}
               >
                 <img
                   className="h-20 mb-6 mx-auto"
