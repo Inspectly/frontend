@@ -7,6 +7,7 @@ export interface SectionRefs {
   teamRef: RefObject<HTMLDivElement>;
   plansRef: RefObject<HTMLDivElement>;
   faqsRef: RefObject<HTMLDivElement>;
+  [key: string]: React.RefObject<HTMLElement>;
 }
 
 export interface HeaderProps {

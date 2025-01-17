@@ -5,24 +5,31 @@ import {
   faInstagram,
   faTwitter,
 } from "@fortawesome/free-brands-svg-icons";
-import { SectionRefs } from "../types";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
-  refs: SectionRefs;
+  refs: {
+    [key: string]: React.RefObject<HTMLElement>;
+  };
 }
 
 const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
+  const navigate = useNavigate();
+
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
 
-  const handleMenuOptionClick = (
-    section: React.RefObject<HTMLElement>,
-    offset: number
-  ) => {
-    scrollToSection(section, offset);
-    setIsMobileMenuOpen(false);
+  const handleNavigation = (section: string, offset: number) => {
+    if (window.location.pathname === "/") {
+      // Already on the home page, directly scroll
+      const targetRef = refs[section];
+      if (targetRef) scrollToSection(targetRef, offset);
+    } else {
+      // Navigate to the home page and pass the target section as state
+      navigate("/", { state: { targetSection: section, offset } });
+    }
   };
 
   useEffect(() => {
@@ -65,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
           <nav className="flex justify-between items-center py-3">
             {/* Logo */}
             <a
-              onClick={() => scrollToSection(refs.heroRef, 0)}
+              onClick={() => handleNavigation("heroRef", 0)}
               className="text-3xl font-semibold"
             >
               Inspectly
@@ -75,7 +82,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             <ul className="hidden lg:flex lg:items-center lg:space-x-12 text-gray-600">
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.heroRef, 0)}
+                  onClick={() => handleNavigation("heroRef", 0)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   Home
@@ -83,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
               </li>
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.featuresRef, -50)}
+                  onClick={() => handleNavigation("featuresRef", -50)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   Features
@@ -91,7 +98,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
               </li>
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.howItWorksRef, -10)}
+                  onClick={() => handleNavigation("howItWorksRef", -10)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   How It Works
@@ -99,7 +106,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
               </li>
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.teamRef, -50)}
+                  onClick={() => handleNavigation("teamRef", -50)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   The Team
@@ -107,7 +114,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
               </li>
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.plansRef, -20)}
+                  onClick={() => handleNavigation("plansRef", -20)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   Plans
@@ -115,7 +122,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
               </li>
               <li className="py-4">
                 <a
-                  onClick={() => scrollToSection(refs.faqsRef, -80)}
+                  onClick={() => handleNavigation("faqsRef", -80)}
                   className="text-sm font-semibold hover:text-gray-500 cursor-pointer"
                 >
                   FAQs
@@ -125,9 +132,12 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
             {/* Buttons */}
             <div className="hidden lg:flex space-x-4">
-              <a className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg">
+              <button
+                onClick={() => navigate("/login")}
+                className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg"
+              >
                 Log In
-              </a>
+              </button>
             </div>
 
             {/* Mobile Menu Button */}
@@ -166,7 +176,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
           {/* Logo and Close Button */}
           <div className="flex items-center justify-between mb-8">
             <a
-              onClick={() => handleMenuOptionClick(refs.heroRef, 0)}
+              onClick={() => handleNavigation("heroRef", 0)}
               className="mr-auto text-3xl font-semibold"
             >
               Inspectly
@@ -196,7 +206,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
           <ul className="space-y-1">
             <li className="menu-item-has-children">
               <a
-                onClick={() => handleMenuOptionClick(refs.heroRef, 0)}
+                onClick={() => handleNavigation("heroRef", 0)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 Home
@@ -204,7 +214,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             </li>
             <li>
               <a
-                onClick={() => handleMenuOptionClick(refs.featuresRef, -50)}
+                onClick={() => handleNavigation("featuresRef", -50)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 Features
@@ -212,7 +222,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             </li>
             <li>
               <a
-                onClick={() => handleMenuOptionClick(refs.howItWorksRef, -10)}
+                onClick={() => handleNavigation("howItWorksRef", -10)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 How It Works
@@ -220,7 +230,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             </li>
             <li>
               <a
-                onClick={() => handleMenuOptionClick(refs.teamRef, -50)}
+                onClick={() => handleNavigation("teamRef", -50)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 The Team
@@ -228,7 +238,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             </li>
             <li>
               <a
-                onClick={() => handleMenuOptionClick(refs.plansRef, -20)}
+                onClick={() => handleNavigation("plansRef", -20)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 Plans
@@ -236,7 +246,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
             </li>
             <li>
               <a
-                onClick={() => handleMenuOptionClick(refs.faqsRef, -80)}
+                onClick={() => handleNavigation("faqsRef", -80)}
                 className="block p-4 text-sm text-gray-500 hover:bg-blue-50 hover:text-blue-700 rounded-xl cursor-pointer"
               >
                 FAQs
@@ -246,9 +256,12 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
           {/* Signup and Login Buttons */}
           <div className="mt-4 pt-6 border-t border-gray-100">
-            <a className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded">
+            <button
+              onClick={() => navigate("/login")}
+              className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
+            >
               Log In
-            </a>
+            </button>
           </div>
 
           {/* Footer with Social Links */}

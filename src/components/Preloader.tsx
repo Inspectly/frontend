@@ -14,7 +14,7 @@ const Preloader: React.FC = () => {
   ];
 
   return (
-    <div className="preloader absolute inset-0 flex justify-center items-center">
+    <div className="preloader fixed inset-0 flex justify-center items-center">
       <div className="waviy font-bold text-[50px] flex space-x-2">
         {letters.map((letter, index) => (
           <span

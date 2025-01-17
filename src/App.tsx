@@ -1,4 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
@@ -6,8 +12,11 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 
 import { SectionRefs } from "./types";
+import Login from "./pages/Login";
 
 function App() {
+  const location = useLocation();
+
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
     featuresRef: useRef<HTMLDivElement>(null),
@@ -34,16 +43,31 @@ function App() {
     }
   };
 
+  // Scroll to the top immediately on route changes
   useEffect(() => {
+    window.scrollTo(0, 0); // Reset scroll position to the top
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Disable scrolling during the loading phase
+    if (loading) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = ""; // Restore scrolling
+    }
+
     const timer = setTimeout(() => {
       setLoading(false); // Disable the preloader after 3 seconds
     }, 1000);
 
-    return () => clearTimeout(timer);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = ""; // Ensure scrolling is restored on cleanup
+    };
+  }, [loading]);
 
   return (
-    <>
+    <div>
       {loading && <Preloader />}
       <div
         className={`transition-opacity duration-500 ${
@@ -51,11 +75,21 @@ function App() {
         }`}
       >
         <Header scrollToSection={scrollToSection} refs={refs} />
-        <Home refs={refs} />
+
+        <Routes>
+          <Route path="/" element={<Home refs={refs} />} />
+          <Route path="/login" element={<Login />} />
+        </Routes>
         <Footer />
       </div>
-    </>
+    </div>
   );
 }
 
-export default App;
+export default function AppWrapper() {
+  return (
+    <Router>
+      <App />
+    </Router>
+  );
+}

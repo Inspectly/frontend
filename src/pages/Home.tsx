@@ -1,4 +1,5 @@
-import React, { useRef } from "react";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, useNavigationType } from "react-router-dom";
 import {
   faClock,
   faLightbulb,
@@ -22,8 +23,67 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ refs }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const navigationType = useNavigationType(); // PUSH, POP, or REPLACE
+
+  const [hasScrolled, setHasScrolled] = useState(false); // Prevent scroll on initial load
+
   const { heroRef, featuresRef, howItWorksRef, teamRef, plansRef, faqsRef } =
     refs;
+
+  const sectionOffsets: { [key: string]: number } = {
+    heroRef: 0,
+    featuresRef: -50,
+    howItWorksRef: -10,
+    teamRef: -50,
+    plansRef: -20,
+    faqsRef: -80,
+  };
+
+  useEffect(() => {
+    const navigationEntries = performance.getEntriesByType(
+      "navigation"
+    ) as PerformanceNavigationTiming[];
+
+    const isPageRefreshed =
+      navigationEntries[0]?.type === "reload" && navigationType === "POP";
+
+    console.log(isPageRefreshed);
+    if (isPageRefreshed) {
+      setTimeout(() => {
+        window.scrollTo(0, 0); // Reset scroll position on component mount
+      }, 1000); // Wait for loading to finish
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      location.state &&
+      typeof location.state.targetSection === "string" &&
+      !hasScrolled
+    ) {
+      const { targetSection } = location.state;
+
+      if (targetSection in refs) {
+        const targetRef = refs[targetSection];
+        if (targetRef && targetRef.current) {
+          setTimeout(() => {
+            const yPosition =
+              targetRef.current!.getBoundingClientRect().top +
+              window.scrollY +
+              sectionOffsets[targetSection];
+
+            window.scrollTo({ top: yPosition, behavior: "smooth" });
+            setHasScrolled(true);
+          }, 100); // Delay the scroll slightly to ensure rendering
+        }
+      }
+
+      // Clear location state after handling
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, refs, navigate, hasScrolled]);
 
   const words = ["accelerated", "accurate", "intelligent"];
 
