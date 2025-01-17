@@ -2,11 +2,15 @@ import { faEye } from "@fortawesome/free-regular-svg-icons";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Login: React.FC = () => {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [agreeToTerms, setAgreeToTerms] = useState(true);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
@@ -20,9 +24,17 @@ const Login: React.FC = () => {
     setAgreeToTerms(e.target.checked);
   };
 
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible((prev) => !prev);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log({ email, password, agreeToTerms });
+  };
+
+  const handleSignUp = () => {
+    navigate("/", { state: { targetSection: "plansRef", offset: -20 } });
   };
 
   return (
@@ -59,12 +71,16 @@ const Login: React.FC = () => {
                 <div className="flex mb-6 px-4 bg-gray-50 rounded border border-gray-200">
                   <input
                     className="w-full py-4 text-xs placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                    type="password"
+                    type={isPasswordVisible ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={handlePasswordChange}
                   />
-                  <button type="button" className="ml-4">
+                  <button
+                    type="button"
+                    onClick={togglePasswordVisibility}
+                    className="ml-4"
+                  >
                     <FontAwesomeIcon
                       icon={faEye}
                       className="h-6 w-6 ml-4 my-auto text-gray-300 stroke-[0.5]"
@@ -93,7 +109,7 @@ const Login: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  className="transition duration-300 ease-in-out transform hover:-translate-y-1 block w-full p-4 text-center text-xs text-white font-semibold leading-none bg-blue-500 hover:bg-blue-700 rounded"
+                  className="transition duration-300 ease-in-out transform hover:-translate-y-1 block w-full p-4 text-center text-xs text-white font-semibold leading-none bg-blue-500 hover:bg-blue-600 hover:shadow-lg rounded"
                 >
                   Sign In
                 </button>
@@ -101,9 +117,9 @@ const Login: React.FC = () => {
               <p className="my-6 text-xs text-gray-400 text-center font-semibold">
                 or continue with
               </p>
-              <button className="transition duration-300 ease-in-out transform hover:-translate-y-1 flex items-center px-4 py-3 w-full text-xs text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded">
+              <button className="transition duration-300 ease-in-out transform hover:-translate-y-1 flex justify-center items-center px-4 py-3 w-full text-xs text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 hover:shadow-lg rounded">
                 <img
-                  className="h-6 pr-10"
+                  className="h-6 pr-6"
                   src="/images/google.png"
                   alt="Google Login"
                 />
@@ -114,12 +130,12 @@ const Login: React.FC = () => {
             <div className="w-full mt-12 mx-auto text-center">
               <p>
                 Don't Have an Account?{" "}
-                <a
+                <button
                   className="inline-block text-xs text-blue-600 hover:text-blue-700 font-semibold leading-none"
-                  href="signup.html"
+                  onClick={handleSignUp}
                 >
                   Sign Up now
-                </a>
+                </button>
               </p>
             </div>
           </div>
