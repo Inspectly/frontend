@@ -176,8 +176,8 @@ const TeamSection: React.FC<TeamProps> = ({ team }) => {
   }, [isTeamInView]);
 
   return (
-    <section className="container pt-16 pb-20 mx-auto px-4" ref={teamRef}>
-      <div className="max-w-3xl mx-auto mb-12 text-center">
+    <section className="container pt-16 pb-20 mx-auto px-4">
+      <div className="max-w-3xl mx-auto mb-12 text-center" ref={teamRef}>
         <div
           className={`transition-all duration-700 ${
             isTeamInView

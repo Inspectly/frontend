@@ -7,9 +7,7 @@ const NewsletterSection = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true); // Trigger animation when section is in view
-        }
+        setIsInView(entry.isIntersecting); // Trigger animation when section is in view
       },
       { threshold: 0.1 }
     );
@@ -23,7 +21,7 @@ const NewsletterSection = () => {
         observer.unobserve(sectionRef.current);
       }
     };
-  }, []);
+  }, [isInView]);
 
   return (
     <section

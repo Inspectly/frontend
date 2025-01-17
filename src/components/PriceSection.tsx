@@ -98,12 +98,9 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
   }, [hasAnimatedCards]);
 
   return (
-    <section
-      className="bg-top bg-no-repeat pt-8 pb-20 bg-[url('/images/intersect.svg')] w-full bg-contain"
-      ref={priceRef}
-    >
+    <section className="bg-top bg-no-repeat pt-8 pb-20 bg-[url('/images/intersect.svg')] w-full bg-contain">
       <div className="container mx-auto sm:pt-16 sm:pb-4 px-4 md:px-8 xl:px-16 2xl:px-32">
-        <div className="max-w-xl mx-auto mb-16 text-center">
+        <div className="max-w-xl mx-auto mb-16 text-center" ref={priceRef}>
           <div
             className={`transition-all duration-700 ${
               isPriceInView

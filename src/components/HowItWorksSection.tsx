@@ -126,10 +126,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
   };
 
   return (
-    <section
-      ref={howitworksRef}
-      className="relative pt-16 pb-20 bg-gradient-to-r from-gray-100/70 to-gray-100"
-    >
+    <section className="relative pt-16 pb-20 bg-gradient-to-r from-gray-100/70 to-gray-100">
       <div className="absolute top-0 inset-x-0 hidden sm:block">
         <img
           src="/images/white-wave.svg"
@@ -138,7 +135,7 @@ const HowItWorksSection: React.FC<HowItWorksProps> = ({ steps }) => {
         />
       </div>
       <div className="container mx-auto sm:pt-16 sm:pb-4 px-4 md:px-8 xl:px-16 2xl:px-32">
-        <div className="flex flex-wrap justify-center">
+        <div className="flex flex-wrap justify-center" ref={howitworksRef}>
           <div className="flex flex-wrap items-center justify-center container px-4 mx-auto mb-12">
             <div
               className={`w-full lg:w-1/2 mb-4 lg:mb-0 transition-all duration-700 ${

@@ -13,6 +13,7 @@ import Footer from "./components/Footer";
 
 import { SectionRefs } from "./types";
 import Login from "./pages/Login";
+import ScrollUpButton from "./components/ScrollUpButton";
 
 function App() {
   const location = useLocation();
@@ -74,6 +75,7 @@ function App() {
           !loading ? "opacity-100" : "opacity-0"
         }`}
       >
+        <ScrollUpButton />
         <Header scrollToSection={scrollToSection} refs={refs} />
 
         <Routes>

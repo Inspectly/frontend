@@ -74,14 +74,12 @@ const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
   }, [hasAnimated]);
 
   return (
-    <section
-      ref={featuresRef}
-      className="container pt-16 pb-20 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32"
-    >
+    <section className="container pt-16 pb-20 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
       <div className="flex flex-wrap justify-center">
         <div className="flex flex-wrap items-center justify-center container px-4 mx-auto mb-12">
           {/* Heading */}
           <div
+            ref={featuresRef}
             className={`w-full lg:w-1/2 mb-4 lg:mb-0 transition-all duration-700 ${
               isFeatureTitleInView
                 ? "opacity-100 translate-y-0"
