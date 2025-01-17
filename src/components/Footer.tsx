@@ -1,12 +1,35 @@
+import React from "react";
 import {
   faFacebookF,
   faTwitter,
   faInstagram,
 } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React from "react";
+import { useNavigate } from "react-router-dom";
 
-const Footer = () => {
+interface FooterProps {
+  scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
+  refs: {
+    [key: string]: React.RefObject<HTMLElement>;
+  };
+}
+
+const Footer: React.FC<FooterProps> = ({ scrollToSection, refs }) => {
+  const navigate = useNavigate();
+
+  const handleSignUp = () => {
+    if (window.location.pathname === "/") {
+      // Already on the home page, directly scroll
+      const targetRef = "plansRef";
+      scrollToSection(refs[targetRef], -20);
+    } else {
+      // Navigate to the home page and pass the target section as state
+      navigate("/", { state: { targetSection: "plansRef", offset: -20 } });
+    }
+
+    navigate("/", { state: { targetSection: "plansRef", offset: -20 } });
+  };
+
   return (
     <footer className="py-20">
       <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
@@ -35,7 +58,10 @@ const Footer = () => {
             <p className="lg:text-lg text-gray-400">
               {" "}
               Ready to dive in?{" "}
-              <a href="/get-started" className="text-blue-400 hover:underline">
+              <a
+                onClick={handleSignUp}
+                className="text-blue-400 hover:underline cursor-pointer"
+              >
                 <br />
                 Sign up now
               </a>

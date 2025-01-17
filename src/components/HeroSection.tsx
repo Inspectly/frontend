@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 
 interface HeroProps {
   words: String[];
+  scrollToSection: (section: string) => void;
 }
 
-const HeroSection: React.FC<HeroProps> = ({ words }) => {
+const HeroSection: React.FC<HeroProps> = ({ words, scrollToSection }) => {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -85,12 +86,12 @@ const HeroSection: React.FC<HeroProps> = ({ words }) => {
             >
               Book a Demo
             </a>
-            <a
+            <button
               className="text-xs font-semibold btn-white py-4 px-8 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition duration-300 transform hover:-translate-y-1 hover:shadow-lg"
-              href="#how-we-work"
+              onClick={() => scrollToSection("plansRef")}
             >
               Get Started
-            </a>
+            </button>
           </div>
         </div>
       </div>

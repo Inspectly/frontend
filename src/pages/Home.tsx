@@ -41,6 +41,34 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
     faqsRef: -80,
   };
 
+  const scrollToSection = (section?: string) => {
+    let target;
+    if (location.state) {
+      const { targetSection } = location.state;
+      target = targetSection;
+    } else {
+      target = section;
+    }
+
+    if (target in refs) {
+      const targetRef = refs[target];
+      if (targetRef && targetRef.current) {
+        setTimeout(() => {
+          const yPosition =
+            targetRef.current!.getBoundingClientRect().top +
+            window.scrollY +
+            sectionOffsets[target];
+
+          window.scrollTo({ top: yPosition, behavior: "smooth" });
+          setHasScrolled(true);
+        }, 100); // Delay the scroll slightly to ensure rendering
+      }
+    }
+
+    // Clear location state after handling
+    navigate(location.pathname, { replace: true });
+  };
+
   useEffect(() => {
     const navigationEntries = performance.getEntriesByType(
       "navigation"
@@ -63,25 +91,7 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
       typeof location.state.targetSection === "string" &&
       !hasScrolled
     ) {
-      const { targetSection } = location.state;
-
-      if (targetSection in refs) {
-        const targetRef = refs[targetSection];
-        if (targetRef && targetRef.current) {
-          setTimeout(() => {
-            const yPosition =
-              targetRef.current!.getBoundingClientRect().top +
-              window.scrollY +
-              sectionOffsets[targetSection];
-
-            window.scrollTo({ top: yPosition, behavior: "smooth" });
-            setHasScrolled(true);
-          }, 100); // Delay the scroll slightly to ensure rendering
-        }
-      }
-
-      // Clear location state after handling
-      navigate(location.pathname, { replace: true });
+      scrollToSection();
     }
   }, [location.state, refs, navigate, hasScrolled]);
 
@@ -287,25 +297,6 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
 
   const plans = [
     {
-      title: "Premium",
-      price: "99.95",
-      bgColor: "bg-blue-500 text-white",
-      textColor: "",
-      priceTextColor: "text-white",
-      buttonBg: "bg-white",
-      buttonTextColor: "text-blue-500",
-      buttonHover: "hover:bg-gray-100",
-      features: [
-        { text: "Detailed repair costs", isAvailable: true },
-        { text: "PDF report format", isAvailable: true },
-        { text: "RUSH upgrade time", isAvailable: true },
-        { text: "Fire claim history", isAvailable: true },
-        { text: "Flood zone info", isAvailable: true },
-        { text: "Permit details active", isAvailable: true },
-        { text: "Sales lien info", isAvailable: true },
-      ],
-    },
-    {
       title: "Basic",
       price: "69.95",
       bgColor: "bg-white",
@@ -322,6 +313,25 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
         { text: "Flood zone info", isAvailable: false },
         { text: "Permit details active", isAvailable: false },
         { text: "Sales lien info", isAvailable: false },
+      ],
+    },
+    {
+      title: "Premium",
+      price: "99.95",
+      bgColor: "bg-blue-500 text-white",
+      textColor: "",
+      priceTextColor: "text-white",
+      buttonBg: "bg-white",
+      buttonTextColor: "text-blue-500",
+      buttonHover: "hover:bg-gray-100",
+      features: [
+        { text: "Detailed repair costs", isAvailable: true },
+        { text: "PDF report format", isAvailable: true },
+        { text: "RUSH upgrade time", isAvailable: true },
+        { text: "Fire claim history", isAvailable: true },
+        { text: "Flood zone info", isAvailable: true },
+        { text: "Permit details active", isAvailable: true },
+        { text: "Sales lien info", isAvailable: true },
       ],
     },
   ];
@@ -357,7 +367,10 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
   return (
     <>
       <div ref={heroRef}>
-        <HeroSection words={words} />
+        <HeroSection
+          words={words}
+          scrollToSection={() => scrollToSection("plansRef")}
+        />
       </div>
       <div ref={featuresRef}>
         <FeaturesSection features={features} />

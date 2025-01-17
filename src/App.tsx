@@ -82,7 +82,7 @@ function App() {
           <Route path="/" element={<Home refs={refs} />} />
           <Route path="/login" element={<Login />} />
         </Routes>
-        <Footer />
+        <Footer scrollToSection={scrollToSection} refs={refs} />
       </div>
     </div>
   );

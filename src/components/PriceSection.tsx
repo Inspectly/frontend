@@ -128,34 +128,6 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
           </div>
         </div>
         <div className="flex flex-wrap -mx-3" ref={cardsRef}>
-          {/* Enterprise Plan */}
-          <div
-            ref={enterpriseRef}
-            className={`flex w-full md:w-1/2 lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
-              hasAnimatedEnterprise
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 -translate-x-20"
-            }`}
-          >
-            <div className="lg:text-start text-center">
-              <h3 className="mb-6 md:text-3xl text-2xl md:leading-normal leading-normal font-semibold">
-                Enterprise Plan
-              </h3>
-              <p className="text-slate-400 max-w-xl mx-auto">
-                Your favorite home inspection report assistant, designed for
-                enterprises with cutting-edge AI.
-              </p>
-              <div className="mt-6">
-                <a
-                  href="page-pricing.html"
-                  className="py-2 px-5 inline-block font-semibold tracking-wide border align-middle duration-500 text-base text-center bg-blue-400 hover:bg-blue-500 text-white rounded-md me-2 mt-2"
-                >
-                  Contact Us
-                </a>
-              </div>
-            </div>
-          </div>
-
           {/* Price Cards */}
           {plans.map((plan, index) => (
             <div
@@ -174,6 +146,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
             >
               <div
                 className={`hover:-translate-y-2 hover:shadow-lg transition duration-300 transform pt-16 pb-8 px-4 text-center rounded shadow ${plan.bgColor}`}
+                style={{ willChange: "transform" }} // Optimize for hover effects
               >
                 <img
                   className="h-20 mb-6 mx-auto"
@@ -195,14 +168,12 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
                         {feature.isAvailable ? (
                           <FontAwesomeIcon
                             icon={faCircleCheck}
-                            size="lg"
-                            className="text-green-400"
+                            className="text-green-400 w-5 h-5"
                           />
                         ) : (
                           <FontAwesomeIcon
                             icon={faCircleXmark}
-                            size="lg"
-                            className="text-red-400"
+                            className="text-red-400 w-5 h-5"
                           />
                         )}
                         <span className="ml-3">{feature.text}</span>
@@ -214,6 +185,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
                   <a
                     className={`block sm:inline-block py-4 px-6 mb-4 sm:mb-0 sm:mr-3 text-xs text-center font-semibold leading-none ${plan.buttonBg} ${plan.buttonHover} ${plan.buttonTextColor} rounded`}
                     href="#"
+                    style={{ transition: "all 0.3s ease" }} // Add a smooth transition
                   >
                     Order Now
                   </a>
@@ -221,6 +193,34 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
               </div>
             </div>
           ))}
+
+          {/* Enterprise Plan */}
+          <div
+            ref={enterpriseRef}
+            className={`flex w-full md:w-1/2 lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
+              hasAnimatedEnterprise
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-20"
+            }`}
+          >
+            <div className="lg:text-center text-center">
+              <h3 className="mb-6 md:text-3xl text-2xl md:leading-normal leading-normal font-semibold">
+                Enterprise Plan
+              </h3>
+              <p className="text-slate-400 max-w-xl mx-auto">
+                Your favorite home inspection report assistant, designed for
+                enterprises with cutting-edge AI.
+              </p>
+              <div className="mt-6">
+                <a
+                  href="page-pricing.html"
+                  className="py-2 px-5 inline-block font-semibold tracking-wide border align-middle duration-500 text-base text-center bg-blue-400 hover:bg-blue-500 text-white rounded-md me-2 mt-2"
+                >
+                  Contact Us
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
