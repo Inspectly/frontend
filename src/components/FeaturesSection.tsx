@@ -117,7 +117,7 @@ const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
           <div
             key={index}
             ref={(el) => (featureCardsRef.current[index] = el)}
-            className={`border border-gray-100 pt-8 px-6 pb-6 bg-white text-center rounded shadow hover:shadow-lg flex flex-col h-full ${
+            className={`border border-gray-50 pt-8 px-6 pb-6 bg-white text-center rounded shadow hover:shadow-lg flex flex-col h-full ${
               visibleFeatureCards.includes(index)
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-40"
