@@ -14,6 +14,7 @@ import Footer from "./components/Footer";
 import { SectionRefs } from "./types";
 import Login from "./pages/Login";
 import ScrollUpButton from "./components/ScrollUpButton";
+import Signup from "./pages/signup";
 
 function App() {
   const location = useLocation();
@@ -81,6 +82,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home refs={refs} />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
         </Routes>
         <Footer scrollToSection={scrollToSection} refs={refs} />
       </div>

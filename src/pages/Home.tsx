@@ -298,6 +298,7 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
   const plans = [
     {
       title: "Basic",
+      description: "Ideal for individuals looking to get started.",
       price: "69.95",
       bgColor: "bg-white",
       textColor: "text-gray-400",
@@ -317,6 +318,7 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
     },
     {
       title: "Premium",
+      description: "Perfect for teams and businesses with advanced needs.",
       price: "99.95",
       bgColor: "bg-blue-500 text-white",
       textColor: "",

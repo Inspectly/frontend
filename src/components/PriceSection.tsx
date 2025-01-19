@@ -4,6 +4,7 @@ import {
   faCircleXmark,
 } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate } from "react-router-dom";
 
 interface Feature {
   text: string;
@@ -12,6 +13,7 @@ interface Feature {
 
 interface Plan {
   title: string;
+  description: string;
   price: string;
   bgColor: string;
   textColor: string;
@@ -27,6 +29,8 @@ interface PriceProps {
 }
 
 const PriceSection: React.FC<PriceProps> = ({ plans }) => {
+  const navigate = useNavigate();
+
   const [isPriceInView, setIsPriceInView] = useState(false);
   const [hasAnimatedEnterprise, setHasAnimatedEnterprise] = useState(false);
   const [hasAnimatedCards, setHasAnimatedCards] = useState(false);
@@ -132,8 +136,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`w-full lg:w-1/3 px-3 mb-6 transition-all duration-700 
-                ${index !== plans.length - 1 ? "md:w-1/2" : ""}
+              className={`w-full lg:w-1/3 md:w-1/2 px-3 mb-6 transition-all duration-700 
                ${
                  hasAnimatedCards
                    ? "opacity-100 translate-y-0"
@@ -181,14 +184,16 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <a
+                <div className="flex justify-center">
+                  <button
                     className={`block sm:inline-block py-4 px-6 mb-4 sm:mb-0 sm:mr-3 text-xs text-center font-semibold leading-none ${plan.buttonBg} ${plan.buttonHover} ${plan.buttonTextColor} rounded`}
-                    href="#"
+                    onClick={() =>
+                      navigate("/signup", { state: { selectedPlan: plan } })
+                    }
                     style={{ transition: "all 0.3s ease" }} // Add a smooth transition
                   >
                     Order Now
-                  </a>
+                  </button>
                 </div>
               </div>
             </div>
@@ -197,7 +202,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
           {/* Enterprise Plan */}
           <div
             ref={enterpriseRef}
-            className={`flex w-full md:w-1/2 lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
+            className={`flex w-full lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
               hasAnimatedEnterprise
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-20"

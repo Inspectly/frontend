@@ -14,3 +14,19 @@ export interface HeaderProps {
   scrollToSection: (ref: RefObject<HTMLElement>) => void;
   refs: SectionRefs;
 }
+
+export interface SignUpFormData {
+  name: string;
+  email: string;
+  phone: string;
+  gender: string;
+  resume: File | null;
+  availability: string;
+  salary: string;
+  startAvailability: string;
+  workPreference: string;
+  willingToWorkRemotely: string;
+  sendToRealtor: string;
+  realtorEmail: string;
+  promoCode: string;
+}
