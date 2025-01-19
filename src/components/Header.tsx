@@ -25,11 +25,20 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
     if (window.location.pathname === "/") {
       // Already on the home page, directly scroll
       const targetRef = refs[section];
-      if (targetRef) scrollToSection(targetRef, offset);
+      if (targetRef) {
+        scrollToSection(targetRef, offset);
+        setIsMobileMenuOpen(false);
+      }
     } else {
       // Navigate to the home page and pass the target section as state
       navigate("/", { state: { targetSection: section, offset } });
+      setIsMobileMenuOpen(false);
     }
+  };
+
+  const handleLoginClick = () => {
+    navigate("/login");
+    setIsMobileMenuOpen(false);
   };
 
   useEffect(() => {
@@ -65,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
         className={`${
           isSticky
             ? "sticky top-0 z-50 bg-white shadow-md transition-transform duration-500 transform "
-            : "relative bg-transparent "
+            : "relative bg-transparent z-10"
         }`}
       >
         <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
@@ -257,7 +266,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
           {/* Signup and Login Buttons */}
           <div className="mt-4 pt-6 border-t border-gray-100">
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => handleLoginClick()}
               className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
             >
               Log In
