@@ -6,6 +6,8 @@ import {
   faTwitter,
 } from "@fortawesome/free-brands-svg-icons";
 import { useNavigate } from "react-router-dom";
+import { auth } from "../../firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 interface HeaderProps {
   scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
@@ -19,6 +21,8 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
   const [isSticky, setIsSticky] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
+
   const headerRef = useRef<HTMLDivElement>(null);
 
   const handleNavigation = (section: string, offset: number) => {
@@ -36,10 +40,29 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
     }
   };
 
+  const handleSignUpClick = () => {
+    navigate("/signup");
+    setIsMobileMenuOpen(false);
+  };
+
   const handleLoginClick = () => {
     navigate("/login");
     setIsMobileMenuOpen(false);
   };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/login");
+  };
+
+  // Monitor authentication state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -141,12 +164,34 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
             {/* Buttons */}
             <div className="hidden lg:flex space-x-4">
-              <button
-                onClick={() => navigate("/login")}
-                className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-1 hover:shadow-lg"
-              >
-                Log In
-              </button>
+              {currentUser && currentUser.emailVerified ? (
+                <>
+                  <span className="py-2 px-4 text-sm font-semibold text-gray-700">
+                    Welcome, {currentUser.displayName}
+                  </span>
+                  <button
+                    onClick={handleLogout}
+                    className="py-2 px-4 text-sm font-semibold text-white bg-red-400 hover:bg-red-500 rounded-lg transform transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="py-2 px-4 text-sm font-semibold text-blue-400 hover:text-blue-500 bg-transparent border border-blue-400 hover:border-blue-500 rounded-lg transform transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    Log In
+                  </button>
+                  <button
+                    onClick={() => navigate("/signup")}
+                    className="py-2 px-4 text-sm font-semibold text-white bg-blue-400 hover:bg-blue-500 rounded-lg transform transition hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -265,12 +310,34 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
           {/* Signup and Login Buttons */}
           <div className="mt-4 pt-6 border-t border-gray-100">
-            <button
-              onClick={() => handleLoginClick()}
-              className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded"
-            >
-              Log In
-            </button>
+            {currentUser && currentUser.emailVerified ? (
+              <>
+                {/* <div className="pb-4 px-4 text-sm font-semibold text-gray-700 w-full">
+                  Welcome, {currentUser.displayName}
+                </div> */}
+                <button
+                  onClick={handleLogout}
+                  className="py-2 px-4 text-sm font-semibold text-white bg-red-400 hover:bg-red-500 rounded-lg transform transition hover:-translate-y-0.5 hover:shadow-lg w-full"
+                >
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => handleSignUpClick()}
+                  className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none bg-blue-400 hover:bg-blue-500 text-white rounded w-full"
+                >
+                  Sign Up
+                </button>
+                <button
+                  onClick={() => handleLoginClick()}
+                  className="block px-4 py-3 mb-3 text-xs text-center font-semibold leading-none text-blue-400 hover:text-blue-500 bg-transparent border border-blue-400 hover:border-blue-500 rounded w-full"
+                >
+                  Log In
+                </button>
+              </>
+            )}
           </div>
 
           {/* Footer with Social Links */}

@@ -1,444 +1,375 @@
 import React, { useState } from "react";
-import { SignUpFormData } from "../types";
+import { useNavigate } from "react-router-dom";
+import { auth } from "../../firebase"; // Firebase initialized file
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  updateProfile,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  fetchSignInMethodsForEmail,
+} from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowUpFromBracket } from "@fortawesome/free-solid-svg-icons";
-import { useLocation } from "react-router-dom";
+import { faAt, faMobileScreen } from "@fortawesome/free-solid-svg-icons";
+import { faAddressCard, faEye } from "@fortawesome/free-regular-svg-icons";
 
-interface Feature {
-  text: string;
-  isAvailable: boolean;
-}
-
-interface Plan {
-  title: string;
-  description: string;
-  price: string;
-  features: Feature[];
-}
-
-const Signup: React.FC = () => {
-  const location = useLocation();
-  const selectedPlan = location.state?.selectedPlan as Plan;
-
-  const [step, setStep] = useState(1); // State to track the current wizard step
-  const totalSteps = 3; // Total number of steps in the wizard
-  const [formData, setFormData] = useState<SignUpFormData>({
-    name: "",
+const SignUp: React.FC = () => {
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    gender: "",
-    resume: null,
-    availability: "",
-    salary: "",
-    startAvailability: "",
-    workPreference: "",
-    willingToWorkRemotely: "",
-    sendToRealtor: "",
-    realtorEmail: "",
-    promoCode: "",
+    password: "",
+    confirmPassword: "",
+    userType: "",
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [thirdPartyOption, setThirdPartyOption] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (step === 1) {
-      if (!formData.name) newErrors.name = "Name is required.";
-      if (!formData.email) {
-        newErrors.email = "Email is required.";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        newErrors.email = "Enter a valid email address.";
-      }
-      if (!formData.phone) {
-        newErrors.phone = "Phone number is required.";
-      } else if (!/^\d{10,15}$/.test(formData.phone)) {
-        newErrors.phone = "Enter a valid phone number.";
-      }
-      if (!formData.resume) newErrors.resume = "Resume is required.";
-    }
-
-    if (step === 2) {
-      if (!formData.availability)
-        newErrors.availability = "Please select an option.";
-    }
-
-    if (step === 3) {
-      if (!formData.sendToRealtor) {
-        newErrors.sendToRealtor = "This option is required.";
-      } else if (formData.sendToRealtor === "Yes" && !formData.realtorEmail) {
-        newErrors.realtorEmail = "Realtor's email is required.";
-      } else if (
-        formData.sendToRealtor === "Yes" &&
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.realtorEmail)
-      ) {
-        newErrors.realtorEmail = "Enter a valid email address.";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const navigate = useNavigate();
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setFormData({ ...formData, resume: e.target.files[0] });
-    }
+  const togglePasswordVisibility = () => {
+    setIsPasswordVisible((prev) => !prev);
   };
 
-  const handleNext = () => {
-    if (validate()) {
-      if (step - 1 < totalSteps) {
-        setStep((prev) => prev + 1);
+  const toggleConfirmPasswordVisibility = () => {
+    setIsConfirmPasswordVisible((prev) => !prev);
+  };
+
+  const handleSignUpWithThirdParty = async (
+    providerType: "Google" | "Facebook"
+  ) => {
+    try {
+      // Check if the user selected an option (Home Buyer or Realtor)
+      if (!thirdPartyOption) {
+        setError("Please select if you are a Home Buyer or a Realtor.");
+        return;
       }
+
+      // Add third party login logic here
+
+      // Navigate to the dashboard after successful sign-up or login
+      navigate("/dashboard");
+    } catch (error: any) {
+      console.error("Error during third-party sign-up:", error);
+      setError(error.message || "Failed to sign up with third-party provider.");
     }
   };
 
-  const handleBack = () => {
-    if (step > 1) {
-      setStep((prev) => prev - 1);
-    }
+  // Example function to save user details to the database
+  const saveUserToDatabase = async (uid: string, data: Record<string, any>) => {
+    // Use your preferred database service to save user data
+    console.log(`Saving user to database: ${uid}`, data);
   };
 
-  // Calculate progress percentage for the progress bar
-  const progressPercentage = Math.round(((step - 1) / totalSteps) * 100);
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      // Create the user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        formData.email,
+        formData.password
+      );
+
+      // Set the display name to the first name
+      await updateProfile(userCredential.user, {
+        displayName: formData.firstName + " " + formData.lastName,
+      });
+
+      // Send verification email
+      await sendEmailVerification(userCredential.user);
+
+      setLoading(false);
+      // Redirect to email verification page
+      navigate("/verify-email");
+    } catch (err: any) {
+      setLoading(false);
+      setError(err.message || "Failed to sign up.");
+    }
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row lg:min-h-[calc(100vh_-_80px)]">
-      {/* Left Panel */}
-      <div className="bg-gradient-to-r from-gray-100/70 to-gray-100 -mt-24 w-full lg:w-1/3 lg:order-none order-1">
-        <div className="flex justify-center items-center h-full min-h-full pt-32 px-14 pb-14 lg:p-14 text-center relative">
-          <div>
-            {selectedPlan ? (
-              <div className="flex flex-col items-center">
-                <h2 className="text-2xl font-bold mb-6">
-                  {selectedPlan.title}
-                </h2>
-                <img
-                  src={`/images/${selectedPlan.title.toLowerCase()}.svg`}
-                  alt="Info Graphic"
-                  className="h-40 mx-auto mb-8"
+    <section className="pb-12 bg-gray-50">
+      <div className="container mx-auto">
+        <div className="flex max-w-md mx-auto flex-col text-center">
+          <div className="mt-12 mb-8 p-8 bg-white rounded shadow">
+            <h4 className="mb-6 text-3xl">Create an Account</h4>
+            <form onSubmit={handleFormSubmit}>
+              {/* First Name */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  placeholder="First Name"
+                  required
                 />
-                <p className="mb-6">{selectedPlan.description}</p>
-                <p className="text-lg font-semibold mb-4">
-                  ${selectedPlan.price}
-                </p>
-                <ul className="space-y-2">
-                  {selectedPlan.features.map((feature, index) => (
-                    <li key={index} className="flex items-center space-x-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          feature.isAvailable ? "bg-green-500" : "bg-red-500"
-                        }`}
-                      ></span>
-                      <span>{feature.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                <FontAwesomeIcon
+                  icon={faAddressCard}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
               </div>
-            ) : (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Select a Plan</h2>
-                <p className="mb-6">
-                  Choose the plan that best fits your needs to proceed with
-                  registration.
-                </p>
+
+              {/* Last Name */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  placeholder="Last Name"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faAddressCard}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
               </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* Right Panel */}
-      <div className="flex items-center h-full min-h-full p-4 sm:p-14 lg:justify-start justify-center lg:pl-28 xl:pl-56 sm:pt-28 w-full lg:w-2/3 order-2">
-        <div className="w-[450px]">
-          {/* Progress Indicator */}
-          <div id="top-wizard" className="mt-3">
-            <div className="text-sm font-semibold text-gray-700 mb-2">
-              <span id="location">
-                {step - 1} of {totalSteps} completed
-              </span>
-            </div>
-            <div
-              className="relative w-full h-2 bg-gray-200 rounded-full overflow-hidden"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={progressPercentage}
-            >
-              <div
-                className="absolute top-0 left-0 h-full bg-blue-600 transition-all duration-300"
-                style={{
-                  width: `${progressPercentage}%`,
-                }}
-              />
-            </div>
-          </div>
+              {/* Email */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="Email"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faAt}
+                  className="h-5 w-5 ml-4 my-auto text-gray-300"
+                />
+              </div>
 
-          <div className="mt-6">
-            {step === 1 && (
-              <>
-                <h2 className="text-xl font-bold">Personal Information</h2>
-                <div className="mt-4">
-                  <label className="block text-gray-500 font-medium">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className={`w-full border border-gray-300 rounded px-3 py-2 mt-1 ${
-                      errors.name ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="First and Last Name"
-                  />
-                  {errors.name && (
-                    <p className="text-sm text-red-500 mt-1">{errors.name}</p>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <label className="block text-gray-500 font-medium">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className={`w-full border border-gray-300 rounded px-3 py-2 mt-1 ${
-                      errors.email ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="Email Address"
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <label className="block text-gray-500 font-medium">
-                    Phone
-                  </label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className={`w-full border border-gray-300 rounded px-3 py-2 mt-1 ${
-                      errors.phone ? "border-red-500" : "border-gray-300"
-                    }`}
-                    placeholder="Phone"
-                  />
-                  {errors.phone && (
-                    <p className="text-sm text-red-500 mt-1">{errors.phone}</p>
-                  )}
-                </div>
-                <div className="mt-4">
-                  <label className="block text-gray-500 font-medium mb-2">
-                    Upload Inspection Report (PDF/DOCX)
-                  </label>
-                  <div
-                    className={`flex items-center border border-gray-300 rounded p-1.5 ${
-                      errors.resume ? "border-red-500" : "border-gray-300"
-                    }`}
+              {/* Phone Number */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  placeholder="Phone Number"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faMobileScreen}
+                  className="h-5 w-5 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
+              {/* User Type */}
+              <div className="relative mb-4">
+                <select
+                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-3 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  name="userType"
+                  value={formData.userType}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="" disabled>
+                    Are you an Individual Home Buyer or Realtor?
+                  </option>
+                  <option value="Individual Home Buyer">
+                    Individual Home Buyer
+                  </option>
+                  <option value="Realtor">Realtor</option>
+                </select>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
                   >
-                    <label
-                      htmlFor="file-upload"
-                      className="px-4 py-1 bg-blue-500 text-sm font-medium text-white rounded cursor-pointer hover:bg-blue-600 transition duration-300"
-                    >
-                      <FontAwesomeIcon
-                        icon={faArrowUpFromBracket}
-                        className="mr-2"
-                      />
-                      Choose File
-                    </label>
-                    <input
-                      type="file"
-                      name="resume"
-                      id="file-upload"
-                      onChange={handleFileChange}
-                      accept=".pdf,.doc,.docx"
-                      className="hidden" // Hides the default file input
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
                     />
-                    <span className="ml-2 text-sm text-gray-400">
-                      {formData.resume
-                        ? formData.resume.name
-                        : "No file chosen"}
-                    </span>
-                  </div>
-                  {errors.resume && (
-                    <p className="text-sm text-red-500 mt-1">{errors.resume}</p>
-                  )}
-                </div>
-              </>
-            )}
-            {step === 2 && (
-              <>
-                <h2 className="text-xl font-bold">Who are you?</h2>
-                <div className="mt-4">
-                  <div className="space-y-4">
-                    {["Buyer", "Agent", "Broker", "Property Inspector"].map(
-                      (option) => (
-                        <label
-                          key={option}
-                          className={`relative block text-sm font-medium cursor-pointer pl-12 p-4 rounded-md border ${
-                            formData.availability === option
-                              ? "border-blue-500 bg-blue-50"
-                              : "border-gray-300 bg-white"
-                          } transition-all duration-300`}
-                        >
-                          <input
-                            type="radio"
-                            name="availability"
-                            value={option}
-                            checked={formData.availability === option}
-                            onChange={handleInputChange}
-                            className="hidden peer"
-                          />
-                          {option}
-                          <span className="absolute top-[13px] left-[10px] h-[24px] w-[24px] border border-gray-300 rounded-full peer-checked:border-transparent peer-checked:after:bg-blue-500 peer-checked:after:content-[''] peer-checked:after:absolute peer-checked:after:top-[0px] peer-checked:after:left-[0px] peer-checked:after:w-[24px] peer-checked:after:h-[24px] peer-checked:after:rounded-full peer-checked:before:content-[''] peer-checked:before:absolute peer-checked:before:top-[4px] peer-checked:before:left-[8px] peer-checked:before:w-[8px] peer-checked:before:h-[14px] peer-checked:before:border-r-[3px] peer-checked:before:border-b-[3px] peer-checked:before:border-white peer-checked:before:z-10 peer-checked:before:rotate-45 transition-all duration-300"></span>
-                        </label>
-                      )
-                    )}
-                  </div>
-                  {errors.availability && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {errors.availability}
-                    </p>
-                  )}
-                </div>
-              </>
-            )}
-            {step === 3 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-700">
-                  Realtor Information
-                </h2>
-
-                {/* Radio Buttons */}
-                <div className="space-y-2">
-                  <label className="block text-gray-500 font-medium">
-                    Do you want to send your report to a realtor?
-                  </label>
-                  <div className="flex items-center space-x-4">
-                    <label className="relative flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="sendToRealtor"
-                        value="Yes"
-                        checked={formData.sendToRealtor === "Yes"}
-                        onChange={handleInputChange}
-                        className="peer absolute opacity-0"
-                      />
-                      <span className="block w-5 h-5 border border-gray-300 rounded-full relative"></span>
-                      <span className="w-3 h-3 bg-blue-500 rounded-full absolute top-[6px] left-[4px] peer-checked:block hidden"></span>
-
-                      <span className="ml-2">Yes</span>
-                    </label>
-
-                    <label className="relative flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="sendToRealtor"
-                        value="No"
-                        checked={formData.sendToRealtor === "No"}
-                        onChange={handleInputChange}
-                        className="peer hidden"
-                      />
-                      <span className="block w-5 h-5 border border-gray-300 rounded-full relative"></span>
-                      <span className="w-3 h-3 bg-blue-500 rounded-full absolute top-[6px] left-[4px] peer-checked:block hidden"></span>
-                      <span className="ml-2">No</span>
-                    </label>
-                  </div>
-                  {errors.sendToRealtor && (
-                    <span className="text-red-500 text-sm ml-2">
-                      {errors.sendToRealtor}
-                    </span>
-                  )}
-                </div>
-
-                {/* Realtor's Email */}
-                {formData.sendToRealtor === "Yes" && (
-                  <div className="mt-4">
-                    <label className="block text-gray-500 font-medium">
-                      Realtor's Email
-                    </label>
-                    <input
-                      type="email"
-                      name="realtorEmail"
-                      value={formData.realtorEmail}
-                      onChange={handleInputChange}
-                      placeholder="Realtor's Email"
-                      className={`w-full border border-gray-300 rounded px-3 py-2 mt-1 ${
-                        errors.realtorEmail
-                          ? "border-red-500"
-                          : "border-gray-300"
-                      }`}
-                    />
-                    {errors.realtorEmail && (
-                      <p className="text-sm text-red-500 mt-1">
-                        {errors.realtorEmail}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Promo Code */}
-                <div className="mt-4">
-                  <label className="block text-gray-500 font-medium">
-                    Do you have a promo code?
-                  </label>
-                  <input
-                    type="text"
-                    name="promoCode"
-                    value={formData.promoCode}
-                    onChange={handleInputChange}
-                    placeholder="Enter Promo Code"
-                    className="w-full border border-gray-300 rounded px-3 py-2 mt-1"
-                  />
+                  </svg>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Navigation Buttons */}
-          <div className="mt-8 flex justify-between">
-            <button
-              disabled={step === 1}
-              onClick={handleBack}
-              className={`px-4 py-2 bg-gray-200 text-gray-700 rounded disabled:opacity-50 ${
-                step !== 1 ? "hover:bg-gray-300" : ""
-              }`}
-            >
-              Previous
-            </button>
-            {/* {step < 2 ? ( */}
-            <button
-              onClick={handleNext}
-              disabled={!selectedPlan && !validate() ? true : false}
-              className="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white rounded"
-            >
-              Next
-            </button>
-            {/* ) : (
+              {/* Password */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type={isPasswordVisible ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="ml-4"
+                >
+                  <FontAwesomeIcon
+                    icon={faEye}
+                    className="h-6 w-6 ml-4 my-auto text-gray-300 stroke-[0.5]"
+                  />
+                </button>
+              </div>
+
+              {/* Confirm Password */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type={isConfirmPasswordVisible ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Confirm Password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={toggleConfirmPasswordVisibility}
+                  className="ml-4"
+                >
+                  <FontAwesomeIcon
+                    icon={faEye}
+                    className="h-6 w-6 ml-4 my-auto text-gray-300 stroke-[0.5]"
+                  />
+                </button>
+              </div>
+
+              <div className="mb-6 text-left">
+                <label className="inline-flex items-center text-sm">
+                  <input type="checkbox" className="form-checkbox" required />
+                  <span className="ml-2">
+                    I agree to the{" "}
+                    <a className="underline hover:text-gray-500" href="#">
+                      Privacy Policy
+                    </a>{" "}
+                    and{" "}
+                    <a className="underline hover:text-gray-500" href="#">
+                      Terms of Use
+                    </a>
+                  </span>
+                </label>
+              </div>
+
+              {/* Submit */}
               <button
-                onClick={() => alert("Form submitted!")}
-                className="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white rounded"
+                type="submit"
+                className="transition duration-300 ease-in-out transform hover:-translate-y-1 block w-full p-4 text-center text-sm text-white font-semibold leading-none bg-blue-500 hover:bg-blue-700 rounded"
               >
-                Submit
+                {loading ? "Signing Up..." : "Sign Up"}
               </button>
-            )} */}
+            </form>
+
+            {error && <p className="text-red-500 my-4">{error}</p>}
+
+            <p className="my-6 text-sm text-gray-400 text-center font-semibold">
+              or continue with
+            </p>
+
+            {/* Third-Party Authentication */}
+            <div className="mb-4">
+              <div className="relative mb-2">
+                <select
+                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-3 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={thirdPartyOption || ""}
+                  onChange={(e) => setThirdPartyOption(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>
+                    Are you an Individual Home Buyer or Realtor?
+                  </option>
+                  <option value="Individual Home Buyer">
+                    Individual Home Buyer
+                  </option>
+                  <option value="Realtor">Realtor</option>
+                </select>
+                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                  <svg
+                    className="w-5 h-5 text-gray-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <button
+                onClick={() => handleSignUpWithThirdParty("Google")}
+                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 mb-2 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
+              >
+                <img
+                  className="h-6 pr-10"
+                  src="images/google.png"
+                  alt="Google"
+                />
+                <span>Sign Up with Google</span>
+              </button>
+              <button
+                onClick={() => handleSignUpWithThirdParty("Facebook")}
+                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
+              >
+                <img
+                  className="h-6 pr-11 -ml-1"
+                  src="images/facebook.png"
+                  alt="Facebook"
+                />
+                <span>Sign Up with Facebook</span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <p className="text-sm text-gray-400 text-center">
+              <a className="underline hover:text-gray-500" href="#">
+                Privacy Policy
+              </a>{" "}
+              and{" "}
+              <a className="underline hover:text-gray-500" href="#">
+                Terms of Use
+              </a>
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
-export default Signup;
+export default SignUp;

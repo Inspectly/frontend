@@ -102,7 +102,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
   }, [hasAnimatedCards]);
 
   return (
-    <section className="bg-top bg-no-repeat pt-8 pb-20 bg-[url('/images/intersect.svg')] w-full bg-contain">
+    <section className="bg-top bg-no-repeat pt-8 pb-20 bg-[url('/images/intersect.svg')] xl:bg-contain">
       <div className="container mx-auto sm:pt-16 sm:pb-4 px-4 md:px-8 xl:px-16 2xl:px-32">
         <div className="max-w-xl mx-auto mb-16 text-center" ref={priceRef}>
           <div
@@ -188,7 +188,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
                   <button
                     className={`block sm:inline-block py-4 px-6 mb-4 sm:mb-0 sm:mr-3 text-xs text-center font-semibold leading-none ${plan.buttonBg} ${plan.buttonHover} ${plan.buttonTextColor} rounded`}
                     onClick={() =>
-                      navigate("/signup", { state: { selectedPlan: plan } })
+                      navigate("/login", { state: { selectedPlan: plan } })
                     }
                     style={{ transition: "all 0.3s ease" }} // Add a smooth transition
                   >

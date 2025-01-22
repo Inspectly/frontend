@@ -7,27 +7,11 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "react-router-dom";
 
-interface FooterProps {
-  scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
-  refs: {
-    [key: string]: React.RefObject<HTMLElement>;
-  };
-}
-
-const Footer: React.FC<FooterProps> = ({ scrollToSection, refs }) => {
+const Footer: React.FC = () => {
   const navigate = useNavigate();
 
   const handleSignUp = () => {
-    if (window.location.pathname === "/") {
-      // Already on the home page, directly scroll
-      const targetRef = "plansRef";
-      scrollToSection(refs[targetRef], -20);
-    } else {
-      // Navigate to the home page and pass the target section as state
-      navigate("/", { state: { targetSection: "plansRef", offset: -20 } });
-    }
-
-    navigate("/", { state: { targetSection: "plansRef", offset: -20 } });
+    navigate("/signup");
   };
 
   return (

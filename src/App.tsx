@@ -14,7 +14,10 @@ import Footer from "./components/Footer";
 import { SectionRefs } from "./types";
 import Login from "./pages/Login";
 import ScrollUpButton from "./components/ScrollUpButton";
-import Signup from "./pages/signup";
+import Payment from "./pages/Payment";
+import SignUp from "./pages/Signup";
+import VerifyEmail from "./pages/VerifyEmail";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   const location = useLocation();
@@ -81,10 +84,13 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Home refs={refs} />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
-        <Footer scrollToSection={scrollToSection} refs={refs} />
+        <Footer />
       </div>
     </div>
   );

@@ -1,3 +1,14 @@
 .waviy {
   -webkit-box-reflect: below -46px linear-gradient(transparent, rgba(0, 0, 0, 0.2));
 }
+
+/* Reset styles for autofilled inputs */
+input:-webkit-autofill {
+  box-shadow: 0 0 0px 1000px #f9fafb inset !important; /* Adjust the color to match your background */
+  -webkit-text-fill-color: #000 !important; /* Adjust the text color */
+}
+
+input:-webkit-autofill::first-line {
+  font-family: inherit !important;
+  font-size: inherit !important;
+}
