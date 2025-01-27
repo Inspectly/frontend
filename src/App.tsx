@@ -18,9 +18,19 @@ import Payment from "./pages/Payment";
 import SignUp from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
+import { auth } from "../firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import DashboardHeader from "./components/DashboardHeader";
+import DashboardSidebar from "./components/DashboardSidebar";
+import Report from "./pages/Report";
 
 function App() {
   const location = useLocation();
+  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
+  const [loading, setLoading] = useState(() => {
+    const hasLoaded = sessionStorage.getItem("hasLoaded");
+    return !hasLoaded; // If no session flag, set loading to true
+  });
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -30,7 +40,6 @@ function App() {
     plansRef: useRef<HTMLDivElement>(null),
     faqsRef: useRef<HTMLDivElement>(null),
   };
-  const [loading, setLoading] = useState(true);
 
   const scrollToSection = (
     ref: React.RefObject<HTMLElement>,
@@ -48,6 +57,15 @@ function App() {
     }
   };
 
+  // Monitor authentication state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
   // Scroll to the top immediately on route changes
   useEffect(() => {
     window.scrollTo(0, 0); // Reset scroll position to the top
@@ -63,6 +81,7 @@ function App() {
 
     const timer = setTimeout(() => {
       setLoading(false); // Disable the preloader after 3 seconds
+      sessionStorage.setItem("hasLoaded", "true"); // Mark as loaded in sessionStorage
     }, 1000);
 
     return () => {
@@ -73,15 +92,16 @@ function App() {
 
   return (
     <div>
-      {loading && <Preloader />}
+      {loading && !currentUser && <Preloader />}
       <div
         className={`transition-opacity duration-500 ${
           !loading ? "opacity-100" : "opacity-0"
         }`}
       >
         <ScrollUpButton />
-        <Header scrollToSection={scrollToSection} refs={refs} />
-
+        {!currentUser && (
+          <Header scrollToSection={scrollToSection} refs={refs} />
+        )}
         <Routes>
           <Route path="/" element={<Home refs={refs} />} />
           <Route path="/signup" element={<SignUp />} />
@@ -89,17 +109,95 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/:id" element={<Report />} />
         </Routes>
-        <Footer />
+        <div
+          className={`${
+            currentUser && currentUser.emailVerified ? "bg-white" : "bg-inherit"
+          }`}
+        >
+          <Footer />
+        </div>
       </div>
     </div>
   );
 }
 
 export default function AppWrapper() {
+  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [loadingAuthState, setLoadingAuthState] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null); // Explicitly set user state to null
+      window.location.href = "/login"; // Force reload to reset state
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1025) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    // Add event listener
+    window.addEventListener("resize", handleResize);
+
+    // Cleanup listener on unmount
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Monitor authentication state
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setLoadingAuthState(false); // Stop the auth loading once the state is determined
+    });
+
+    return () => unsubscribe();
+  }, [auth]);
+
+  if (loadingAuthState) {
+    return <Preloader />;
+  }
+
   return (
-    <Router>
-      <App />
-    </Router>
+    <>
+      {currentUser && currentUser.emailVerified ? (
+        <>
+          <DashboardSidebar
+            toggleSidebar={toggleSidebar}
+            isSidebarOpen={isSidebarOpen}
+          />
+          <DashboardHeader
+            handleLogout={handleLogout}
+            toggleSidebar={toggleSidebar}
+            isSidebarOpen={isSidebarOpen}
+          >
+            <Router>
+              <App />
+            </Router>
+          </DashboardHeader>
+        </>
+      ) : (
+        <Router>
+          <App />
+        </Router>
+      )}
+    </>
   );
 }
