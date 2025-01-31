@@ -122,9 +122,13 @@ const Issue: React.FC = () => {
       return;
     }
 
+    // Find the correct index in the full attachments array
+    const actualIndex = startIndex + attachmentIndex;
+
     const updatedAttachments = issue.attachments.filter(
-      (_, index) => index !== attachmentIndex
+      (_, index) => index !== actualIndex
     );
+
     updateIssue(issue.id, { attachments: updatedAttachments });
   };
 
@@ -269,28 +273,32 @@ const Issue: React.FC = () => {
             />
           </div>
           <div className="chat-all-list flex flex-col gap-1.5 mt-3 max-h-[580px] overflow-y-auto">
-            {filteredIssues.map((issue) => (
+            {filteredIssues.map((filteredIssue) => (
               <a
-                key={issue.id}
+                key={filteredIssue.id}
                 href="#"
                 onClick={() =>
-                  navigate(`/dashboard/${listingId}/issue/${issue.id}`)
+                  navigate(`/dashboard/${listingId}/issue/${filteredIssue.id}`)
                 }
-                className="flex items-center justify-between gap-2 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-600 px-6 py-2.5 active"
+                className={`flex items-center justify-between gap-2 cursor-pointer hover:bg-neutral-100 px-6 py-2.5 ${
+                  filteredIssue.id === issue.id
+                    ? "bg-neutral-100 hover:bg-neutral-200"
+                    : ""
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <div
                     className={`block w-3 h-3 shrink-0 rounded-full ${
-                      issue.severity === "High"
+                      filteredIssue.severity === "High"
                         ? "bg-red-500"
-                        : issue.severity === "Medium"
+                        : filteredIssue.severity === "Medium"
                         ? "bg-yellow-500"
                         : "bg-green-500"
                     }`}
                   ></div>
                   <div className="info">
                     <h6 className="text-sm line-clamp-1">
-                      {issue.id + " " + issue.summary}
+                      {filteredIssue.id + " " + filteredIssue.summary}
                     </h6>
                   </div>
                 </div>
