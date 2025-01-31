@@ -4,6 +4,7 @@ import {
   faMoneyBill1,
 } from "@fortawesome/free-regular-svg-icons";
 import {
+  faChalkboard,
   faClose,
   faGear,
   faHome,
@@ -60,7 +61,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "text-neutral-600 hover:text-blue-400"
               }`}
             >
-              <FontAwesomeIcon icon={faHome} className="mr-2 size-5" />
+              <FontAwesomeIcon
+                icon={faChalkboard}
+                className="mr-2 size-[22px]"
+              />
               <span>Dashboard</span>
             </a>
           </li>
@@ -74,7 +78,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "text-neutral-600 hover:text-blue-400"
               }`}
             >
-              <FontAwesomeIcon icon={faCommentDots} className="mr-2 size-5" />
+              <FontAwesomeIcon
+                icon={faCommentDots}
+                className="mr-2 size-[22px]"
+              />
               <span>Chat</span>
             </a>
           </li>
@@ -88,7 +95,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "text-neutral-600 hover:text-blue-400"
               }`}
             >
-              <FontAwesomeIcon icon={faMoneyBill1} className="mr-2 size-5" />
+              <FontAwesomeIcon
+                icon={faMoneyBill1}
+                className="mr-2 size-[22px]"
+              />
               <span>Pricing</span>
             </a>
           </li>
@@ -104,7 +114,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             >
               <FontAwesomeIcon
                 icon={faCircleQuestion}
-                className="mr-2 size-5"
+                className="mr-2 size-[22px]"
               />
               <span>FAQs.</span>
             </a>
@@ -113,13 +123,16 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             <a
               href="/dashboard/termsandconditions"
               onClick={() => handleMenuClick("/dashboard/termsandconditions")}
-              className={`flex items-center rounded-lg px-3 py-2.5 text-md font-medium transition duration-150 ease-in-out ${
+              className={`group flex items-center rounded-lg px-3 py-2.5 text-md font-medium ${
                 activePage === "/dashboard/termsandconditions"
                   ? "bg-blue-500 text-white"
                   : "text-neutral-600 hover:text-blue-400"
               }`}
             >
-              <FontAwesomeIcon icon={faInfo} className="mr-2 size-5" />
+              <FontAwesomeIcon
+                icon={faInfo}
+                className="mr-2 text-xs rounded-full border-2 py-[3px] px-1.5 border-neutral-600 group-hover:border-blue-400"
+              />
               <span>Terms & Conditions</span>
             </a>
           </li>
@@ -133,7 +146,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   : "text-neutral-600 hover:text-blue-400"
               }`}
             >
-              <FontAwesomeIcon icon={faGear} className="mr-2 size-5" />
+              <FontAwesomeIcon icon={faGear} className="mr-2 size-[22px]" />
               <span>Settings</span>
             </a>
           </li>

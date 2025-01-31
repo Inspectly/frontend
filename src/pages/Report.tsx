@@ -1,216 +1,19 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
+  faChalkboard,
   faChevronDown,
-  faHome,
   faMagnifyingGlass,
-  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-
-interface Issue {
-  id: string;
-  summary: string;
-  severity: string;
-  progress: string;
-  dateCreated: string;
-  vendor: string;
-  cost: string;
-}
+import { Link, useParams } from "react-router-dom";
+import { useIssues } from "../components/IssuesContext";
+import AddToCart from "../components/AddToCart";
 
 const Report: React.FC = () => {
-  const [issues, setIssues] = useState<Issue[]>([
-    {
-      id: "1.1",
-      summary: "Pipe leakage in kitchen",
-      severity: "High",
-      progress: "To-do",
-      dateCreated: "2023-12-25",
-      vendor: "Plumbing Pros",
-      cost: "",
-    },
-    {
-      id: "1.2",
-      summary: "Broken showerhead",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-01",
-      vendor: "Plumbing Pros",
-      cost: "",
-    },
-    {
-      id: "1.3",
-      summary: "Water heater malfunction",
-      severity: "Low",
-      progress: "Done",
-      dateCreated: "2024-01-03",
-      vendor: "Plumbing Pros",
-      cost: "$200",
-    },
-    {
-      id: "2.1",
-      summary: "Electrical short circuit in basement",
-      severity: "High",
-      progress: "Done",
-      dateCreated: "2024-01-05",
-      vendor: "Electrical Experts",
-      cost: "$250",
-    },
-    {
-      id: "2.2",
-      summary: "Faulty wiring in living room",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-06",
-      vendor: "Electrical Experts",
-      cost: "",
-    },
-    {
-      id: "2.3",
-      summary: "Damaged electrical socket",
-      severity: "Low",
-      progress: "To-do",
-      dateCreated: "2024-01-07",
-      vendor: "Electrical Experts",
-      cost: "",
-    },
-    {
-      id: "3.1",
-      summary: "Cracked foundation wall",
-      severity: "High",
-      progress: "To-do",
-      dateCreated: "2024-01-08",
-      vendor: "Structural Solutions",
-      cost: "",
-    },
-    {
-      id: "3.2",
-      summary: "Roof leaking near attic",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-09",
-      vendor: "Structural Solutions",
-      cost: "",
-    },
-    {
-      id: "3.3",
-      summary: "Window frame misalignment",
-      severity: "Low",
-      progress: "Done",
-      dateCreated: "2024-01-10",
-      vendor: "Structural Solutions",
-      cost: "$150",
-    },
-    {
-      id: "4.1",
-      summary: "Heating system failure",
-      severity: "High",
-      progress: "Done",
-      dateCreated: "2024-01-11",
-      vendor: "HVAC Experts",
-      cost: "$300",
-    },
-    {
-      id: "4.2",
-      summary: "Air conditioning not cooling",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-12",
-      vendor: "HVAC Experts",
-      cost: "",
-    },
-    {
-      id: "4.3",
-      summary: "Thermostat malfunction",
-      severity: "Low",
-      progress: "To-do",
-      dateCreated: "2024-01-13",
-      vendor: "HVAC Experts",
-      cost: "",
-    },
-    {
-      id: "5.1",
-      summary: "Broken tile in bathroom",
-      severity: "Low",
-      progress: "To-do",
-      dateCreated: "2024-01-14",
-      vendor: "Tiling Masters",
-      cost: "",
-    },
-    {
-      id: "5.2",
-      summary: "Loose grout in shower",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-15",
-      vendor: "Tiling Masters",
-      cost: "",
-    },
-    {
-      id: "5.3",
-      summary: "Cracked floor tiles",
-      severity: "High",
-      progress: "Done",
-      dateCreated: "2024-01-16",
-      vendor: "Tiling Masters",
-      cost: "$120",
-    },
-    {
-      id: "6.1",
-      summary: "Garage door not opening",
-      severity: "High",
-      progress: "To-do",
-      dateCreated: "2024-01-17",
-      vendor: "Garage Techs",
-      cost: "",
-    },
-    {
-      id: "6.2",
-      summary: "Garage door sensor issue",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-18",
-      vendor: "Garage Techs",
-      cost: "",
-    },
-    {
-      id: "6.3",
-      summary: "Garage door spring broken",
-      severity: "High",
-      progress: "Done",
-      dateCreated: "2024-01-19",
-      vendor: "Garage Techs",
-      cost: "$400",
-    },
-    {
-      id: "7.1",
-      summary: "Fence panel broken",
-      severity: "Low",
-      progress: "To-do",
-      dateCreated: "2024-01-20",
-      vendor: "Fencing Specialists",
-      cost: "",
-    },
-    {
-      id: "7.2",
-      summary: "Gate latch not working",
-      severity: "Medium",
-      progress: "In-progress",
-      dateCreated: "2024-01-21",
-      vendor: "Fencing Specialists",
-      cost: "",
-    },
-    {
-      id: "7.3",
-      summary: "Fence leaning to one side",
-      severity: "High",
-      progress: "Done",
-      dateCreated: "2024-01-22",
-      vendor: "Fencing Specialists",
-      cost: "$250",
-    },
-  ]);
+  const { listingId } = useParams<{ listingId: string }>();
+  const { issues, updateIssue } = useIssues();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -221,17 +24,15 @@ const Report: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
+  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+
   const handleFilterChange = (field: string, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleProgressChange = (id: string, newProgress: string) => {
-    setIssues((prev) =>
-      prev.map((issue) =>
-        issue.id === id ? { ...issue, progress: newProgress } : issue
-      )
-    );
-    setDropdownOpen(null); // Close the dropdown after selecting an option
+    updateIssue(id, { progress: newProgress }); // Call the context's update function
+    setDropdownOpen(null); // Close the dropdown after updating
   };
 
   // Filter logic
@@ -280,14 +81,14 @@ const Report: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-3xl font-semibold mb-0 dark:text-white">Issues</h1>
+        <h1 className="text-3xl font-semibold mb-0 dark:text-white">Report</h1>
         <ul className="text-lg flex items-center gap-[6px]">
           <li className="font-medium">
             <a
               href="/dashboard"
               className="flex items-center gap-2 hover:text-blue-400"
             >
-              <FontAwesomeIcon icon={faHome} className="size-5" />
+              <FontAwesomeIcon icon={faChalkboard} className="size-5" />
               Dashboard
             </a>
           </li>
@@ -371,19 +172,19 @@ const Report: React.FC = () => {
                           ID
                         </th>
                         <th className="bg-gray-100 text-left font-medium px-4 py-3">
+                          Type
+                        </th>
+                        <th className="bg-gray-100 text-left font-medium px-4 py-3">
                           Summary
                         </th>
                         <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                          Severity
+                          Vendor
                         </th>
                         <th className="bg-gray-100 text-left font-medium px-4 py-3">
                           Progress
                         </th>
                         <th className="bg-gray-100 text-left font-medium px-4 py-3">
                           Date Created
-                        </th>
-                        <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                          Vendor
                         </th>
                         <th className="bg-gray-100 text-left font-medium px-4 py-3">
                           Cost
@@ -394,8 +195,13 @@ const Report: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {currentIssues.map((issue, index) => (
-                        <tr key={issue.id}>
+                      {currentIssues.map((issue) => (
+                        <tr
+                          key={issue.id}
+                          ref={(el) => {
+                            if (el) rowRefs.current[issue.id] = el;
+                          }}
+                        >
                           <td className="text-center border-b border-gray-200 px-4 py-3">
                             <span
                               className={`block w-4 h-4 rounded-full mx-auto ${
@@ -412,10 +218,18 @@ const Report: React.FC = () => {
                             {issue.id}
                           </td>
                           <td className="text-left border-b border-gray-200 px-4 py-3">
-                            {issue.summary}
+                            {issue.type}
                           </td>
                           <td className="text-left border-b border-gray-200 px-4 py-3">
-                            {issue.severity}
+                            <Link
+                              to={`/dashboard/${listingId}/issue/${issue.id}`}
+                              className="text-blue-400 hover:underline"
+                            >
+                              {issue.summary}
+                            </Link>
+                          </td>
+                          <td className="text-left border-b border-gray-200 px-4 py-3">
+                            {issue.vendor}
                           </td>
                           <td className="text-left border-b border-gray-200 px-4 py-3">
                             <div className="relative">
@@ -468,19 +282,15 @@ const Report: React.FC = () => {
                           <td className="text-left border-b border-gray-200 px-4 py-3">
                             {issue.dateCreated}
                           </td>
-                          <td className="text-left border-b border-gray-200 px-4 py-3">
-                            {issue.vendor}
-                          </td>
+
                           <td className="text-left border-b border-gray-200 px-4 py-3">
                             {issue.cost || "N/A"}
                           </td>
                           <td className="text-center border-b border-gray-200 px-4 py-3">
-                            <button className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center">
-                              <FontAwesomeIcon
-                                icon={faPlus}
-                                className="text-blue-600 size-3.5"
-                              />
-                            </button>
+                            <AddToCart
+                              itemId={issue.id}
+                              getItemRef={() => rowRefs.current[issue.id]}
+                            />
                           </td>
                         </tr>
                       ))}

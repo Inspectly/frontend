@@ -10,6 +10,7 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
+import { useCart } from "./cardContext";
 
 interface DashboardHeaderProps {
   handleLogout: () => void;
@@ -26,6 +27,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 }) => {
   const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { cartItems } = useCart(); // Get cartItems globally
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Monitor authentication state
@@ -82,17 +85,20 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           <div className="col-auto flex items-center gap-3">
             <button
               id="cart"
-              className="w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center"
+              className="relative w-10 h-10 bg-neutral-200 dark:bg-neutral-700 rounded-full flex items-center justify-center"
             >
-              <span id="cart-dark-icon">
-                <FontAwesomeIcon icon={faCartShopping} />
-              </span>
+              <FontAwesomeIcon icon={faCartShopping} />
+              {cartItems?.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs flex items-center justify-center rounded-full">
+                  {cartItems?.length}
+                </span>
+              )}
             </button>
             <button
               className="w-10 h-10 bg-neutral-200 rounded-full flex items-center justify-center"
               onClick={() => setIsDropdownOpen((prev) => !prev)}
             >
-              <img src="images/user.png" alt="User" className="rounded-full" />
+              <img src="/images/user.png" alt="User" className="rounded-full" />
             </button>
             {isDropdownOpen && (
               <div
@@ -142,7 +148,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </div>
         </div>
       </header>
-      <div>{children}</div>
+      {children}
     </main>
   );
 };

@@ -30,3 +30,35 @@ export interface SignUpFormData {
   realtorEmail: string;
   promoCode: string;
 }
+
+export interface IssueType {
+  id: string;
+  type: string;
+  listingId: string;
+  summary: string;
+  image: string;
+  description: string;
+  severity: string;
+  progress: string;
+  dateCreated: string;
+  vendor: string;
+  workedBy: string;
+  realtor: string;
+  cost: string;
+  attachments: Attachment[];
+  comments: Comment[];
+}
+
+export interface Comment {
+  author: string;
+  text: string;
+  date: string;
+}
+
+export interface Attachment {
+  name: string;
+  url: string;
+  type: string;
+  addedBy: string;
+  dateAdded: string;
+}

@@ -23,6 +23,10 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
+import Issue from "./pages/Issue";
+import { IssuesProvider } from "./components/IssuesContext";
+import { ListingsProvider } from "./components/ListingsContext";
+import { CartProvider } from "./components/cardContext";
 
 function App() {
   const location = useLocation();
@@ -102,15 +106,24 @@ function App() {
         {!currentUser && (
           <Header scrollToSection={scrollToSection} refs={refs} />
         )}
-        <Routes>
-          <Route path="/" element={<Home refs={refs} />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/payment" element={<Payment />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard/:id" element={<Report />} />
-        </Routes>
+        <ListingsProvider>
+          <IssuesProvider>
+            <Routes>
+              <Route path="/" element={<Home refs={refs} />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/payment" element={<Payment />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/:listingId" element={<Report />} />
+              <Route
+                path="/dashboard/:listingId/issue/:issueId"
+                element={<Issue />}
+              />
+            </Routes>
+          </IssuesProvider>
+        </ListingsProvider>
+
         <div
           className={`${
             currentUser && currentUser.emailVerified ? "bg-white" : "bg-inherit"
@@ -178,7 +191,7 @@ export default function AppWrapper() {
   return (
     <>
       {currentUser && currentUser.emailVerified ? (
-        <>
+        <CartProvider>
           <DashboardSidebar
             toggleSidebar={toggleSidebar}
             isSidebarOpen={isSidebarOpen}
@@ -192,7 +205,7 @@ export default function AppWrapper() {
               <App />
             </Router>
           </DashboardHeader>
-        </>
+        </CartProvider>
       ) : (
         <Router>
           <App />
