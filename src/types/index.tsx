@@ -45,6 +45,7 @@ export interface IssueType {
   workedBy: string;
   realtor: string;
   cost: string;
+  isVisible: boolean;
   attachments: Attachment[];
   comments: Comment[];
 }

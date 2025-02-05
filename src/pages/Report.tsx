@@ -9,7 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
 import { useIssues } from "../components/IssuesContext";
-import AddToCart from "../components/AddToCart";
+import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 
 const Report: React.FC = () => {
   const { listingId } = useParams<{ listingId: string }>();
@@ -19,6 +19,7 @@ const Report: React.FC = () => {
   const [filters, setFilters] = useState({
     severity: "",
     progress: "",
+    isVisible: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -27,7 +28,10 @@ const Report: React.FC = () => {
   const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
 
   const handleFilterChange = (field: string, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value === "all" ? "" : value, // Convert "all" back to empty string
+    }));
   };
 
   const handleProgressChange = (id: string, newProgress: string) => {
@@ -44,8 +48,15 @@ const Report: React.FC = () => {
       filters.severity === "" || issue.severity === filters.severity;
     const matchesProgress =
       filters.progress === "" || issue.progress === filters.progress;
+    const matchesVisibility =
+      filters.isVisible === "" || String(issue.isVisible) === filters.isVisible;
 
-    return matchesSearchQuery && matchesSeverity && matchesProgress;
+    return (
+      matchesSearchQuery &&
+      matchesSeverity &&
+      matchesProgress &&
+      matchesVisibility
+    );
   });
 
   // Pagination logic
@@ -136,7 +147,7 @@ const Report: React.FC = () => {
                     handleFilterChange("severity", e.target.value)
                   }
                 >
-                  <option value="">Filter by Severity</option>
+                  <option value="all">Filter by Severity</option>
                   <option value="High">High</option>
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
@@ -148,10 +159,22 @@ const Report: React.FC = () => {
                     handleFilterChange("progress", e.target.value)
                   }
                 >
-                  <option value="">Filter by Progress</option>
+                  <option value="all">Filter by Progress</option>
                   <option value="To-do">To-do</option>
                   <option value="In-progress">In-progress</option>
                   <option value="Done">Done</option>
+                </select>
+
+                <select
+                  className="border px-1 py-1.5 cursor-pointer w-auto border-neutral-200 rounded-lg"
+                  value={filters.isVisible}
+                  onChange={(e) =>
+                    handleFilterChange("isVisible", e.target.value)
+                  }
+                >
+                  <option value="all">Filter by visibility</option>
+                  <option value="true">Visible</option>
+                  <option value="false">Not visible</option>
                 </select>
               </div>
             </div>
@@ -201,6 +224,7 @@ const Report: React.FC = () => {
                           ref={(el) => {
                             if (el) rowRefs.current[issue.id] = el;
                           }}
+                          className={issue.isVisible ? "" : "bg-red-100"}
                         >
                           <td className="text-center border-b border-gray-200 px-4 py-3">
                             <span
@@ -287,10 +311,19 @@ const Report: React.FC = () => {
                             {issue.cost || "N/A"}
                           </td>
                           <td className="text-center border-b border-gray-200 px-4 py-3">
-                            <AddToCart
-                              itemId={issue.id}
-                              getItemRef={() => rowRefs.current[issue.id]}
-                            />
+                            <button
+                              onClick={() =>
+                                updateIssue(issue.id, {
+                                  isVisible: !issue.isVisible,
+                                })
+                              }
+                              className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
+                            >
+                              <FontAwesomeIcon
+                                icon={issue.isVisible ? faEye : faEyeSlash}
+                                className={`text-blue-600 size-3.5`}
+                              />
+                            </button>
                           </td>
                         </tr>
                       ))}

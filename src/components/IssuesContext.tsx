@@ -35,6 +35,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       attachments: [],
       comments: [],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "1.2",
@@ -109,6 +110,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         },
       ],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "1.3",
@@ -127,6 +129,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       attachments: [],
       comments: [],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "2.1",
@@ -166,6 +169,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         },
       ],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "2.2",
@@ -184,6 +188,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       attachments: [],
       comments: [],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "3.1",
@@ -216,6 +221,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         },
       ],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "3.2",
@@ -234,6 +240,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       attachments: [],
       comments: [],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
     {
       id: "4.1",
@@ -265,6 +272,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
         },
       ],
       image: "/images/city-placeholder.png",
+      isVisible: true,
     },
   ]);
 

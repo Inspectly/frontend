@@ -11,13 +11,16 @@ import {
   faChalkboard,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import { faTrashCan } from "@fortawesome/free-regular-svg-icons";
+import {
+  faEye,
+  faEyeSlash,
+  faTrashCan,
+} from "@fortawesome/free-regular-svg-icons";
 import { Attachment } from "../types";
 import { useIssues } from "../components/IssuesContext";
 import { useListings } from "../components/ListingsContext";
 import { auth } from "../../firebase";
 import Dropdown from "../components/Dropdown";
-import AddToCart from "../components/AddToCart";
 import VendorModal from "../components/VendorModal";
 
 const Issue: React.FC = () => {
@@ -314,15 +317,28 @@ const Issue: React.FC = () => {
             ref={cardRef}
             className="relative rounded-lg bg-white border-0 overflow-hidden flex flex-col"
           >
-            <div className="items-center px-6 py-4 active border-b border-neutral-200">
+            <div
+              className={`items-center px-6 py-4 active border-b border-neutral-200 ${
+                issue.isVisible ? "" : "bg-red-100"
+              }`}
+            >
               <div className="flex flex-row items-center justify-between">
                 <h2 className="text-2xl font-medium mb-0">
                   {issue.id + " " + issue.summary || "No Title Found"}
                 </h2>
-                <AddToCart
-                  itemId={issue.id}
-                  getItemRef={() => cardRef.current}
-                />
+                <button
+                  onClick={() =>
+                    updateIssue(issue.id, {
+                      isVisible: !issue.isVisible,
+                    })
+                  }
+                  className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
+                >
+                  <FontAwesomeIcon
+                    icon={issue.isVisible ? faEye : faEyeSlash}
+                    className={`text-blue-600 size-3.5`}
+                  />
+                </button>
               </div>
             </div>
             <div className="chat-message-list max-h-[568px] overflow-y-auto flex flex-col lg:flex-row p-6 gap-6">
@@ -552,7 +568,7 @@ const Issue: React.FC = () => {
                       {/* Attachments Row */}
                       <div className="relative overflow-hidden w-full">
                         <div className="flex gap-3 transition-transform duration-300 ease-in-out">
-                          {issue.attachments?.length ? (
+                          {issue.attachments && issue.attachments.length > 0 ? (
                             <>
                               {visibleImages.map((attachment, index) => (
                                 <div
@@ -622,20 +638,20 @@ const Issue: React.FC = () => {
 
                       {/* Right Arrow */}
                       {maxVisible &&
-                        startIndex + maxVisible < issue.attachments.length && (
-                          <button
-                            onClick={handleNext}
-                            className="absolute right-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
-                            style={{
-                              right: `calc(50% - ${
-                                (maxVisible * imageSize) / 2
-                              }px)`,
-                              transform: "translateX(50%)",
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faArrowRight} />
-                          </button>
-                        )}
+                      startIndex + maxVisible < issue.attachments.length ? (
+                        <button
+                          onClick={handleNext}
+                          className="absolute right-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
+                          style={{
+                            right: `calc(50% - ${
+                              (maxVisible * imageSize) / 2
+                            }px)`,
+                            transform: "translateX(50%)",
+                          }}
+                        >
+                          <FontAwesomeIcon icon={faArrowRight} />
+                        </button>
+                      ) : null}
 
                       {/* Image Modal */}
                       {selectedImage && (
@@ -716,20 +732,22 @@ const Issue: React.FC = () => {
                       ) : (
                         <p className="text-gray-500">No comments yet.</p>
                       )}
-                      <div className="flex gap-2 mt-4">
+                      <div className="mt-4">
                         <input
                           type="text"
                           value={newComment}
                           onChange={(e) => setNewComment(e.target.value)}
                           placeholder="Add a comment"
-                          className="flex-grow border border-gray-300 px-3 py-2 rounded-lg"
+                          className="border border-gray-300 px-3 py-2 rounded-lg mb-2 w-full"
                         />
-                        <button
-                          onClick={addComment}
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-                        >
-                          Add
-                        </button>
+                        <div className="flex justify-end">
+                          <button
+                            onClick={addComment}
+                            className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+                          >
+                            Comment
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -762,18 +780,20 @@ const Issue: React.FC = () => {
                   {peopleOpen && (
                     <div className="mt-4 space-y-3">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Vendor
-                        </h4>
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Vendor
+                          </h4>
+                          <button
+                            onClick={() => setIsVendorModalOpen(true)}
+                            className="text-blue-500 hover:text-blue-700"
+                          >
+                            <FontAwesomeIcon icon={faPlus} className="size-3" />
+                          </button>
+                        </div>
                         <p className="text-base font-semibold text-gray-700">
-                          {issue.vendor}
+                          {issue.vendor || "No vendor assigned"}
                         </p>
-                        <button
-                          onClick={() => setIsVendorModalOpen(true)}
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg"
-                        >
-                          Open Vendor
-                        </button>
 
                         {/* Vendor Modal */}
                         <VendorModal

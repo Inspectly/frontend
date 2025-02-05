@@ -19,7 +19,6 @@ import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
-import Cart from "./pages/Cart";
 
 function App() {
   const location = useLocation();
@@ -112,7 +111,6 @@ function App() {
             path="/dashboard/:listingId/issue/:issueId"
             element={<Issue />}
           />
-          <Route path="/cart" element={<Cart />} />
         </Routes>
 
         <div
