@@ -18,6 +18,7 @@ import { useListings } from "../components/ListingsContext";
 import { auth } from "../../firebase";
 import Dropdown from "../components/Dropdown";
 import AddToCart from "../components/AddToCart";
+import VendorModal from "../components/VendorModal";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +58,8 @@ const Issue: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [newComment, setNewComment] = useState("");
+
+  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -223,7 +226,7 @@ const Issue: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-3xl font-semibold mb-0 dark:text-white">Issue</h1>
+        <h1 className="text-3xl font-semibold mb-0">Issue</h1>
         <ul className="text-lg flex items-center gap-[6px]">
           <li className="font-medium">
             <a
@@ -266,7 +269,7 @@ const Issue: React.FC = () => {
             </span>
             <input
               type="text"
-              className="appearance-none bg-white border-y border-gray-200 rounded-none px-3 py-2 text-base leading-6 shadow-none border-t border-b dark:border-neutral-600 dark:bg-neutral-700 w-full focus:outline-none focus:ring-0 ps-12 pe-6"
+              className="appearance-none bg-white border-y border-gray-200 rounded-none px-3 py-2 text-base leading-6 shadow-none border-t border-b w-full focus:outline-none focus:ring-0 ps-12 pe-6"
               value={searchQuery}
               onChange={handleSearchChange}
               placeholder="Search..."
@@ -311,7 +314,7 @@ const Issue: React.FC = () => {
             ref={cardRef}
             className="relative rounded-lg bg-white border-0 overflow-hidden flex flex-col"
           >
-            <div className="items-center px-6 py-4 active border-b border-neutral-200 dark:border-neutral-600">
+            <div className="items-center px-6 py-4 active border-b border-neutral-200">
               <div className="flex flex-row items-center justify-between">
                 <h2 className="text-2xl font-medium mb-0">
                   {issue.id + " " + issue.summary || "No Title Found"}
@@ -765,6 +768,18 @@ const Issue: React.FC = () => {
                         <p className="text-base font-semibold text-gray-700">
                           {issue.vendor}
                         </p>
+                        <button
+                          onClick={() => setIsVendorModalOpen(true)}
+                          className="bg-blue-500 text-white px-4 py-2 rounded-lg"
+                        >
+                          Open Vendor
+                        </button>
+
+                        {/* Vendor Modal */}
+                        <VendorModal
+                          isOpen={isVendorModalOpen}
+                          onClose={() => setIsVendorModalOpen(false)}
+                        />
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">

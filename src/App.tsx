@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
@@ -24,9 +19,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
-import { IssuesProvider } from "./components/IssuesContext";
-import { ListingsProvider } from "./components/ListingsContext";
-import { CartProvider } from "./components/cardContext";
+import Cart from "./pages/Cart";
 
 function App() {
   const location = useLocation();
@@ -106,23 +99,21 @@ function App() {
         {!currentUser && (
           <Header scrollToSection={scrollToSection} refs={refs} />
         )}
-        <ListingsProvider>
-          <IssuesProvider>
-            <Routes>
-              <Route path="/" element={<Home refs={refs} />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/payment" element={<Payment />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/:listingId" element={<Report />} />
-              <Route
-                path="/dashboard/:listingId/issue/:issueId"
-                element={<Issue />}
-              />
-            </Routes>
-          </IssuesProvider>
-        </ListingsProvider>
+
+        <Routes>
+          <Route path="/" element={<Home refs={refs} />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/payment" element={<Payment />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/:listingId" element={<Report />} />
+          <Route
+            path="/dashboard/:listingId/issue/:issueId"
+            element={<Issue />}
+          />
+          <Route path="/cart" element={<Cart />} />
+        </Routes>
 
         <div
           className={`${
@@ -191,7 +182,7 @@ export default function AppWrapper() {
   return (
     <>
       {currentUser && currentUser.emailVerified ? (
-        <CartProvider>
+        <>
           <DashboardSidebar
             toggleSidebar={toggleSidebar}
             isSidebarOpen={isSidebarOpen}
@@ -201,15 +192,11 @@ export default function AppWrapper() {
             toggleSidebar={toggleSidebar}
             isSidebarOpen={isSidebarOpen}
           >
-            <Router>
-              <App />
-            </Router>
+            <App />
           </DashboardHeader>
-        </CartProvider>
+        </>
       ) : (
-        <Router>
-          <App />
-        </Router>
+        <App />
       )}
     </>
   );

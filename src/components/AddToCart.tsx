@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { motion } from "framer-motion";
-import { useCart } from "./cardContext";
+import { useCart } from "./cartContext";
 
 interface AddToCartProps {
   itemId: string;
@@ -125,8 +125,10 @@ const AddToCart: React.FC<AddToCartProps> = ({ itemId, getItemRef }) => {
       >
         <FontAwesomeIcon
           icon={faPlus}
-          className={`text-blue-600 size-3.5 cursor-pointer ${
-            cartItems.includes(itemId) ? "opacity-50 cursor-not-allowed" : ""
+          className={`text-blue-600 size-3.5  ${
+            cartItems.includes(itemId)
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer"
           }`}
         />
       </button>

@@ -81,7 +81,7 @@ const Report: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-3xl font-semibold mb-0 dark:text-white">Report</h1>
+        <h1 className="text-3xl font-semibold mb-0">Report</h1>
         <ul className="text-lg flex items-center gap-[6px]">
           <li className="font-medium">
             <a
@@ -100,7 +100,7 @@ const Report: React.FC = () => {
       <div className="grid grid-cols-12">
         <div className="col-span-12">
           <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
-            <div className="card-header border-b border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+            <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
               <div className="flex items-center flex-wrap gap-3">
                 <span className="text-base font-medium text-secondary-light mb-0">
                   Show
@@ -122,7 +122,7 @@ const Report: React.FC = () => {
                     placeholder="Search issues"
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="h-10 sm:w-[20rem] w-[14rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900 dark:border-gray-600"
+                    className="h-10 sm:w-[20rem] w-[14rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900"
                   />
                   <FontAwesomeIcon
                     icon={faMagnifyingGlass}

@@ -75,13 +75,11 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-3xl font-semibold mb-0 dark:text-white">
-          Listings
-        </h1>
+        <h1 className="text-3xl font-semibold mb-0">Listings</h1>
       </div>
 
       <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
-        <div className="card-header border-b border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-700 py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+        <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
           <div className="flex items-center flex-wrap gap-3">
             <form className="relative">
               <input
@@ -89,7 +87,7 @@ const Dashboard: React.FC = () => {
                 placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="h-10 w-[20rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900 dark:border-gray-600"
+                className="h-10 w-[20rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900"
               />
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
@@ -124,7 +122,7 @@ const Dashboard: React.FC = () => {
                     })
                   }
                   key={listing.id}
-                  className="relative hover:shadow-lg cursor-pointer border border-neutral-200 dark:border-neutral-600 rounded-2xl overflow-hidden"
+                  className="relative hover:shadow-lg cursor-pointer border border-neutral-200 rounded-2xl overflow-hidden"
                 >
                   <div className="h-[266px] overflow-hidden relative">
                     <img
