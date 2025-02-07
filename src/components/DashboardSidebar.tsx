@@ -7,8 +7,8 @@ import {
   faChalkboard,
   faClose,
   faGear,
-  faHome,
   faInfo,
+  faListCheck,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useState } from "react";
@@ -66,6 +66,23 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[22px]"
               />
               <span>Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a
+              href="/listings"
+              onClick={() => handleMenuClick("/listings")}
+              className={`flex items-center rounded-lg px-3 py-2.5 text-md font-medium transition duration-150 ease-in-out ${
+                activePage === "/listings"
+                  ? "bg-blue-500 text-white"
+                  : "text-neutral-600 hover:text-blue-400"
+              }`}
+            >
+              <FontAwesomeIcon
+                icon={faListCheck}
+                className="mr-2 size-[22px]"
+              />
+              <span>Listings</span>
             </a>
           </li>
           <li>

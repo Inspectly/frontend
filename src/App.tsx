@@ -19,6 +19,7 @@ import DashboardHeader from "./components/DashboardHeader";
 import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
+import Listings from "./pages/Listings";
 
 function App() {
   const location = useLocation();
@@ -106,6 +107,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/Listings" element={<Listings />} />
           <Route path="/dashboard/:listingId" element={<Report />} />
           <Route
             path="/dashboard/:listingId/issue/:issueId"
