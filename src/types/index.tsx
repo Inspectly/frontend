@@ -48,6 +48,7 @@ export interface IssueType {
   isVisible: boolean;
   attachments: Attachment[];
   comments: Comment[];
+  bids: Bid[];
 }
 
 export interface Comment {
@@ -61,5 +62,12 @@ export interface Attachment {
   url: string;
   type: string;
   addedBy: string;
+  dateAdded: string;
+}
+
+export interface Bid {
+  id: string;
+  vendor: string;
+  amount: string;
   dateAdded: string;
 }

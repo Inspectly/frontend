@@ -40,10 +40,10 @@ const Dropdown: React.FC<DropdownProps> = ({
     window.addEventListener("resize", handleEvents);
 
     return () => {
-      window.removeEventListener("scroll", handleEvents);
+      window.removeEventListener("scroll", handleEvents, true);
       window.removeEventListener("resize", handleEvents);
     };
-  }, []);
+  }, [buttonRef]);
 
   // Close dropdown if clicking outside
   useLayoutEffect(() => {

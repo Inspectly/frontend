@@ -36,6 +36,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       comments: [],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "1.2",
@@ -111,6 +112,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       ],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "1.3",
@@ -130,6 +132,32 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       comments: [],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [
+        {
+          id: "1",
+          vendor: "Plumbing Pros",
+          amount: "$300",
+          dateAdded: "2024-01-03",
+        },
+        {
+          id: "2",
+          vendor: "Electrical Experts",
+          amount: "$300",
+          dateAdded: "2024-01-03",
+        },
+        {
+          id: "3",
+          vendor: "HVAC Experts",
+          amount: "$300",
+          dateAdded: "2024-01-03",
+        },
+        {
+          id: "4",
+          vendor: "Plumbing Pros",
+          amount: "$300",
+          dateAdded: "2024-01-03",
+        },
+      ],
     },
     {
       id: "2.1",
@@ -170,6 +198,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       ],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "2.2",
@@ -189,6 +218,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       comments: [],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "3.1",
@@ -222,6 +252,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       ],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "3.2",
@@ -241,6 +272,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       comments: [],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
     {
       id: "4.1",
@@ -273,6 +305,7 @@ export const IssuesProvider: React.FC<IssuesProviderProps> = ({ children }) => {
       ],
       image: "/images/city-placeholder.png",
       isVisible: true,
+      bids: [],
     },
   ]);
 

@@ -113,9 +113,7 @@ const Report: React.FC = () => {
           <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
             <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
               <div className="flex items-center flex-wrap gap-3">
-                <span className="text-base font-medium text-secondary-light mb-0">
-                  Show
-                </span>
+                <span className="text-base font-medium mb-0">Show</span>
                 <select
                   className="border px-1 py-1.5 w-auto border-neutral-300 rounded-lg cursor-pointer"
                   value={itemsPerPage}
@@ -341,7 +339,7 @@ const Report: React.FC = () => {
                 <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
                   <li className="page-item">
                     <button
-                      className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                      className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                         currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                       onClick={handlePrevious}
@@ -357,7 +355,7 @@ const Report: React.FC = () => {
                           className={`page-link font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 ${
                             currentPage === page
                               ? "bg-blue-400 text-white"
-                              : "bg-neutral-200 text-secondary-light"
+                              : "bg-neutral-200"
                           }`}
                           onClick={() => setCurrentPage(page)}
                         >
@@ -368,7 +366,7 @@ const Report: React.FC = () => {
                   )}
                   <li className="page-item">
                     <button
-                      className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                      className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                         currentPage === totalPages
                           ? "opacity-50 cursor-not-allowed"
                           : ""

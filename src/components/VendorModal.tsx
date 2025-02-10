@@ -186,7 +186,7 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                           }`}
                           onClick={() => handleVendorSelect(vendor.id)}
                         >
-                          <div className="relative border border-neutral-200 dark:border-neutral-600 rounded-[0.9rem] overflow-hidden">
+                          <div className="relative border border-neutral-200 rounded-[0.9rem] overflow-hidden">
                             <img
                               src="/images/user-grid-bg1.png"
                               alt=""
@@ -212,14 +212,12 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                               <h6 className="text-lg font-semibold mb-0 mt-1.5">
                                 Jacob Jones
                               </h6>
-                              <span className="text-secondary-light">
-                                ifrandom@gmail.com
-                              </span>
+                              <span>ifrandom@gmail.com</span>
 
-                              <div className="center-border mt-4 relative bg-gradient-to-r from-red-500/10 to-red-50/25 rounded-lg p-3 flex items-center gap-4 before:absolute before:w-px before:h-full before:z-[1] before:bg-neutral-200 dark:before:bg-neutral-500 before:start-1/2">
+                              <div className="center-border mt-4 relative bg-gradient-to-r from-red-500/10 to-red-50/25 rounded-lg p-3 flex items-center gap-4 before:absolute before:w-px before:h-full before:z-[1] before:bg-neutral-200 before:start-1/2">
                                 <div className="text-center w-1/2">
                                   <h6 className="text-base mb-0">Design</h6>
-                                  <span className="text-secondary-light text-sm mb-0">
+                                  <span className="text-sm mb-0">
                                     Department
                                   </span>
                                 </div>
@@ -227,14 +225,14 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                                   <h6 className="text-base mb-0">
                                     UI UX Designer
                                   </h6>
-                                  <span className="text-secondary-light text-sm mb-0">
+                                  <span className="text-sm mb-0">
                                     Designation
                                   </span>
                                 </div>
                               </div>
                               <a
                                 href="view-profile.html"
-                                className="bg-blue-50 text-blue-600 hover:bg-blue-500 dark:hover:bg-blue-500 hover:text-white dark:hover:text-white dark:bg-primary-600/25 text-primary-600 dark:text-primary-400 bg-hover-primary-600 hover-text-white p-2.5 text-sm btn-sm px-3 py-3 rounded-lg flex items-center justify-center mt-4 font-medium gap-2 w-full"
+                                className="bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white text-primary-600 bg-hover-primary-600 hover-text-white p-2.5 text-sm btn-sm px-3 py-3 rounded-lg flex items-center justify-center mt-4 font-medium gap-2 w-full"
                               >
                                 View Profile
                               </a>
@@ -254,7 +252,7 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                     <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
                       <li className="page-item">
                         <button
-                          className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                          className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                             currentPage === 1
                               ? "opacity-50 cursor-not-allowed"
                               : ""
@@ -272,7 +270,7 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                               className={`page-link font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 ${
                                 currentPage === page
                                   ? "bg-blue-400 text-white"
-                                  : "bg-neutral-200 text-secondary-light"
+                                  : "bg-neutral-200"
                               }`}
                               onClick={() => handlePageClick(page)}
                             >
@@ -283,7 +281,7 @@ const VendorModal: React.FC<VendorModalProps> = ({ isOpen, onClose }) => {
                       )}
                       <li className="page-item">
                         <button
-                          className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                          className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                             currentPage === totalPages
                               ? "opacity-50 cursor-not-allowed"
                               : ""

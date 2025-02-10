@@ -9,8 +9,9 @@ import {
   faPlus,
   faTimes,
   faChalkboard,
+  faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
   faEye,
   faEyeSlash,
@@ -22,9 +23,12 @@ import { useListings } from "../components/ListingsContext";
 import { auth } from "../../firebase";
 import Dropdown from "../components/Dropdown";
 import VendorModal from "../components/VendorModal";
+import MapComponent from "../components/MapComponent";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const { listingId, issueId } = useParams<{
     listingId: string;
     issueId: string;
@@ -40,9 +44,17 @@ const Issue: React.FC = () => {
     (issue) => issue.id === issueId && issue.listingId === listingId
   );
 
+  // Extract tab from URL (default to "details")
+  const getTabFromURL = () => {
+    const params = new URLSearchParams(location.search);
+    return params.get("tab") || "details"; // Default tab
+  };
+
+  const [activeTab, setActiveTab] = useState(getTabFromURL());
   const [imageOpen, setImageOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
+  const [locationOpen, setLocationOpen] = useState(true);
   const [attachmentsOpen, setAttachmentsOpen] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(true);
   const [peopleOpen, setPeopleOpen] = useState(true);
@@ -50,7 +62,12 @@ const Issue: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [progressDropdownOpen, setProgressDropdownOpen] = useState<
+    string | null
+  >(null);
+  const [tableDropdownOpen, setTableDropdownOpen] = useState<string | null>(
+    null
+  );
 
   const [visibleImages, setVisibleImages] = useState<Attachment[]>(
     issue?.attachments || []
@@ -64,10 +81,13 @@ const Issue: React.FC = () => {
 
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
 
+  const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
+
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const dropdownButtonRef = useRef<HTMLButtonElement | null>(null);
+  const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentContainerRef = useRef<HTMLDivElement | null>(null);
+  const tableDropdownButtonRefs = useRef(new Map());
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -88,12 +108,16 @@ const Issue: React.FC = () => {
     updateIssue(id, { progress: newProgress });
 
     setTimeout(() => {
-      setDropdownOpen(null); // Delay closing to let the event register
+      setProgressDropdownOpen(null); // Delay closing to let the event register
     });
   };
 
-  const handleOpenDropdown = (id: string) => {
-    setDropdownOpen((prev) => (prev === id ? null : id)); // Toggle specific issue dropdown
+  const handleOpenProgressDropdown = (id: string) => {
+    setProgressDropdownOpen((prev) => (prev === id ? null : id)); // Toggle specific issue dropdown
+  };
+
+  const handleOpenTableDropdown = (id: string) => {
+    setTableDropdownOpen((prev) => (prev === id ? null : id)); // Toggle specific issue dropdown
   };
 
   // Open File Selector
@@ -208,6 +232,37 @@ const Issue: React.FC = () => {
     }
   };
 
+  const getCoordinatesFromAddress = async (address: string) => {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+        address
+      )}`
+    );
+    const data = await response.json();
+
+    if (data.length > 0) {
+      return {
+        latitude: parseFloat(data[0].lat),
+        longitude: parseFloat(data[0].lon),
+      };
+    } else {
+      throw new Error("Location not found");
+    }
+  };
+
+  const uniqueVendors = new Set(issue?.bids.map((bid) => bid.vendor)).size;
+
+  // Sync tab state when URL changes
+  useEffect(() => {
+    setActiveTab(getTabFromURL());
+  }, [location.search]);
+
+  // Handle tab change
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    navigate(`?tab=${tab}`); // Update URL
+  };
+
   // Run update logic on resize
   useEffect(() => {
     updateImageDisplay();
@@ -221,6 +276,12 @@ const Issue: React.FC = () => {
       issue?.attachments.slice(startIndex, startIndex + maxVisible) || []
     );
   }, [maxVisible, startIndex, issue?.attachments]);
+
+  useEffect(() => {
+    getCoordinatesFromAddress(listing?.address || "")
+      .then((coords) => setCoords(coords))
+      .catch((error) => console.error("Error:", error));
+  }, []);
 
   if (!issue) {
     return <div>Issue not found.</div>;
@@ -255,7 +316,7 @@ const Issue: React.FC = () => {
       </div>
 
       <div className="chat-wrapper grid grid-cols-1 md:grid-cols-12 gap-6">
-        <div className="rounded-lg bg-white overflow-hidden col-span-12 md:col-span-4 xl:col-span-3">
+        <div className="rounded-lg bg-white overflow-hidden col-span-12 md:col-span-4">
           <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
             <div className="flex items-center gap-4">
               <div className="">
@@ -280,39 +341,126 @@ const Issue: React.FC = () => {
           </div>
           <div className="chat-all-list flex flex-col gap-1.5 mt-3 max-h-[580px] overflow-y-auto">
             {filteredIssues.map((filteredIssue) => (
-              <a
+              <div
                 key={filteredIssue.id}
-                href="#"
+                className={`mx-4 2xl:mx-10 my-2 p-6 rounded-sm border transition cursor-pointer relative ${
+                  filteredIssue.id === issue.id
+                    ? "bg-blue-500 hover:bg-blue-600 text-gray-100"
+                    : "bg-gray-50 hover:bg-gray-100 text-gray-600"
+                }`}
                 onClick={() =>
                   navigate(`/dashboard/${listingId}/issue/${filteredIssue.id}`)
                 }
-                className={`flex items-center justify-between gap-2 cursor-pointer hover:bg-neutral-100 px-6 py-2.5 ${
-                  filteredIssue.id === issue.id
-                    ? "bg-neutral-100 hover:bg-neutral-200"
-                    : ""
-                }`}
               >
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`block w-3 h-3 shrink-0 rounded-full ${
-                      filteredIssue.severity === "High"
-                        ? "bg-red-500"
-                        : filteredIssue.severity === "Medium"
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }`}
-                  ></div>
-                  <div className="info">
-                    <h6 className="text-sm line-clamp-1">
-                      {filteredIssue.id + " " + filteredIssue.summary}
-                    </h6>
+                {/* Notification Badge */}
+                {filteredIssue.bids.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {filteredIssue.bids.length > 9
+                      ? "9+"
+                      : filteredIssue.bids.length}
+                  </span>
+                )}
+
+                {/* Header (Title & Icons) */}
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex w-10 h-10 flex-shrink-0 items-center justify-center">
+                      <img
+                        src={`/images/${filteredIssue.type.toLowerCase()}.png`}
+                        alt=""
+                      />
+                    </span>
+                    <h3 className="font-semibold">{filteredIssue.summary}</h3>
                   </div>
                 </div>
-              </a>
+
+                {/* Progress */}
+                <p className="mt-4 text-sm flex flex-wrap justify-between items-center gap-2">
+                  Progress:{" "}
+                  <span
+                    className={`px-2.5 py-1.5 rounded font-medium text-md ${
+                      filteredIssue.progress === "To-do"
+                        ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                        : filteredIssue.progress === "In-progress"
+                        ? "bg-blue-100 text-blue-600 border border-blue-600"
+                        : "bg-green-100 text-green-600 border border-green-600"
+                    }`}
+                  >
+                    {filteredIssue.progress}
+                  </span>
+                </p>
+
+                {/* Severity & Vendor */}
+                <p className="mt-12 text-sm flex flex-wrap justify-between gap-2">
+                  Severity:{" "}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        filteredIssue.severity === "High"
+                          ? filteredIssue.id === issue.id
+                            ? "bg-red-700"
+                            : "bg-red-500"
+                          : filteredIssue.severity === "Medium"
+                          ? "bg-yellow-500"
+                          : filteredIssue.id === issue.id
+                          ? "bg-green-700"
+                          : "bg-green-500"
+                      }`}
+                    ></span>
+                    <span
+                      className={`font-semibold ${
+                        filteredIssue.id === issue.id
+                          ? "text-white"
+                          : filteredIssue.severity === "High"
+                          ? "text-red-500"
+                          : filteredIssue.severity === "Medium"
+                          ? "text-yellow-500"
+                          : "text-green-500"
+                      }`}
+                    >
+                      {filteredIssue.severity}
+                    </span>
+                  </div>
+                </p>
+                <p className="mt-1 text-sm flex flex-wrap justify-between gap-2">
+                  Vendor:{" "}
+                  <span
+                    className={`text-md font-semibold ${
+                      filteredIssue.id === issue.id
+                        ? "text-white"
+                        : "text-gray-800"
+                    }`}
+                  >
+                    {filteredIssue.vendor}
+                  </span>
+                </p>
+
+                {/* Category Badge */}
+                <span
+                  className={`mt-4 inline-block text-xs font-semibold rounded-full px-3 py-1.5 ${
+                    filteredIssue.id === issue.id
+                      ? "bg-blue-400 text-white"
+                      : "bg-blue-100 text-blue-600"
+                  }`}
+                >
+                  {filteredIssue.type}
+                </span>
+
+                {/* Dropdown Action Button */}
+                <button
+                  className={`absolute bottom-4 text-xl right-6 p-2 ${
+                    filteredIssue.id === issue.id
+                      ? "text-white"
+                      : "text-blue-600"
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faEllipsisVertical} />
+                </button>
+              </div>
             ))}
           </div>
         </div>
-        <div className=" col-span-12 md:col-span-8 xl:col-span-9">
+        <div className=" col-span-12 md:col-span-8">
           <div
             ref={cardRef}
             className="relative rounded-lg bg-white border-0 overflow-hidden flex flex-col"
@@ -341,519 +489,733 @@ const Issue: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="chat-message-list max-h-[568px] overflow-y-auto flex flex-col lg:flex-row p-6 gap-6">
-              {/* Left Section */}
-              <div className="w-full lg:w-2/3 space-y-8">
-                {/* Issue Image */}
-                <div>
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setImageOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {imageOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
-                      )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Image</h2>
-                  </div>
-                  {imageOpen && (
-                    <div className="mt-4 w-full">
-                      <img
-                        src={issue.image}
-                        alt="Issue"
-                        className="rounded-lg w-full h-[300px] object-cover cursor-pointer"
-                        onClick={() => handleImageClick(issue.image)}
-                      />
-                    </div>
-                  )}
-                </div>
 
-                {/* Details Section */}
-                <div>
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setDetailsOpen)}
+            <div className="mb-4 border-b border-gray-200 pt-4 mx-6">
+              <ul
+                className="flex flex-wrap -mb-px text-sm font-medium text-center"
+                id="default-tab"
+                data-tabs-toggle="#default-tab-content"
+                role="tablist"
+              >
+                <li role="presentation">
+                  <button
+                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
+                      activeTab === "details"
+                        ? "text-blue-600 border-blue-600"
+                        : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+                    }`}
+                    type="button"
+                    role="tab"
+                    aria-controls="default-details"
+                    aria-selected={activeTab === "details"}
+                    onClick={() => handleTabChange("details")}
                   >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {detailsOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
-                      )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Details</h2>
-                  </div>
-                  {detailsOpen && (
-                    <div className="mt-4">
-                      <div className="grid grid-cols-2 gap-y-4 gap-x-24">
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500">
-                            Type
-                          </h4>
-                          <p className="text-base font-semibold text-gray-700">
-                            {issue.type}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500">
-                            Progress
-                          </h4>
-                          <button
-                            className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                              issue.progress === "To-do"
-                                ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                                : issue.progress === "In-progress"
-                                ? "bg-blue-100 text-blue-600 border border-blue-600"
-                                : "bg-green-100 text-green-600 border border-green-600"
-                            }`}
-                            ref={dropdownButtonRef}
-                            onClick={() => handleOpenDropdown(issue.id)}
-                          >
-                            {issue.progress}
+                    Details
+                  </button>
+                </li>
+                <li role="presentation">
+                  <button
+                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
+                      activeTab === "bids"
+                        ? "text-blue-600 border-blue-600"
+                        : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+                    }`}
+                    type="button"
+                    role="tab"
+                    aria-controls="default-bids"
+                    aria-selected={activeTab === "bids"}
+                    onClick={() => handleTabChange("bids")}
+                  >
+                    Bids
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div className="chat-message-list max-h-[568px] overflow-y-auto  px-6 pb-6 pt-2">
+              {activeTab === "details" && (
+                <div
+                  id="default-bids"
+                  role="tabpanel"
+                  className="flex flex-col lg:flex-row gap-6"
+                >
+                  {/* Left Section */}
+                  <div className="w-full lg:w-2/3 space-y-8">
+                    {/* Issue Image */}
+                    <div>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setImageOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {imageOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
                             <FontAwesomeIcon
                               icon={faChevronDown}
-                              className="ml-1"
+                              className="size-2.5 align-middle"
                             />
-                          </button>
-                          {dropdownOpen === issue.id && (
-                            <Dropdown
-                              buttonRef={dropdownButtonRef}
-                              onClose={() => {}}
-                            >
-                              {["To-do", "In-progress", "Done"].map(
-                                (progress) => (
-                                  <button
-                                    key={progress}
-                                    className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
-                                      progress === issue.progress
-                                        ? "font-bold"
-                                        : ""
-                                    }`}
-                                    onClick={() =>
-                                      handleProgressChange(issue.id, progress)
-                                    }
-                                  >
-                                    {progress}
-                                  </button>
-                                )
-                              )}
-                            </Dropdown>
                           )}
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500">
-                            Severity
-                          </h4>
-                          <p
-                            className={`text-base font-semibold ${
-                              issue.severity === "High"
-                                ? "text-red-600"
-                                : issue.severity === "Medium"
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            {issue.severity}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium text-gray-500">
-                            Cost
-                          </h4>
-                          <p className="text-base font-semibold text-gray-700">
-                            {issue.cost || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Description Section */}
-                <div>
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setDescriptionOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {descriptionOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
-                      )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Description</h2>
-                  </div>
-                  {descriptionOpen && (
-                    <p className="mt-2 text-gray-700">
-                      A major pipe leakage is causing water overflow in the
-                      kitchen.
-                    </p>
-                  )}
-                </div>
-
-                {/* Attachment Section */}
-                <div>
-                  {/* Header with Title and Add Button */}
-                  <div className="flex items-center justify-between">
-                    <div
-                      className="flex items-center cursor-pointer"
-                      onClick={() => setAttachmentsOpen((prev) => !prev)}
-                    >
-                      <button className="rounded bg-neutral-200 px-2 mr-2">
-                        {attachmentsOpen ? (
-                          <FontAwesomeIcon
-                            icon={faChevronUp}
-                            className="size-2.5 align-middle"
-                          />
-                        ) : (
-                          <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="size-2.5 align-middle"
-                          />
-                        )}
-                      </button>
-                      <h2 className="text-lg font-semibold">Attachments</h2>
-                    </div>
-                    <button
-                      onClick={handleAddAttachment}
-                      className="text-blue-500 hover:text-blue-700"
-                    >
-                      <FontAwesomeIcon icon={faPlus} className="size-4" />
-                    </button>
-                  </div>
-
-                  {attachmentsOpen && (
-                    <div
-                      ref={attachmentContainerRef}
-                      className="relative w-full flex justify-start items-center mt-4"
-                    >
-                      {/* Left Arrow */}
-                      {startIndex > 0 && (
-                        <button
-                          onClick={handlePrev}
-                          className="absolute left-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
-                          style={{
-                            left: `calc(50% - ${
-                              (maxVisible * imageSize) / 2
-                            }px)`,
-                            transform: "translateX(-50%)",
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faArrowLeft} />
                         </button>
+                        <h2 className="text-lg font-semibold">Image</h2>
+                      </div>
+                      {imageOpen && (
+                        <div className="mt-4 w-full">
+                          <img
+                            src={issue.image}
+                            alt="Issue"
+                            className="rounded-lg w-full h-[300px] object-cover cursor-pointer"
+                            onClick={() => handleImageClick(issue.image)}
+                          />
+                        </div>
                       )}
+                    </div>
 
-                      {/* Attachments Row */}
-                      <div className="relative overflow-hidden w-full">
-                        <div className="flex gap-3 transition-transform duration-300 ease-in-out">
-                          {issue.attachments && issue.attachments.length > 0 ? (
-                            <>
-                              {visibleImages.map((attachment, index) => (
-                                <div
-                                  key={index}
-                                  style={{
-                                    width: `${imageSize}px`,
-                                    height: `${imageSize - 20}px`,
-                                  }}
-                                  className="relative border rounded-md bg-gray-100 flex flex-col justify-end"
-                                >
-                                  {attachment.type === "image" ? (
-                                    <img
-                                      src={attachment.url}
-                                      alt={attachment.name}
-                                      className="absolute top-0 left-0 w-full h-full object-cover rounded cursor-pointer"
-                                      onClick={() =>
-                                        handleImageClick(attachment.url)
-                                      }
-                                    />
-                                  ) : (
-                                    <div
-                                      className="absolute top-0 left-0 w-full h-full flex items-center justify-center cursor-pointer"
-                                      onClick={() =>
-                                        handleDownload(
-                                          attachment.url,
-                                          attachment.name
-                                        )
-                                      }
-                                    >
-                                      <img
-                                        src="/images/google-docs.png"
-                                        alt="Document"
-                                        className="size-16 mb-8"
-                                      />
-                                    </div>
-                                  )}
-                                  {/* Attachment Name */}
-                                  <div className="absolute bottom-5 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs font-semibold px-2.5 pt-2 pb-1 truncate">
-                                    {attachment.name}
-                                  </div>
-
-                                  {/* Date Added */}
-                                  <div className="absolute bottom-0 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs px-2.5 pb-1">
-                                    {attachment.dateAdded}
-                                  </div>
-
-                                  {/* Delete Button (Only if User Added) */}
-                                  {attachment.addedBy ===
-                                    auth.currentUser?.uid && (
-                                    <button
-                                      className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
-                                      onClick={() =>
-                                        handleDeleteAttachment(index)
-                                      }
-                                    >
-                                      <FontAwesomeIcon icon={faTrashCan} />
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                            </>
+                    {/* Details Section */}
+                    <div>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setDetailsOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {detailsOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
                           ) : (
-                            <p className="text-gray-500">No Attachments yet.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right Arrow */}
-                      {maxVisible &&
-                      startIndex + maxVisible < issue.attachments.length ? (
-                        <button
-                          onClick={handleNext}
-                          className="absolute right-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
-                          style={{
-                            right: `calc(50% - ${
-                              (maxVisible * imageSize) / 2
-                            }px)`,
-                            transform: "translateX(50%)",
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faArrowRight} />
-                        </button>
-                      ) : null}
-
-                      {/* Image Modal */}
-                      {selectedImage && (
-                        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-                          <div className="relative bg-white rounded-lg shadow-lg max-w-3xl">
-                            <button
-                              className="absolute top-2 right-2 text-gray-800 py-1 px-2 rounded-full"
-                              onClick={() => setSelectedImage(null)}
-                            >
-                              <FontAwesomeIcon
-                                icon={faTimes}
-                                className="text-xl"
-                              />
-                            </button>
-                            <img
-                              src={selectedImage}
-                              alt="Full View"
-                              className="max-w-full max-h-[90vh] rounded"
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
                             />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">Details</h2>
+                      </div>
+                      {detailsOpen && (
+                        <div className="mt-4">
+                          <div className="grid grid-cols-2 gap-y-4 gap-x-24">
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-500">
+                                Type
+                              </h4>
+                              <p className="text-base font-semibold text-gray-700">
+                                {issue.type}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-500">
+                                Progress
+                              </h4>
+                              <button
+                                className={`px-2.5 py-1.5 rounded font-medium text-sm ${
+                                  issue.progress === "To-do"
+                                    ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                                    : issue.progress === "In-progress"
+                                    ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                    : "bg-green-100 text-green-600 border border-green-600"
+                                }`}
+                                ref={progressDropdownButtonRef}
+                                onClick={() =>
+                                  handleOpenProgressDropdown(issue.id)
+                                }
+                              >
+                                {issue.progress}
+                                <FontAwesomeIcon
+                                  icon={faChevronDown}
+                                  className="ml-1"
+                                />
+                              </button>
+                              {progressDropdownOpen === issue.id && (
+                                <Dropdown
+                                  buttonRef={progressDropdownButtonRef}
+                                  onClose={() => setProgressDropdownOpen(null)}
+                                >
+                                  {["To-do", "In-progress", "Done"].map(
+                                    (progress) => (
+                                      <button
+                                        key={progress}
+                                        className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
+                                          progress === issue.progress
+                                            ? "font-bold"
+                                            : ""
+                                        }`}
+                                        onClick={() =>
+                                          handleProgressChange(
+                                            issue.id,
+                                            progress
+                                          )
+                                        }
+                                      >
+                                        {progress}
+                                      </button>
+                                    )
+                                  )}
+                                </Dropdown>
+                              )}
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-500">
+                                Severity
+                              </h4>
+                              <p
+                                className={`text-base font-semibold ${
+                                  issue.severity === "High"
+                                    ? "text-red-600"
+                                    : issue.severity === "Medium"
+                                    ? "text-yellow-600"
+                                    : "text-green-600"
+                                }`}
+                              >
+                                {issue.severity}
+                              </p>
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-medium text-gray-500">
+                                Cost
+                              </h4>
+                              <p className="text-base font-semibold text-gray-700">
+                                {issue.cost || "N/A"}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       )}
                     </div>
-                  )}
 
-                  {/* Hidden File Input */}
-                  <input
-                    type="file"
-                    accept="image/*, .pdf, .doc, .docx"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </div>
-
-                {/* Comments Section */}
-                <div className="pb-6">
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setCommentsOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {commentsOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
+                    {/* Description Section */}
+                    <div>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setDescriptionOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {descriptionOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
+                            />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">Description</h2>
+                      </div>
+                      {descriptionOpen && (
+                        <p className="mt-2 text-gray-700">
+                          A major pipe leakage is causing water overflow in the
+                          kitchen.
+                        </p>
                       )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Comments</h2>
-                  </div>
-                  {commentsOpen && (
-                    <div className="mt-4">
-                      {issue.comments?.length ? (
-                        <ul className="space-y-4">
-                          {issue.comments.map((comment, index) => (
-                            <li
-                              key={index}
-                              className="border border-gray-300 rounded p-4 bg-gray-50"
+                    </div>
+
+                    {/* Location Section */}
+                    <div>
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setLocationOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {locationOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
+                            />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">
+                          Listing Location
+                        </h2>
+                      </div>
+
+                      {locationOpen && (
+                        <div className="mt-2">
+                          {/* Map Preview */}
+                          <MapComponent
+                            key={locationOpen ? "map-visible" : "map-hidden"}
+                            latitude={coords.latitude}
+                            longitude={coords.longitude}
+                            listingName={listing?.title || ""}
+                          />
+
+                          <div className="mt-6">
+                            <h4 className="text-sm font-medium text-gray-500">
+                              Address
+                            </h4>
+                            <p className="text-base font-semibold text-gray-700">
+                              {listing?.address}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Attachment Section */}
+                    <div>
+                      {/* Header with Title and Add Button */}
+                      <div className="flex items-center justify-between">
+                        <div
+                          className="flex items-center cursor-pointer"
+                          onClick={() => setAttachmentsOpen((prev) => !prev)}
+                        >
+                          <button className="rounded bg-neutral-200 px-2 mr-2">
+                            {attachmentsOpen ? (
+                              <FontAwesomeIcon
+                                icon={faChevronUp}
+                                className="size-2.5 align-middle"
+                              />
+                            ) : (
+                              <FontAwesomeIcon
+                                icon={faChevronDown}
+                                className="size-2.5 align-middle"
+                              />
+                            )}
+                          </button>
+                          <h2 className="text-lg font-semibold">Attachments</h2>
+                        </div>
+                        <button
+                          onClick={handleAddAttachment}
+                          className="text-blue-500 hover:text-blue-700"
+                        >
+                          <FontAwesomeIcon icon={faPlus} className="size-4" />
+                        </button>
+                      </div>
+
+                      {attachmentsOpen && (
+                        <div
+                          ref={attachmentContainerRef}
+                          className="relative w-full flex justify-start items-center mt-4"
+                        >
+                          {/* Left Arrow */}
+                          {startIndex > 0 && (
+                            <button
+                              onClick={handlePrev}
+                              className="absolute left-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
+                              style={{
+                                left: `calc(50% - ${
+                                  (maxVisible * imageSize) / 2
+                                }px)`,
+                                transform: "translateX(-50%)",
+                              }}
                             >
-                              <div className="flex justify-between mb-2">
-                                <span className="text-sm font-medium text-gray-700">
-                                  {comment.author}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {comment.date}
-                                </span>
+                              <FontAwesomeIcon icon={faArrowLeft} />
+                            </button>
+                          )}
+
+                          {/* Attachments Row */}
+                          <div className="relative overflow-hidden w-full">
+                            <div className="flex gap-3 transition-transform duration-300 ease-in-out">
+                              {issue.attachments &&
+                              issue.attachments.length > 0 ? (
+                                <>
+                                  {visibleImages.map((attachment, index) => (
+                                    <div
+                                      key={index}
+                                      style={{
+                                        width: `${imageSize}px`,
+                                        height: `${imageSize - 20}px`,
+                                      }}
+                                      className="relative border rounded-md bg-gray-100 flex flex-col justify-end"
+                                    >
+                                      {attachment.type === "image" ? (
+                                        <img
+                                          src={attachment.url}
+                                          alt={attachment.name}
+                                          className="absolute top-0 left-0 w-full h-full object-cover rounded cursor-pointer"
+                                          onClick={() =>
+                                            handleImageClick(attachment.url)
+                                          }
+                                        />
+                                      ) : (
+                                        <div
+                                          className="absolute top-0 left-0 w-full h-full flex items-center justify-center cursor-pointer"
+                                          onClick={() =>
+                                            handleDownload(
+                                              attachment.url,
+                                              attachment.name
+                                            )
+                                          }
+                                        >
+                                          <img
+                                            src="/images/google-docs.png"
+                                            alt="Document"
+                                            className="size-16 mb-8"
+                                          />
+                                        </div>
+                                      )}
+                                      {/* Attachment Name */}
+                                      <div className="absolute bottom-5 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs font-semibold px-2.5 pt-2 pb-1 truncate">
+                                        {attachment.name}
+                                      </div>
+
+                                      {/* Date Added */}
+                                      <div className="absolute bottom-0 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs px-2.5 pb-1">
+                                        {attachment.dateAdded}
+                                      </div>
+
+                                      {/* Delete Button (Only if User Added) */}
+                                      {attachment.addedBy ===
+                                        auth.currentUser?.uid && (
+                                        <button
+                                          className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
+                                          onClick={() =>
+                                            handleDeleteAttachment(index)
+                                          }
+                                        >
+                                          <FontAwesomeIcon icon={faTrashCan} />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </>
+                              ) : (
+                                <p className="text-gray-500">
+                                  No Attachments yet.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Right Arrow */}
+                          {maxVisible &&
+                          startIndex + maxVisible < issue.attachments.length ? (
+                            <button
+                              onClick={handleNext}
+                              className="absolute right-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
+                              style={{
+                                right: `calc(50% - ${
+                                  (maxVisible * imageSize) / 2
+                                }px)`,
+                                transform: "translateX(50%)",
+                              }}
+                            >
+                              <FontAwesomeIcon icon={faArrowRight} />
+                            </button>
+                          ) : null}
+
+                          {/* Image Modal */}
+                          {selectedImage && (
+                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
+                              <div className="relative bg-white rounded-lg shadow-lg max-w-3xl">
+                                <button
+                                  className="absolute top-2 right-2 text-gray-800 py-1 px-2 rounded-full"
+                                  onClick={() => setSelectedImage(null)}
+                                >
+                                  <FontAwesomeIcon
+                                    icon={faTimes}
+                                    className="text-xl"
+                                  />
+                                </button>
+                                <img
+                                  src={selectedImage}
+                                  alt="Full View"
+                                  className="max-w-full max-h-[90vh] rounded"
+                                />
                               </div>
-                              <p className="text-gray-600">{comment.text}</p>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-gray-500">No comments yet.</p>
-                      )}
-                      <div className="mt-4">
-                        <input
-                          type="text"
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Add a comment"
-                          className="border border-gray-300 px-3 py-2 rounded-lg mb-2 w-full"
-                        />
-                        <div className="flex justify-end">
-                          <button
-                            onClick={addComment}
-                            className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
-                          >
-                            Comment
-                          </button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Right Section */}
-              <div className="w-full lg:w-1/3 space-y-6">
-                {/* People Section */}
-                <div className="p-4 bg-white rounded-lg shadow">
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setPeopleOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {peopleOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
                       )}
-                    </button>
-                    <h2 className="text-lg font-semibold">People</h2>
+
+                      {/* Hidden File Input */}
+                      <input
+                        type="file"
+                        accept="image/*, .pdf, .doc, .docx"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
+
+                    {/* Comments Section */}
+                    <div className="pb-6">
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setCommentsOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {commentsOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
+                            />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">Comments</h2>
+                      </div>
+                      {commentsOpen && (
+                        <div className="mt-4">
+                          {issue.comments?.length ? (
+                            <ul className="space-y-4">
+                              {issue.comments.map((comment, index) => (
+                                <li
+                                  key={index}
+                                  className="border border-gray-300 rounded p-4 bg-gray-50"
+                                >
+                                  <div className="flex justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-700">
+                                      {comment.author}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      {comment.date}
+                                    </span>
+                                  </div>
+                                  <p className="text-gray-600">
+                                    {comment.text}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-gray-500">No comments yet.</p>
+                          )}
+                          <div className="mt-4">
+                            <input
+                              type="text"
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              placeholder="Add a comment"
+                              className="border border-gray-300 px-3 py-2 rounded-lg mb-2 w-full"
+                            />
+                            <div className="flex justify-end">
+                              <button
+                                onClick={addComment}
+                                className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+                              >
+                                Comment
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {peopleOpen && (
-                    <div className="mt-4 space-y-3">
-                      <div>
-                        <div className="flex items-center justify-between">
+
+                  {/* Right Section */}
+                  <div className="w-full lg:w-1/3 space-y-6">
+                    {/* People Section */}
+                    <div className="p-4 bg-white rounded-lg shadow">
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setPeopleOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {peopleOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
+                            />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">People</h2>
+                      </div>
+                      {peopleOpen && (
+                        <div className="mt-4 space-y-3">
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-sm font-medium text-gray-500">
+                                Vendor
+                              </h4>
+                              <button
+                                onClick={() => setIsVendorModalOpen(true)}
+                                className="text-blue-500 hover:text-blue-700"
+                              >
+                                <FontAwesomeIcon
+                                  icon={faPlus}
+                                  className="size-3"
+                                />
+                              </button>
+                            </div>
+                            <p className="text-base font-semibold text-gray-700">
+                              {issue.vendor || "No vendor assigned"}
+                            </p>
+
+                            {/* Vendor Modal */}
+                            <VendorModal
+                              isOpen={isVendorModalOpen}
+                              onClose={() => setIsVendorModalOpen(false)}
+                            />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-500">
+                              Worked By
+                            </h4>
+                            <p className="text-base font-semibold text-gray-700">
+                              {issue.workedBy}
+                            </p>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-500">
+                              Realtor
+                            </h4>
+                            <p className="text-base font-semibold text-gray-700">
+                              {issue.realtor}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Dates Section */}
+                    <div className="p-4 bg-white rounded-lg shadow">
+                      <div
+                        className="flex items-center cursor-pointer"
+                        onClick={() => toggleSection(setDatesOpen)}
+                      >
+                        <button className="rounded bg-neutral-200 px-2 mr-2">
+                          {datesOpen ? (
+                            <FontAwesomeIcon
+                              icon={faChevronUp}
+                              className="size-2.5 align-middle"
+                            />
+                          ) : (
+                            <FontAwesomeIcon
+                              icon={faChevronDown}
+                              className="size-2.5 align-middle"
+                            />
+                          )}
+                        </button>
+                        <h2 className="text-lg font-semibold">Dates</h2>
+                      </div>
+                      {datesOpen && (
+                        <div className="mt-4">
                           <h4 className="text-sm font-medium text-gray-500">
-                            Vendor
+                            Date Created
                           </h4>
-                          <button
-                            onClick={() => setIsVendorModalOpen(true)}
-                            className="text-blue-500 hover:text-blue-700"
-                          >
-                            <FontAwesomeIcon icon={faPlus} className="size-3" />
-                          </button>
+                          <p className="text-base font-semibold text-gray-700">
+                            {issue.dateCreated}
+                          </p>{" "}
                         </div>
-                        <p className="text-base font-semibold text-gray-700">
-                          {issue.vendor || "No vendor assigned"}
-                        </p>
-
-                        {/* Vendor Modal */}
-                        <VendorModal
-                          isOpen={isVendorModalOpen}
-                          onClose={() => setIsVendorModalOpen(false)}
-                        />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Worked By
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {issue.workedBy}
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Realtor
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {issue.realtor}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Dates Section */}
-                <div className="p-4 bg-white rounded-lg shadow">
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setDatesOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {datesOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
                       )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Dates</h2>
-                  </div>
-                  {datesOpen && (
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Date Created
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        {issue.dateCreated}
-                      </p>{" "}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+              {activeTab === "bids" && (
+                <div id="default-bids" role="tabpanel" className="w-full">
+                  <div className="card-header bg-white pb-4 flex items-center flex-wrap gap-3 justify-between">
+                    <div className="flex items-center flex-wrap gap-3">
+                      <span className="text-base font-medium text-gray-600 mb-0">
+                        Bidders:{" "}
+                        <span className="text-gray-800">{uniqueVendors}</span>
+                      </span>
+                      <span className="text-base font-medium text-gray-600 mb-0">
+                        Bids:{" "}
+                        <span className="text-gray-800">
+                          {issue.bids.length}
+                        </span>
+                      </span>
+                      <span className="text-base font-medium text-gray-600 mb-0">
+                        Duration: <span className="text-gray-800">7 days</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white">
+                    <div className="overflow-x-auto">
+                      <table className="table w-full min-w-max border-separate border-spacing-0 rounded-lg border border-gray-200 bordered-table sm-table mb-0">
+                        <thead>
+                          <tr>
+                            <th className="bg-gray-100 text-left font-medium px-4 py-3 rounded-tl-lg">
+                              Vendor
+                            </th>
+                            <th className="bg-gray-100 text-left font-medium px-4 py-3">
+                              Amount
+                            </th>
+                            <th className="bg-gray-100 text-left font-medium px-4 py-3">
+                              Bid Time
+                            </th>
+                            <th className="bg-gray-100 text-center font-medium px-4 py-3">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {issue.bids.map((bid) => (
+                            <tr key={bid.id}>
+                              <td className="text-left border-b border-gray-200 px-4 py-3">
+                                {bid.vendor}
+                              </td>
+                              <td className="text-left border-b border-gray-200 px-4 py-3">
+                                {bid.amount}
+                              </td>
+                              <td className="text-left border-b border-gray-200 px-4 py-3">
+                                {bid.dateAdded}
+                              </td>
+
+                              <td className="text-center border-b border-gray-200 px-4 py-3">
+                                <button
+                                  className="focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-3.5 py-1 text-neutral-700 text-lg"
+                                  type="button"
+                                  ref={(el) => {
+                                    if (el)
+                                      tableDropdownButtonRefs.current.set(
+                                        bid.id,
+                                        el
+                                      );
+                                  }}
+                                  onClick={() =>
+                                    handleOpenTableDropdown(bid.id)
+                                  }
+                                >
+                                  <FontAwesomeIcon icon={faEllipsisVertical} />
+                                </button>
+
+                                {tableDropdownOpen === bid.id && (
+                                  <Dropdown
+                                    buttonRef={{
+                                      current:
+                                        tableDropdownButtonRefs.current.get(
+                                          bid.id
+                                        ),
+                                    }}
+                                    onClose={() => setTableDropdownOpen(null)}
+                                  >
+                                    {["Accept", "Counter", "Reject"].map(
+                                      (action) => (
+                                        <button
+                                          key={action}
+                                          className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left`}
+                                          onClick={() => {
+                                            setTableDropdownOpen(null);
+                                          }}
+                                        >
+                                          {action}
+                                        </button>
+                                      )
+                                    )}
+                                  </Dropdown>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

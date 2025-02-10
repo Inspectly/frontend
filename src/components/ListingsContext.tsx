@@ -3,24 +3,95 @@ import React, { createContext, useContext, ReactNode } from "react";
 interface Listing {
   id: string;
   title: string;
+  address: string;
   image: string;
 }
 
 const listings = [
-  { id: "1", title: "Listing 1", image: "images/fake_listing.png" },
-  { id: "2", title: "Listing 2", image: "images/fake_listing.png" },
-  { id: "3", title: "Listing 3", image: "images/fake_listing.png" },
-  { id: "4", title: "Listing 4", image: "images/fake_listing.png" },
-  { id: "5", title: "Listing 5", image: "images/fake_listing.png" },
-  { id: "6", title: "Listing 6", image: "images/fake_listing.png" },
-  { id: "7", title: "Listing 7", image: "images/fake_listing.png" },
-  { id: "8", title: "Listing 8", image: "images/fake_listing.png" },
-  { id: "9", title: "Listing 9", image: "images/fake_listing.png" },
-  { id: "10", title: "Listing 10", image: "images/fake_listing.png" },
-  { id: "11", title: "Listing 11", image: "images/fake_listing.png" },
-  { id: "12", title: "Listing 12", image: "images/fake_listing.png" },
-  { id: "13", title: "Listing 13", image: "images/fake_listing.png" },
-  { id: "14", title: "Listing 14", image: "images/fake_listing.png" },
+  {
+    id: "1",
+    title: "Listing 1",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "2",
+    title: "Listing 2",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "3",
+    title: "Listing 3",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "4",
+    title: "Listing 4",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "5",
+    title: "Listing 5",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "6",
+    title: "Listing 6",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "7",
+    title: "Listing 7",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "8",
+    title: "Listing 8",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "9",
+    title: "Listing 9",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "10",
+    title: "Listing 10",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "11",
+    title: "Listing 11",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "12",
+    title: "Listing 12",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "13",
+    title: "Listing 13",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
+  {
+    id: "14",
+    title: "Listing 14",
+    address: "161 old pennywell road",
+    image: "images/fake_listing.png",
+  },
 ];
 
 const ListingsContext = createContext<Listing[]>([]);

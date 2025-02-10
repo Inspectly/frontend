@@ -148,7 +148,7 @@ const Listings: React.FC = () => {
             <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
               <li className="page-item">
                 <button
-                  className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                  className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                     currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                   onClick={handlePrevious}
@@ -164,7 +164,7 @@ const Listings: React.FC = () => {
                       className={`page-link font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 ${
                         currentPage === page
                           ? "bg-blue-400 text-white"
-                          : "bg-neutral-200 text-secondary-light"
+                          : "bg-neutral-200"
                       }`}
                       onClick={() => handlePageClick(page)}
                     >
@@ -175,7 +175,7 @@ const Listings: React.FC = () => {
               )}
               <li className="page-item">
                 <button
-                  className={`page-link bg-neutral-200 text-secondary-light font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
+                  className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
                     currentPage === totalPages
                       ? "opacity-50 cursor-not-allowed"
                       : ""
