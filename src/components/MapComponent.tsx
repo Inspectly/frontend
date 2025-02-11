@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import { LatLngExpression } from "leaflet"; // ✅ Import LatLngExpression
+import { LatLngExpression } from "leaflet"; // Import LatLngExpression
 
 interface MapProps {
   latitude: number;
@@ -36,7 +36,7 @@ const MapComponent: React.FC<MapProps> = ({
   useEffect(() => {
     setTimeout(() => {
       setIsReady(true);
-    }, 500); // Short delay before mounting
+    }, 1500); // Short delay before mounting
   }, []);
 
   return (
@@ -70,7 +70,7 @@ const MapComponent: React.FC<MapProps> = ({
           </Marker>
         </MapContainer>
       ) : (
-        // ✅ Display loading placeholder before map is ready
+        // Display loading placeholder before map is ready
         <div className="flex items-center justify-center h-full bg-gray-200 animate-pulse">
           <p className="text-gray-500">Loading map...</p>
         </div>

@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { useIssues } from "../components/IssuesContext";
 import { useListings } from "../components/ListingsContext";
 import { Link } from "react-router-dom";
+import UserCalendar from "../components/UserCalendar";
 
 const Dashboard: React.FC = () => {
   const { issues } = useIssues();
@@ -195,6 +196,12 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="col-span-12">
+              <div className="rounded-md bg-white h-full">
+                <UserCalendar />
+              </div>
+            </div>
           </div>
         </div>
         <div className="col-span-12 2xl:col-span-4">
@@ -205,7 +212,7 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-center flex-wrap gap-2 justify-between mb-5">
                     <h6 className="font-bold text-lg mb-0">Recent Bids</h6>
                     <a
-                      href={`/dashboard/reports`}
+                      href={`/dashboard/${selectedListing}`}
                       className="text-blue-400 hover:text-blue-500 flex items-center gap-1"
                     >
                       View All

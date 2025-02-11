@@ -343,7 +343,7 @@ const Issue: React.FC = () => {
             {filteredIssues.map((filteredIssue) => (
               <div
                 key={filteredIssue.id}
-                className={`mx-4 2xl:mx-10 my-2 p-6 rounded-sm border transition cursor-pointer relative ${
+                className={`mx-4 2xl:mx-10 my-1.5 p-6 rounded-sm border transition cursor-pointer relative ${
                   filteredIssue.id === issue.id
                     ? "bg-blue-500 hover:bg-blue-600 text-gray-100"
                     : "bg-gray-50 hover:bg-gray-100 text-gray-600"
@@ -749,7 +749,7 @@ const Issue: React.FC = () => {
                             listingName={listing?.title || ""}
                           />
 
-                          <div className="mt-6">
+                          <div className="mt-4">
                             <h4 className="text-sm font-medium text-gray-500">
                               Address
                             </h4>
@@ -881,7 +881,7 @@ const Issue: React.FC = () => {
                                 </>
                               ) : (
                                 <p className="text-gray-500">
-                                  No Attachments yet.
+                                  No attachments yet.
                                 </p>
                               )}
                             </div>

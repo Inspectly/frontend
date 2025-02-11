@@ -1,0 +1,125 @@
+/* General Calendar Styling */
+.rbc-calendar {
+  @apply border-none;
+}
+
+.rbc-toolbar {
+  @apply py-2;
+}
+
+.rbc-btn-group {
+  @apply flex items-center;
+}
+
+.rbc-toolbar button {
+  @apply border border-blue-500 text-blue-500 px-4 py-2 rounded-none transition-all;
+}
+
+.rbc-toolbar button:hover, .rbc-toolbar button:focus {
+  @apply bg-blue-100 text-blue-500;
+}
+
+/* Navigation Buttons */
+.rbc-toolbar button {
+  @apply bg-transparent text-blue-500 border border-blue-500 px-3 py-1;
+}
+
+.rbc-toolbar button.rbc-active:hover, .rbc-toolbar button.rbc-active:focus, .rbc-toolbar button.rbc-active {
+  @apply bg-blue-500 text-white border-blue-500;
+}
+
+.rbc-toolbar .rbc-btn-group:first-child button:first-child {
+  @apply mr-2
+}
+
+.rbc-toolbar .rbc-btn-group:first-child button:nth-child(1) {
+  @apply rounded-md
+}
+
+.rbc-toolbar .rbc-btn-group:first-child button:nth-child(2) {
+  @apply rounded-l-md
+}
+
+.rbc-toolbar .rbc-btn-group:first-child button:nth-child(3) {
+  @apply rounded-r-md
+}
+
+.rbc-toolbar .rbc-btn-group:last-child button:last-child {
+  @apply ml-2
+}
+
+.rbc-toolbar .rbc-btn-group:last-child button:nth-child(1) {
+  @apply rounded-l-md
+}
+
+.rbc-toolbar .rbc-btn-group:last-child button:nth-child(3) {
+  @apply rounded-r-md
+}
+
+.rbc-toolbar .rbc-btn-group:last-child button:nth-child(4) {
+  @apply rounded-md
+}
+
+.rbc-header, .rbc-header.rbc-today {
+  @apply py-4 bg-slate-50 text-base font-normal; /* No bold, padding top & bottom */
+}
+
+.rbc-label.rbc-time-header-gutter, .rbc-time-gutter.rbc-time-column .rbc-timeslot-group {
+  @apply bg-slate-50 
+}
+
+/* Calendar Days - More Space, Bold Numbers */
+.rbc-date-cell {
+  @apply relative text-black font-semibold pr-2.5 pt-2.5;
+}
+
+/* Disabled Days */
+.rbc-day-bg.rbc-off-range-bg {
+  @apply bg-white;
+}
+
+.rbc-date-cell.rbc-off-range {
+  @apply text-gray-400;
+}
+
+/* Current Day (Blue Circle Around Number) */
+.rbc-today {
+  @apply bg-transparent; /* Remove default highlight */
+}
+
+.rbc-date-cell.rbc-now.rbc-current {
+  @apply px-1 py-2
+}
+
+.rbc-date-cell.rbc-now.rbc-current .rbc-button-link {
+  @apply relative inline-block px-1.5 py-0.5 rounded-full border bg-blue-500 text-white;
+}
+
+.rbc-allday-cell {
+  @apply hidden 
+}
+
+.rbc-event, .rbc-event.rbc-selected {
+  @apply bg-blue-100 text-blue-600 text-xs px-2 py-1
+}
+
+.rbc-day-slot .rbc-event {
+  @apply border-none
+}
+
+.rbc-day-slot.rbc-time-column .rbc-event, .rbc-day-slot.rbc-time-column .rbc-event.rbc-selected {
+  @apply ml-0.5
+}
+
+.rbc-time-content .rbc-day-slot.rbc-time-column .rbc-event, .rbc-time-content .rbc-day-slot.rbc-time-column .rbc-event.rbc-selected {
+  @apply ml-1.5
+}
+
+/* Ensure the event content stays inside the box */
+.rbc-event-content, .rbc-event-label {
+  @apply overflow-hidden;
+}
+
+.rbc-event-label {
+  @apply max-w-full text-clip
+}
