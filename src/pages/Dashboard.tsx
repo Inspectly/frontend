@@ -1,17 +1,114 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useIssues } from "../components/IssuesContext";
 import { useListings } from "../components/ListingsContext";
 import { Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
+import DashboardCharts from "../components/DashboardCharts";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faBolt,
+  faBuilding,
+  faPaintRoller,
+  faTint,
+  faWrench,
+} from "@fortawesome/free-solid-svg-icons";
+import { CalendarEvent, IssueType } from "../types";
+import VendorMap from "../components/VendorMap";
+import Agenda from "../components/Agenda";
+import Realtors from "../components/Realtors";
 
 const Dashboard: React.FC = () => {
   const { issues } = useIssues();
   const listings = useListings();
 
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedListing, setSelectedListing] = useState(listings[0].id);
+  const [selectedListing, setSelectedListing] = useState("all");
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const issueIcons: Record<string, any> = {
+    Plumbing: faTint,
+    Electrical: faBolt,
+    Structural: faBuilding,
+    Painting: faPaintRoller,
+    General: faWrench, // Default
+  };
+
+  const issueColors: Record<string, string> = {
+    Plumbing: "bg-blue-500",
+    Electrical: "bg-yellow-500",
+    Structural: "bg-gray-600",
+    Painting: "bg-green-500",
+    General: "bg-red-500", // Default
+  };
+
+  const issueGradients: Record<string, string> = {
+    Plumbing: "from-blue-600/10 to-white",
+    Electrical: "from-yellow-500/10 to-white",
+    Structural: "from-gray-600/10 to-white",
+    Painting: "from-green-500/10 to-white",
+    General: "from-red-500/10 to-white", // Default
+  };
+
+  const realtors = [
+    {
+      image: "images/Manzur.jpeg",
+      quote:
+        "It seems that only fragments of the original text remain in the Lorem Ipsum texts used today.",
+      name: "Manzur Mulk",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Sharhad.jpg",
+      quote:
+        "The most well-known dummy text is the 'Lorem Ipsum', which is said to have originated in the 16th century.",
+      name: "Sharhad Bashar",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Yousef.png",
+      quote:
+        "One disadvantage of Lorem Ipsum is that in Latin certain letters appear more frequently than others.",
+      name: "Yousef Ouda",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/Mohammed_Hussein.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Mohammed Hussein",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "One disadvantage of Lorem Ipsum is that in Latin certain letters appear more frequently than others.",
+      name: "Abdel Malek Fadel",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Moe Mohasseb",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Abdullah Anwar",
+      company: "Staff Engineer, Algolia",
+    },
+    {
+      image: "images/placeholder.jpg",
+      quote:
+        "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
+      name: "Mohammed Alaa",
+      company: "Staff Engineer, Algolia",
+    },
+  ];
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -40,6 +137,52 @@ const Dashboard: React.FC = () => {
   const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedListing(event.target.value); // Updates state when option is selected
   };
+
+  useEffect(() => {
+    // Dummy data to simulate user bookings
+    const dummyBookings: CalendarEvent[] = [
+      {
+        id: "1",
+        title: "Plumbing Repair Appointment",
+        start: new Date("2025-02-15T10:00:00"),
+        end: new Date("2025-02-15T11:00:00"),
+      },
+      {
+        id: "2",
+        title: "Electrical Wiring Fix",
+        start: new Date("2025-02-20T14:00:00"),
+        end: new Date("2025-02-20T15:00:00"),
+      },
+      {
+        id: "3",
+        title: "AC Maintenance",
+        start: new Date("2025-02-25T09:30:00"),
+        end: new Date("2025-02-25T10:30:00"),
+      },
+    ];
+
+    setEvents(dummyBookings);
+  }, []);
+
+  const filteredIssues =
+    selectedListing === "all"
+      ? issues.reduce((acc, issue) => {
+          if (!acc[issue.listingId]) acc[issue.listingId] = [];
+          acc[issue.listingId].push(issue);
+          return acc;
+        }, {} as Record<string, IssueType[]>)
+      : {
+          [selectedListing]: issues.filter(
+            (issue) => issue.listingId === selectedListing
+          ),
+        };
+
+  const issueCounts = Object.values(filteredIssues)
+    .flat() // Flatten to a single array
+    .reduce((acc, issue) => {
+      acc[issue.type] = (acc[issue.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
 
   return (
     <div className="p-6">
@@ -81,6 +224,58 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            <div className="col-span-12">
+              <select
+                className="px-3 pr-10 py-1.5 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
+                style={{
+                  backgroundImage: "url('images/chevron.svg')",
+                }}
+                value={selectedListing}
+                onChange={handleSelectChange}
+              >
+                <option value="all">All Listings</option>
+                {listings.map((listing) => (
+                  <option key={listing.id} value={listing.id}>
+                    {listing.title}{" "}
+                  </option>
+                ))}
+              </select>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                {Object.entries(issueCounts).map(([type, count]) => (
+                  <div
+                    className={`bg-white shadow-none border border-gray-200 rounded-lg h-full bg-gradient-to-r ${
+                      issueGradients[type] || "from-red-500/10 to-white"
+                    }`}
+                  >
+                    <div className="p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-neutral-900 mb-1">
+                            {type}
+                          </p>
+                          <h6 className="mb-0 font-medium text-xl">
+                            {count} Issues
+                          </h6>
+                        </div>
+                        <div
+                          className={`w-[50px] h-[50px] ${
+                            issueColors[type] || "bg-red-500"
+                          } rounded-full flex justify-center items-center`}
+                        >
+                          <FontAwesomeIcon
+                            icon={issueIcons[type] || faWrench} // Default to faWrench if no match
+                            className="text-white text-xl"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="col-span-12">
               <div className="rounded-md bg-white h-full">
                 <div className="border-b border-gray-200 px-4 py-3 md:px-6 border-bottom flex items-center flex-wrap gap-2 justify-between">
@@ -199,7 +394,7 @@ const Dashboard: React.FC = () => {
 
             <div className="col-span-12">
               <div className="rounded-md bg-white h-full">
-                <UserCalendar />
+                <UserCalendar events={events} />
               </div>
             </div>
           </div>
@@ -208,69 +403,165 @@ const Dashboard: React.FC = () => {
           <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
             <div className="col-span-12 md:col-span-6 2xl:col-span-12">
               <div className="rounded-lg border-gray-600 bg-white h-full">
-                <div className="card-body p-6">
-                  <div className="flex items-center flex-wrap gap-2 justify-between mb-5">
-                    <h6 className="font-bold text-lg mb-0">Recent Bids</h6>
-                    <a
-                      href={`/dashboard/${selectedListing}`}
-                      className="text-blue-400 hover:text-blue-500 flex items-center gap-1"
-                    >
-                      View All
-                    </a>
-                  </div>
-                  <select
-                    className="px-3 pr-10 py-1.5 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-white border rounded-full"
-                    style={{
-                      backgroundImage: "url('images/chevron.svg')",
-                    }}
-                    value={selectedListing}
-                    onChange={handleSelectChange}
+                <div className="border-b border-gray-200 px-4 py-3 border-bottom flex items-center flex-wrap gap-2 justify-between">
+                  <h6 className="font-bold text-lg mb-0">Recent Bids</h6>
+                  <a
+                    href={`/dashboard/${selectedListing}`}
+                    className="text-blue-400 hover:text-blue-500 flex items-center gap-1"
                   >
-                    {listings.map((listing) => (
-                      <option key={listing.id} value={listing.id}>
-                        {listing.title}{" "}
-                      </option>
-                    ))}
-                  </select>
-
-                  <div className="mt-8">
-                    {issues.map((issue) => (
-                      <>
-                        {issue.cost && issue.listingId === selectedListing && (
-                          <div
-                            key={issue.id}
-                            className="flex items-center justify-between gap-2 mb-6"
-                          >
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={`/images/${issue.type.toLowerCase()}.png`}
-                                alt=""
-                                className="w-10 h-10 shrink-0 overflow-hidden"
-                              />
-                              <div className="grow">
-                                <h6 className="text-base mb-0 font-medium">
-                                  <Link
-                                    to={`/dashboard/${issue.listingId}/issue/${issue.id}?tab=bids`}
-                                    className="text-blue-400 hover:underline"
-                                  >
-                                    {issue.id} {issue.type}
-                                  </Link>
-                                </h6>
-                                <span className="text-sm font-medium">
-                                  {issue.summary}
+                    View All
+                  </a>
+                </div>
+                <div className="card-body px-6 pb-6">
+                  <div>
+                    {Object.entries(filteredIssues).map(
+                      ([listingId, issueArray]) =>
+                        issueArray.map(
+                          (issue) =>
+                            issue.cost && (
+                              <div
+                                key={issue.id}
+                                className="flex items-center justify-between gap-2 mt-6"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={`/images/${issue.type.toLowerCase()}.png`}
+                                    alt=""
+                                    className="w-10 h-10 shrink-0 overflow-hidden"
+                                  />
+                                  <div className="grow">
+                                    <h6 className="text-base mb-0 font-medium">
+                                      <Link
+                                        to={`/dashboard/${issue.listingId}/issue/${issue.id}?tab=bids`}
+                                        className="text-blue-400 hover:underline"
+                                      >
+                                        {issue.id} {issue.type}
+                                      </Link>
+                                    </h6>
+                                    <span className="text-sm font-medium">
+                                      {issue.summary}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className="text-neutral-600 text-base font-medium">
+                                  {issue.cost}
                                 </span>
                               </div>
-                            </div>
-                            <span className="text-neutral-600 text-base font-medium">
-                              {issue.cost}
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    ))}
+                            )
+                        )
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="col-span-12 md:col-span-6 2xl:col-span-12">
+              <DashboardCharts />
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-12 lg:col-span-6 2xl:col-span-4">
+          <div className="bg-white h-full border-0 rounded-lg">
+            <div className="p-6">
+              <div className="flex items-center flex-wrap gap-2 justify-between mb-5">
+                <h6 className="font-bold text-lg mb-2">Upcoming Events</h6>
+              </div>
+              <Agenda events={events} />
+            </div>
+          </div>
+        </div>
+        <div className="col-span-12 lg:col-span-6 2xl:col-span-4">
+          <div className="bg-white h-full border-0 rounded-lg">
+            <div className="px-6 py-5">
+              <div className="flex items-center flex-wrap gap-2 justify-between">
+                <h6 className="mb-2 font-bold text-lg">Distribution Maps</h6>
+              </div>
+            </div>
+            <VendorMap />
+            <div className="p-6 max-h-[266px] scroll-sm overflow-y-auto">
+              <div className="">
+                <div className="flex items-center justify-between gap-3 mb-3 pb-2">
+                  <div className="flex sm:flex-[1] lg:flex-[3] 2xl:flex-[1] items-center w-full">
+                    <img
+                      src="images/vendor-marker.webp"
+                      alt=""
+                      className="w-10 h-10 rounded-full shrink-0 me-4"
+                    />
+                    <div className="grow">
+                      <h6 className="text-sm mb-0">Plumber Bros</h6>
+                      <span className="text-xs text-secondary-light font-medium">
+                        12 issues
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-[1] items-center gap-2 w-full">
+                    <div className="hidden sm:block lg:hidden 2xl:block w-full max-w-66 ms-auto">
+                      <div
+                        className="progress progress-sm rounded-full bg-gray-200"
+                        role="progressbar"
+                        aria-label="Success example"
+                      >
+                        <div
+                          className="progress-bar bg-blue-600 rounded-l-full h-4"
+                          style={{ width: "80%" }}
+                        ></div>
+                      </div>
+                    </div>
+                    <span className="text-secondary-light font-xs font-semibold justify-end">
+                      80%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-span-12 lg:col-span-12 2xl:col-span-4">
+          <div className="bg-white h-full border-0 rounded-lg">
+            <div className="p-6">
+              <div className="flex items-center flex-wrap gap-2 justify-between mb-5">
+                <h6 className="font-bold text-lg mb-2">Top Vendors</h6>
+                <a
+                  href="javascript:void(0)"
+                  className="text-blue-600 hover:text-blue-600 flex items-center gap-1"
+                >
+                  View All
+                </a>
+              </div>
+              <div className="mt-8">
+                <div className="flex items-center justify-between gap-3 mb-8">
+                  <div className="flex items-center gap-2">
+                    <img
+                      src="images/placeholder.jpg"
+                      alt=""
+                      className="w-10 h-10 rounded-lg shrink-0"
+                    />
+                    <div className="grow">
+                      <h6 className="text-base mb-0 font-normal">
+                        Plumber Bros
+                      </h6>
+                      <span className="text-sm text-secondary-light font-normal">
+                        plumbing
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-neutral-600 dark:text-neutral-200 text-base font-medium">
+                    Bids placed: <a>30</a>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-span-12">
+          <div className="bg-white h-full border-0 rounded-lg">
+            <div className="border-b border-gray-200 px-4 py-3 border-bottom flex items-center flex-wrap gap-2 justify-between">
+              <h6 className="font-bold text-lg mb-0">Realtors</h6>
+            </div>
+            <div className="p-6">
+              <Realtors team={realtors} />
             </div>
           </div>
         </div>

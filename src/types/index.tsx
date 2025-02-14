@@ -71,3 +71,11 @@ export interface Bid {
   amount: string;
   dateAdded: string;
 }
+
+// event type
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+}
