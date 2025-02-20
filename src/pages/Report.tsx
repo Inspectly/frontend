@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faListCheck } from "@fortawesome/free-solid-svg-icons";
 import ReportTable from "../components/ReportTable";
 import { useParams } from "react-router-dom";
-import { useGetReportByIdQuery } from "../features/apiSlice";
+import { useGetReportByIdQuery } from "../features/api/reportsApi";
 
 const Report: React.FC = () => {
   const { listingId, reportId } = useParams<{

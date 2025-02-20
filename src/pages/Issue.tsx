@@ -22,15 +22,16 @@ import { auth } from "../../firebase";
 import Dropdown from "../components/Dropdown";
 import VendorModal from "../components/VendorModal";
 import MapComponent from "../components/MapComponent";
-import {
-  useGetIssueByIdQuery,
-  useGetIssuesQuery,
-  useGetListingByIdQuery,
-  useUpdateIssueMutation,
-} from "../features/apiSlice";
+
 import VendorName from "../components/VendorName";
 import Attachments from "../components/Attachments";
 import Comments from "../components/Comments";
+import {
+  useGetIssueByIdQuery,
+  useGetIssuesQuery,
+  useUpdateIssueMutation,
+} from "../features/api/issuesApi";
+import { useGetListingByIdQuery } from "../features/api/listingsApi";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
@@ -293,7 +294,9 @@ const Issue: React.FC = () => {
                         }`}
                       />
                     </span>
-                    <h3 className="font-semibold">{filteredIssue.summary}</h3>
+                    <h3 lang="en" className="font-semibold">
+                      {filteredIssue.summary}
+                    </h3>
                   </div>
                 </div>
 

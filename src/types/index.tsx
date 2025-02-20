@@ -15,21 +15,69 @@ export interface HeaderProps {
   refs: SectionRefs;
 }
 
-export interface SignUpFormData {
-  name: string;
+export type User = {
+  id: number;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type User_Login = {
+  id: number;
+  user_id: number;
+  email_login: boolean;
+  email: string;
+  phone_login: boolean;
+  phone: string;
+  gmail_login: boolean;
+  gmail: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type User_Session = {
+  id: number;
+  user_id: number;
+  login_method: string;
+  login_time: string;
+  authentication_code: string;
+  logout_time: string;
+};
+
+export type Client = {
+  id: number;
+  user_id: number;
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
-  gender: string;
-  resume: File | null;
-  availability: string;
-  salary: string;
-  startAvailability: string;
-  workPreference: string;
-  willingToWorkRemotely: string;
-  sendToRealtor: string;
-  realtorEmail: string;
-  promoCode: string;
-}
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Realtor = {
+  id: number;
+  realtor_user_id: number;
+  realtor_type: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  rating: string;
+  review: string;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Vendor = {
   id: number;

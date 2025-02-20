@@ -5,30 +5,30 @@ import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-
 import { SectionRefs } from "./types";
 import Login from "./pages/Login";
-import ScrollUpButton from "./components/ScrollUpButton";
-import Payment from "./pages/Payment";
 import SignUp from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import Dashboard from "./pages/Dashboard";
-import { auth } from "../firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
-import DashboardHeader from "./components/DashboardHeader";
-import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
 import Listings from "./pages/Listings";
 import Reports from "./pages/Reports";
+import DashboardHeader from "./components/DashboardHeader";
+import DashboardSidebar from "./components/DashboardSidebar";
+import PrivateRoute from "./components/PrivateRoute";
+
+import { auth } from "../firebase";
+import { onAuthStateChanged, signOut, getIdToken } from "firebase/auth";
+import { useCreateUserSessionMutation } from "./features/api/userSessionsApi";
+import { useGetUserLoginByUserIdQuery } from "./features/api/userLoginsApi";
 
 function App() {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
-  const [loading, setLoading] = useState(() => {
-    const hasLoaded = sessionStorage.getItem("hasLoaded");
-    return !hasLoaded; // If no session flag, set loading to true
-  });
+  const [currentUser, setCurrentUser] = useState(auth.currentUser);
+  const [loadingAuthState, setLoadingAuthState] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
+  const [createUserSession] = useCreateUserSessionMutation();
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -55,130 +55,77 @@ function App() {
     }
   };
 
-  // Monitor authentication state
+  // Track if authentication state is loading
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setCurrentUser(null);
+        setLoadingAuthState(false);
+        return;
+      }
+
+      try {
+        const token = await getIdToken(user); // Get Firebase token
+        const { data: userData, error } = await useGetUserLoginByUserIdQuery(
+          user.uid
+        );
+
+        if (error || !userData) {
+          console.error("User not found in backend:", error);
+          await signOut(auth);
+          localStorage.removeItem("authToken");
+          setCurrentUser(null);
+          setLoadingAuthState(false);
+          return;
+        }
+
+        // User exists in backend, create session
+        const payload = {
+          user_id: user.uid,
+          login_method: "firebase",
+          authentication_code: token,
+        };
+        await createUserSession(payload).unwrap();
+        localStorage.setItem("authToken", token);
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Session creation failed:", error);
+        await signOut(auth);
+        localStorage.removeItem("authToken");
+        setCurrentUser(null);
+      }
+
+      setLoadingAuthState(false);
     });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
-  // Scroll to the top immediately on route changes
+  // Handle window resize to toggle sidebar visibility
   useEffect(() => {
-    window.scrollTo(0, 0); // Reset scroll position to the top
+    const handleResize = () => {
+      setIsSidebarOpen(window.innerWidth >= 1025);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  useEffect(() => {
-    // Disable scrolling during the loading phase
-    if (loading) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = ""; // Restore scrolling
-    }
-
-    const timer = setTimeout(() => {
-      setLoading(false); // Disable the preloader after 3 seconds
-      sessionStorage.setItem("hasLoaded", "true"); // Mark as loaded in sessionStorage
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-      document.body.style.overflow = ""; // Ensure scrolling is restored on cleanup
-    };
-  }, [loading]);
-
-  return (
-    <div>
-      {loading && !currentUser && <Preloader />}
-      <div
-        className={`transition-opacity duration-500 ${
-          !loading ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <ScrollUpButton />
-        {!currentUser && (
-          <Header scrollToSection={scrollToSection} refs={refs} />
-        )}
-
-        <Routes>
-          <Route path="/" element={<Home refs={refs} />} />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/payment" element={<Payment />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/Listings" element={<Listings />} />
-          <Route path="/listings/:listingId" element={<Reports />} />
-          <Route
-            path="/listings/:listingId/reports/:reportId"
-            element={<Report />}
-          />
-          <Route
-            path="/listings/:listingId/reports/:reportId/issues/:issueId"
-            element={<Issue />}
-          />
-        </Routes>
-
-        <div
-          className={`${
-            currentUser && currentUser.emailVerified ? "bg-white" : "bg-inherit"
-          }`}
-        >
-          <Footer />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function AppWrapper() {
-  const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [loadingAuthState, setLoadingAuthState] = useState(true);
-
+  // Handle logout
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setCurrentUser(null); // Explicitly set user state to null
-      window.location.href = "/login"; // Force reload to reset state
+      setCurrentUser(null);
+      localStorage.removeItem("authToken");
+      window.location.href = "/login"; // Redirect to login page
     } catch (error) {
       console.error("Error during logout:", error);
     }
   };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => !prev);
-  };
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1025) {
-        setIsSidebarOpen(false);
-      } else {
-        setIsSidebarOpen(true);
-      }
-    };
-
-    // Initial check
-    handleResize();
-
-    // Add event listener
-    window.addEventListener("resize", handleResize);
-
-    // Cleanup listener on unmount
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // Monitor authentication state
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      setLoadingAuthState(false); // Stop the auth loading once the state is determined
-    });
-
-    return () => unsubscribe();
-  }, [auth]);
 
   if (loadingAuthState) {
     return <Preloader />;
@@ -186,23 +133,60 @@ export default function AppWrapper() {
 
   return (
     <>
-      {currentUser && currentUser.emailVerified ? (
+      {currentUser ? (
         <>
           <DashboardSidebar
-            toggleSidebar={toggleSidebar}
             isSidebarOpen={isSidebarOpen}
+            toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
           />
           <DashboardHeader
             handleLogout={handleLogout}
-            toggleSidebar={toggleSidebar}
+            toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             isSidebarOpen={isSidebarOpen}
           >
-            <App />
+            <Routes>
+              <Route path="/" element={<Home refs={refs} />} />
+              <Route
+                path="/dashboard"
+                element={<PrivateRoute element={<Dashboard />} />}
+              />
+              <Route
+                path="/listings"
+                element={<PrivateRoute element={<Listings />} />}
+              />
+              <Route
+                path="/listings/:listingId"
+                element={<PrivateRoute element={<Reports />} />}
+              />
+              <Route
+                path="/listings/:listingId/reports/:reportId"
+                element={<PrivateRoute element={<Report />} />}
+              />
+              <Route
+                path="/listings/:listingId/reports/:reportId/issues/:issueId"
+                element={<PrivateRoute element={<Issue />} />}
+              />
+              <Route
+                path="*"
+                element={<PrivateRoute element={<Dashboard />} />}
+              />
+            </Routes>
           </DashboardHeader>
         </>
       ) : (
-        <App />
+        <>
+          <Header scrollToSection={scrollToSection} refs={refs} />
+          <Routes>
+            <Route path="/" element={<Home refs={refs} />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/login" element={<Login />} />
+          </Routes>
+          <Footer />
+        </>
       )}
     </>
   );
 }
+
+export default App;

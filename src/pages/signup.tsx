@@ -11,8 +11,22 @@ import {
   fetchSignInMethodsForEmail,
 } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faAt, faMobileScreen } from "@fortawesome/free-solid-svg-icons";
-import { faAddressCard, faEye } from "@fortawesome/free-regular-svg-icons";
+import {
+  faAt,
+  faCity,
+  faLocationDot,
+  faMapMarkedAlt,
+  faMobileScreen,
+} from "@fortawesome/free-solid-svg-icons";
+import {
+  faAddressCard,
+  faBuilding,
+  faCompass,
+  faEye,
+  faFlag,
+  faMap,
+  faUser,
+} from "@fortawesome/free-regular-svg-icons";
 
 const SignUp: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -20,9 +34,13 @@ const SignUp: React.FC = () => {
     lastName: "",
     email: "",
     phone: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    userType: "",
     password: "",
     confirmPassword: "",
-    userType: "",
   });
   const [thirdPartyOption, setThirdPartyOption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -128,7 +146,7 @@ const SignUp: React.FC = () => {
                   required
                 />
                 <FontAwesomeIcon
-                  icon={faAddressCard}
+                  icon={faUser}
                   className="h-6 w-6 ml-4 my-auto text-gray-300"
                 />
               </div>
@@ -145,7 +163,7 @@ const SignUp: React.FC = () => {
                   required
                 />
                 <FontAwesomeIcon
-                  icon={faAddressCard}
+                  icon={faUser}
                   className="h-6 w-6 ml-4 my-auto text-gray-300"
                 />
               </div>
@@ -184,6 +202,74 @@ const SignUp: React.FC = () => {
                 />
               </div>
 
+              {/* Address */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  placeholder="Address"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faCompass}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
+              {/* City */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  placeholder="City"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faBuilding}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
+              {/* State */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="state"
+                  value={formData.state}
+                  onChange={handleInputChange}
+                  placeholder="State"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faMap}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
+              {/* Country */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleInputChange}
+                  placeholder="Country"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faFlag}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
               {/* User Type */}
               <div className="relative mb-4">
                 <select
@@ -196,10 +282,8 @@ const SignUp: React.FC = () => {
                   <option value="" disabled>
                     Are you an Individual Home Buyer or Realtor?
                   </option>
-                  <option value="Individual Home Buyer">
-                    Individual Home Buyer
-                  </option>
-                  <option value="Realtor">Realtor</option>
+                  <option value="client">Individual Home Buyer</option>
+                  <option value="realtor">Realtor</option>
                 </select>
                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                   <svg

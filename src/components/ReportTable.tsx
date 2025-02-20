@@ -8,14 +8,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
-import {
-  useGetIssuesQuery,
-  useGetVendorByIdQuery,
-  useUpdateIssueMutation,
-} from "../features/apiSlice";
+
 import VendorName from "./VendorName";
 import { IssueStatus } from "../types";
 import Dropdown from "./Dropdown";
+import {
+  useGetIssuesQuery,
+  useUpdateIssueMutation,
+} from "../features/api/issuesApi";
 
 const ReportTable: React.FC = () => {
   const { listingId, reportId } = useParams<{

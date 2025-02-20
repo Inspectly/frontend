@@ -2,9 +2,9 @@ import React, { useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronUp, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import {
-  useCreateCommentMutation,
   useGetCommentsQuery,
-} from "../features/apiSlice";
+  useCreateCommentMutation,
+} from "../features/api/commentsApi";
 
 interface CommentsProps {
   issueId: number;

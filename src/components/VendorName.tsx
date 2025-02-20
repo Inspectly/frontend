@@ -1,5 +1,5 @@
 import React from "react";
-import { useGetVendorByIdQuery } from "../features/apiSlice";
+import { useGetVendorByIdQuery } from "../features/api/vendorsApi";
 
 const VendorName: React.FC<{ vendorId: number }> = ({ vendorId }) => {
   const validVendorId = vendorId ? String(vendorId) : "";

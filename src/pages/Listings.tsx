@@ -7,8 +7,8 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
-import { useGetListingsQuery } from "../features/apiSlice";
 import ImageComponent from "../components/ImageComponent";
+import { useGetListingsQuery } from "../features/api/listingsApi";
 
 const Listings: React.FC = () => {
   const { data: listings, error, isLoading } = useGetListingsQuery();

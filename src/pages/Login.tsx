@@ -7,11 +7,15 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  getIdToken,
 } from "firebase/auth";
-import { auth } from "../../firebase"; // Adjust the path to your Firebase config
+import { auth } from "../../firebase";
+import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
+import { AxiosError } from "axios";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [createUserSession] = useCreateUserSessionMutation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,49 +24,65 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setPassword(e.target.value);
-  };
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setAgreeToTerms(e.target.checked);
+  const togglePasswordVisibility = () => setIsPasswordVisible((prev) => !prev);
+
+  // Function to Authenticate & Send Token to Backend
+  const authenticateUser = async (user: any, loginMethod: string) => {
+    try {
+      const token = await getIdToken(user); // Get Firebase ID token
+      const userId = user.uid; // Firebase UID
+
+      // Send token & login method to backend
+      const response = await createUserSession({
+        user_id: userId,
+        login_method: loginMethod,
+        authentication_code: token,
+      }).unwrap();
+
+      localStorage.setItem("authToken", token);
+      navigate("/dashboard");
+    } catch (err) {
+      console.log(err);
+      const error = err as AxiosError;
+      setLoading(false);
+      setError("Error " + error.status);
+    }
   };
 
-  const togglePasswordVisibility = () => {
-    setIsPasswordVisible((prev) => !prev);
-  };
-
+  // Handle Email/Password Login
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!agreeToTerms) {
-      setError("You must agree to the terms to sign in.");
+      setError("You must agree to the terms.");
       return;
     }
 
     try {
       setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      await authenticateUser(user, "email"); // Backend authentication
+    } catch (err) {
+      const error = err as AxiosError;
+      setError(error.message || "Failed to sign in.");
+    } finally {
       setLoading(false);
-      navigate("/dashboard"); // Redirect to dashboard
-    } catch (err: any) {
-      setLoading(false);
-      setError(err.message || "Failed to sign in.");
     }
   };
 
+  // Handle Google Login
   const handleGoogleSignIn = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        navigate("/dashboard"); // Redirect to dashboard
-      }
+      const { user } = await signInWithPopup(auth, provider);
+      await authenticateUser(user, "google"); // Backend authentication
     } catch (err: any) {
       setError(err.message || "Failed to sign in with Google.");
     }
@@ -89,11 +109,7 @@ const Login: React.FC = () => {
             <div className="w-full max-w-lg mx-auto lg:mx-0 my-auto">
               <span className="text-sm text-gray-400">Sign In</span>
               <h4 className="mb-6 text-3xl">Join our community</h4>
-              {error && (
-                <div className="mb-4 text-red-500 text-sm font-medium">
-                  {error}
-                </div>
-              )}
+              {error && <div className="mb-4 text-red-500">{error}</div>}
               <form onSubmit={handleSignIn}>
                 <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
                   <input

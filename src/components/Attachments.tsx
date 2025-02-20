@@ -9,13 +9,14 @@ import {
   faChevronUp,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
+
+import { Attachment } from "../types";
+import { useMemo } from "react";
 import {
   useCreateAttachmentMutation,
   useDeleteAttachmentMutation,
   useGetAttachmentsQuery,
-} from "../features/apiSlice";
-import { Attachment } from "../types";
-import { useMemo } from "react";
+} from "../features/api/attachmentsApi";
 
 interface AttachmentsProps {
   issueId: number;

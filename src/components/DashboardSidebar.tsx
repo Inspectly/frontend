@@ -43,7 +43,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </button>
       <div>
         <a
-          href="/"
+          href="/dashboard"
           className="flex h-[72px] items-center ml-3 border-r border-b text-3xl font-semibold border-gray-200 px-4 py-[14px]"
         >
           Inspectly

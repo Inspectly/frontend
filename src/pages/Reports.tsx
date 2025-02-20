@@ -8,7 +8,7 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import { useGetReportsQuery } from "../features/apiSlice";
+import { useGetReportsQuery } from "../features/api/reportsApi";
 
 const Reports: React.FC = () => {
   const { data: reports, error, isLoading } = useGetReportsQuery();

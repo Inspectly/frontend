@@ -15,11 +15,9 @@ import { CalendarEvent, IssueType, ReportType } from "../types";
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
-import {
-  useGetIssuesQuery,
-  useGetListingsQuery,
-  useGetReportsQuery,
-} from "../features/apiSlice";
+import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetListingsQuery } from "../features/api/listingsApi";
+import { useGetReportsQuery } from "../features/api/reportsApi";
 
 const Dashboard: React.FC = () => {
   const {
