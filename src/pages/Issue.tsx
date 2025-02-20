@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
-  faArrowRight,
   faChevronDown,
   faChevronUp,
   faMagnifyingGlass,
@@ -10,39 +8,71 @@ import {
   faTimes,
   faChalkboard,
   faEllipsisVertical,
+  faBolt,
+  faHouse,
+  faPaintRoller,
+  faTint,
+  faWind,
+  faWrench,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
-import {
-  faEye,
-  faEyeSlash,
-  faTrashCan,
-} from "@fortawesome/free-regular-svg-icons";
-import { Attachment } from "../types";
-import { useIssues } from "../components/IssuesContext";
-import { useListings } from "../components/ListingsContext";
+import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
+import { IssueStatus } from "../types";
 import { auth } from "../../firebase";
 import Dropdown from "../components/Dropdown";
 import VendorModal from "../components/VendorModal";
 import MapComponent from "../components/MapComponent";
+import {
+  useGetIssueByIdQuery,
+  useGetIssuesQuery,
+  useGetListingByIdQuery,
+  useUpdateIssueMutation,
+} from "../features/apiSlice";
+import VendorName from "../components/VendorName";
+import Attachments from "../components/Attachments";
+import Comments from "../components/Comments";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { listingId, issueId } = useParams<{
+  const { listingId, reportId, issueId } = useParams<{
     listingId: string;
+    reportId: string;
     issueId: string;
   }>();
-  const { issues, updateIssue } = useIssues();
-  const listings = useListings();
 
-  // Find the specific listing by ID
-  const listing = listings.find((listing) => listing.id === listingId);
+  const validIssueId = issueId ? String(issueId) : "";
+  const validListingId = listingId ? String(listingId) : "";
 
-  // Find the specific issue by ID
-  const issue = issues.find(
-    (issue) => issue.id === issueId && issue.listingId === listingId
-  );
+  const {
+    data: issue,
+    isLoading,
+    error,
+  } = useGetIssueByIdQuery(validIssueId, {
+    skip: !validIssueId, // Skip fetching if issueId is missing
+  });
+
+  const { data: issues } = useGetIssuesQuery();
+  const [updateIssue] = useUpdateIssueMutation();
+
+  const { data: listing } = useGetListingByIdQuery(validListingId, {
+    skip: !listingId, // Skip fetching if listingId is missing
+  });
+
+  const statusMapping: Record<IssueStatus, string> = {
+    "Status.OPEN": "open",
+    "Status.IN_PROGRESS": "in_progress",
+    "Status.REVIEW": "review",
+    "Status.COMPLETED": "completed",
+  };
+
+  const statusOptions = [
+    { value: "open", label: "Open" },
+    { value: "in_progress", label: "In-progress" },
+    { value: "review", label: "Review" },
+    { value: "completed", label: "Completed" },
+  ];
 
   // Extract tab from URL (default to "details")
   const getTabFromURL = () => {
@@ -55,29 +85,17 @@ const Issue: React.FC = () => {
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
   const [locationOpen, setLocationOpen] = useState(true);
-  const [attachmentsOpen, setAttachmentsOpen] = useState(true);
-  const [commentsOpen, setCommentsOpen] = useState(true);
   const [peopleOpen, setPeopleOpen] = useState(true);
   const [datesOpen, setDatesOpen] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
-    string | null
+    number | null
   >(null);
   const [tableDropdownOpen, setTableDropdownOpen] = useState<string | null>(
     null
   );
-
-  const [visibleImages, setVisibleImages] = useState<Attachment[]>(
-    issue?.attachments || []
-  );
-  const [imageSize, setImageSize] = useState(150);
-  const [maxVisible, setMaxVisible] = useState(issue?.attachments.length || 0);
-  const [startIndex, setStartIndex] = useState(0);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  const [newComment, setNewComment] = useState("");
 
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
 
@@ -85,9 +103,15 @@ const Issue: React.FC = () => {
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const attachmentContainerRef = useRef<HTMLDivElement | null>(null);
-  const tableDropdownButtonRefs = useRef(new Map());
+
+  const issueIcons: Record<string, any> = {
+    plumbing: faTint,
+    hvac: faWind,
+    electrical: faBolt,
+    roofing: faHouse,
+    painting: faPaintRoller,
+    general: faWrench, // Default
+  };
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -96,140 +120,22 @@ const Issue: React.FC = () => {
   };
 
   // Filtered Issues based on search query
-  const filteredIssues = issues.filter((issue) =>
-    issue.summary.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredIssues = issues?.filter(
+    (issue) =>
+      issue.report_id === Number(reportId) &&
+      issue.summary?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
   };
 
-  const handleProgressChange = (id: string, newProgress: string) => {
-    updateIssue(id, { progress: newProgress });
+  const handleProgressChange = (id: number, newProgress: string) => {
+    updateIssue({ id, progress: newProgress });
 
     setTimeout(() => {
       setProgressDropdownOpen(null); // Delay closing to let the event register
     });
-  };
-
-  const handleOpenProgressDropdown = (id: string) => {
-    setProgressDropdownOpen((prev) => (prev === id ? null : id)); // Toggle specific issue dropdown
-  };
-
-  const handleOpenTableDropdown = (id: string) => {
-    setTableDropdownOpen((prev) => (prev === id ? null : id)); // Toggle specific issue dropdown
-  };
-
-  // Open File Selector
-  const handleAddAttachment = () => {
-    fileInputRef.current?.click();
-  };
-
-  // Handle File Upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!issue) {
-      return;
-    }
-
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      const newAttachmentObject = {
-        name: file.name,
-        url: URL.createObjectURL(file),
-        type: file.type.includes("image") ? "image" : "doc",
-        addedBy: auth.currentUser?.uid || "unknown", // Track user who added
-        dateAdded: new Date().toLocaleDateString(), // Save Date
-      };
-      updateIssue(issue.id, {
-        attachments: [...issue.attachments, newAttachmentObject],
-      });
-    }
-  };
-
-  // Delete Attachment (Only if user added it)
-  const handleDeleteAttachment = (attachmentIndex: number) => {
-    if (!issue) {
-      return;
-    }
-
-    // Find the correct index in the full attachments array
-    const actualIndex = startIndex + attachmentIndex;
-
-    const updatedAttachments = issue.attachments.filter(
-      (_, index) => index !== actualIndex
-    );
-
-    updateIssue(issue.id, { attachments: updatedAttachments });
-  };
-
-  const updateImageDisplay = () => {
-    if (
-      !attachmentContainerRef.current ||
-      !issue ||
-      issue.attachments.length === 0
-    )
-      return;
-
-    const containerWidth = attachmentContainerRef.current.clientWidth;
-    const minImageSize = 150;
-    const maxImageSize = 250;
-    const gapSize = 12; // Tailwind's gap-3 = 12px
-
-    // Step 1: Determine max number of images that can fit
-    let numImages = Math.floor(containerWidth / (minImageSize + gapSize));
-
-    // Ensure at least 1 image is displayed
-    numImages = Math.max(1, Math.min(numImages, issue.attachments.length));
-
-    // Step 2: Adjust image size so they fit exactly
-    let newImageSize = (containerWidth - (numImages - 1) * gapSize) / numImages;
-    newImageSize = Math.max(minImageSize, Math.min(newImageSize, maxImageSize));
-
-    // Step 3: Update state (Force update if needed)
-    setImageSize(newImageSize);
-    setMaxVisible(numImages);
-    setStartIndex(0); // Reset index when resizing
-    setVisibleImages(issue.attachments.slice(0, numImages)); // Update visible images immediately
-  };
-
-  const handleNext = () => {
-    if (issue && startIndex + maxVisible < issue.attachments.length) {
-      setStartIndex((prev) => prev + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (startIndex > 0) {
-      setStartIndex((prev) => prev - 1);
-    }
-  };
-
-  // Handle image click to open modal
-  const handleImageClick = (imageUrl: string) => {
-    setSelectedImage(imageUrl);
-  };
-
-  // Handle document download
-  const handleDownload = (fileUrl: string, fileName: string) => {
-    const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const addComment = () => {
-    if (newComment.trim() && issue) {
-      const newCommentObject = {
-        author: auth.currentUser?.displayName || "",
-        text: newComment,
-        date: new Date().toLocaleString(),
-      };
-      const updatedComments = [...(issue.comments || []), newCommentObject];
-      updateIssue(issue.id, { comments: updatedComments });
-      setNewComment("");
-    }
   };
 
   const getCoordinatesFromAddress = async (address: string) => {
@@ -250,7 +156,21 @@ const Issue: React.FC = () => {
     }
   };
 
-  const uniqueVendors = new Set(issue?.bids.map((bid) => bid.vendor)).size;
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString + "Z");
+
+    return date.toLocaleString("en-US", {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Auto-detects user’s time zone
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+
+  // const uniqueVendors = new Set(issue?.bids.map((bid) => bid.vendor)).size;
 
   // Sync tab state when URL changes
   useEffect(() => {
@@ -263,29 +183,18 @@ const Issue: React.FC = () => {
     navigate(`?tab=${tab}`); // Update URL
   };
 
-  // Run update logic on resize
   useEffect(() => {
-    updateImageDisplay();
-    window.addEventListener("resize", updateImageDisplay);
-    return () => window.removeEventListener("resize", updateImageDisplay);
-  }, [issue?.attachments]);
+    if (!listing) return;
 
-  // Ensure visible images update dynamically when `maxVisible` changes
-  useEffect(() => {
-    setVisibleImages(
-      issue?.attachments.slice(startIndex, startIndex + maxVisible) || []
-    );
-  }, [maxVisible, startIndex, issue?.attachments]);
-
-  useEffect(() => {
-    getCoordinatesFromAddress(listing?.address || "")
+    const address = `${listing?.address}, ${listing?.city}, ${listing?.state}, ${listing?.country}`;
+    getCoordinatesFromAddress(address || "")
       .then((coords) => setCoords(coords))
       .catch((error) => console.error("Error:", error));
-  }, []);
+  }, [listing]);
 
-  if (!issue) {
-    return <div>Issue not found.</div>;
-  }
+  if (isLoading) return <p>Loading...</p>;
+  if (!issue) return <div>Issue not found.</div>;
+  if (error) return <p>Error loading issues</p>;
 
   return (
     <div className="p-6">
@@ -321,7 +230,7 @@ const Issue: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="">
                 <h2 className="text-lg font-bold mb-0">
-                  {listing?.title || "No Title Found"}
+                  {listing?.address || "No Listing Found"}
                 </h2>
               </div>
             </div>
@@ -340,7 +249,7 @@ const Issue: React.FC = () => {
             />
           </div>
           <div className="chat-all-list flex flex-col gap-1.5 mt-3 max-h-[580px] overflow-y-auto">
-            {filteredIssues.map((filteredIssue) => (
+            {filteredIssues?.map((filteredIssue) => (
               <div
                 key={filteredIssue.id}
                 className={`mx-4 2xl:mx-10 my-1.5 p-6 rounded-sm border transition cursor-pointer relative ${
@@ -349,25 +258,39 @@ const Issue: React.FC = () => {
                     : "bg-gray-50 hover:bg-gray-100 text-gray-600"
                 }`}
                 onClick={() =>
-                  navigate(`/dashboard/${listingId}/issue/${filteredIssue.id}`)
+                  navigate(
+                    `/listings/${listingId}/reports/${reportId}/issues/${filteredIssue.id}`
+                  )
                 }
               >
                 {/* Notification Badge */}
-                {filteredIssue.bids.length > 0 && (
+                {/* {filteredIssue.bids.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                     {filteredIssue.bids.length > 9
                       ? "9+"
                       : filteredIssue.bids.length}
                   </span>
-                )}
+                )} */}
 
                 {/* Header (Title & Icons) */}
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center gap-2">
                     <span className="flex w-10 h-10 flex-shrink-0 items-center justify-center">
-                      <img
+                      {/* <img
                         src={`/images/${filteredIssue.type.toLowerCase()}.png`}
                         alt=""
+                      /> */}
+
+                      <FontAwesomeIcon
+                        icon={
+                          issueIcons[filteredIssue.type.toLocaleLowerCase()] ||
+                          faWrench
+                        } // Default to faWrench if no match
+                        className={`text-2xl ${
+                          filteredIssue.id === issue.id
+                            ? "text-white"
+                            : "text-gray-600"
+                        }`}
                       />
                     </span>
                     <h3 className="font-semibold">{filteredIssue.summary}</h3>
@@ -379,14 +302,19 @@ const Issue: React.FC = () => {
                   Progress:{" "}
                   <span
                     className={`px-2.5 py-1.5 rounded font-medium text-md ${
-                      filteredIssue.progress === "To-do"
+                      statusMapping[filteredIssue.status] === "open"
                         ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                        : filteredIssue.progress === "In-progress"
+                        : statusMapping[filteredIssue.status] === "in_progress"
                         ? "bg-blue-100 text-blue-600 border border-blue-600"
+                        : statusMapping[filteredIssue.status] === "review"
+                        ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                         : "bg-green-100 text-green-600 border border-green-600"
                     }`}
                   >
-                    {filteredIssue.progress}
+                    {statusOptions.find(
+                      (option) =>
+                        option.value === statusMapping[filteredIssue.status]
+                    )?.label || "Unknown"}
                   </span>
                 </p>
 
@@ -396,14 +324,14 @@ const Issue: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${
-                        filteredIssue.severity === "High"
+                        filteredIssue.severity === "high"
                           ? filteredIssue.id === issue.id
                             ? "bg-red-700"
                             : "bg-red-500"
-                          : filteredIssue.severity === "Medium"
+                          : filteredIssue.severity === "medium"
                           ? "bg-yellow-500"
                           : filteredIssue.id === issue.id
-                          ? "bg-green-700"
+                          ? "bg-green-400"
                           : "bg-green-500"
                       }`}
                     ></span>
@@ -411,9 +339,9 @@ const Issue: React.FC = () => {
                       className={`font-semibold ${
                         filteredIssue.id === issue.id
                           ? "text-white"
-                          : filteredIssue.severity === "High"
+                          : filteredIssue.severity === "high"
                           ? "text-red-500"
-                          : filteredIssue.severity === "Medium"
+                          : filteredIssue.severity === "medium"
                           ? "text-yellow-500"
                           : "text-green-500"
                       }`}
@@ -431,7 +359,11 @@ const Issue: React.FC = () => {
                         : "text-gray-800"
                     }`}
                   >
-                    {filteredIssue.vendor}
+                    {issue.vendor_id ? (
+                      <VendorName vendorId={filteredIssue.vendor_id} />
+                    ) : (
+                      "N/A"
+                    )}
                   </span>
                 </p>
 
@@ -440,7 +372,7 @@ const Issue: React.FC = () => {
                   className={`mt-4 inline-block text-xs font-semibold rounded-full px-3 py-1.5 ${
                     filteredIssue.id === issue.id
                       ? "bg-blue-400 text-white"
-                      : "bg-blue-100 text-blue-600"
+                      : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {filteredIssue.type}
@@ -451,7 +383,7 @@ const Issue: React.FC = () => {
                   className={`absolute bottom-4 text-xl right-6 p-2 ${
                     filteredIssue.id === issue.id
                       ? "text-white"
-                      : "text-blue-600"
+                      : "text-gray-600"
                   }`}
                 >
                   <FontAwesomeIcon icon={faEllipsisVertical} />
@@ -467,7 +399,7 @@ const Issue: React.FC = () => {
           >
             <div
               className={`items-center px-6 py-4 active border-b border-neutral-200 ${
-                issue.isVisible ? "" : "bg-red-100"
+                issue.active ? "" : "bg-red-100"
               }`}
             >
               <div className="flex flex-row items-center justify-between">
@@ -476,14 +408,12 @@ const Issue: React.FC = () => {
                 </h2>
                 <button
                   onClick={() =>
-                    updateIssue(issue.id, {
-                      isVisible: !issue.isVisible,
-                    })
+                    updateIssue({ id: issue.id, isVisible: !issue.active })
                   }
                   className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
                 >
                   <FontAwesomeIcon
-                    icon={issue.isVisible ? faEye : faEyeSlash}
+                    icon={issue.active ? faEye : faEyeSlash}
                     className={`text-blue-600 size-3.5`}
                   />
                 </button>
@@ -542,7 +472,7 @@ const Issue: React.FC = () => {
                   {/* Left Section */}
                   <div className="w-full lg:w-2/3 space-y-8">
                     {/* Issue Image */}
-                    <div>
+                    {/* <div>
                       <div
                         className="flex items-center cursor-pointer"
                         onClick={() => toggleSection(setImageOpen)}
@@ -572,7 +502,7 @@ const Issue: React.FC = () => {
                           />
                         </div>
                       )}
-                    </div>
+                    </div> */}
 
                     {/* Details Section */}
                     <div>
@@ -612,48 +542,56 @@ const Issue: React.FC = () => {
                               </h4>
                               <button
                                 className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                                  issue.progress === "To-do"
+                                  statusMapping[issue.status] === "open"
                                     ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                                    : issue.progress === "In-progress"
+                                    : statusMapping[issue.status] ===
+                                      "in_progress"
                                     ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                    : statusMapping[issue.status] === "review"
+                                    ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                                     : "bg-green-100 text-green-600 border border-green-600"
                                 }`}
                                 ref={progressDropdownButtonRef}
                                 onClick={() =>
-                                  handleOpenProgressDropdown(issue.id)
+                                  setProgressDropdownOpen((prev) =>
+                                    prev === issue.id ? null : issue.id
+                                  )
                                 }
                               >
-                                {issue.progress}
+                                {statusOptions.find(
+                                  (option) =>
+                                    option.value === statusMapping[issue.status]
+                                )?.label || "Unknown"}
+
                                 <FontAwesomeIcon
                                   icon={faChevronDown}
                                   className="ml-1"
                                 />
                               </button>
-                              {progressDropdownOpen === issue.id && (
+                              {Number(progressDropdownOpen) === issue.id && (
                                 <Dropdown
                                   buttonRef={progressDropdownButtonRef}
                                   onClose={() => setProgressDropdownOpen(null)}
                                 >
-                                  {["To-do", "In-progress", "Done"].map(
-                                    (progress) => (
+                                  <div className="dropdown-content">
+                                    {statusOptions.map(({ value, label }) => (
                                       <button
-                                        key={progress}
+                                        key={value}
                                         className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
-                                          progress === issue.progress
+                                          `Status.${value.toUpperCase()}` ===
+                                          issue.status
                                             ? "font-bold"
                                             : ""
                                         }`}
-                                        onClick={() =>
-                                          handleProgressChange(
-                                            issue.id,
-                                            progress
-                                          )
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleProgressChange(issue.id, value);
+                                        }}
                                       >
-                                        {progress}
+                                        {label}
                                       </button>
-                                    )
-                                  )}
+                                    ))}
+                                  </div>
                                 </Dropdown>
                               )}
                             </div>
@@ -746,15 +684,17 @@ const Issue: React.FC = () => {
                             key={locationOpen ? "map-visible" : "map-hidden"}
                             latitude={coords.latitude}
                             longitude={coords.longitude}
-                            listingName={listing?.title || ""}
+                            listingName={listing?.address || ""}
                           />
 
                           <div className="mt-4">
                             <h4 className="text-sm font-medium text-gray-500">
-                              Address
+                              Location
                             </h4>
                             <p className="text-base font-semibold text-gray-700">
-                              {listing?.address}
+                              {listing?.address}, {listing?.city},{" "}
+                              {listing?.state}, {listing?.postal_code},{" "}
+                              {listing?.country}
                             </p>
                           </div>
                         </div>
@@ -763,247 +703,12 @@ const Issue: React.FC = () => {
 
                     {/* Attachment Section */}
                     <div>
-                      {/* Header with Title and Add Button */}
-                      <div className="flex items-center justify-between">
-                        <div
-                          className="flex items-center cursor-pointer"
-                          onClick={() => setAttachmentsOpen((prev) => !prev)}
-                        >
-                          <button className="rounded bg-neutral-200 px-2 mr-2">
-                            {attachmentsOpen ? (
-                              <FontAwesomeIcon
-                                icon={faChevronUp}
-                                className="size-2.5 align-middle"
-                              />
-                            ) : (
-                              <FontAwesomeIcon
-                                icon={faChevronDown}
-                                className="size-2.5 align-middle"
-                              />
-                            )}
-                          </button>
-                          <h2 className="text-lg font-semibold">Attachments</h2>
-                        </div>
-                        <button
-                          onClick={handleAddAttachment}
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="size-4" />
-                        </button>
-                      </div>
-
-                      {attachmentsOpen && (
-                        <div
-                          ref={attachmentContainerRef}
-                          className="relative w-full flex justify-start items-center mt-4"
-                        >
-                          {/* Left Arrow */}
-                          {startIndex > 0 && (
-                            <button
-                              onClick={handlePrev}
-                              className="absolute left-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
-                              style={{
-                                left: `calc(50% - ${
-                                  (maxVisible * imageSize) / 2
-                                }px)`,
-                                transform: "translateX(-50%)",
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faArrowLeft} />
-                            </button>
-                          )}
-
-                          {/* Attachments Row */}
-                          <div className="relative overflow-hidden w-full">
-                            <div className="flex gap-3 transition-transform duration-300 ease-in-out">
-                              {issue.attachments &&
-                              issue.attachments.length > 0 ? (
-                                <>
-                                  {visibleImages.map((attachment, index) => (
-                                    <div
-                                      key={index}
-                                      style={{
-                                        width: `${imageSize}px`,
-                                        height: `${imageSize - 20}px`,
-                                      }}
-                                      className="relative border rounded-md bg-gray-100 flex flex-col justify-end"
-                                    >
-                                      {attachment.type === "image" ? (
-                                        <img
-                                          src={attachment.url}
-                                          alt={attachment.name}
-                                          className="absolute top-0 left-0 w-full h-full object-cover rounded cursor-pointer"
-                                          onClick={() =>
-                                            handleImageClick(attachment.url)
-                                          }
-                                        />
-                                      ) : (
-                                        <div
-                                          className="absolute top-0 left-0 w-full h-full flex items-center justify-center cursor-pointer"
-                                          onClick={() =>
-                                            handleDownload(
-                                              attachment.url,
-                                              attachment.name
-                                            )
-                                          }
-                                        >
-                                          <img
-                                            src="/images/google-docs.png"
-                                            alt="Document"
-                                            className="size-16 mb-8"
-                                          />
-                                        </div>
-                                      )}
-                                      {/* Attachment Name */}
-                                      <div className="absolute bottom-5 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs font-semibold px-2.5 pt-2 pb-1 truncate">
-                                        {attachment.name}
-                                      </div>
-
-                                      {/* Date Added */}
-                                      <div className="absolute bottom-0 left-0 w-full bg-white bg-opacity-70 text-gray-800 text-xs px-2.5 pb-1">
-                                        {attachment.dateAdded}
-                                      </div>
-
-                                      {/* Delete Button (Only if User Added) */}
-                                      {attachment.addedBy ===
-                                        auth.currentUser?.uid && (
-                                        <button
-                                          className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
-                                          onClick={() =>
-                                            handleDeleteAttachment(index)
-                                          }
-                                        >
-                                          <FontAwesomeIcon icon={faTrashCan} />
-                                        </button>
-                                      )}
-                                    </div>
-                                  ))}
-                                </>
-                              ) : (
-                                <p className="text-gray-500">
-                                  No attachments yet.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Right Arrow */}
-                          {maxVisible &&
-                          startIndex + maxVisible < issue.attachments.length ? (
-                            <button
-                              onClick={handleNext}
-                              className="absolute right-0 z-10 bg-white text-gray-800 p-2 rounded-full hover:bg-gray-50 transition shadow-md flex items-center justify-center"
-                              style={{
-                                right: `calc(50% - ${
-                                  (maxVisible * imageSize) / 2
-                                }px)`,
-                                transform: "translateX(50%)",
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faArrowRight} />
-                            </button>
-                          ) : null}
-
-                          {/* Image Modal */}
-                          {selectedImage && (
-                            <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-                              <div className="relative bg-white rounded-lg shadow-lg max-w-3xl">
-                                <button
-                                  className="absolute top-2 right-2 text-gray-800 py-1 px-2 rounded-full"
-                                  onClick={() => setSelectedImage(null)}
-                                >
-                                  <FontAwesomeIcon
-                                    icon={faTimes}
-                                    className="text-xl"
-                                  />
-                                </button>
-                                <img
-                                  src={selectedImage}
-                                  alt="Full View"
-                                  className="max-w-full max-h-[90vh] rounded"
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Hidden File Input */}
-                      <input
-                        type="file"
-                        accept="image/*, .pdf, .doc, .docx"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                      />
+                      <Attachments issueId={issue.id} />
                     </div>
 
                     {/* Comments Section */}
-                    <div className="pb-6">
-                      <div
-                        className="flex items-center cursor-pointer"
-                        onClick={() => toggleSection(setCommentsOpen)}
-                      >
-                        <button className="rounded bg-neutral-200 px-2 mr-2">
-                          {commentsOpen ? (
-                            <FontAwesomeIcon
-                              icon={faChevronUp}
-                              className="size-2.5 align-middle"
-                            />
-                          ) : (
-                            <FontAwesomeIcon
-                              icon={faChevronDown}
-                              className="size-2.5 align-middle"
-                            />
-                          )}
-                        </button>
-                        <h2 className="text-lg font-semibold">Comments</h2>
-                      </div>
-                      {commentsOpen && (
-                        <div className="mt-4">
-                          {issue.comments?.length ? (
-                            <ul className="space-y-4">
-                              {issue.comments.map((comment, index) => (
-                                <li
-                                  key={index}
-                                  className="border border-gray-300 rounded p-4 bg-gray-50"
-                                >
-                                  <div className="flex justify-between mb-2">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      {comment.author}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {comment.date}
-                                    </span>
-                                  </div>
-                                  <p className="text-gray-600">
-                                    {comment.text}
-                                  </p>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-gray-500">No comments yet.</p>
-                          )}
-                          <div className="mt-4">
-                            <input
-                              type="text"
-                              value={newComment}
-                              onChange={(e) => setNewComment(e.target.value)}
-                              placeholder="Add a comment"
-                              className="border border-gray-300 px-3 py-2 rounded-lg mb-2 w-full"
-                            />
-                            <div className="flex justify-end">
-                              <button
-                                onClick={addComment}
-                                className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
-                              >
-                                Comment
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                    <div>
+                      <Comments issueId={issue.id} />
                     </div>
                   </div>
 
@@ -1048,7 +753,11 @@ const Issue: React.FC = () => {
                               </button>
                             </div>
                             <p className="text-base font-semibold text-gray-700">
-                              {issue.vendor || "No vendor assigned"}
+                              {issue.vendor_id ? (
+                                <VendorName vendorId={issue.vendor_id} />
+                              ) : (
+                                "No vendor assigned"
+                              )}
                             </p>
 
                             {/* Vendor Modal */}
@@ -1059,19 +768,11 @@ const Issue: React.FC = () => {
                           </div>
                           <div>
                             <h4 className="text-sm font-medium text-gray-500">
-                              Worked By
-                            </h4>
-                            <p className="text-base font-semibold text-gray-700">
-                              {issue.workedBy}
-                            </p>
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-medium text-gray-500">
                               Realtor
                             </h4>
-                            <p className="text-base font-semibold text-gray-700">
-                              {issue.realtor}
-                            </p>
+                            {/* <p className="text-base font-semibold text-gray-700">
+                              {listing?.realtor_id}
+                            </p> */}
                           </div>
                         </div>
                       )}
@@ -1099,13 +800,24 @@ const Issue: React.FC = () => {
                         <h2 className="text-lg font-semibold">Dates</h2>
                       </div>
                       {datesOpen && (
-                        <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-500">
-                            Date Created
-                          </h4>
-                          <p className="text-base font-semibold text-gray-700">
-                            {issue.dateCreated}
-                          </p>{" "}
+                        <div className="mt-4 space-y-3">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium text-gray-500">
+                              Date Created
+                            </h4>
+                            <p className="text-base font-semibold text-gray-700">
+                              {formatDate(issue.created_at)}
+                            </p>
+                          </div>
+
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-medium text-gray-500">
+                              Date Updated
+                            </h4>
+                            <p className="text-base font-semibold text-gray-700">
+                              {formatDate(issue.updated_at)}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1118,12 +830,12 @@ const Issue: React.FC = () => {
                     <div className="flex items-center flex-wrap gap-3">
                       <span className="text-base font-medium text-gray-600 mb-0">
                         Bidders:{" "}
-                        <span className="text-gray-800">{uniqueVendors}</span>
+                        {/* <span className="text-gray-800">{uniqueVendors}</span> */}
                       </span>
                       <span className="text-base font-medium text-gray-600 mb-0">
                         Bids:{" "}
                         <span className="text-gray-800">
-                          {issue.bids.length}
+                          {/* {issue.bids.length} */}
                         </span>
                       </span>
                       <span className="text-base font-medium text-gray-600 mb-0">
@@ -1152,7 +864,7 @@ const Issue: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {issue.bids.map((bid) => (
+                          {/* {issue.bids.map((bid) => (
                             <tr key={bid.id}>
                               <td className="text-left border-b border-gray-200 px-4 py-3">
                                 {bid.vendor}
@@ -1176,7 +888,7 @@ const Issue: React.FC = () => {
                                       );
                                   }}
                                   onClick={() =>
-                                    handleOpenTableDropdown(bid.id)
+                                    setTableDropdownOpen((prev) => (prev === bid.id ? null : bid.id))
                                   }
                                 >
                                   <FontAwesomeIcon icon={faEllipsisVertical} />
@@ -1209,7 +921,7 @@ const Issue: React.FC = () => {
                                 )}
                               </td>
                             </tr>
-                          ))}
+                          ))} */}
                         </tbody>
                       </table>
                     </div>

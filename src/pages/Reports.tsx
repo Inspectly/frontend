@@ -3,45 +3,54 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
+  faListCheck,
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
-import { useGetListingsQuery } from "../features/apiSlice";
-import ImageComponent from "../components/ImageComponent";
+import { useNavigate, useParams } from "react-router-dom";
+import { useGetReportsQuery } from "../features/apiSlice";
 
-const Listings: React.FC = () => {
-  const { data: listings, error, isLoading } = useGetListingsQuery();
+const Reports: React.FC = () => {
+  const { data: reports, error, isLoading } = useGetReportsQuery();
 
   const navigate = useNavigate();
+
+  const { listingId } = useParams<{
+    listingId: string;
+  }>();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
 
-  // Filtered listings based on search query
-  const filteredListings =
-    listings?.filter((listing) =>
+  const listingReports =
+    reports?.filter((report) => report.listing_id.toString() === listingId) ||
+    [];
+
+  // Filtered reports based on search query
+  const filteredReports =
+    listingReports?.filter((report) =>
       searchQuery.trim() === ""
-        ? true // Return all listings if searchQuery is empty
-        : listing?.address?.toLowerCase().includes(searchQuery.toLowerCase())
+        ? true // Return all reports if searchQuery is empty
+        : report?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     ) ?? [];
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentListings = filteredListings.slice(startIndex, endIndex);
+  const currentReports = filteredReports.slice(startIndex, endIndex);
 
   // Adjust `itemsPerPage` dynamically based on the number of columns
   useEffect(() => {
     const updateItemsPerPage = () => {
       const width = window.innerWidth;
-      let columns = 1; // Default to 1 column
+      let columns = 2; // Default to 1 column
 
-      if (width >= 640) columns = 2; // `sm:grid-cols-2`
-      if (width >= 768) columns = 3; // `md:grid-cols-3`
-      if (width >= 1536) columns = 4; // `2xl:grid-cols-4`
+      if (width >= 640) columns = 3; // `sm:grid-cols-3`
+      if (width >= 768) columns = 4; // `md:grid-cols-4`
+      if (width >= 1280) columns = 5; // `xl:grid-cols-5`
+      if (width >= 1536) columns = 6; // `2xl:grid-cols-6`
 
       const rows = 3; // Always display at least 3 rows
       setItemsPerPage(columns * rows);
@@ -77,12 +86,25 @@ const Listings: React.FC = () => {
   };
 
   if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Error loading listings</p>;
+  if (error) return <p>Error loading reports</p>;
 
   return (
     <div className="p-6">
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-3xl font-semibold mb-0">Listings</h1>
+      <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
+        <h1 className="text-3xl font-semibold mb-0">Reports</h1>
+        <ul className="text-lg flex items-center gap-[6px]">
+          <li className="font-medium">
+            <a
+              href="/listings"
+              className="flex items-center gap-2 hover:text-blue-400"
+            >
+              <FontAwesomeIcon icon={faListCheck} className="size-5" />
+              Listings
+            </a>
+          </li>
+          <li>-</li>
+          <li className="font-medium">Reports</li>
+        </ul>
       </div>
 
       <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
@@ -104,37 +126,42 @@ const Listings: React.FC = () => {
           </div>
           <button className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]">
             <span className="font-semibold text-[14px] leading-[21px]">
-              Add New Listing
+              Add New Report
             </span>
             <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
         <div className="bg-white p-6">
-          {currentListings.length === 0 ? (
+          {currentReports.length === 0 ? (
             <div className="text-center text-gray-500">
-              You have no current listings.
+              You have no current reports.
             </div>
           ) : (
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-6"
+              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6"
               style={{
                 gridAutoRows: "minmax(150px, auto)",
               }}
             >
-              {currentListings.map((listing) => (
+              {currentReports.map((report) => (
                 <div
-                  onClick={() => navigate(`/listings/${listing.id}`)}
-                  key={listing.id}
-                  className="relative hover:shadow-lg cursor-pointer border border-neutral-200 rounded-2xl overflow-hidden"
+                  onClick={() =>
+                    navigate(`/listings/${listingId}/reports/${report.id}`, {
+                      state: { report }, // Pass the report object in `state`
+                    })
+                  }
+                  key={report.id}
+                  className="relative hover:shadow-lg cursor-pointer border border-neutral-200 rounded-2xl"
                 >
-                  <div className="h-[266px] overflow-hidden relative">
-                    <ImageComponent
-                      src={listing.image_url}
-                      fallback="/images/property_card_holder.jpg"
-                      className="hover-scale-img__img w-full h-full object-cover"
-                    />
-                    <h6 className="absolute bottom-0 left-0 w-full text-white text-center py-2 bg-gradient-to-t from-black/40 via-black/30 to-transparent">
-                      {listing.address}
+                  <div className="relative">
+                    <div className="flex items-center h-[110px] justify-center bg-gray-100 w-full">
+                      <img
+                        src="/images/inspection.png"
+                        className="h-24 w-24 p-4"
+                      />
+                    </div>
+                    <h6 className="w-full text-center text-sm py-2 px-3">
+                      {report.name}
                     </h6>
                   </div>
                 </div>
@@ -145,8 +172,8 @@ const Listings: React.FC = () => {
           <div className="flex items-center justify-between flex-wrap gap-2 mt-6">
             <span>
               Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, filteredListings.length)} of{" "}
-              {filteredListings.length} entries
+              {Math.min(endIndex, filteredReports.length)} of{" "}
+              {filteredReports.length} entries
             </span>
             <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
               <li className="page-item">
@@ -197,4 +224,4 @@ const Listings: React.FC = () => {
   );
 };
 
-export default Listings;
+export default Reports;

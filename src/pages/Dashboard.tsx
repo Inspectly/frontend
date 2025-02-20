@@ -1,54 +1,77 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useIssues } from "../components/IssuesContext";
-import { useListings } from "../components/ListingsContext";
 import { Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import DashboardCharts from "../components/DashboardCharts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBolt,
-  faBuilding,
+  faHouse,
   faPaintRoller,
   faTint,
+  faWind,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { CalendarEvent, IssueType } from "../types";
+import { CalendarEvent, IssueType, ReportType } from "../types";
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
+import {
+  useGetIssuesQuery,
+  useGetListingsQuery,
+  useGetReportsQuery,
+} from "../features/apiSlice";
 
 const Dashboard: React.FC = () => {
-  const { issues } = useIssues();
-  const listings = useListings();
+  const {
+    data: listings,
+    error: listingsError,
+    isLoading: isListingsLoading,
+  } = useGetListingsQuery();
+  const {
+    data: reports,
+    error: reportsError,
+    isLoading: isReportsLoading,
+    refetch: refetchReports,
+  } = useGetReportsQuery();
+  const {
+    data: issues,
+    error: issuesError,
+    isLoading: isIssuesLoading,
+    refetch: refetchIssues,
+  } = useGetIssuesQuery();
 
   const [files, setFiles] = useState<File[]>([]);
-  const [selectedListing, setSelectedListing] = useState("all");
+  const [selectedListing, setSelectedListing] = useState<string>("all");
+  const [selectedReport, setSelectedReport] = useState<string>("all");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const issueIcons: Record<string, any> = {
-    Plumbing: faTint,
-    Electrical: faBolt,
-    Structural: faBuilding,
-    Painting: faPaintRoller,
-    General: faWrench, // Default
+    plumbing: faTint,
+    hvac: faWind,
+    electrical: faBolt,
+    roofing: faHouse,
+    painting: faPaintRoller,
+    general: faWrench, // Default
   };
 
   const issueColors: Record<string, string> = {
-    Plumbing: "bg-blue-500",
-    Electrical: "bg-yellow-500",
-    Structural: "bg-gray-600",
-    Painting: "bg-green-500",
-    General: "bg-red-500", // Default
+    plumbing: "bg-blue-500",
+    hvac: "bg-teal-500",
+    electrical: "bg-yellow-500",
+    roofing: "bg-gray-600",
+    painting: "bg-green-500",
+    general: "bg-orange-500", // Default
   };
 
   const issueGradients: Record<string, string> = {
-    Plumbing: "from-blue-600/10 to-white",
-    Electrical: "from-yellow-500/10 to-white",
-    Structural: "from-gray-600/10 to-white",
-    Painting: "from-green-500/10 to-white",
-    General: "from-red-500/10 to-white", // Default
+    plumbing: "from-blue-600/10 to-white",
+    hvac: "from-teal-500/10 to-white",
+    electrical: "from-yellow-500/10 to-white",
+    roofing: "from-gray-600/10 to-white",
+    painting: "from-green-500/10 to-white",
+    general: "from-orange-500/10 to-white", // Default
   };
 
   const realtors = [
@@ -134,16 +157,12 @@ const Dashboard: React.FC = () => {
     setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
-  const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedListing(event.target.value); // Updates state when option is selected
-  };
-
   useEffect(() => {
     // Dummy data to simulate user bookings
     const dummyBookings: CalendarEvent[] = [
       {
         id: "1",
-        title: "Plumbing Repair Appointment",
+        title: "plumbing Repair Appointment",
         start: new Date("2025-02-15T10:00:00"),
         end: new Date("2025-02-15T11:00:00"),
       },
@@ -164,18 +183,32 @@ const Dashboard: React.FC = () => {
     setEvents(dummyBookings);
   }, []);
 
-  const filteredIssues =
+  useEffect(() => {
+    if (selectedListing !== "all") {
+      refetchReports();
+    }
+  }, [selectedListing, refetchReports]);
+
+  useEffect(() => {
+    if (selectedReport !== "all") {
+      refetchIssues();
+    }
+  }, [selectedReport, refetchIssues]);
+
+  const filteredReports =
     selectedListing === "all"
-      ? issues.reduce((acc, issue) => {
-          if (!acc[issue.listingId]) acc[issue.listingId] = [];
-          acc[issue.listingId].push(issue);
-          return acc;
-        }, {} as Record<string, IssueType[]>)
-      : {
-          [selectedListing]: issues.filter(
-            (issue) => issue.listingId === selectedListing
-          ),
-        };
+      ? reports || []
+      : reports?.filter(
+          (report: ReportType) =>
+            report.listing_id.toString() === selectedListing
+        ) || [];
+
+  const filteredIssues =
+    selectedReport === "all"
+      ? issues || []
+      : issues?.filter(
+          (issue: IssueType) => issue.report_id.toString() === selectedReport
+        ) || [];
 
   const issueCounts = Object.values(filteredIssues)
     .flat() // Flatten to a single array
@@ -183,6 +216,16 @@ const Dashboard: React.FC = () => {
       acc[issue.type] = (acc[issue.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
+
+  // Handling loading state
+  if (isIssuesLoading || isListingsLoading) {
+    return <p>Loading...</p>;
+  }
+
+  // Handling error state
+  if (issuesError || listingsError) {
+    return <p>Error</p>;
+  }
 
   return (
     <div className="p-6">
@@ -232,15 +275,33 @@ const Dashboard: React.FC = () => {
                   backgroundImage: "url('images/chevron.svg')",
                 }}
                 value={selectedListing}
-                onChange={handleSelectChange}
+                onChange={(e) => setSelectedListing(e.target.value)}
               >
                 <option value="all">All Listings</option>
-                {listings.map((listing) => (
+                {listings?.map((listing) => (
                   <option key={listing.id} value={listing.id}>
-                    {listing.title}{" "}
+                    {listing.address}
                   </option>
                 ))}
               </select>
+
+              {selectedListing !== "all" && (
+                <select
+                  className="px-3 pr-10 py-1.5 ml-2 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
+                  style={{
+                    backgroundImage: "url('images/chevron.svg')",
+                  }}
+                  value={selectedReport}
+                  onChange={(e) => setSelectedReport(e.target.value)}
+                >
+                  <option value="all">All Reports</option>
+                  {filteredReports?.map((report) => (
+                    <option key={report.id} value={report.id}>
+                      {report.name}
+                    </option>
+                  ))}
+                </select>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                 {Object.entries(issueCounts).map(([type, count]) => (
@@ -414,41 +475,46 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="card-body px-6 pb-6">
                   <div>
-                    {Object.entries(filteredIssues).map(
-                      ([listingId, issueArray]) =>
-                        issueArray.map(
-                          (issue) =>
-                            issue.cost && (
-                              <div
-                                key={issue.id}
-                                className="flex items-center justify-between gap-2 mt-6"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <img
-                                    src={`/images/${issue.type.toLowerCase()}.png`}
-                                    alt=""
-                                    className="w-10 h-10 shrink-0 overflow-hidden"
-                                  />
-                                  <div className="grow">
-                                    <h6 className="text-base mb-0 font-medium">
-                                      <Link
-                                        to={`/dashboard/${issue.listingId}/issue/${issue.id}?tab=bids`}
-                                        className="text-blue-400 hover:underline"
-                                      >
-                                        {issue.id} {issue.type}
-                                      </Link>
-                                    </h6>
-                                    <span className="text-sm font-medium">
-                                      {issue.summary}
-                                    </span>
-                                  </div>
+                    {Object.entries(
+                      filteredIssues.reduce((acc, issue) => {
+                        if (!acc[issue.report_id]) acc[issue.report_id] = [];
+                        acc[issue.report_id].push(issue);
+                        return acc;
+                      }, {} as Record<string, IssueType[]>)
+                    ).map(([reportId, issueArray]) =>
+                      issueArray.map(
+                        (issue) =>
+                          issue.cost && (
+                            <div
+                              key={issue.id}
+                              className="flex items-center justify-between gap-2 mt-6"
+                            >
+                              <div className="flex items-center gap-3">
+                                <img
+                                  src={`/images/${issue.type.toLowerCase()}.png`}
+                                  alt=""
+                                  className="w-10 h-10 shrink-0 overflow-hidden"
+                                />
+                                <div className="grow">
+                                  <h6 className="text-base mb-0 font-medium">
+                                    <Link
+                                      to={`/dashboard/${issue.report_id}/issue/${issue.id}?tab=bids`}
+                                      className="text-blue-400 hover:underline"
+                                    >
+                                      {issue.id} {issue.type}
+                                    </Link>
+                                  </h6>
+                                  <span className="text-sm font-medium">
+                                    {issue.summary}
+                                  </span>
                                 </div>
-                                <span className="text-neutral-600 text-base font-medium">
-                                  {issue.cost}
-                                </span>
                               </div>
-                            )
-                        )
+                              <span className="text-neutral-600 text-base font-medium">
+                                {issue.cost}
+                              </span>
+                            </div>
+                          )
+                      )
                     )}
                   </div>
                 </div>

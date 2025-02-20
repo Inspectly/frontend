@@ -7,24 +7,51 @@ import {
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
-import { useIssues } from "../components/IssuesContext";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
+import {
+  useGetIssuesQuery,
+  useGetVendorByIdQuery,
+  useUpdateIssueMutation,
+} from "../features/apiSlice";
+import VendorName from "./VendorName";
+import { IssueStatus } from "../types";
+import Dropdown from "./Dropdown";
 
 const ReportTable: React.FC = () => {
-  const { listingId } = useParams<{ listingId: string }>();
-  const { issues, updateIssue } = useIssues();
+  const { listingId, reportId } = useParams<{
+    listingId: string;
+    reportId: string;
+  }>();
+
+  const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
+
+  const [updateIssue] = useUpdateIssueMutation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     severity: "",
-    progress: "",
+    status: "",
     isVisible: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
 
-  const rowRefs = useRef<{ [key: string]: HTMLTableRowElement | null }>({});
+  const tableDropdownButtonRefs = useRef(new Map());
+
+  const statusMapping: Record<IssueStatus, string> = {
+    "Status.OPEN": "open",
+    "Status.IN_PROGRESS": "in_progress",
+    "Status.REVIEW": "review",
+    "Status.COMPLETED": "completed",
+  };
+
+  const statusOptions = [
+    { value: "open", label: "Open" },
+    { value: "in_progress", label: "In-progress" },
+    { value: "review", label: "Review" },
+    { value: "completed", label: "Completed" },
+  ];
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters((prev) => ({
@@ -33,22 +60,71 @@ const ReportTable: React.FC = () => {
     }));
   };
 
-  const handleProgressChange = (id: string, newProgress: string) => {
-    updateIssue(id, { progress: newProgress }); // Call the context's update function
-    setDropdownOpen(null); // Close the dropdown after updating
+  const handleProgressChange = async (id: number, newProgress: string) => {
+    try {
+      // Get the existing issue data before updating
+      const issueToUpdate = issues?.find((issue) => issue.id === id);
+
+      if (!issueToUpdate) {
+        console.error("Issue not found:", id);
+        return;
+      }
+
+      console.log("Issue before update:", issueToUpdate);
+
+      // Send the full object with updated status
+      await updateIssue({
+        ...issueToUpdate,
+        status: newProgress, // Only this field changes
+      }).unwrap();
+
+      refetch();
+
+      setDropdownOpen(null);
+    } catch (error) {
+      console.error("Error updating issue:", error);
+    }
   };
 
+  const handleActiveChange = async (id: number, newActive: boolean) => {
+    try {
+      // Get the existing issue data before updating
+      const issueToUpdate = issues?.find((issue) => issue.id === id);
+
+      if (!issueToUpdate) {
+        console.error("Issue not found:", id);
+        return;
+      }
+
+      console.log("Issue before update:", issueToUpdate);
+
+      // Send the full object with updated status
+      await updateIssue({
+        ...issueToUpdate,
+        status: statusMapping[issueToUpdate.status],
+        active: newActive, // Only this field changes
+      }).unwrap();
+
+      refetch();
+    } catch (error) {
+      console.error("Error updating issue:", error);
+    }
+  };
+
+  const reportIssues =
+    issues?.filter((issue) => issue.report_id.toString() === reportId) || [];
+
   // Filter logic
-  const filteredIssues = issues.filter((issue) => {
+  const filteredIssues = reportIssues.filter((issue) => {
     const matchesSearchQuery =
       issue.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.id.toLowerCase().includes(searchQuery.toLowerCase());
+      issue.id.toString().toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSeverity =
       filters.severity === "" || issue.severity === filters.severity;
     const matchesProgress =
-      filters.progress === "" || issue.progress === filters.progress;
+      filters.status === "" || issue.status === filters.status;
     const matchesVisibility =
-      filters.isVisible === "" || String(issue.isVisible) === filters.isVisible;
+      filters.isVisible === "" || String(issue.active) === filters.isVisible;
 
     return (
       matchesSearchQuery &&
@@ -88,6 +164,20 @@ const ReportTable: React.FC = () => {
     }
   };
 
+  const formatDate = (isoString: string, format: "DMY" | "MDY" = "DMY") => {
+    const date = new Date(isoString);
+    const day = date.getDate().toString().padStart(2, "0"); // Ensure 2 digits
+    const month = (date.getMonth() + 1).toString().padStart(2, "0"); // Months are 0-based
+    const year = date.getFullYear();
+
+    return format === "DMY"
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+  };
+
+  if (isLoading) return <p>Loading...</p>;
+  if (error) return <p>Error loading issues</p>;
+
   return (
     <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
       <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
@@ -123,19 +213,20 @@ const ReportTable: React.FC = () => {
             onChange={(e) => handleFilterChange("severity", e.target.value)}
           >
             <option value="all">Filter by Severity</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
           </select>
           <select
             className="border px-1 py-1.5 cursor-pointer w-auto border-neutral-200 rounded-lg"
-            value={filters.progress}
-            onChange={(e) => handleFilterChange("progress", e.target.value)}
+            value={filters.status}
+            onChange={(e) => handleFilterChange("status", e.target.value)}
           >
-            <option value="all">Filter by Progress</option>
-            <option value="To-do">To-do</option>
-            <option value="In-progress">In-progress</option>
-            <option value="Done">Done</option>
+            <option value="all">Filter by Status</option>
+            <option value="Status.OPEN">Open</option>
+            <option value="Status.IN_PROGRESS">In-progress</option>
+            <option value="Status.REVIEW">Review</option>
+            <option value="Status.COMPLETED">Completed</option>
           </select>
 
           <select
@@ -175,7 +266,7 @@ const ReportTable: React.FC = () => {
                     Vendor
                   </th>
                   <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                    Progress
+                    Status
                   </th>
                   <th className="bg-gray-100 text-left font-medium px-4 py-3">
                     Date Created
@@ -192,17 +283,14 @@ const ReportTable: React.FC = () => {
                 {currentIssues.map((issue) => (
                   <tr
                     key={issue.id}
-                    ref={(el) => {
-                      if (el) rowRefs.current[issue.id] = el;
-                    }}
-                    className={issue.isVisible ? "" : "bg-red-100"}
+                    className={issue.active ? "" : "bg-red-100"}
                   >
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <span
                         className={`block w-4 h-4 rounded-full mx-auto ${
-                          issue.severity === "High"
+                          issue.severity === "high"
                             ? "bg-red-500"
-                            : issue.severity === "Medium"
+                            : issue.severity === "medium"
                             ? "bg-yellow-500"
                             : "bg-green-500"
                         }`}
@@ -217,62 +305,85 @@ const ReportTable: React.FC = () => {
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <Link
-                        to={`/dashboard/${listingId}/issue/${issue.id}`}
+                        to={`/listings/${listingId}/reports/${reportId}/issues/${issue.id}`}
                         className="text-blue-400 hover:underline"
                       >
                         {issue.summary}
                       </Link>
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.vendor}
+                      {issue.vendor_id ? (
+                        <VendorName vendorId={issue.vendor_id} />
+                      ) : (
+                        "N/A"
+                      )}
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <div className="relative">
                         <button
                           className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                            issue.progress === "To-do"
+                            statusMapping[issue.status] === "open"
                               ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : issue.progress === "In-progress"
+                              : statusMapping[issue.status] === "in_progress"
                               ? "bg-blue-100 text-blue-600 border border-blue-600"
+                              : statusMapping[issue.status] === "review"
+                              ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
                           }`}
+                          ref={(el) => {
+                            if (el)
+                              tableDropdownButtonRefs.current.set(issue.id, el);
+                          }}
                           onClick={() =>
                             setDropdownOpen((prev) =>
                               prev === issue.id ? null : issue.id
                             )
                           }
                         >
-                          {issue.progress}
+                          {statusOptions.find(
+                            (option) =>
+                              option.value === statusMapping[issue.status]
+                          )?.label || "Unknown"}
+
                           <FontAwesomeIcon
                             icon={faChevronDown}
                             className="ml-1"
                           />
                         </button>
                         {dropdownOpen === issue.id && (
-                          <div className="fixed z-50 bg-white shadow-md rounded-lg mt-2">
-                            {["To-do", "In-progress", "Done"].map(
-                              (progress) => (
+                          <Dropdown
+                            buttonRef={{
+                              current: tableDropdownButtonRefs.current.get(
+                                issue.id
+                              ),
+                            }}
+                            onClose={() => setDropdownOpen(null)}
+                          >
+                            <div className="dropdown-content">
+                              {statusOptions.map(({ value, label }) => (
                                 <button
-                                  key={progress}
+                                  key={value}
                                   className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
-                                    progress === issue.progress
+                                    `Status.${value.toUpperCase()}` ===
+                                    issue.status
                                       ? "font-bold"
                                       : ""
                                   }`}
-                                  onClick={() =>
-                                    handleProgressChange(issue.id, progress)
-                                  }
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleProgressChange(issue.id, value);
+                                  }}
                                 >
-                                  {progress}
+                                  {label}
                                 </button>
-                              )
-                            )}
-                          </div>
+                              ))}
+                            </div>
+                          </Dropdown>
                         )}
                       </div>
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.dateCreated}
+                      {formatDate(issue.created_at)}
                     </td>
 
                     <td className="text-left border-b border-gray-200 px-4 py-3">
@@ -281,14 +392,12 @@ const ReportTable: React.FC = () => {
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <button
                         onClick={() =>
-                          updateIssue(issue.id, {
-                            isVisible: !issue.isVisible,
-                          })
+                          handleActiveChange(issue.id, !issue.active)
                         }
                         className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
                       >
                         <FontAwesomeIcon
-                          icon={issue.isVisible ? faEye : faEyeSlash}
+                          icon={issue.active ? faEye : faEyeSlash}
                           className={`text-blue-600 size-3.5`}
                         />
                       </button>

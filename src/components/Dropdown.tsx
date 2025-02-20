@@ -53,7 +53,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         !buttonRef.current.contains(event.target as Node) &&
         !(event.target as HTMLElement).closest(".dropdown-content") // Allow clicking inside
       ) {
-        onClose();
+        setTimeout(() => onClose());
       }
     };
 
@@ -70,7 +70,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         zIndex: 1000,
       }}
       className="bg-white shadow-lg rounded-lg border border-gray-300 p-2"
-      onClick={(e) => e.stopPropagation()}
+      // onClick={(e) => e.stopPropagation()}
     >
       {children}
     </div>,

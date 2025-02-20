@@ -20,6 +20,7 @@ import DashboardSidebar from "./components/DashboardSidebar";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
 import Listings from "./pages/Listings";
+import Reports from "./pages/Reports";
 
 function App() {
   const location = useLocation();
@@ -108,9 +109,13 @@ function App() {
           <Route path="/payment" element={<Payment />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/Listings" element={<Listings />} />
-          <Route path="/dashboard/:listingId" element={<Report />} />
+          <Route path="/listings/:listingId" element={<Reports />} />
           <Route
-            path="/dashboard/:listingId/issue/:issueId"
+            path="/listings/:listingId/reports/:reportId"
+            element={<Report />}
+          />
+          <Route
+            path="/listings/:listingId/reports/:reportId/issues/:issueId"
             element={<Issue />}
           />
         </Routes>

@@ -31,38 +31,83 @@ export interface SignUpFormData {
   promoCode: string;
 }
 
-export interface IssueType {
-  id: string;
-  type: string;
-  listingId: string;
-  summary: string;
-  image: string;
-  description: string;
-  severity: string;
-  progress: string;
-  dateCreated: string;
-  vendor: string;
-  workedBy: string;
-  realtor: string;
-  cost: string;
-  isVisible: boolean;
-  attachments: Attachment[];
-  comments: Comment[];
-  bids: Bid[];
+export type Vendor = {
+  id: number;
+  vender_user_id: number;
+  vender_type: string;
+  code: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  rating: string;
+  review: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export interface Listing {
+  id: number;
+  user_id: number;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+  image_url: string;
+  created_at: string;
+  updated_at: string;
 }
 
+export type ReportType = {
+  id: number;
+  listing_id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IssueStatus =
+  | "Status.OPEN"
+  | "Status.IN_PROGRESS"
+  | "Status.REVIEW"
+  | "Status.COMPLETED";
+
+export type IssueType = {
+  id: number;
+  report_id: number;
+  type: string;
+  summary: string;
+  description: string;
+  severity: string;
+  status: IssueStatus;
+  vendor_id: number;
+  cost: string;
+  active: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export interface Comment {
-  author: string;
-  text: string;
-  date: string;
+  id: number;
+  issue_id: number;
+  user_id: string;
+  comment: string;
+  created_at: string;
 }
 
 export interface Attachment {
+  id: number;
+  issue_id: number;
   name: string;
-  url: string;
   type: string;
-  addedBy: string;
-  dateAdded: string;
+  url: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface Bid {
