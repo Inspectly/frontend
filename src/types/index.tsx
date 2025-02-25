@@ -15,9 +15,24 @@ export interface HeaderProps {
   refs: SectionRefs;
 }
 
+export type User_Type = {
+  id: number;
+  user_type: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Vendor_Type = {
+  id: number;
+  vendor_type: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type User = {
   id: number;
-  user_id: number;
+  user_type: User_Type;
+  firebase_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -63,7 +78,7 @@ export type Client = {
 export type Realtor = {
   id: number;
   realtor_user_id: number;
-  realtor_type: string;
+  realtor_firm_id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -82,7 +97,7 @@ export type Realtor = {
 export type Vendor = {
   id: number;
   vender_user_id: number;
-  vender_type: string;
+  vender_type: Vendor_Type;
   code: string;
   name: string;
   email: string;

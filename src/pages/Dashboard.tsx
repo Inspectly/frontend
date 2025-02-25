@@ -610,7 +610,7 @@ const Dashboard: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <span className="text-neutral-600 dark:text-neutral-200 text-base font-medium">
+                  <span className="text-neutral-600 text-base font-medium">
                     Bids placed: <a>30</a>
                   </span>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../firebase"; // Firebase initialized file
 import {
@@ -6,29 +6,50 @@ import {
   sendEmailVerification,
   updateProfile,
   GoogleAuthProvider,
-  FacebookAuthProvider,
   signInWithPopup,
-  fetchSignInMethodsForEmail,
+  getIdToken,
 } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faAt, faMobileScreen } from "@fortawesome/free-solid-svg-icons";
 import {
-  faAt,
-  faCity,
-  faLocationDot,
-  faMapMarkedAlt,
-  faMobileScreen,
-} from "@fortawesome/free-solid-svg-icons";
-import {
-  faAddressCard,
   faBuilding,
   faCompass,
+  faEnvelope,
   faEye,
   faFlag,
   faMap,
   faUser,
 } from "@fortawesome/free-regular-svg-icons";
+import { useCreateUserMutation } from "../features/api/usersApi";
+import { useCreateClientMutation } from "../features/api/clientsApi";
+import { useCreateRealtorMutation } from "../features/api/realtorsApi";
+import { useCreateVendorMutation } from "../features/api/vendorsApi";
+import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
+import Select from "react-select";
+import "../styles/Select.css"; // Tailwind styles
+import { useGetUserTypesQuery } from "../features/api/userTypesApi";
+import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
+import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../store/store";
+import { login } from "../features/authSlice";
 
 const SignUp: React.FC = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+
+  const [createUser] = useCreateUserMutation();
+  const [createUserLogin] = useCreateUserLoginMutation();
+  const [createUserSession] = useCreateUserSessionMutation();
+  const [createClient] = useCreateClientMutation();
+  const [createVendor] = useCreateVendorMutation();
+  const [createRealtor] = useCreateRealtorMutation();
+
+  // Fetch vendor types when "Vendor" is selected
+  const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
+
+  const { data: userTypes } = useGetUserTypesQuery();
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -38,10 +59,12 @@ const SignUp: React.FC = () => {
     city: "",
     state: "",
     country: "",
+    postalCode: "",
     userType: "",
     password: "",
     confirmPassword: "",
   });
+
   const [thirdPartyOption, setThirdPartyOption] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,13 +72,31 @@ const SignUp: React.FC = () => {
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
     useState(false);
 
-  const navigate = useNavigate();
+  const [vendorTypeOptions, setVendorTypeOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [selectedVendorTypes, setSelectedVendorTypes] = useState<
+    { value: string; label: string }[]
+  >([]);
+  const [thirdPartyVendorTypes, setThirdPartyVendorTypes] = useState<
+    { value: string; label: string }[]
+  >([]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Handle Multi-Select Change
+  const handleVendorTypeChange = (selectedOptions: any) => {
+    setSelectedVendorTypes(selectedOptions);
+  };
+
+  // Handle vendor type selection for third-party signup
+  const handleThirdPartyVendorTypeChange = (selectedOptions: any) => {
+    setThirdPartyVendorTypes(selectedOptions);
   };
 
   const togglePasswordVisibility = () => {
@@ -66,30 +107,52 @@ const SignUp: React.FC = () => {
     setIsConfirmPasswordVisible((prev) => !prev);
   };
 
-  const handleSignUpWithThirdParty = async (
-    providerType: "Google" | "Facebook"
+  const formatVendorTypes = (
+    vendorTypes: { value: string; label: string }[]
   ) => {
-    try {
-      // Check if the user selected an option (Home Buyer or Realtor)
-      if (!thirdPartyOption) {
-        setError("Please select if you are a Home Buyer or a Realtor.");
-        return;
-      }
-
-      // Add third party login logic here
-
-      // Navigate to the dashboard after successful sign-up or login
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Error during third-party sign-up:", error);
-      setError(error.message || "Failed to sign up with third-party provider.");
-    }
+    return vendorTypes.map((type) => type.value).join(", ");
   };
 
-  // Example function to save user details to the database
-  const saveUserToDatabase = async (uid: string, data: Record<string, any>) => {
-    // Use your preferred database service to save user data
-    console.log(`Saving user to database: ${uid}`, data);
+  // Create specific user type
+  const createUserType = async (
+    backendUser: any,
+    userType: string,
+    userData: any,
+    vendorTypes?: { value: string; label: string }[]
+  ) => {
+    const userId = backendUser.id;
+
+    if (userType === "client") {
+      return createClient({
+        user_id: userId,
+        ...userData,
+      }).unwrap();
+    } else if (userType === "vendor") {
+      // Remove first_name and last_name before spreading userData
+      const { first_name, last_name, ...vendorData } = userData;
+
+      return createVendor({
+        vendor_user_id: userId,
+        vendor_type: {
+          vendor_type:
+            vendorTypes && vendorTypes.length > 0 ? vendorTypes[0].value : "",
+        },
+        vendor_types: formatVendorTypes(vendorTypes || []),
+        code: "ad123",
+        name: `${userData.first_name} ${userData.last_name}`,
+        ...vendorData,
+        rating: 5,
+        review: "New Vendor",
+      }).unwrap();
+    } else if (userType === "realtor") {
+      return createRealtor({
+        realtor_user_id: userId,
+        realtor_firm_id: 1,
+        ...userData,
+        rating: 5,
+        review: "New Realtor",
+      }).unwrap();
+    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -101,31 +164,175 @@ const SignUp: React.FC = () => {
       return;
     }
 
+    if (!formData.userType) {
+      setError("Please select a user type.");
+      return;
+    }
+
+    if (formData.userType === "vendor" && selectedVendorTypes.length === 0) {
+      setError("Please select at least one Vendor Type.");
+      return;
+    }
+
     try {
       setLoading(true);
-      // Create the user
+
+      // Step 1: Create Firebase User First
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
         formData.password
       );
 
-      // Set the display name to the first name
-      await updateProfile(userCredential.user, {
-        displayName: formData.firstName + " " + formData.lastName,
+      const firebaseUser = userCredential.user;
+      await updateProfile(firebaseUser, {
+        displayName: `${formData.firstName} ${formData.lastName}`,
       });
 
-      // Send verification email
-      await sendEmailVerification(userCredential.user);
+      console.log("Firebase user created:", firebaseUser.uid);
 
-      setLoading(false);
-      // Redirect to email verification page
-      navigate("/verify-email");
+      // Step 2: Send Email Verification (Before Backend User)
+      await sendEmailVerification(firebaseUser);
+      console.log("Verification email sent!");
+
+      // Step 3: Redirect to Verify Email Page
+      if (formData.userType === "vendor") {
+        navigate(
+          `/verify-email?userType=${formData.userType}?vendorType=${
+            selectedVendorTypes[0].value
+          }?vendorTypes=${formatVendorTypes(selectedVendorTypes || [])}`
+        );
+      } else {
+        navigate(`/verify-email?userType=${formData.userType}`);
+      }
     } catch (err: any) {
       setLoading(false);
-      setError(err.message || "Failed to sign up.");
+      setError("Error: " + err.data?.detail || "Failed to sign up.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleSignUpWithThirdParty = async () => {
+    try {
+      if (!thirdPartyOption) {
+        setError("Please select a user type.");
+        return;
+      }
+
+      if (thirdPartyOption === "vendor" && thirdPartyVendorTypes.length === 0) {
+        setError("Please select at least one Vendor Type.");
+        return;
+      }
+
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+      const token = await getIdToken(firebaseUser);
+
+      let backendUser;
+
+      try {
+        // Step 1: Create backend user first
+        backendUser = await createUser({
+          firebase_id: firebaseUser.uid,
+          user_type: { user_type: thirdPartyOption },
+        }).unwrap();
+        console.log("Backend user created:", backendUser);
+      } catch (error) {
+        console.error("Backend user creation failed:", error);
+        await firebaseUser.delete(); // Delete Firebase user on failure
+        throw new Error("Failed to create user in backend.");
+      }
+
+      // Extract user info from Firebase
+      const updatedUserData = {
+        email: firebaseUser.email || "",
+        first_name: firebaseUser.displayName?.split(" ")[0] || "",
+        last_name: firebaseUser.displayName?.split(" ")[1] || "",
+        phone: firebaseUser.phoneNumber || "",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postal_code: "",
+      };
+
+      try {
+        // Step 2: Create the specific user type
+        await createUserType(
+          backendUser,
+          thirdPartyOption,
+          updatedUserData,
+          thirdPartyVendorTypes
+        );
+      } catch (error) {
+        console.error("Creating user type failed:", error);
+        await firebaseUser.delete(); // Delete Firebase user on failure
+        throw new Error("Failed to create user type in backend.");
+      }
+
+      try {
+        // Step 3: Log the login method
+        await createUserLogin({
+          user_id: backendUser.id,
+          email_login: false,
+          email: "",
+          phone_login: false,
+          phone: "",
+          gmail_login: true,
+          gmail: updatedUserData.email,
+        }).unwrap();
+      } catch (error) {
+        console.error("User login tracking failed:", error);
+        await firebaseUser.delete(); // Delete Firebase user on failure
+        throw new Error("Failed to log user login method.");
+      }
+
+      try {
+        console.log("Creating new user session...");
+
+        // Create session in backend
+        const payload = {
+          user_id: backendUser.id,
+          login: "gmail",
+          authentication_code: token,
+        };
+
+        console.log("Sending payload:", payload);
+
+        // Step 4: Create User session
+        const response = await createUserSession(payload).unwrap();
+        console.log("User session created successfully:", response);
+      } catch (error: any) {
+        console.error("User session creation failed:", error);
+        await firebaseUser.delete(); // Delete Firebase user on failure
+        throw new Error("Failed to create session in backend.");
+      }
+
+      // Step 5: Store user
+      dispatch(login(backendUser));
+
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Third-party sign-up failed:", err);
+      setError(err.message || "Failed to sign up with Google.");
+    }
+  };
+
+  useEffect(() => {
+    if (
+      (formData.userType === "vendor" || thirdPartyOption === "vendor") &&
+      fetchedVendorTypes
+    ) {
+      setVendorTypeOptions(
+        fetchedVendorTypes.map((type) => ({
+          value: type.vendor_type,
+          label: type.vendor_type,
+        }))
+      );
+    }
+  }, [formData.userType, thirdPartyOption, fetchedVendorTypes]);
 
   return (
     <section className="pb-12 bg-gray-50">
@@ -270,20 +477,42 @@ const SignUp: React.FC = () => {
                 />
               </div>
 
+              {/* Postal Code */}
+              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
+                <input
+                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
+                  type="text"
+                  name="postalCode"
+                  value={formData.postalCode}
+                  onChange={handleInputChange}
+                  placeholder="Postal Code"
+                  required
+                />
+                <FontAwesomeIcon
+                  icon={faEnvelope}
+                  className="h-6 w-6 ml-4 my-auto text-gray-300"
+                />
+              </div>
+
               {/* User Type */}
               <div className="relative mb-4">
                 <select
-                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-3 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-4 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                   name="userType"
                   value={formData.userType}
                   onChange={handleInputChange}
                   required
                 >
                   <option value="" disabled>
-                    Are you an Individual Home Buyer or Realtor?
+                    Select User Type
                   </option>
-                  <option value="client">Individual Home Buyer</option>
-                  <option value="realtor">Realtor</option>
+                  {userTypes
+                    ?.filter((type) => type.user_type.toLowerCase() !== "admin") // Exclude admin
+                    .map((type) => (
+                      <option key={type.id} value={type.user_type}>
+                        {type.user_type}
+                      </option>
+                    ))}
                 </select>
                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                   <svg
@@ -302,6 +531,20 @@ const SignUp: React.FC = () => {
                   </svg>
                 </div>
               </div>
+
+              {formData.userType === "vendor" && (
+                <div className="relative mb-4">
+                  <Select
+                    options={vendorTypeOptions}
+                    isMulti
+                    value={selectedVendorTypes}
+                    onChange={handleVendorTypeChange}
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select Vendor Type"
+                  />
+                </div>
+              )}
 
               {/* Password */}
               <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
@@ -390,12 +633,15 @@ const SignUp: React.FC = () => {
                   required
                 >
                   <option value="" disabled>
-                    Are you an Individual Home Buyer or Realtor?
+                    Select User Type
                   </option>
-                  <option value="Individual Home Buyer">
-                    Individual Home Buyer
-                  </option>
-                  <option value="Realtor">Realtor</option>
+                  {userTypes
+                    ?.filter((type) => type.user_type.toLowerCase() !== "admin") // Exclude admin
+                    .map((type) => (
+                      <option key={type.id} value={type.user_type}>
+                        {type.user_type}
+                      </option>
+                    ))}
                 </select>
                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
                   <svg
@@ -415,8 +661,22 @@ const SignUp: React.FC = () => {
                 </div>
               </div>
 
+              {thirdPartyOption === "vendor" && (
+                <div className="relative mb-4">
+                  <Select
+                    options={vendorTypeOptions}
+                    isMulti
+                    value={thirdPartyVendorTypes}
+                    onChange={handleThirdPartyVendorTypeChange}
+                    className="basic-multi-select"
+                    classNamePrefix="select"
+                    placeholder="Select Vendor Type"
+                  />
+                </div>
+              )}
+
               <button
-                onClick={() => handleSignUpWithThirdParty("Google")}
+                onClick={() => handleSignUpWithThirdParty()}
                 className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 mb-2 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
               >
                 <img
@@ -425,17 +685,6 @@ const SignUp: React.FC = () => {
                   alt="Google"
                 />
                 <span>Sign Up with Google</span>
-              </button>
-              <button
-                onClick={() => handleSignUpWithThirdParty("Facebook")}
-                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
-              >
-                <img
-                  className="h-6 pr-11 -ml-1"
-                  src="images/facebook.png"
-                  alt="Facebook"
-                />
-                <span>Sign Up with Facebook</span>
               </button>
             </div>
           </div>

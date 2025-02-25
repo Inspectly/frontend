@@ -118,7 +118,6 @@ const Realtors: React.FC<TeamProps> = ({ team }) => {
 
     const containerWidth = containerRef.current.offsetWidth;
 
-    console.log(containerWidth);
     if (containerWidth <= 910) {
       setCardsPerView(1); // For small screens
     } else if (containerWidth <= 1174) {

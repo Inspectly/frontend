@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
@@ -19,16 +19,25 @@ import DashboardSidebar from "./components/DashboardSidebar";
 import PrivateRoute from "./components/PrivateRoute";
 
 import { auth } from "../firebase";
-import { onAuthStateChanged, signOut, getIdToken } from "firebase/auth";
-import { useCreateUserSessionMutation } from "./features/api/userSessionsApi";
-import { useGetUserLoginByUserIdQuery } from "./features/api/userLoginsApi";
+import { signOut } from "firebase/auth";
+import { checkAuthState, logout, setLoading } from "./features/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "./store/store";
 
 function App() {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(auth.currentUser);
-  const [loadingAuthState, setLoadingAuthState] = useState(true);
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Get authentication and loading state from Redux
+  const authenticated = useSelector(
+    (state: RootState) => state.auth.authenticated
+  );
+  const loadingAuthState = useSelector(
+    (state: RootState) => state.auth.loading
+  );
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
-  const [createUserSession] = useCreateUserSessionMutation();
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -55,51 +64,24 @@ function App() {
     }
   };
 
-  // Track if authentication state is loading
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("firebase_id");
+
+      dispatch(logout());
+      dispatch(setLoading(false));
+
+      navigate("/login");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setCurrentUser(null);
-        setLoadingAuthState(false);
-        return;
-      }
-
-      try {
-        const token = await getIdToken(user); // Get Firebase token
-        const { data: userData, error } = await useGetUserLoginByUserIdQuery(
-          user.uid
-        );
-
-        if (error || !userData) {
-          console.error("User not found in backend:", error);
-          await signOut(auth);
-          localStorage.removeItem("authToken");
-          setCurrentUser(null);
-          setLoadingAuthState(false);
-          return;
-        }
-
-        // User exists in backend, create session
-        const payload = {
-          user_id: user.uid,
-          login_method: "firebase",
-          authentication_code: token,
-        };
-        await createUserSession(payload).unwrap();
-        localStorage.setItem("authToken", token);
-        setCurrentUser(user);
-      } catch (error) {
-        console.error("Session creation failed:", error);
-        await signOut(auth);
-        localStorage.removeItem("authToken");
-        setCurrentUser(null);
-      }
-
-      setLoadingAuthState(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+    dispatch(checkAuthState());
+  }, [dispatch]);
 
   // Handle window resize to toggle sidebar visibility
   useEffect(() => {
@@ -115,25 +97,13 @@ function App() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      setCurrentUser(null);
-      localStorage.removeItem("authToken");
-      window.location.href = "/login"; // Redirect to login page
-    } catch (error) {
-      console.error("Error during logout:", error);
-    }
-  };
-
   if (loadingAuthState) {
     return <Preloader />;
   }
 
   return (
     <>
-      {currentUser ? (
+      {authenticated ? (
         <>
           <DashboardSidebar
             isSidebarOpen={isSidebarOpen}
@@ -175,7 +145,11 @@ function App() {
         </>
       ) : (
         <>
-          <Header scrollToSection={scrollToSection} refs={refs} />
+          <Header
+            scrollToSection={scrollToSection}
+            refs={refs}
+            isAuthenticated={authenticated}
+          />
           <Routes>
             <Route path="/" element={<Home refs={refs} />} />
             <Route path="/signup" element={<SignUp />} />

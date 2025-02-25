@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
@@ -12,6 +12,7 @@ import {
 import { auth } from "../../firebase";
 import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { AxiosError } from "axios";
+import { useGetUserLoginByUserIdQuery } from "../features/api/userLoginsApi";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ const Login: React.FC = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [loginMethod, setLoginMethod] = useState<string>("");
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setEmail(e.target.value);
@@ -32,26 +35,28 @@ const Login: React.FC = () => {
     setAgreeToTerms(e.target.checked);
   const togglePasswordVisibility = () => setIsPasswordVisible((prev) => !prev);
 
-  // Function to Authenticate & Send Token to Backend
+  // Fetch user session from backend after Firebase login
+  const {
+    data: backendUser,
+    isLoading: backendLoading,
+    error: backendError,
+  } = useGetUserLoginByUserIdQuery(firebaseUser?.uid as string, {
+    skip: !firebaseUser,
+  });
+
+  // Authenticate with Firebase & Backend
   const authenticateUser = async (user: any, loginMethod: string) => {
     try {
-      const token = await getIdToken(user); // Get Firebase ID token
-      const userId = user.uid; // Firebase UID
-
-      // Send token & login method to backend
-      const response = await createUserSession({
-        user_id: userId,
-        login_method: loginMethod,
-        authentication_code: token,
-      }).unwrap();
+      const token = await getIdToken(user);
+      setFirebaseUser(user); // Store user to trigger backend query
+      setLoginMethod(loginMethod);
 
       localStorage.setItem("authToken", token);
-      navigate("/dashboard");
     } catch (err) {
-      console.log(err);
-      const error = err as AxiosError;
+      console.log("Error authenticating user:", err);
+      setError("Failed to authenticate. Please try again.");
+    } finally {
       setLoading(false);
-      setError("Error " + error.status);
     }
   };
 
@@ -68,7 +73,7 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       const { user } = await signInWithEmailAndPassword(auth, email, password);
-      await authenticateUser(user, "email"); // Backend authentication
+      await authenticateUser(user, "email");
     } catch (err) {
       const error = err as AxiosError;
       setError(error.message || "Failed to sign in.");
@@ -82,15 +87,36 @@ const Login: React.FC = () => {
     try {
       const provider = new GoogleAuthProvider();
       const { user } = await signInWithPopup(auth, provider);
-      await authenticateUser(user, "google"); // Backend authentication
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in with Google.");
+      await authenticateUser(user, "google");
+    } catch (err) {
+      const error = err as AxiosError;
+      setError(error.message || "Failed to sign in with Google.");
     }
   };
 
   const handleSignUp = () => {
     navigate("/signup");
   };
+
+  // Once `backendUser` is available, create user session
+  useEffect(() => {
+    if (firebaseUser && backendUser && !backendLoading) {
+      createUserSession({
+        user_id: backendUser.id,
+        login: loginMethod,
+        authentication_code: localStorage.getItem("authToken") || "",
+      })
+        .unwrap()
+        .then(() => navigate("/dashboard"))
+        .catch(() => setError("Failed to create session."));
+    }
+
+    if (!backendLoading && backendError) {
+      setError("User not found in backend. Please sign up.");
+      setLoading(false);
+      setFirebaseUser(null);
+    }
+  }, [backendUser, backendLoading, backendError]);
 
   return (
     <section className="relative container pb-12 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
@@ -184,17 +210,6 @@ const Login: React.FC = () => {
                   alt="Google"
                 />
                 <span>Sign Up with Google</span>
-              </button>
-              <button
-                onClick={() => {}}
-                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
-              >
-                <img
-                  className="h-6 pr-11 -ml-1"
-                  src="images/facebook.png"
-                  alt="Facebook"
-                />
-                <span>Sign Up with Facebook</span>
               </button>
             </div>
 

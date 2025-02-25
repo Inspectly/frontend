@@ -32,7 +32,7 @@ const Agenda: React.FC<AgendaProps> = ({ events }) => {
   return (
     <>
       {events.map((event) => (
-        <div className="event-item flex items-center justify-between gap-4 pb-4 mb-4 border-b border-neutral-200 dark:border-neutral-600">
+        <div className="event-item flex items-center justify-between gap-4 pb-4 mb-4 border-b border-neutral-200">
           <div className="">
             <div className="flex items-center gap-2.5">
               <span className="w-3 h-3 bg-yellow-500 rounded-full font-medium"></span>
@@ -40,7 +40,7 @@ const Agenda: React.FC<AgendaProps> = ({ events }) => {
                 {formatBookingDate(event.start, event.end)}
               </span>
             </div>
-            <span className="text-neutral-600 dark:text-neutral-200 font-semibold text-base mt-1.5">
+            <span className="text-neutral-600 font-semibold text-base mt-1.5">
               {event.title}
             </span>
           </div>

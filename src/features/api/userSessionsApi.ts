@@ -41,3 +41,5 @@ export const {
   useCreateUserSessionMutation,
   useUpdateUserSessionMutation,
 } = userSessionsApi;
+
+export const { getUserSessionByUserId, createUserSession } = userSessionsApi.endpoints;

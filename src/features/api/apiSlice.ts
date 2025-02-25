@@ -5,6 +5,6 @@ const BASE_URL = "/api/"; // Backend API
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: BASE_URL }),
-  tagTypes: ["Attachments", "Comments", "UserLogins", "UserSessions", "Clients", "Realtors"],
+  tagTypes: ["Attachments", "Comments", "Users", "UserLogins", "UserSessions", "Clients", "Realtors", "Vendors"],
   endpoints: () => ({}), // Empty, will be extended in other files
 });

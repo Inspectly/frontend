@@ -1,12 +1,13 @@
 import { Navigate } from "react-router-dom";
-import { auth } from "../../firebase";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 const PrivateRoute = ({ element }: { element: JSX.Element }) => {
-  return auth.currentUser && localStorage.getItem("authToken") ? (
-    element
-  ) : (
-    <Navigate to="/login" />
+  const authenticated = useSelector(
+    (state: RootState) => state.auth.authenticated
   );
+
+  return authenticated ? element : <Navigate to="/login" />;
 };
 
 export default PrivateRoute;
