@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAt } from "@fortawesome/free-solid-svg-icons";
@@ -7,11 +7,22 @@ import {
   signInWithEmailAndPassword,
   GoogleAuthProvider,
   signInWithPopup,
+  getIdToken,
 } from "firebase/auth";
-import { auth } from "../../firebase"; // Adjust the path to your Firebase config
+import { auth } from "../../firebase";
+import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
+import { AxiosError } from "axios";
+import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
+import { useDispatch } from "react-redux";
+import { login, logout } from "../features/authSlice";
+import { useGetUserByFirebaseIdQuery } from "../features/api/usersApi";
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+
+  const [createUserSession] = useCreateUserSessionMutation();
+  const [createUserLogin] = useCreateUserLoginMutation();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,58 +30,171 @@ const Login: React.FC = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState<any>(null);
+  const [loginMethod, setLoginMethod] = useState<string>("");
+  const [isBackendLoading, setIsBackendLoading] = useState(false);
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setEmail(e.target.value);
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setPassword(e.target.value);
-  };
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setAgreeToTerms(e.target.checked);
+  const togglePasswordVisibility = () => setIsPasswordVisible((prev) => !prev);
+
+  // Fetch user session from backend after Firebase login
+  const {
+    data: backendUser,
+    isLoading: backendLoading,
+    error: backendError,
+  } = useGetUserByFirebaseIdQuery(firebaseUser?.uid as string, {
+    skip: !firebaseUser,
+  });
+
+  // Authenticate with Firebase & Backend
+  const authenticateUser = async (user: any, loginMethod: string) => {
+    try {
+      setLoading(true);
+      setIsBackendLoading(true);
+      setError(null);
+
+      const token = await getIdToken(user);
+      setFirebaseUser(user); // Store user to trigger backend query
+      setLoginMethod(loginMethod);
+      localStorage.setItem("authToken", token);
+
+      console.log("Waiting for backend user to load...");
+
+      // Wait for backend user query to complete
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Allow backend query to process
+
+      // Ensure backend user is fetched before proceeding
+      if (backendError || !backendUser) {
+        console.error("Backend user not found. Cannot proceed.");
+        setError("User not found in backend. Please sign up.");
+        setLoading(false);
+        dispatch(logout());
+        return;
+      }
+
+      setIsBackendLoading(false); // Stop loading once user is created
+
+      console.log("Backend user found. Proceeding with login...");
+
+      await createUserLogin({
+        user_id: backendUser?.id || "",
+        email_login: loginMethod === "email",
+        email: loginMethod === "email" ? user.email : "",
+        phone_login: false,
+        phone: "",
+        gmail_login: loginMethod === "gmail",
+        gmail: loginMethod === "gmail" ? user.email : "",
+      })
+        .unwrap()
+        .then(async () => {
+          console.log("User login recorded. Creating session...");
+          await createUserSession({
+            user_id: backendUser?.id,
+            login: loginMethod,
+            authentication_code: token,
+          })
+            .unwrap()
+            .then(() => {
+              console.log(
+                "Session created. Dispatching login & redirecting..."
+              );
+              dispatch(login(backendUser));
+              navigate("/dashboard");
+            })
+            .catch(async (sessionError) => {
+              console.error("Session creation failed:", sessionError);
+              setError("Session creation failed. Try again.");
+              dispatch(logout());
+            });
+        })
+        .catch(async (loginError) => {
+          console.error("User login creation failed:", loginError);
+          setError("Login creation failed. Try again.");
+          dispatch(logout());
+        });
+    } catch (err) {
+      console.log("Error authenticating user:", err);
+      setError("Failed to authenticate. Please try again.");
+      dispatch(logout());
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const togglePasswordVisibility = () => {
-    setIsPasswordVisible((prev) => !prev);
-  };
-
+  // Handle Email/Password Login
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (!agreeToTerms) {
-      setError("You must agree to the terms to sign in.");
+      setError("You must agree to the terms.");
       return;
     }
 
     try {
       setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
+      const { user } = await signInWithEmailAndPassword(auth, email, password);
+      await authenticateUser(user, "email");
+    } catch (err) {
+      const error = err as AxiosError;
+      console.error("Email login failed:", err);
+      setError(error.message || "Failed to sign in.");
+      dispatch(logout());
+    } finally {
       setLoading(false);
-      navigate("/dashboard"); // Redirect to dashboard
-    } catch (err: any) {
-      setLoading(false);
-      setError(err.message || "Failed to sign in.");
     }
   };
 
+  // Handle Google Login
   const handleGoogleSignIn = async () => {
     try {
+      setLoading(true);
       const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      if (result.user) {
-        navigate("/dashboard"); // Redirect to dashboard
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to sign in with Google.");
+      const { user } = await signInWithPopup(auth, provider);
+      await authenticateUser(user, "gmail");
+    } catch (err) {
+      const error = err as AxiosError;
+      console.error("Email login failed:", err);
+      setError(error.message || "Failed to sign in with Google.");
+      dispatch(logout());
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignUp = () => {
     navigate("/signup");
   };
+
+  useEffect(() => {
+    if (firebaseUser && backendLoading) {
+      setIsBackendLoading(true);
+    }
+
+    if (backendUser) {
+      setIsBackendLoading(false);
+    }
+  }, [backendLoading, backendUser]);
+
+  // Once `backendUser` is available, create user session
+  useEffect(() => {
+    if (firebaseUser && backendUser && !backendLoading) {
+      console.log("Backend user found. Proceeding with session creation...");
+      authenticateUser(firebaseUser, loginMethod);
+    }
+
+    if (!backendLoading && backendError) {
+      console.error("User not found in backend.");
+      setError("User not found in backend. Please sign up.");
+      setLoading(false);
+      setFirebaseUser(null);
+    }
+  }, [backendUser, backendLoading, backendError]);
 
   return (
     <section className="relative container pb-12 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
@@ -89,10 +213,8 @@ const Login: React.FC = () => {
             <div className="w-full max-w-lg mx-auto lg:mx-0 my-auto">
               <span className="text-sm text-gray-400">Sign In</span>
               <h4 className="mb-6 text-3xl">Join our community</h4>
-              {error && (
-                <div className="mb-4 text-red-500 text-sm font-medium">
-                  {error}
-                </div>
+              {error && !isBackendLoading && (
+                <div className="mb-4 text-red-500">{error}</div>
               )}
               <form onSubmit={handleSignIn}>
                 <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
@@ -167,18 +289,7 @@ const Login: React.FC = () => {
                   src="images/google.png"
                   alt="Google"
                 />
-                <span>Sign Up with Google</span>
-              </button>
-              <button
-                onClick={() => {}}
-                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
-              >
-                <img
-                  className="h-6 pr-11 -ml-1"
-                  src="images/facebook.png"
-                  alt="Facebook"
-                />
-                <span>Sign Up with Facebook</span>
+                <span>Sign In with Google</span>
               </button>
             </div>
 

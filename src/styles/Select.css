@@ -1,0 +1,32 @@
+.basic-multi-select .select__control {
+    @apply min-h-12 bg-gray-50 border-gray-300
+  }
+  
+  .basic-multi-select .select__control .select__value-container {
+    @apply text-left text-sm  font-semibold leading-none px-4
+  }
+  
+  .basic-multi-select .select__control .select__value-container .select__placeholder {
+    @apply text-gray-400
+  }
+  
+  .basic-multi-select .select__control .select__value-container .select__multi-value {
+    @apply m-0 mr-1 my-1
+  }
+  
+  .basic-multi-select .select__control .select__value-container .select__multi-value__label {
+    @apply p-[6px] pl-2
+  }
+  
+  .basic-multi-select .select__indicator {
+    @apply px-[13px] cursor-pointer text-gray-400
+  }
+  
+  .basic-multi-select .select__indicator svg {
+    @apply !w-[22px] !h-[22px]
+  }
+  
+  .basic-multi-select .select__menu {
+    @apply text-left
+  }
+  

@@ -1,3 +1,5 @@
+@import "leaflet/dist/leaflet.css";
+
 .waviy {
   -webkit-box-reflect: below -46px linear-gradient(transparent, rgba(0, 0, 0, 0.2));
 }

@@ -11,12 +11,17 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 
 interface HeaderProps {
   scrollToSection: (ref: React.RefObject<HTMLElement>, offset: number) => void;
+  isAuthenticated: boolean;
   refs: {
     [key: string]: React.RefObject<HTMLElement>;
   };
 }
 
-const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
+const Header: React.FC<HeaderProps> = ({
+  scrollToSection,
+  isAuthenticated,
+  refs,
+}) => {
   const navigate = useNavigate();
 
   const [isSticky, setIsSticky] = useState(false);
@@ -164,7 +169,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
             {/* Buttons */}
             <div className="hidden lg:flex space-x-4">
-              {currentUser && currentUser.emailVerified ? (
+              {isAuthenticated && currentUser && currentUser.emailVerified ? (
                 <>
                   <span className="py-2 px-4 text-sm font-semibold text-gray-700">
                     Welcome, {currentUser.displayName}
@@ -310,7 +315,7 @@ const Header: React.FC<HeaderProps> = ({ scrollToSection, refs }) => {
 
           {/* Signup and Login Buttons */}
           <div className="mt-4 pt-6 border-t border-gray-100">
-            {currentUser && currentUser.emailVerified ? (
+            {isAuthenticated && currentUser && currentUser.emailVerified ? (
               <>
                 {/* <div className="pb-4 px-4 text-sm font-semibold text-gray-700 w-full">
                   Welcome, {currentUser.displayName}

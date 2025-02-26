@@ -20,7 +20,7 @@ const Tooltip: React.FC<{
       <div
         style={{
           position: "absolute",
-          bottom: "-6px",
+          bottom: "-5px",
           left: "50%",
           transform: "translateX(-50%)",
           width: 0,
