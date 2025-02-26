@@ -23,7 +23,10 @@ import {
 import { useCreateUserMutation } from "../features/api/usersApi";
 import { useCreateClientMutation } from "../features/api/clientsApi";
 import { useCreateRealtorMutation } from "../features/api/realtorsApi";
-import { useCreateVendorMutation } from "../features/api/vendorsApi";
+import {
+  useCreateVendorMutation,
+  useGetVendorsQuery,
+} from "../features/api/vendorsApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import Select from "react-select";
 import "../styles/Select.css"; // Tailwind styles
@@ -33,6 +36,7 @@ import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { login } from "../features/authSlice";
+import { nanoid } from "nanoid";
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
@@ -49,6 +53,8 @@ const SignUp: React.FC = () => {
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
 
   const { data: userTypes } = useGetUserTypesQuery();
+
+  const { data: vendors } = useGetVendorsQuery();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -107,6 +113,33 @@ const SignUp: React.FC = () => {
     setIsConfirmPasswordVisible((prev) => !prev);
   };
 
+  const generateUniqueVendorCode = async (vendorName: string) => {
+    // Extract first two letters of each word in the name
+    const nameInitials = vendorName
+      .split(" ")
+      .map((word) => word.substring(0, 1).toUpperCase()) // First 2 letters of each word
+      .join("");
+
+    // Generate a short unique ID
+    let uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`; // Example: "JO-AB12"
+
+    // Check for uniqueness in the backend
+    let isUnique = false;
+    while (!isUnique) {
+      // Check if the generated code already exists
+      const codeExists = vendors?.some((vendor) => vendor.code === uniqueCode);
+
+      if (!codeExists) {
+        isUnique = true;
+      } else {
+        // If code already exists, generate a new one
+        uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`;
+      }
+    }
+
+    return uniqueCode;
+  };
+
   const formatVendorTypes = (
     vendorTypes: { value: string; label: string }[]
   ) => {
@@ -130,6 +163,10 @@ const SignUp: React.FC = () => {
     } else if (userType === "vendor") {
       // Remove first_name and last_name before spreading userData
       const { first_name, last_name, ...vendorData } = userData;
+      const vendorName = `${userData.first_name} ${userData.last_name}`;
+
+      // Generate a unique vendor code before creating the vendor
+      const uniqueCode = await generateUniqueVendorCode(vendorName);
 
       return createVendor({
         vendor_user_id: userId,
@@ -138,8 +175,8 @@ const SignUp: React.FC = () => {
             vendorTypes && vendorTypes.length > 0 ? vendorTypes[0].value : "",
         },
         vendor_types: formatVendorTypes(vendorTypes || []),
-        code: "ad123",
-        name: `${userData.first_name} ${userData.last_name}`,
+        code: uniqueCode,
+        name: vendorName,
         ...vendorData,
         rating: 5,
         review: "New Vendor",
@@ -198,16 +235,18 @@ const SignUp: React.FC = () => {
       // Step 3: Redirect to Verify Email Page
       if (formData.userType === "vendor") {
         navigate(
-          `/verify-email?userType=${formData.userType}?vendorType=${
+          `/verify-email?userType=${formData.userType}&vendorType=${
             selectedVendorTypes[0].value
-          }?vendorTypes=${formatVendorTypes(selectedVendorTypes || [])}`
+          }&vendorTypes=${formatVendorTypes(selectedVendorTypes || [])}`
         );
       } else {
         navigate(`/verify-email?userType=${formData.userType}`);
       }
     } catch (err: any) {
       setLoading(false);
-      setError("Error: " + err.data?.detail || "Failed to sign up.");
+      setError(
+        "Error: " + err.message || err.data?.detail || "Failed to sign up."
+      );
     } finally {
       setLoading(false);
     }

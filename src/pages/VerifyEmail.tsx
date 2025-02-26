@@ -5,7 +5,7 @@ import {
   useCreateUserSessionMutation,
   useGetUserSessionByUserIdQuery,
 } from "../features/api/userSessionsApi";
-import { getIdToken } from "firebase/auth";
+import { getIdToken, sendEmailVerification } from "firebase/auth";
 import {
   useCreateUserMutation,
   useGetUserByFirebaseIdQuery,
@@ -14,9 +14,13 @@ import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { User } from "../types";
 import { useCreateClientMutation } from "../features/api/clientsApi";
 import { useCreateRealtorMutation } from "../features/api/realtorsApi";
-import { useCreateVendorMutation } from "../features/api/vendorsApi";
-import { login } from "../features/authSlice";
+import {
+  useCreateVendorMutation,
+  useGetVendorsQuery,
+} from "../features/api/vendorsApi";
+import { login, logout } from "../features/authSlice";
 import { useDispatch } from "react-redux";
+import { nanoid } from "nanoid";
 
 const VerifyEmail: React.FC = () => {
   const navigate = useNavigate();
@@ -30,6 +34,11 @@ const VerifyEmail: React.FC = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [backendUserExists, setBackendUserExists] = useState(false);
   const [sessionExists, setSessionExists] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [reauthNeeded, setReauthNeeded] = useState(false);
+
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [cooldown, setCooldown] = useState(60); // Cooldown in seconds
 
   const [createBackendUser] = useCreateUserMutation();
   const [createUserSession] = useCreateUserSessionMutation();
@@ -53,6 +62,35 @@ const VerifyEmail: React.FC = () => {
     }
   );
 
+  const { data: vendors } = useGetVendorsQuery();
+
+  const generateUniqueVendorCode = async (vendorName: string) => {
+    // Extract first two letters of each word in the name
+    const nameInitials = vendorName
+      .split(" ")
+      .map((word) => word.substring(0, 1).toUpperCase()) // First 2 letters of each word
+      .join("");
+
+    // Generate a short unique ID
+    let uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`; // Example: "JO-AB12"
+
+    // Check for uniqueness in the backend
+    let isUnique = false;
+    while (!isUnique) {
+      // Check if the generated code already exists
+      const codeExists = vendors?.some((vendor) => vendor.code === uniqueCode);
+
+      if (!codeExists) {
+        isUnique = true;
+      } else {
+        // If code already exists, generate a new one
+        uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`;
+      }
+    }
+
+    return uniqueCode;
+  };
+
   // Create specific user type
   const createUserType = async (
     backendUser: any,
@@ -69,6 +107,10 @@ const VerifyEmail: React.FC = () => {
     } else if (userType === "vendor") {
       // Remove first_name and last_name before spreading userData
       const { first_name, last_name, ...vendorData } = userData;
+      const vendorName = `${userData.first_name} ${userData.last_name}`;
+
+      // Generate a unique vendor code before creating the vendor
+      const uniqueCode = await generateUniqueVendorCode(vendorName);
 
       return createVendor({
         vendor_user_id: userId,
@@ -76,8 +118,8 @@ const VerifyEmail: React.FC = () => {
           vendor_type: vendorType,
         },
         vendor_types: vendorTypes,
-        code: "ad123",
-        name: `${userData.first_name} ${userData.last_name}`,
+        code: uniqueCode,
+        name: vendorName,
         ...vendorData,
         rating: 5,
         review: "New Vendor",
@@ -90,6 +132,43 @@ const VerifyEmail: React.FC = () => {
         rating: 5,
         review: "New Realtor",
       }).unwrap();
+    }
+  };
+
+  // Handle Resend Verification Email
+  const handleResendVerification = async () => {
+    if (!auth.currentUser) return;
+
+    try {
+      await sendEmailVerification(auth.currentUser);
+      console.log("Verification email sent!");
+
+      // Start cooldown
+      setResendDisabled(true);
+      setCooldown(60);
+
+      const interval = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setResendDisabled(false);
+            return 60;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } catch (err: any) {
+      console.error("Error resending verification email:", err);
+
+      if (err.code === "auth/too-many-requests") {
+        setError(
+          "Too many attempts. Please wait a few minutes before trying again."
+        );
+        setResendDisabled(true);
+        setTimeout(() => setResendDisabled(false), 300000); // Disable for 5 minutes
+      } else {
+        setError("Failed to resend email. Try again later.");
+      }
     }
   };
 
@@ -183,12 +262,17 @@ const VerifyEmail: React.FC = () => {
         }).unwrap();
 
         console.log("Login method logged");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error creating user:", error);
+
+        if (error?.message?.includes("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")) {
+          setReauthNeeded(true);
+        }
 
         // Step 4: Delete Firebase User on Failure
         try {
           await firebaseUser?.delete();
+          dispatch(logout());
           console.log("Firebase user deleted due to failure");
         } catch (firebaseError) {
           console.error("Failed to delete Firebase user:", firebaseError);
@@ -228,12 +312,17 @@ const VerifyEmail: React.FC = () => {
           console.log("Redirecting to dashboard...");
           navigate("/dashboard"); // Navigate only after Redux state update
         }, 1000);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error creating session:", error);
+
+        if (error?.message?.includes("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")) {
+          setReauthNeeded(true);
+        }
 
         // Delete Firebase user if session fails
         try {
           await firebaseUser?.delete();
+          dispatch(logout());
           console.log("Firebase user deleted due to session failure");
         } catch (firebaseError) {
           console.error("Failed to delete Firebase user:", firebaseError);
@@ -245,8 +334,8 @@ const VerifyEmail: React.FC = () => {
   }, [backendUserExists, sessionExists, firebaseUser]);
 
   return (
-    <div className="flex flex-col lg:flex-row lg:h-[calc(100vh_-_444px)]">
-      <div className="max-w-md m-auto p-8 bg-white rounded shadow text-center h-fit">
+    <div className="flex flex-col lg:flex-row mt-10">
+      <div className="max-w-lg m-auto p-8 bg-white rounded shadow text-center h-fit">
         <h2 className="text-2xl font-bold mb-4">Verify Your Email</h2>
         <p className="text-gray-600 mb-4">
           A verification link has been sent to your email. Please verify your
@@ -270,6 +359,29 @@ const VerifyEmail: React.FC = () => {
             Account setup complete! Redirecting...
           </p>
         )}
+        {reauthNeeded && (
+          <button
+            className="bg-red-500 text-white p-2 rounded mt-4"
+            onClick={() => auth.signOut()}
+          >
+            Try to sign up again
+          </button>
+        )}
+        {error && <p className="text-red-500">{error}</p>}
+
+        <button
+          className={`mt-4 px-4 py-2 bg-blue-500 text-white font-bold rounded ${
+            resendDisabled
+              ? "opacity-50 cursor-not-allowed"
+              : "hover:bg-blue-700"
+          }`}
+          onClick={handleResendVerification}
+          disabled={resendDisabled}
+        >
+          {resendDisabled
+            ? `Resend in ${cooldown}s`
+            : "Resend Verification Email"}
+        </button>
       </div>
     </div>
   );
