@@ -23,6 +23,7 @@ import { signOut } from "firebase/auth";
 import { checkAuthState, logout, setLoading } from "./features/authSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "./store/store";
+import PriceSection from "./components/PriceSection";
 
 function App() {
   const location = useLocation();
@@ -47,6 +48,49 @@ function App() {
     plansRef: useRef<HTMLDivElement>(null),
     faqsRef: useRef<HTMLDivElement>(null),
   };
+
+  const plans = [
+    {
+      title: "Basic",
+      description: "Ideal for individuals looking to get started.",
+      price: "69.95",
+      bgColor: "bg-white",
+      textColor: "text-gray-400",
+      priceTextColor: "text-blue-500",
+      buttonBg: "bg-blue-400",
+      buttonTextColor: "text-white",
+      buttonHover: "hover:bg-blue-500",
+      features: [
+        { text: "Detailed repair costs", isAvailable: true },
+        { text: "PDF report format", isAvailable: true },
+        { text: "RUSH upgrade time", isAvailable: false },
+        { text: "Fire claim history", isAvailable: false },
+        { text: "Flood zone info", isAvailable: false },
+        { text: "Permit details active", isAvailable: false },
+        { text: "Sales lien info", isAvailable: false },
+      ],
+    },
+    {
+      title: "Premium",
+      description: "Perfect for teams and businesses with advanced needs.",
+      price: "99.95",
+      bgColor: "bg-blue-500 text-white",
+      textColor: "",
+      priceTextColor: "text-white",
+      buttonBg: "bg-white",
+      buttonTextColor: "text-blue-500",
+      buttonHover: "hover:bg-gray-100",
+      features: [
+        { text: "Detailed repair costs", isAvailable: true },
+        { text: "PDF report format", isAvailable: true },
+        { text: "RUSH upgrade time", isAvailable: true },
+        { text: "Fire claim history", isAvailable: true },
+        { text: "Flood zone info", isAvailable: true },
+        { text: "Permit details active", isAvailable: true },
+        { text: "Sales lien info", isAvailable: true },
+      ],
+    },
+  ];
 
   const scrollToSection = (
     ref: React.RefObject<HTMLElement>,
@@ -115,10 +159,19 @@ function App() {
             isSidebarOpen={isSidebarOpen}
           >
             <Routes>
-              <Route path="/" element={<Home refs={refs} />} />
+              <Route
+                path="/"
+                element={<PrivateRoute element={<Dashboard />} />}
+              />
               <Route
                 path="/dashboard"
                 element={<PrivateRoute element={<Dashboard />} />}
+              />
+              <Route
+                path="/pricing"
+                element={
+                  <PrivateRoute element={<PriceSection plans={plans} />} />
+                }
               />
               <Route
                 path="/listings"
@@ -151,7 +204,7 @@ function App() {
             isAuthenticated={authenticated}
           />
           <Routes>
-            <Route path="/" element={<Home refs={refs} />} />
+            <Route path="/" element={<Home refs={refs} plans={plans} />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />

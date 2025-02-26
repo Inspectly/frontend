@@ -104,7 +104,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           </li>
           <li>
             <a
-              href="/dashboard/pricing"
+              href="/pricing"
               onClick={() => handleMenuClick("/dashboard/pricing")}
               className={`flex items-center rounded-lg px-3 py-2.5 text-md font-medium transition duration-150 ease-in-out ${
                 activePage === "/dashboard/pricing"

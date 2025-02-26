@@ -217,12 +217,12 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
                 enterprises with cutting-edge AI.
               </p>
               <div className="mt-6">
-                <a
-                  href="page-pricing.html"
+                <button
+                  onClick={() => navigate("/login")}
                   className="py-2 px-5 inline-block font-semibold tracking-wide border align-middle duration-500 text-base text-center bg-blue-400 hover:bg-blue-500 text-white rounded-md me-2 mt-2"
                 >
                   Contact Us
-                </a>
+                </button>
               </div>
             </div>
           </div>
