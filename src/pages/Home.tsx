@@ -20,9 +20,10 @@ import { SectionRefs } from "../types";
 
 interface HomeProps {
   refs: SectionRefs;
+  plans: any[];
 }
 
-const Home: React.FC<HomeProps> = ({ refs }) => {
+const Home: React.FC<HomeProps> = ({ refs, plans }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const navigationType = useNavigationType(); // PUSH, POP, or REPLACE
@@ -292,49 +293,6 @@ const Home: React.FC<HomeProps> = ({ refs }) => {
         "Thus, Lorem Ipsum has only limited suitability as a visual filler for German texts.",
       name: "Mohammed Alaa",
       position: "Staff Engineer, Algolia",
-    },
-  ];
-
-  const plans = [
-    {
-      title: "Basic",
-      description: "Ideal for individuals looking to get started.",
-      price: "69.95",
-      bgColor: "bg-white",
-      textColor: "text-gray-400",
-      priceTextColor: "text-blue-500",
-      buttonBg: "bg-blue-400",
-      buttonTextColor: "text-white",
-      buttonHover: "hover:bg-blue-500",
-      features: [
-        { text: "Detailed repair costs", isAvailable: true },
-        { text: "PDF report format", isAvailable: true },
-        { text: "RUSH upgrade time", isAvailable: false },
-        { text: "Fire claim history", isAvailable: false },
-        { text: "Flood zone info", isAvailable: false },
-        { text: "Permit details active", isAvailable: false },
-        { text: "Sales lien info", isAvailable: false },
-      ],
-    },
-    {
-      title: "Premium",
-      description: "Perfect for teams and businesses with advanced needs.",
-      price: "99.95",
-      bgColor: "bg-blue-500 text-white",
-      textColor: "",
-      priceTextColor: "text-white",
-      buttonBg: "bg-white",
-      buttonTextColor: "text-blue-500",
-      buttonHover: "hover:bg-gray-100",
-      features: [
-        { text: "Detailed repair costs", isAvailable: true },
-        { text: "PDF report format", isAvailable: true },
-        { text: "RUSH upgrade time", isAvailable: true },
-        { text: "Fire claim history", isAvailable: true },
-        { text: "Flood zone info", isAvailable: true },
-        { text: "Permit details active", isAvailable: true },
-        { text: "Sales lien info", isAvailable: true },
-      ],
     },
   ];
 
