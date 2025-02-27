@@ -87,7 +87,7 @@ const authSlice = createSlice({
       console.log("Redux logout executed!");
       state.authenticated = false;
       state.user = null;
-      state.loading = false;
+      state.loading = true;
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
