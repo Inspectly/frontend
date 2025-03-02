@@ -14,7 +14,11 @@ import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { AxiosError } from "axios";
 import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { useDispatch } from "react-redux";
-import { login, logout } from "../features/authSlice";
+import {
+  login,
+  logout,
+  setLoading as setPageLoading,
+} from "../features/authSlice";
 import { useGetUserByFirebaseIdQuery } from "../features/api/usersApi";
 
 const Login: React.FC = () => {
@@ -66,14 +70,15 @@ const Login: React.FC = () => {
       console.log("Waiting for backend user to load...");
 
       // Wait for backend user query to complete
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Allow backend query to process
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Ensure backend user is fetched before proceeding
       if (backendError || !backendUser) {
         console.error("Backend user not found. Cannot proceed.");
         setError("User not found in backend. Please sign up.");
-        setLoading(false);
         dispatch(logout());
+        setLoading(false);
+        dispatch(setPageLoading(false));
         return;
       }
 
@@ -123,6 +128,7 @@ const Login: React.FC = () => {
       dispatch(logout());
     } finally {
       setLoading(false);
+      dispatch(setPageLoading(false));
     }
   };
 
@@ -147,6 +153,7 @@ const Login: React.FC = () => {
       dispatch(logout());
     } finally {
       setLoading(false);
+      dispatch(setPageLoading(false));
     }
   };
 
@@ -164,6 +171,7 @@ const Login: React.FC = () => {
       dispatch(logout());
     } finally {
       setLoading(false);
+      dispatch(setPageLoading(false));
     }
   };
 
