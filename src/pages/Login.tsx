@@ -76,9 +76,7 @@ const Login: React.FC = () => {
       if (backendError || !backendUser) {
         console.error("Backend user not found. Cannot proceed.");
         setError("User not found in backend. Please sign up.");
-        dispatch(logout());
-        setLoading(false);
-        dispatch(setPageLoading(false));
+        // setLoading(false);
         return;
       }
 
@@ -115,20 +113,22 @@ const Login: React.FC = () => {
               console.error("Session creation failed:", sessionError);
               setError("Session creation failed. Try again.");
               dispatch(logout());
+              dispatch(setPageLoading(false));
             });
         })
         .catch(async (loginError) => {
           console.error("User login creation failed:", loginError);
           setError("Login creation failed. Try again.");
           dispatch(logout());
+          dispatch(setPageLoading(false));
         });
     } catch (err) {
       console.log("Error authenticating user:", err);
       setError("Failed to authenticate. Please try again.");
       dispatch(logout());
+      dispatch(setPageLoading(false));
     } finally {
       setLoading(false);
-      dispatch(setPageLoading(false));
     }
   };
 

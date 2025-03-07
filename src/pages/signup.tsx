@@ -20,7 +20,10 @@ import {
   faMap,
   faUser,
 } from "@fortawesome/free-regular-svg-icons";
-import { useCreateUserMutation } from "../features/api/usersApi";
+import {
+  getUserByFirebaseId,
+  useCreateUserMutation,
+} from "../features/api/usersApi";
 import { useCreateClientMutation } from "../features/api/clientsApi";
 import { useCreateRealtorMutation } from "../features/api/realtorsApi";
 import {
@@ -35,7 +38,7 @@ import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
-import { login } from "../features/authSlice";
+import { login, setLoading as setPageLoading } from "../features/authSlice";
 import { nanoid } from "nanoid";
 
 const SignUp: React.FC = () => {
@@ -249,6 +252,7 @@ const SignUp: React.FC = () => {
       );
     } finally {
       setLoading(false);
+      dispatch(setPageLoading(false));
     }
   };
 
@@ -272,15 +276,29 @@ const SignUp: React.FC = () => {
       let backendUser;
 
       try {
-        // Step 1: Create backend user first
-        backendUser = await createUser({
-          firebase_id: firebaseUser.uid,
-          user_type: { user_type: thirdPartyOption },
-        }).unwrap();
-        console.log("Backend user created:", backendUser);
-      } catch (error) {
+        const existingUser = await dispatch(
+          getUserByFirebaseId.initiate(firebaseUser.uid)
+        ).unwrap();
+
+        if (existingUser) {
+          console.log("User already exists in backend:", existingUser);
+          backendUser = existingUser;
+        } else {
+          // Step 2: Create backend user
+          backendUser = await createUser({
+            firebase_id: firebaseUser.uid,
+            user_type: { user_type: thirdPartyOption },
+          }).unwrap();
+          console.log("Backend user created:", backendUser);
+        }
+      } catch (error: any) {
         console.error("Backend user creation failed:", error);
-        await firebaseUser.delete(); // Delete Firebase user on failure
+
+        if (error?.response?.status !== 409) {
+          // 409 Conflict means user already exists
+          await firebaseUser.delete(); // Only delete Firebase user if the error is NOT a duplicate key
+        }
+        dispatch(setPageLoading(false));
         throw new Error("Failed to create user in backend.");
       }
 
@@ -298,21 +316,25 @@ const SignUp: React.FC = () => {
       };
 
       try {
-        // Step 2: Create the specific user type
+        // Step 3: Create the specific user type
         await createUserType(
           backendUser,
           thirdPartyOption,
           updatedUserData,
           thirdPartyVendorTypes
         );
-      } catch (error) {
+      } catch (error: any) {
         console.error("Creating user type failed:", error);
-        await firebaseUser.delete(); // Delete Firebase user on failure
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete(); // Delete Firebase user on failure
+        }
+        dispatch(setPageLoading(false));
+
         throw new Error("Failed to create user type in backend.");
       }
 
       try {
-        // Step 3: Log the login method
+        // Step 4: Log the login method
         await createUserLogin({
           user_id: backendUser.id,
           email_login: false,
@@ -322,9 +344,13 @@ const SignUp: React.FC = () => {
           gmail_login: true,
           gmail: updatedUserData.email,
         }).unwrap();
-      } catch (error) {
+      } catch (error: any) {
         console.error("User login tracking failed:", error);
-        await firebaseUser.delete(); // Delete Firebase user on failure
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete(); // Delete Firebase user on failure
+        }
+        dispatch(setPageLoading(false));
+
         throw new Error("Failed to log user login method.");
       }
 
@@ -340,22 +366,27 @@ const SignUp: React.FC = () => {
 
         console.log("Sending payload:", payload);
 
-        // Step 4: Create User session
+        // Step 5: Create User session
         const response = await createUserSession(payload).unwrap();
         console.log("User session created successfully:", response);
       } catch (error: any) {
         console.error("User session creation failed:", error);
-        await firebaseUser.delete(); // Delete Firebase user on failure
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete(); // Delete Firebase user on failure
+        }
+        dispatch(setPageLoading(false));
+
         throw new Error("Failed to create session in backend.");
       }
 
-      // Step 5: Store user
+      // Step 6: Store user
       dispatch(login(backendUser));
 
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Third-party sign-up failed:", err);
       setError(err.message || "Failed to sign up with Google.");
+      dispatch(setPageLoading(false));
     }
   };
 
