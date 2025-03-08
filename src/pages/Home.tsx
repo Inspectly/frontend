@@ -78,7 +78,6 @@ const Home: React.FC<HomeProps> = ({ refs, plans }) => {
     const isPageRefreshed =
       navigationEntries[0]?.type === "reload" && navigationType === "POP";
 
-    console.log(isPageRefreshed);
     if (isPageRefreshed) {
       setTimeout(() => {
         window.scrollTo(0, 0); // Reset scroll position on component mount

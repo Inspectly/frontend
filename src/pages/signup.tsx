@@ -41,7 +41,7 @@ import { AppDispatch } from "../store/store";
 import { login, setLoading as setPageLoading } from "../features/authSlice";
 import { nanoid } from "nanoid";
 
-const SignUp: React.FC = () => {
+const Signup: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -276,14 +276,24 @@ const SignUp: React.FC = () => {
       let backendUser;
 
       try {
-        const existingUser = await dispatch(
-          getUserByFirebaseId.initiate(firebaseUser.uid)
-        ).unwrap();
+        try {
+          // Step 1: Check if user exists in backend
+          backendUser = await dispatch(
+            getUserByFirebaseId.initiate(firebaseUser.uid)
+          ).unwrap();
+          console.log("User already exists in backend:", backendUser);
+        } catch (error: any) {
+          if (error?.status === 404) {
+            console.warn(
+              "User not found in backend, proceeding to create a new user."
+            );
+          } else {
+            console.error("Error checking existing user:", error);
+            throw new Error("Failed to check user existence.");
+          }
+        }
 
-        if (existingUser) {
-          console.log("User already exists in backend:", existingUser);
-          backendUser = existingUser;
-        } else {
+        if (!backendUser) {
           // Step 2: Create backend user
           backendUser = await createUser({
             firebase_id: firebaseUser.uid,
@@ -775,4 +785,4 @@ const SignUp: React.FC = () => {
   );
 };
 
-export default SignUp;
+export default Signup;

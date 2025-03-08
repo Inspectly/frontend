@@ -31,7 +31,7 @@ export type Vendor_Type = {
 
 export type User = {
   id: number;
-  user_type: User_Type;
+  user_type: string;
   firebase_id: string;
   created_at: string;
   updated_at: string;

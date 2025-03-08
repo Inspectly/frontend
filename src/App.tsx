@@ -7,8 +7,9 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { SectionRefs } from "./types";
 import Login from "./pages/Login";
-import SignUp from "./pages/Signup";
+import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
+import ClientDashboard from "./pages/ClientDashboard";
 import Dashboard from "./pages/Dashboard";
 import Report from "./pages/Report";
 import Issue from "./pages/Issue";
@@ -24,6 +25,10 @@ import { checkAuthState, logout, setLoading } from "./features/authSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "./store/store";
 import PriceSection from "./components/PriceSection";
+import AdminDashboard from "./pages/AdminDashboard";
+import RealtorDashboard from "./pages/RealtorDashboard";
+import VendorDashboard from "./pages/VendorDashboard";
+import { getUserById } from "./features/api/usersApi";
 
 function App() {
   const location = useLocation();
@@ -38,7 +43,10 @@ function App() {
     (state: RootState) => state.auth.loading
   );
 
+  const user = useSelector((state: RootState) => state.auth.user); // Get user object
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
+  const [userType, setUserType] = useState<string | null>(null);
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -123,6 +131,24 @@ function App() {
     }
   };
 
+  // Function to get dashboard component based on user type
+  const getDashboardComponent = () => {
+    if (!userType) return <Dashboard />; // Default dashboard if user type is undefined
+
+    switch (userType) {
+      case "client":
+        return <ClientDashboard />;
+      case "admin":
+        return <AdminDashboard />;
+      case "realtor":
+        return <RealtorDashboard />;
+      case "vendor":
+        return <VendorDashboard />;
+      default:
+        return <Dashboard />; // Default dashboard
+    }
+  };
+
   useEffect(() => {
     dispatch(checkAuthState());
   }, [dispatch]);
@@ -140,6 +166,24 @@ function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Fetch user type based on user ID
+  useEffect(() => {
+    const fetchUserType = async () => {
+      if (user) {
+        try {
+          const response = await dispatch(
+            getUserById.initiate(user.id)
+          ).unwrap();
+          setUserType(response.user_type);
+        } catch (error) {
+          console.error("Error fetching user type:", error);
+        }
+      }
+    };
+
+    fetchUserType();
+  }, [user]);
 
   if (loadingAuthState) {
     return <Preloader />;
@@ -161,11 +205,11 @@ function App() {
             <Routes>
               <Route
                 path="/"
-                element={<PrivateRoute element={<Dashboard />} />}
+                element={<PrivateRoute element={getDashboardComponent()} />}
               />
               <Route
                 path="/dashboard"
-                element={<PrivateRoute element={<Dashboard />} />}
+                element={<PrivateRoute element={getDashboardComponent()} />}
               />
               <Route
                 path="/pricing"
@@ -191,7 +235,7 @@ function App() {
               />
               <Route
                 path="*"
-                element={<PrivateRoute element={<Dashboard />} />}
+                element={<PrivateRoute element={getDashboardComponent()} />}
               />
             </Routes>
           </DashboardHeader>
@@ -205,7 +249,7 @@ function App() {
           />
           <Routes>
             <Route path="/" element={<Home refs={refs} plans={plans} />} />
-            <Route path="/signup" element={<SignUp />} />
+            <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
           </Routes>

@@ -96,7 +96,6 @@ const TeamSection: React.FC<TeamProps> = ({ team }) => {
 
     const containerWidth = containerRef.current.offsetWidth;
 
-    console.log(containerWidth);
     if (containerWidth <= 736) {
       setCardsPerView(1); // For small screens
     } else if (containerWidth <= 1248) {

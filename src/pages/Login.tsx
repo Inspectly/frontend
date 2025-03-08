@@ -76,7 +76,7 @@ const Login: React.FC = () => {
       if (backendError || !backendUser) {
         console.error("Backend user not found. Cannot proceed.");
         setError("User not found in backend. Please sign up.");
-        // setLoading(false);
+        setIsBackendLoading(false);
         return;
       }
 

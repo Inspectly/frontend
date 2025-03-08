@@ -14,6 +14,10 @@ export const usersApi = api.injectEndpoints({
       },
       providesTags: ["Users"],
     }),
+    getUserById: builder.query<User, string>({
+      query: (id) => `users/${id}`,
+      providesTags: ["Users"],
+    }),
     createUser: builder.mutation({
       query: (body) => ({
         url: "users/",
@@ -27,4 +31,4 @@ export const usersApi = api.injectEndpoints({
 
 export const { useGetUserByFirebaseIdQuery, useCreateUserMutation } = usersApi;
 
-export const { getUserByFirebaseId } = usersApi.endpoints;
+export const { getUserByFirebaseId, getUserById } = usersApi.endpoints;
