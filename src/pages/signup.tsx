@@ -247,9 +247,15 @@ const Signup: React.FC = () => {
       }
     } catch (err: any) {
       setLoading(false);
-      setError(
-        "Error: " + err.message || err.data?.detail || "Failed to sign up."
-      );
+      if (err.code === "auth/email-already-in-use") {
+        setError(
+          "This email is already registered. If already registered with google please link your account in settings"
+        );
+      } else {
+        setError(
+          "Error: " + err.message || err.data?.detail || "Failed to sign up."
+        );
+      }
     } finally {
       setLoading(false);
       dispatch(setPageLoading(false));
