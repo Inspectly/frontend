@@ -3,6 +3,7 @@ import aspectRatio from "@tailwindcss/aspect-ratio";
 import scrollbar from  'tailwind-scrollbar';
 
 export default {
+  darkMode: "class", // Enable dark mode with a class instead of media query
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
     extend: {
