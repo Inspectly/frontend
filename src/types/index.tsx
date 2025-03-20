@@ -149,6 +149,7 @@ export type IssueType = {
   severity: string;
   status: IssueStatus;
   vendor_id: number;
+  image_url: string;
   cost: string;
   active: string;
   created_at: string;

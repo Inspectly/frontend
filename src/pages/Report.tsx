@@ -27,7 +27,7 @@ const Report: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-3xl font-semibold mb-0">
+        <h1 className="text-2xl font-semibold mb-0">
           {report?.name || "Report"}
         </h1>
         <ul className="text-lg flex items-center gap-[6px]">

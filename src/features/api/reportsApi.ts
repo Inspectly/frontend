@@ -13,3 +13,5 @@ export const reportsApi = api.injectEndpoints({
 });
 
 export const { useGetReportsQuery, useGetReportByIdQuery } = reportsApi;
+
+export const { getReportById } = reportsApi.endpoints;

@@ -4,34 +4,103 @@ import {
   faArrowLeft,
   faArrowRight,
   faMagnifyingGlass,
-  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
-import ImageComponent from "../components/ImageComponent";
+import { useGetIssuesQuery } from "../features/api/issuesApi";
+import IssueItem from "../components/IssueItem";
 import { useGetListingsQuery } from "../features/api/listingsApi";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../store/store";
+import { getReportById } from "../features/api/reportsApi";
+import { IssueType, ReportType } from "../types";
 
-const Listings: React.FC = () => {
-  const { data: listings, error, isLoading } = useGetListingsQuery();
+const Marketplace: React.FC = () => {
+  const { data: issues, error, isLoading } = useGetIssuesQuery();
+  const { data: listings } = useGetListingsQuery();
+  const [reports, setReports] = useState<Record<number, ReportType>>({});
 
-  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
+  const [filteredIssues, setFilteredIssues] = useState<IssueType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [selectedPostalCode, setSelectedPostalCode] = useState("");
+  const [selectedType, setSelectedType] = useState("");
 
-  // Filtered listings based on search query
-  const filteredListings =
-    listings?.filter((listing) =>
-      searchQuery.trim() === ""
-        ? true // Return all listings if searchQuery is empty
-        : listing?.address?.toLowerCase().includes(searchQuery.toLowerCase())
-    ) ?? [];
+  useEffect(() => {
+    if (!issues) return;
+
+    // Fetch reports for each issue
+    const fetchReports = async () => {
+      const reportPromises = issues.map((issue) =>
+        dispatch(getReportById.initiate(issue.report_id.toString())).unwrap()
+      );
+
+      try {
+        const reportData = await Promise.all(reportPromises);
+        const reportMap = Object.fromEntries(
+          reportData.map((report: ReportType) => [report.id, report])
+        );
+        setReports(reportMap);
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+      }
+    };
+
+    fetchReports();
+  }, [issues, dispatch]);
+
+  // Extract unique addresses, postal codes, and types
+  const uniqueAddresses = [
+    ...new Set(listings?.map((listing) => listing?.address)),
+  ];
+  const uniquePostalCodes = [
+    ...new Set(listings?.map((listing) => listing?.postal_code)),
+  ];
+  const uniqueTypes = [...new Set(issues?.map((issue) => issue?.type))];
+
+  // Filter issues after fetching reports & listings
+  useEffect(() => {
+    if (!issues || Object.keys(reports).length === 0 || !listings) return;
+
+    const newFilteredIssues = issues.filter((issue) => {
+      const report = reports[issue.report_id];
+      const listing = report
+        ? listings.find((l) => l.id === report.listing_id)
+        : null;
+
+      const matchesSearch =
+        searchQuery.trim() === "" ||
+        issue?.summary?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesAddress =
+        selectedAddress === "" || listing?.address === selectedAddress;
+      const matchesPostalCode =
+        selectedPostalCode === "" ||
+        listing?.postal_code === selectedPostalCode;
+      const matchesType = selectedType === "" || issue?.type === selectedType;
+
+      return (
+        matchesSearch && matchesAddress && matchesPostalCode && matchesType
+      );
+    });
+
+    setFilteredIssues(newFilteredIssues);
+  }, [
+    issues,
+    reports,
+    listings,
+    searchQuery,
+    selectedAddress,
+    selectedPostalCode,
+    selectedType,
+  ]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredListings.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentListings = filteredListings.slice(startIndex, endIndex);
+  const currentIssues = filteredIssues.slice(startIndex, endIndex);
 
   // Adjust `itemsPerPage` dynamically based on the number of columns
   useEffect(() => {
@@ -77,12 +146,12 @@ const Listings: React.FC = () => {
   };
 
   if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Error loading listings</p>;
+  if (error) return <p>Error loading issues</p>;
 
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-semibold mb-0">Listings</h1>
+        <h1 className="text-2xl font-semibold mb-0">Marketplace</h1>
       </div>
 
       <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
@@ -101,18 +170,57 @@ const Listings: React.FC = () => {
                 className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-gray-600"
               />
             </form>
+
+            {/* Filter Dropdowns */}
+            <div className="flex flex-wrap gap-3">
+              {/* Address Filter */}
+              <select
+                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
+                value={selectedAddress}
+                onChange={(e) => setSelectedAddress(e.target.value)}
+              >
+                <option value="">All Addresses</option>
+                {uniqueAddresses.map((address) => (
+                  <option key={address} value={address}>
+                    {address}
+                  </option>
+                ))}
+              </select>
+
+              {/* Postal Code Filter */}
+              <select
+                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
+                value={selectedPostalCode}
+                onChange={(e) => setSelectedPostalCode(e.target.value)}
+              >
+                <option value="">All Postal Codes</option>
+                {uniquePostalCodes.map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+
+              {/* Type Filter */}
+              <select
+                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+              >
+                <option value="">All Types</option>
+                {uniqueTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <button className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]">
-            <span className="font-semibold text-[14px] leading-[21px]">
-              Add New Listing
-            </span>
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
         </div>
         <div className="bg-white p-6">
-          {currentListings.length === 0 ? (
+          {currentIssues.length === 0 ? (
             <div className="text-center text-gray-500">
-              You have no current listings.
+              You have no current issues.
             </div>
           ) : (
             <div
@@ -121,23 +229,8 @@ const Listings: React.FC = () => {
                 gridAutoRows: "minmax(150px, auto)",
               }}
             >
-              {currentListings.map((listing) => (
-                <div
-                  onClick={() => navigate(`/listings/${listing.id}`)}
-                  key={listing.id}
-                  className="relative hover:shadow-lg cursor-pointer border border-neutral-200 rounded-2xl overflow-hidden"
-                >
-                  <div className="h-[266px] overflow-hidden relative">
-                    <ImageComponent
-                      src={listing.image_url}
-                      fallback="/images/property_card_holder.jpg"
-                      className="hover-scale-img__img w-full h-full object-cover"
-                    />
-                    <h6 className="absolute bottom-0 left-0 w-full text-white text-center py-2 bg-gradient-to-t from-black/40 via-black/30 to-transparent">
-                      {listing.address}
-                    </h6>
-                  </div>
-                </div>
+              {currentIssues.map((issue) => (
+                <IssueItem issue={issue} />
               ))}
             </div>
           )}
@@ -145,8 +238,8 @@ const Listings: React.FC = () => {
           <div className="flex items-center justify-between flex-wrap gap-2 mt-6">
             <span>
               Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, filteredListings.length)} of{" "}
-              {filteredListings.length} entries
+              {Math.min(endIndex, filteredIssues.length)} of{" "}
+              {filteredIssues.length} entries
             </span>
             <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
               <li className="page-item">
@@ -197,4 +290,4 @@ const Listings: React.FC = () => {
   );
 };
 
-export default Listings;
+export default Marketplace;
