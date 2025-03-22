@@ -30,13 +30,13 @@ const Report: React.FC = () => {
         <h1 className="text-2xl font-semibold mb-0">
           {report?.name || "Report"}
         </h1>
-        <ul className="text-lg flex items-center gap-[6px]">
+        <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
           <li className="font-medium">
             <a
               href="/listings"
               className="flex items-center gap-2 hover:text-blue-400"
             >
-              <FontAwesomeIcon icon={faListCheck} className="size-5" />
+              <FontAwesomeIcon icon={faListCheck} className="size-4" />
               Listings
             </a>
           </li>

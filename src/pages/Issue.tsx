@@ -79,13 +79,13 @@ const Issue: React.FC = () => {
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
         <h1 className="text-2xl font-semibold mb-0">Issue</h1>
-        <ul className="text-lg flex items-center gap-[6px]">
+        <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
           <li className="font-medium">
             <a
               href="/dashboard"
               className="flex items-center gap-2 hover:text-blue-400"
             >
-              <FontAwesomeIcon icon={faChalkboard} className="size-5" />
+              <FontAwesomeIcon icon={faChalkboard} className="size-4" />
               Dashboard
             </a>
           </li>

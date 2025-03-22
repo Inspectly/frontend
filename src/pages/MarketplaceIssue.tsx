@@ -4,6 +4,8 @@ import { useGetIssueByIdQuery } from "../features/api/issuesApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import IssueCard from "../components/IssueDetails";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faShop } from "@fortawesome/free-solid-svg-icons";
 
 const MarketplaceIssue: React.FC = () => {
   const { issueId } = useParams<{ issueId: string }>();
@@ -45,6 +47,19 @@ const MarketplaceIssue: React.FC = () => {
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
         <h1 className="text-2xl font-semibold mb-0">Issue</h1>
+        <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
+          <li className="font-medium">
+            <a
+              href="/marketplace"
+              className="flex items-center gap-2 hover:text-blue-400"
+            >
+              <FontAwesomeIcon icon={faShop} className="size-4" />
+              Marketplace
+            </a>
+          </li>
+          <li>-</li>
+          <li className="font-medium">Issue</li>
+        </ul>
       </div>
 
       <IssueCard issue={issue} listing={listing} />
