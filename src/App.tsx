@@ -30,6 +30,7 @@ import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
+import MarketplaceIssue from "./pages/MarketplaceIssue";
 
 function App() {
   const location = useLocation();
@@ -225,6 +226,10 @@ function App() {
               <Route
                 path="/marketplace"
                 element={<PrivateRoute element={<Marketplace />} />}
+              />
+              <Route
+                path="/marketplace/:issueId"
+                element={<PrivateRoute element={<MarketplaceIssue />} />}
               />
               <Route
                 path="/listings/:listingId"

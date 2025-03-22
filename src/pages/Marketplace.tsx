@@ -24,8 +24,8 @@ const Marketplace: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
-  const [selectedAddress, setSelectedAddress] = useState("");
-  const [selectedPostalCode, setSelectedPostalCode] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedState, setSelectedState] = useState("");
   const [selectedType, setSelectedType] = useState("");
 
   useEffect(() => {
@@ -51,13 +51,9 @@ const Marketplace: React.FC = () => {
     fetchReports();
   }, [issues, dispatch]);
 
-  // Extract unique addresses, postal codes, and types
-  const uniqueAddresses = [
-    ...new Set(listings?.map((listing) => listing?.address)),
-  ];
-  const uniquePostalCodes = [
-    ...new Set(listings?.map((listing) => listing?.postal_code)),
-  ];
+  // Extract unique city, province, and types
+  const uniqueCity = [...new Set(listings?.map((listing) => listing?.city))];
+  const uniqueState = [...new Set(listings?.map((listing) => listing?.state))];
   const uniqueTypes = [...new Set(issues?.map((issue) => issue?.type))];
 
   // Filter issues after fetching reports & listings
@@ -73,16 +69,12 @@ const Marketplace: React.FC = () => {
       const matchesSearch =
         searchQuery.trim() === "" ||
         issue?.summary?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesAddress =
-        selectedAddress === "" || listing?.address === selectedAddress;
-      const matchesPostalCode =
-        selectedPostalCode === "" ||
-        listing?.postal_code === selectedPostalCode;
+      const matchesCity = selectedCity === "" || listing?.city === selectedCity;
+      const matchesState =
+        selectedState === "" || listing?.state === selectedState;
       const matchesType = selectedType === "" || issue?.type === selectedType;
 
-      return (
-        matchesSearch && matchesAddress && matchesPostalCode && matchesType
-      );
+      return matchesSearch && matchesCity && matchesState && matchesType;
     });
 
     setFilteredIssues(newFilteredIssues);
@@ -91,8 +83,8 @@ const Marketplace: React.FC = () => {
     reports,
     listings,
     searchQuery,
-    selectedAddress,
-    selectedPostalCode,
+    selectedCity,
+    selectedState,
     selectedType,
   ]);
 
@@ -176,13 +168,13 @@ const Marketplace: React.FC = () => {
               {/* Address Filter */}
               <select
                 className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
-                value={selectedAddress}
-                onChange={(e) => setSelectedAddress(e.target.value)}
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
               >
-                <option value="">All Addresses</option>
-                {uniqueAddresses.map((address) => (
-                  <option key={address} value={address}>
-                    {address}
+                <option value="">All Cities</option>
+                {uniqueCity.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
                   </option>
                 ))}
               </select>
@@ -190,13 +182,13 @@ const Marketplace: React.FC = () => {
               {/* Postal Code Filter */}
               <select
                 className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
-                value={selectedPostalCode}
-                onChange={(e) => setSelectedPostalCode(e.target.value)}
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
               >
-                <option value="">All Postal Codes</option>
-                {uniquePostalCodes.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
+                <option value="">All States</option>
+                {uniqueState.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
                   </option>
                 ))}
               </select>

@@ -4,12 +4,24 @@ import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
+import { useGetBidsByIssueIdQuery } from "../features/api/issueBidsApi";
 
 interface IssueItemProps {
   issue: IssueType;
 }
 
 const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
+  const { data: bids, isLoading: bidLoading } = useGetBidsByIssueIdQuery(
+    issue.id,
+    {
+      skip: !issue?.id,
+    }
+  );
+
+  const highestBid = bids?.length
+    ? [...bids].sort((a, b) => b.price - a.price)[0].price
+    : null;
+
   const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
     issue.report_id.toString()
   );
@@ -46,7 +58,12 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
         {/* Cost */}
         <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
-          ${issue.cost}
+          Current Bid:{" "}
+          {bidLoading
+            ? "Loading bid..."
+            : highestBid
+            ? `$${highestBid}`
+            : "No bids yet"}
         </p>
 
         {/* Summary */}
