@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useGetIssueByIdQuery } from "../features/api/issuesApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import IssueCard from "../components/IssueDetails";
+import IssueDetails from "../components/IssueDetails";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faShop } from "@fortawesome/free-solid-svg-icons";
 
@@ -62,7 +62,7 @@ const MarketplaceIssue: React.FC = () => {
         </ul>
       </div>
 
-      <IssueCard issue={issue} listing={listing} />
+      <IssueDetails issue={issue} listing={listing} />
     </div>
   );
 };
