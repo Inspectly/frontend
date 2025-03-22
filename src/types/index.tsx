@@ -140,6 +140,20 @@ export type IssueStatus =
   | "Status.REVIEW"
   | "Status.COMPLETED";
 
+export const statusMapping: Record<IssueStatus, string> = {
+  "Status.OPEN": "open",
+  "Status.IN_PROGRESS": "in_progress",
+  "Status.REVIEW": "review",
+  "Status.COMPLETED": "completed",
+};
+
+export const statusOptions = [
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In-progress" },
+  { value: "review", label: "Review" },
+  { value: "completed", label: "Completed" },
+];
+
 export type IssueType = {
   id: number;
   report_id: number;
@@ -149,8 +163,21 @@ export type IssueType = {
   severity: string;
   status: IssueStatus;
   vendor_id: number;
+  image_url: string;
   cost: string;
   active: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type IssueBids = {
+  id: number;
+  issue_id: number;
+  vendor_id: number;
+  price: number;
+  status: string;
+  comment_vendor: string;
+  comment_client: string;
   created_at: string;
   updated_at: string;
 };
@@ -180,7 +207,6 @@ export interface Bid {
   dateAdded: string;
 }
 
-// event type
 export interface CalendarEvent {
   id: string;
   title: string;

@@ -228,7 +228,7 @@ const ClientDashboard: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-3xl font-semibold mb-0">Dashboard</h1>
+        <h1 className="text-2xl font-semibold mb-0">Dashboard</h1>
       </div>
 
       <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">

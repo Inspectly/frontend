@@ -26,22 +26,36 @@ const MapComponent: React.FC<MapProps> = ({
   listingName,
 }) => {
   const [isReady, setIsReady] = useState(false); // Track when map is ready
+  const [hasError, setHasError] = useState(false);
 
   // Explicitly define center as LatLngExpression
   const center: LatLngExpression = [latitude, longitude];
 
   const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
 
-  // Delay map initialization to ensure correct rendering
   useEffect(() => {
-    setTimeout(() => {
-      setIsReady(true);
-    }, 1500); // Short delay before mounting
-  }, []);
+    const isValid =
+      typeof latitude === "number" &&
+      !isNaN(latitude) &&
+      typeof longitude === "number" &&
+      !isNaN(longitude);
+
+    if (!isValid) {
+      setHasError(true);
+    } else {
+      setTimeout(() => {
+        setIsReady(true);
+      }, 1500);
+    }
+  }, [latitude, longitude]);
 
   return (
     <div className="h-64 w-full rounded-lg border">
-      {isReady ? (
+      {hasError ? (
+        <div className="flex items-center justify-center h-full bg-red-100 text-red-600 font-medium text-center p-4 rounded">
+          <p>Location not available. Please check the address.</p>
+        </div>
+      ) : isReady ? (
         <MapContainer center={center} zoom={17} className="h-full w-full">
           {/* Fixes gray screen issue */}
           <MapFixer />
