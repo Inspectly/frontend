@@ -83,7 +83,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [bidAmount, setBidAmount] = useState("");
   const [bidError, setBidError] = useState("");
   const [commentVendor, setCommentVendor] = useState("");
-  const [commentClient, setCommentClient] = useState("");
+  // const [commentClient, setCommentClient] = useState("");
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -166,7 +166,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         price: bidValue,
         status: "received",
         comment_vendor: commentVendor,
-        comment_client: commentClient,
+        comment_client: "",
       }).unwrap();
 
       refetch();
@@ -174,7 +174,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       // Reset state
       setBidAmount("");
       setCommentVendor("");
-      setCommentClient("");
+      // setCommentClient("");
       setBidError("");
       setIsBidModalOpen(false);
     } catch (err) {
@@ -818,13 +818,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               rows={2}
             />
 
-            <textarea
+            {/* <textarea
               value={commentClient}
               onChange={(e) => setCommentClient(e.target.value)}
               placeholder="Private comment (optional)"
               className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
               rows={2}
-            />
+            /> */}
 
             {bidError && (
               <p className="text-red-600 text-sm mb-2">{bidError}</p>
