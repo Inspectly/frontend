@@ -17,6 +17,7 @@ const Marketplace: React.FC = () => {
   const { data: issues, error, isLoading } = useGetIssuesQuery();
   const { data: listings } = useGetListingsQuery();
   const [reports, setReports] = useState<Record<number, ReportType>>({});
+  const [reportsLoaded, setReportsLoaded] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -43,6 +44,7 @@ const Marketplace: React.FC = () => {
           reportData.map((report: ReportType) => [report.id, report])
         );
         setReports(reportMap);
+        setReportsLoaded(true);
       } catch (error) {
         console.error("Error fetching reports:", error);
       }
@@ -61,6 +63,8 @@ const Marketplace: React.FC = () => {
     if (!issues || Object.keys(reports).length === 0 || !listings) return;
 
     const newFilteredIssues = issues.filter((issue) => {
+      if (!issue.active) return false;
+
       const report = reports[issue.report_id];
       const listing = report
         ? listings.find((l) => l.id === report.listing_id)
@@ -137,7 +141,8 @@ const Marketplace: React.FC = () => {
     setCurrentPage(1); // Reset to first page on search
   };
 
-  if (isLoading) return <p>Loading...</p>;
+  const isDataReady = !isLoading && listings && reportsLoaded;
+
   if (error) return <p>Error loading issues</p>;
 
   return (
@@ -210,7 +215,11 @@ const Marketplace: React.FC = () => {
           </div>
         </div>
         <div className="bg-white p-6">
-          {currentIssues.length === 0 ? (
+          {!isDataReady ? (
+            <div className="text-center text-gray-500 animate-pulse py-10">
+              Loading issues...
+            </div>
+          ) : currentIssues.length === 0 ? (
             <div className="text-center text-gray-500">
               You have no current issues.
             </div>
@@ -222,7 +231,7 @@ const Marketplace: React.FC = () => {
               }}
             >
               {currentIssues.map((issue) => (
-                <IssueItem issue={issue} />
+                <IssueItem key={issue.id} issue={issue} />
               ))}
             </div>
           )}

@@ -9,7 +9,6 @@ import {
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
-import { useIssues } from "./IssuesContext";
 
 interface DashboardHeaderProps {
   handleLogout: () => void;

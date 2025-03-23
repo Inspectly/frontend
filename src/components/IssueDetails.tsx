@@ -17,9 +17,15 @@ import VendorModal from "./VendorModal";
 import VendorName from "./VendorName";
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
-import { useGetBidsByIssueIdQuery } from "../features/api/issueBidsApi";
+import {
+  useCreateBidMutation,
+  useGetBidsByIssueIdQuery,
+} from "../features/api/issueBidsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
-export interface IssueCardProps {
+export interface IssueDetailsProps {
   issue: IssueType;
   listing?: Listing;
 }
@@ -30,17 +36,27 @@ const getTabFromURL = () => {
   return params.get("tab") || "details"; // Default tab
 };
 
-const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
+const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const navigate = useNavigate();
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector(
+    (state: RootState) => state.auth.user?.user_type
+  );
+
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
+    skip: !userId || userType !== "vendor",
+  });
 
   const {
     data: bids = [],
     isLoading: bidsLoading,
     error: bidsError,
+    refetch,
   } = useGetBidsByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
   const [updateIssue] = useUpdateIssueMutation();
+  const [createBid] = useCreateBidMutation();
 
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
@@ -63,9 +79,20 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
     null
   );
 
+  const [isBidModalOpen, setIsBidModalOpen] = useState(false);
+  const [bidAmount, setBidAmount] = useState("");
+  const [bidError, setBidError] = useState("");
+  const [commentVendor, setCommentVendor] = useState("");
+  const [commentClient, setCommentClient] = useState("");
+
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const tableDropdownButtonRefs = useRef(new Map());
+
+  const highestBid =
+    bids.length > 0 ? Math.max(...bids.map((b) => b.price)) : 0;
+
+  const uniqueVendors = new Set(bids.map((bid) => bid.vendor_id)).size;
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -103,7 +130,6 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
     );
     const data = await response.json();
 
-    console.log(address);
     if (data.length > 0) {
       return {
         latitude: parseFloat(data[0].lat),
@@ -120,7 +146,42 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
     navigate(`?tab=${tab}`); // Update URL
   };
 
-  const uniqueVendors = new Set(bids.map((bid) => bid.vendor_id)).size;
+  const handleBidSubmit = async () => {
+    const bidValue = parseFloat(bidAmount);
+
+    if (isNaN(bidValue) || bidValue <= highestBid) {
+      setBidError(`Your bid must be more than $${highestBid}`);
+      return;
+    }
+
+    if (!userId) {
+      setBidError("User ID is missing. Please log in.");
+      return;
+    }
+
+    try {
+      await createBid({
+        issue_id: issue.id,
+        vendor_id: vendor?.id,
+        price: bidValue,
+        status: "received",
+        comment_vendor: commentVendor,
+        comment_client: commentClient,
+      }).unwrap();
+
+      refetch();
+
+      // Reset state
+      setBidAmount("");
+      setCommentVendor("");
+      setCommentClient("");
+      setBidError("");
+      setIsBidModalOpen(false);
+    } catch (err) {
+      console.error("Failed to submit bid:", err);
+      setBidError("Failed to submit bid. Please try again.");
+    }
+  };
 
   useEffect(() => {
     if (!listing) return;
@@ -623,6 +684,14 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
                       </span>
                     </span>
                   </div>
+                  {userType === "vendor" && (
+                    <button
+                      onClick={() => setIsBidModalOpen(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
+                    >
+                      Place Bid
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-white">
@@ -724,8 +793,70 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, listing }) => {
           </div>
         )}
       </div>
+
+      {isBidModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Place Your Bid</h2>
+
+            <input
+              type="number"
+              value={bidAmount}
+              onChange={(e) => {
+                setBidAmount(e.target.value);
+                setBidError("");
+              }}
+              placeholder={`Enter $${highestBid + 1} or more`}
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
+            />
+
+            <textarea
+              value={commentVendor}
+              onChange={(e) => setCommentVendor(e.target.value)}
+              placeholder="Comment for client (optional)"
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-1 text-sm"
+              rows={2}
+            />
+
+            <textarea
+              value={commentClient}
+              onChange={(e) => setCommentClient(e.target.value)}
+              placeholder="Private comment (optional)"
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
+              rows={2}
+            />
+
+            {bidError && (
+              <p className="text-red-600 text-sm mb-2">{bidError}</p>
+            )}
+
+            <p className="text-sm text-gray-600 mb-2">
+              Enter <strong>${highestBid + 1}</strong> or more.
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              By selecting <strong>Confirm bid</strong>, you are committing to
+              this issue if you are the winning bidder.
+            </p>
+
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setIsBidModalOpen(false)}
+                className="text-sm px-4 py-2 rounded border border-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBidSubmit}
+                className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
+              >
+                Confirm Bid
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default IssueCard;
+export default IssueDetails;
