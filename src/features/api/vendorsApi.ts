@@ -11,6 +11,10 @@ export const vendorsApi = api.injectEndpoints({
       query: (id) => `vendors/${id}`,
       providesTags: ["Vendors"],
     }),
+    getVendorByVendorUserId: builder.query<Vendor, string>({
+      query: (id) => `vendors/vendor_user_id/${id}`,
+      providesTags: ["Vendors"],
+    }),
     createVendor: builder.mutation({
         query: (body) => ({
           url: "vendors/",
@@ -22,4 +26,4 @@ export const vendorsApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetVendorsQuery, useGetVendorByIdQuery, useCreateVendorMutation } = vendorsApi;
+export const { useGetVendorsQuery, useGetVendorByIdQuery, useGetVendorByVendorUserIdQuery, useCreateVendorMutation } = vendorsApi;

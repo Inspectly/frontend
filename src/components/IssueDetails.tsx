@@ -23,6 +23,7 @@ import {
 } from "../features/api/issueBidsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -37,12 +38,20 @@ const getTabFromURL = () => {
 
 const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const navigate = useNavigate();
-  const vendorId = useSelector((state: RootState) => state.auth.user?.id);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector(
+    (state: RootState) => state.auth.user?.user_type
+  );
+
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
+    skip: !userId || userType !== "vendor",
+  });
 
   const {
     data: bids = [],
     isLoading: bidsLoading,
     error: bidsError,
+    refetch,
   } = useGetBidsByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
@@ -145,20 +154,22 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       return;
     }
 
-    if (!vendorId) {
-      setBidError("Vendor ID is missing. Please log in.");
+    if (!userId) {
+      setBidError("User ID is missing. Please log in.");
       return;
     }
 
     try {
       await createBid({
         issue_id: issue.id,
-        vendor_id: vendorId,
+        vendor_id: vendor?.id,
         price: bidValue,
         status: "received",
         comment_vendor: commentVendor,
         comment_client: commentClient,
       }).unwrap();
+
+      refetch();
 
       // Reset state
       setBidAmount("");
@@ -673,12 +684,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       </span>
                     </span>
                   </div>
-                  <button
-                    onClick={() => setIsBidModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
-                  >
-                    Place Bid
-                  </button>
+                  {userType === "vendor" && (
+                    <button
+                      onClick={() => setIsBidModalOpen(true)}
+                      className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
+                    >
+                      Place Bid
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-white">

@@ -12,10 +12,9 @@ import {
   faShop,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "../store/store";
-import { getUserById } from "../features/api/usersApi";
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 interface DashboardSidebarProps {
   isSidebarOpen: boolean; // Prop to check if sidebar is open
@@ -26,34 +25,15 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
   toggleSidebar,
 }) => {
-  const dispatch = useDispatch<AppDispatch>();
-
   const [activePage, setActivePage] = useState(window.location.pathname);
-  const [userType, setUserType] = useState<string | null>(null);
 
-  const user = useSelector((state: RootState) => state.auth.user); // Get user object
+  const userType = useSelector(
+    (state: RootState) => state.auth.user?.user_type
+  );
 
   const handleMenuClick = (page: string) => {
     setActivePage(page); // Update the active page
   };
-
-  // Fetch user type based on user ID
-  useEffect(() => {
-    const fetchUserType = async () => {
-      if (user) {
-        try {
-          const response = await dispatch(
-            getUserById.initiate(user.id)
-          ).unwrap();
-          setUserType(response.user_type);
-        } catch (error) {
-          console.error("Error fetching user type:", error);
-        }
-      }
-    };
-
-    fetchUserType();
-  }, [user]);
 
   return (
     <aside
