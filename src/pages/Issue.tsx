@@ -21,7 +21,7 @@ import {
   useGetIssuesQuery,
 } from "../features/api/issuesApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import IssueCard from "../components/IssueDetails";
+import IssueDetials from "../components/IssueDetails";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
@@ -274,7 +274,7 @@ const Issue: React.FC = () => {
           </div>
         </div>
         <div className="col-span-12 md:col-span-8">
-          <IssueCard issue={issue} listing={listing} />
+          <IssueDetials issue={issue} listing={listing} />
         </div>
       </div>
     </div>
