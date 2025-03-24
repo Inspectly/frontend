@@ -28,7 +28,7 @@ import PriceSection from "./components/PriceSection";
 import AdminDashboard from "./pages/AdminDashboard";
 import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
-import { getUserById } from "./features/api/usersApi";
+import { getUserByFirebaseId, getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
 
@@ -48,6 +48,7 @@ function App() {
   const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
+  const [userInfo, setUserInfo] = useState<any>(null);
   const [userType, setUserType] = useState<string | null>(null);
 
   const refs: SectionRefs = {
@@ -145,7 +146,7 @@ function App() {
       case "realtor":
         return <RealtorDashboard />;
       case "vendor":
-        return <VendorDashboard />;
+        return <VendorDashboard user={userInfo} />;
       default:
         return <Dashboard />; // Default dashboard
     }
@@ -178,6 +179,7 @@ function App() {
             getUserById.initiate(user.id)
           ).unwrap();
           setUserType(response.user_type);
+          setUserInfo(response);
         } catch (error) {
           console.error("Error fetching user type:", error);
         }
