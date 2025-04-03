@@ -7,14 +7,17 @@ import {
   faChevronDown,
   faTimes,
   faPlus,
-  faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
+
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
 import MapComponent from "./MapComponent";
 import VendorModal from "./VendorModal";
 import VendorName from "./VendorName";
+import BidsTabClient from "./BidsTabClient";
+import BidsTabVendor from "./BidsTabVendor";
+
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
 import {
@@ -38,15 +41,17 @@ const getTabFromURL = () => {
 
 const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const navigate = useNavigate();
-  const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const userType = useSelector(
-    (state: RootState) => state.auth.user?.user_type
-  );
 
+  // Logged-in user info
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector((state: RootState) => state.auth.user?.user_type);
+
+  // If user is vendor, fetch vendor
   const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
     skip: !userId || userType !== "vendor",
   });
 
+  // Fetch all bids for this issue
   const {
     data: bids = [],
     isLoading: bidsLoading,
@@ -55,13 +60,22 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   } = useGetBidsByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
+
+  // Mutation to update an issue
   const [updateIssue] = useUpdateIssueMutation();
+
+  // Mutation to create a new bid
   const [createBid] = useCreateBidMutation();
 
+  // For toggling the "Assign Vendor" modal
   const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
-  const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // For storing map coords
+  const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
+  const [locationError, setLocationError] = useState(false);
+
+  // For toggling various sections
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imageOpen, setImageOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
@@ -69,50 +83,44 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [peopleOpen, setPeopleOpen] = useState(true);
   const [datesOpen, setDatesOpen] = useState(true);
 
+  // Tab management
   const [activeTab, setActiveTab] = useState(getTabFromURL());
-  const [locationError, setLocationError] = useState(false);
 
-  const [progressDropdownOpen, setProgressDropdownOpen] = useState<
-    number | null
-  >(null);
-  const [tableDropdownOpen, setTableDropdownOpen] = useState<number | null>(
+  // For the progress/status dropdown
+  const [progressDropdownOpen, setProgressDropdownOpen] = useState<number | null>(
     null
   );
 
+  // Bidding states (modal, input, etc.)
   const [isBidModalOpen, setIsBidModalOpen] = useState(false);
   const [bidAmount, setBidAmount] = useState("");
   const [bidError, setBidError] = useState("");
   const [commentVendor, setCommentVendor] = useState("");
-  // const [commentClient, setCommentClient] = useState("");
 
+  // Refs
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
-  const tableDropdownButtonRefs = useRef(new Map());
 
-  const highestBid =
-    bids.length > 0 ? Math.max(...bids.map((b) => b.price)) : 0;
-
+  // For stats
   const uniqueVendors = new Set(bids.map((bid) => bid.vendor_id)).size;
 
-  const toggleSection = (
-    setter: React.Dispatch<React.SetStateAction<boolean>>
-  ) => {
+  // Toggle show/hide
+  const toggleSection = (setter: React.Dispatch<React.SetStateAction<boolean>>) =>
     setter((prev) => !prev);
-  };
 
+  // Handle changes in the "status/progress" field
   const handleProgressChange = (id: number, newProgress: string) => {
     updateIssue({ id, progress: newProgress });
-
     setTimeout(() => {
-      setProgressDropdownOpen(null); // Delay closing to let the event register
+      setProgressDropdownOpen(null);
     });
   };
 
+  // Format date for display
   const formatDate = (isoString: string) => {
     const date = new Date(isoString + "Z");
-
     return date.toLocaleString("en-US", {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Auto-detects user’s time zone
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, // Auto-detect user’s time zone
       year: "numeric",
       month: "long",
       day: "numeric",
@@ -122,6 +130,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     });
   };
 
+  // Convert address -> lat/lng
   const getCoordinatesFromAddress = async (address: string) => {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -129,7 +138,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       )}`
     );
     const data = await response.json();
-
     if (data.length > 0) {
       return {
         latitude: parseFloat(data[0].lat),
@@ -140,20 +148,24 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     }
   };
 
-  // Handle tab change
+  // Switch tabs
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    navigate(`?tab=${tab}`); // Update URL
+    navigate(`?tab=${tab}`); // Reflect in the URL
   };
 
+  // Submit a new bid
   const handleBidSubmit = async () => {
     const bidValue = parseFloat(bidAmount);
 
-    if (isNaN(bidValue) || bidValue <= highestBid) {
-      setBidError(`Your bid must be more than $${highestBid}`);
+    if (isNaN(bidValue)) {
+      setBidError("Please enter a valid number.");
       return;
     }
-
+    if (bidValue <= 0) {
+      setBidError("Cost must be greater than or equal to $1.");
+      return;
+    }
     if (!userId) {
       setBidError("User ID is missing. Please log in.");
       return;
@@ -171,10 +183,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
       refetch();
 
-      // Reset state
+      // Reset
       setBidAmount("");
       setCommentVendor("");
-      // setCommentClient("");
       setBidError("");
       setIsBidModalOpen(false);
     } catch (err) {
@@ -183,11 +194,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     }
   };
 
+  // On mount or listing change, fetch coords
   useEffect(() => {
     if (!listing) return;
-
-    const address = `${listing?.address}, ${listing?.city}, ${listing?.state}, ${listing?.country}`;
-
+    const address = `${listing.address}, ${listing.city}, ${listing.state}, ${listing.country}`;
     getCoordinatesFromAddress(address)
       .then((coords) => {
         setCoords(coords);
@@ -199,7 +209,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       });
   }, [listing]);
 
-  // Sync tab state when URL changes
+  // Sync tab with URL changes
   useEffect(() => {
     setActiveTab(getTabFromURL());
   }, [location.search]);
@@ -209,6 +219,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       ref={cardRef}
       className="relative rounded-lg bg-white border-0 overflow-hidden flex flex-col"
     >
+      {/* Header with issue title & visibility toggle */}
       <div
         className={`items-center px-6 py-4 active border-b border-neutral-200 ${
           issue.active ? "" : "bg-red-100"
@@ -219,19 +230,18 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             {issue.id + " " + issue.summary || "No Title Found"}
           </h2>
           <button
-            onClick={() =>
-              updateIssue({ id: issue.id, isVisible: !issue.active })
-            }
+            onClick={() => updateIssue({ id: issue.id, isVisible: !issue.active })}
             className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
           >
             <FontAwesomeIcon
               icon={issue.active ? faEye : faEyeSlash}
-              className={`text-blue-600 size-3.5`}
+              className="text-blue-600 size-3.5"
             />
           </button>
         </div>
       </div>
 
+      {/* Tabs */}
       <div className="mb-4 border-b border-gray-200 pt-4 mx-6">
         <ul
           className="flex flex-wrap -mb-px text-sm font-medium text-center"
@@ -274,16 +284,18 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         </ul>
       </div>
 
-      <div className="chat-message-list max-h-[568px] overflow-y-auto  px-6 pb-6 pt-2">
+      {/* Main content */}
+      <div className="chat-message-list max-h-[568px] overflow-y-auto px-6 pb-6 pt-2">
+        {/* DETAILS TAB */}
         {activeTab === "details" && (
           <div
             id="default-bids"
             role="tabpanel"
             className="flex flex-col lg:flex-row gap-6"
           >
-            {/* Left Section */}
+            {/* LEFT COLUMN: Image, details, attachments, etc. */}
             <div className="w-full lg:w-2/3 space-y-8">
-              {/* Issue Image */}
+              {/* Image */}
               <div>
                 <div
                   className="flex items-center cursor-pointer"
@@ -291,15 +303,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {imageOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">Image</h2>
@@ -316,6 +322,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 )}
               </div>
 
+              {/* Fullscreen image modal */}
               {selectedImage && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
                   <div className="relative bg-white rounded-lg shadow-lg max-w-3xl">
@@ -334,7 +341,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 </div>
               )}
 
-              {/* Details Section */}
+              {/* Details */}
               <div>
                 <div
                   className="flex items-center cursor-pointer"
@@ -342,15 +349,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {detailsOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">Details</h2>
@@ -359,17 +360,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   <div className="mt-4">
                     <div className="grid grid-cols-2 gap-y-4 gap-x-24">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Type
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {issue.type}
-                        </p>
+                        <h4 className="text-sm font-medium text-gray-500">Type</h4>
+                        <p className="text-base font-semibold text-gray-700">{issue.type}</p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Progress
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-500">Progress</h4>
                         <button
                           className={`px-2.5 py-1.5 rounded font-medium text-sm ${
                             statusMapping[issue.status] === "open"
@@ -388,14 +383,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                           }
                         >
                           {statusOptions.find(
-                            (option) =>
-                              option.value === statusMapping[issue.status]
+                            (option) => option.value === statusMapping[issue.status]
                           )?.label || "Unknown"}
-
-                          <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="ml-1"
-                          />
+                          <FontAwesomeIcon icon={faChevronDown} className="ml-1" />
                         </button>
                         {Number(progressDropdownOpen) === issue.id && (
                           <Dropdown
@@ -407,8 +397,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 <button
                                   key={value}
                                   className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
-                                    `Status.${value.toUpperCase()}` ===
-                                    issue.status
+                                    `Status.${value.toUpperCase()}` === issue.status
                                       ? "font-bold"
                                       : ""
                                   }`}
@@ -425,9 +414,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         )}
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Severity
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-500">Severity</h4>
                         <p
                           className={`text-base font-semibold ${
                             issue.severity === "High"
@@ -441,9 +428,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         </p>
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Cost
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-500">Cost</h4>
                         <p className="text-base font-semibold text-gray-700">
                           {issue.cost || "N/A"}
                         </p>
@@ -453,7 +438,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 )}
               </div>
 
-              {/* Description Section */}
+              {/* Description */}
               <div>
                 <div
                   className="flex items-center cursor-pointer"
@@ -461,28 +446,21 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {descriptionOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">Description</h2>
                 </div>
                 {descriptionOpen && (
                   <p className="mt-2 text-gray-700">
-                    A major pipe leakage is causing water overflow in the
-                    kitchen.
+                    A major pipe leakage is causing water overflow in the kitchen.
                   </p>
                 )}
               </div>
 
-              {/* Location Section */}
+              {/* Location */}
               <div>
                 <div
                   className="flex items-center cursor-pointer"
@@ -490,15 +468,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {locationOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">Listing Location</h2>
@@ -506,13 +478,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
                 {locationOpen && (
                   <div className="mt-2">
-                    {/* Map Preview */}
                     {locationError ? (
                       <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
-                        <p>
-                          Unable to load map. Location not found for this
-                          listing.
-                        </p>
+                        <p>Unable to load map. Location not found for this listing.</p>
                       </div>
                     ) : coords ? (
                       <MapComponent
@@ -528,9 +496,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     )}
 
                     <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Location
-                      </h4>
+                      <h4 className="text-sm font-medium text-gray-500">Location</h4>
                       <p className="text-base font-semibold text-gray-700">
                         {listing?.address}, {listing?.city}, {listing?.state},{" "}
                         {listing?.postal_code}, {listing?.country}
@@ -540,20 +506,20 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 )}
               </div>
 
-              {/* Attachment Section */}
+              {/* Attachments */}
               <div>
                 <Attachments issueId={issue.id} />
               </div>
 
-              {/* Comments Section */}
+              {/* Comments */}
               <div>
                 <Comments issueId={issue.id} />
               </div>
             </div>
 
-            {/* Right Section */}
+            {/* RIGHT COLUMN: People, Dates, etc. */}
             <div className="w-full lg:w-1/3 space-y-6">
-              {/* People Section */}
+              {/* People */}
               <div className="p-4 bg-white rounded-lg shadow">
                 <div
                   className="flex items-center cursor-pointer"
@@ -561,15 +527,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {peopleOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">People</h2>
@@ -578,9 +538,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   <div className="mt-4 space-y-3">
                     <div>
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Vendor
-                        </h4>
+                        <h4 className="text-sm font-medium text-gray-500">Vendor</h4>
                         <button
                           onClick={() => setIsVendorModalOpen(true)}
                           className="text-blue-500 hover:text-blue-700"
@@ -603,18 +561,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       />
                     </div>
                     <div>
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Realtor
-                      </h4>
-                      {/* <p className="text-base font-semibold text-gray-700">
-                              {listing?.realtor_id}
-                            </p> */}
+                      <h4 className="text-sm font-medium text-gray-500">Realtor</h4>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Dates Section */}
+              {/* Dates */}
               <div className="p-4 bg-white rounded-lg shadow">
                 <div
                   className="flex items-center cursor-pointer"
@@ -622,15 +575,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 >
                   <button className="rounded bg-neutral-200 px-2 mr-2">
                     {datesOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronUp} className="size-2.5 align-middle" />
                     ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
+                      <FontAwesomeIcon icon={faChevronDown} className="size-2.5 align-middle" />
                     )}
                   </button>
                   <h2 className="text-lg font-semibold">Dates</h2>
@@ -660,6 +607,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             </div>
           </div>
         )}
+
+        {/* BIDS TAB */}
         {activeTab === "bids" && (
           <div id="default-bids" role="tabpanel" className="w-full">
             {bidsLoading ? (
@@ -668,132 +617,36 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <p>Error loading bids</p>
             ) : (
               <>
-                <div className="card-header bg-white pb-4 flex items-center flex-wrap gap-3 justify-between">
-                  <div className="flex items-center flex-wrap gap-3">
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Bidders:{" "}
-                      <span className="text-gray-800">{uniqueVendors}</span>
-                    </span>
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Bids: <span className="text-gray-800">{bids.length}</span>
-                    </span>
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Duration:{" "}
-                      <span className="text-gray-800">
-                        *days issue is open for?*
-                      </span>
-                    </span>
-                  </div>
-                  {userType === "vendor" && (
-                    <button
-                      onClick={() => setIsBidModalOpen(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
-                    >
-                      Place Bid
-                    </button>
-                  )}
-                </div>
+                {/* 
+                  We show either BidsTabClient or BidsTabVendor 
+                  depending on userType 
+                */}
+                {userType === "client" && (
+                  <BidsTabClient
+                    bids={bids}
+                    uniqueVendors={uniqueVendors}
+                    onOpenBidModal={() => setIsBidModalOpen(true)}
+                  />
+                )}
 
-                <div className="bg-white">
-                  <div className="overflow-x-auto">
-                    <table className="table w-full min-w-max border-separate border-spacing-0 rounded-lg border border-gray-200 bordered-table sm-table mb-0">
-                      <thead>
-                        <tr>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3 rounded-tl-lg">
-                            Vendor
-                          </th>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Amount
-                          </th>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Bid Time
-                          </th>
-                          <th className="bg-gray-100 text-center font-medium px-4 py-3">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bids.map((bid) => (
-                          <tr key={bid.id}>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              <VendorName vendorId={bid.vendor_id} />
-                            </td>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              ${bid.price}
-                            </td>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              {new Date(bid.created_at).toLocaleString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                }
-                              )}
-                            </td>
+                {userType === "vendor" && (
+                  <BidsTabVendor
+                    bids={bids}
+                    vendorId={vendor?.id}
+                    uniqueVendors={uniqueVendors}
+                    onOpenBidModal={() => setIsBidModalOpen(true)}
+                  />
+                )}
 
-                            <td className="text-center border-b border-gray-200 px-4 py-3">
-                              <button
-                                className="focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-3.5 py-1 text-neutral-700 text-lg"
-                                type="button"
-                                ref={(el) => {
-                                  if (el)
-                                    tableDropdownButtonRefs.current.set(
-                                      bid.id,
-                                      el
-                                    );
-                                }}
-                                onClick={() =>
-                                  setTableDropdownOpen((prev) =>
-                                    prev === bid.id ? null : bid.id
-                                  )
-                                }
-                              >
-                                <FontAwesomeIcon icon={faEllipsisVertical} />
-                              </button>
+                {/* If you had more roles: realtor, etc. -> add more <BidsTabRealtor /> etc. */}
 
-                              {tableDropdownOpen === bid.id && (
-                                <Dropdown
-                                  buttonRef={{
-                                    current:
-                                      tableDropdownButtonRefs.current.get(
-                                        bid.id
-                                      ),
-                                  }}
-                                  onClose={() => setTableDropdownOpen(null)}
-                                >
-                                  {["Accept", "Counter", "Reject"].map(
-                                    (action) => (
-                                      <button
-                                        key={action}
-                                        className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left`}
-                                        onClick={() => {
-                                          setTableDropdownOpen(null);
-                                        }}
-                                      >
-                                        {action}
-                                      </button>
-                                    )
-                                  )}
-                                </Dropdown>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
               </>
             )}
           </div>
         )}
       </div>
 
+      {/* Bid Modal (for Vendors) */}
       {isBidModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
@@ -806,7 +659,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 setBidAmount(e.target.value);
                 setBidError("");
               }}
-              placeholder={`Enter $${highestBid + 1} or more`}
+              placeholder="Enter your bid"
               className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
             />
 
@@ -818,20 +671,15 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               rows={2}
             />
 
-            {/* <textarea
-              value={commentClient}
-              onChange={(e) => setCommentClient(e.target.value)}
-              placeholder="Private comment (optional)"
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
-              rows={2}
-            /> */}
-
             {bidError && (
               <p className="text-red-600 text-sm mb-2">{bidError}</p>
             )}
 
             <p className="text-sm text-gray-600 mb-2">
-              Enter <strong>${highestBid + 1}</strong> or more.
+              You are about to bid:{" "}
+              <strong>
+                ${new Intl.NumberFormat("en-US").format(Number(bidAmount) || 0)}
+              </strong>
             </p>
             <p className="text-xs text-gray-500 mt-2">
               By selecting <strong>Confirm bid</strong>, you are committing to

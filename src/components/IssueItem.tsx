@@ -1,35 +1,63 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import { IssueType } from "../types";
-import ImageComponent from "./ImageComponent";
-import { useNavigate } from "react-router-dom";
 import { useGetBidsByIssueIdQuery } from "../features/api/issueBidsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+
+import ImageComponent from "./ImageComponent";
+import { IssueType } from "../types";
 
 interface IssueItemProps {
   issue: IssueType;
 }
 
 const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
-  const { data: bids, isLoading: bidLoading } = useGetBidsByIssueIdQuery(
-    issue.id,
-    {
-      skip: !issue?.id,
-    }
+  // 1) Get user info from Redux
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector((state: RootState) => state.auth.user?.user_type);
+
+  // 2) If user is a vendor, fetch their vendor record
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
+    skip: !userId || userType !== "vendor",
+  });
+
+  // 3) Fetch all bids for this issue
+  const {
+    data: bids = [],
+    isLoading: bidLoading,
+  } = useGetBidsByIssueIdQuery(issue.id, {
+    skip: !issue?.id,
+  });
+
+  // 4) If user is a client, we want the *latest* among all bids
+  //    Sort by created_at descending
+  const sortedBids = [...bids].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+  const latestBidOverall = sortedBids.length ? sortedBids[0].price : null;
+  const totalBids = bids.length;
 
-  const highestBid = bids?.length
-    ? [...bids].sort((a, b) => b.price - a.price)[0].price
-    : null;
+  // 5) If user is a vendor, filter to only that vendor’s bids
+  const vendorBids = bids.filter(
+    (bid) => String(bid.vendor_id) === String(vendor?.id)
+  );
+  vendorBids.sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  const myLatestVendorBid = vendorBids.length ? vendorBids[0].price : null;
 
+  // 6) Fetch optional data about the listing/report
   const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
     issue.report_id.toString()
   );
-
   const { data: listing, isLoading: listingLoading } = useGetListingByIdQuery(
-    report?.listing_id.toString() || "",
+    report?.listing_id?.toString() || "",
     {
-      skip: !report, // Only fetch listing if report is available
+      skip: !report,
     }
   );
 
@@ -51,19 +79,46 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
       {/* Details Section */}
       <div className="p-3">
-        {/* Issue Type */}
         <span className="text-sm font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">
           {issue.type}
         </span>
 
-        {/* Cost */}
+        {/* Bid Info */}
         <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
-          Current Bid:{" "}
-          {bidLoading
-            ? "Loading bid..."
-            : highestBid
-            ? `$${highestBid}`
-            : "No bids yet"}
+          {bidLoading ? (
+            "Loading bid..."
+          ) : userType === "client" ? (
+            // CLIENT: show "latest overall" + "total bids"
+            latestBidOverall !== null ? (
+              <>
+                Current Bid: $
+                {new Intl.NumberFormat("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(latestBidOverall)}
+                <br />
+                Total Bids: {totalBids}
+              </>
+            ) : (
+              "No bids yet"
+            )
+          ) : userType === "vendor" ? (
+            // VENDOR: show only their own latest bid
+            myLatestVendorBid !== null ? (
+              <>
+                Your Bid: $
+                {new Intl.NumberFormat("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(myLatestVendorBid)}
+              </>
+            ) : (
+              "No bids from you yet"
+            )
+          ) : (
+            // For other user types (e.g. not logged in) you can decide
+            "No bids to display"
+          )}
         </p>
 
         {/* Summary */}
@@ -75,8 +130,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
         <p className="text-gray-600 text-xs group-hover:underline">
           {reportLoading || listingLoading
             ? "Loading..."
-            : `${listing?.address || "Unknown"},
-            ${listing?.postal_code || "Unknown"}`}
+            : `${listing?.address || "Unknown"}, ${listing?.postal_code || "Unknown"}`}
         </p>
       </div>
     </div>
@@ -84,3 +138,4 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 };
 
 export default IssueItem;
+
