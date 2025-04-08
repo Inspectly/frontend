@@ -1,21 +1,37 @@
 import React from "react";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import {
+  useGetVendorByIdQuery,
+  useGetVendorByVendorUserIdQuery,
+} from "../features/api/vendorsApi";
 
-const VendorName: React.FC<{ vendorId: number }> = ({ vendorId }) => {
+const VendorName: React.FC<{ vendorId: number; isVendorId?: boolean }> = ({
+  vendorId,
+  isVendorId = true,
+}) => {
   const validVendorId = vendorId ? String(vendorId) : "";
 
   const {
     data: vendor,
-    isLoading,
-    error,
-  } = useGetVendorByVendorUserIdQuery(validVendorId, {
-    skip: !vendorId, // Skip fetching if vendorId is missing
+    isLoading: isVendorLoading,
+    error: vendorError,
+  } = useGetVendorByIdQuery(validVendorId, {
+    skip: !vendorId || !isVendorId,
   });
 
-  if (isLoading) return <span>Loading...</span>;
-  if (error) return <span>Error</span>;
+  const {
+    data: vendorByUser,
+    isLoading: isVendorUserLoading,
+    error: vendorUserError,
+  } = useGetVendorByVendorUserIdQuery(validVendorId, {
+    skip: !vendorId || isVendorId,
+  });
 
-  return <span>{vendor?.name || "Unknown Vendor"}</span>;
+  if (isVendorLoading || isVendorUserLoading) return <span>Loading...</span>;
+  if (vendorError || vendorUserError) return <span>Error</span>;
+
+  const name = isVendorId ? vendor?.name : vendorByUser?.name;
+
+  return <span>{name || "Unknown Vendor"}</span>;
 };
 
 export default VendorName;
