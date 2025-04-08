@@ -1,5 +1,5 @@
 import React from "react";
-import { useGetVendorByIdQuery } from "../features/api/vendorsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 const VendorName: React.FC<{ vendorId: number }> = ({ vendorId }) => {
   const validVendorId = vendorId ? String(vendorId) : "";
@@ -8,7 +8,7 @@ const VendorName: React.FC<{ vendorId: number }> = ({ vendorId }) => {
     data: vendor,
     isLoading,
     error,
-  } = useGetVendorByIdQuery(validVendorId, {
+  } = useGetVendorByVendorUserIdQuery(validVendorId, {
     skip: !vendorId, // Skip fetching if vendorId is missing
   });
 
