@@ -23,7 +23,6 @@ import {
 } from "../features/api/issueBidsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -42,10 +41,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const userType = useSelector(
     (state: RootState) => state.auth.user?.user_type
   );
-
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
-    skip: !userId || userType !== "vendor",
-  });
 
   const {
     data: bids = [],
@@ -162,7 +157,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     try {
       await createBid({
         issue_id: issue.id,
-        vendor_id: vendor?.id,
+        vendor_id: userId,
         price: bidValue,
         status: "received",
         comment_vendor: commentVendor,
