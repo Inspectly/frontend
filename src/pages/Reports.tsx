@@ -9,9 +9,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
 import { useGetReportsQuery } from "../features/api/reportsApi";
+import { useCreateReportMutation } from "../features/api/reportsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 const Reports: React.FC = () => {
-  const { data: reports, error, isLoading } = useGetReportsQuery();
+  const { data: reports, error, isLoading, refetch } = useGetReportsQuery();
+  const [createReport] = useCreateReportMutation();
+  const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
   const navigate = useNavigate();
 
@@ -22,6 +27,11 @@ const Reports: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+  });
 
   const listingReports =
     reports?.filter((report) => report.listing_id.toString() === listingId) ||
@@ -40,6 +50,35 @@ const Reports: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentReports = filteredReports.slice(startIndex, endIndex);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createReport({
+        user_id: user.id,
+        listing_id: Number(listingId),
+        // TODO: Replace with actual AWS S3 link once upload is implemented
+        aws_link: "https://s3.amazonaws.com/example-bucket/dummy-report.pdf",
+        ...formData,
+      }).unwrap();
+      refetch();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create listing:", err);
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setFormData({
+      name: "",
+    });
+  };
 
   // Adjust `itemsPerPage` dynamically based on the number of columns
   useEffect(() => {
@@ -124,7 +163,10 @@ const Reports: React.FC = () => {
               />
             </form>
           </div>
-          <button className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]">
+          <button
+            className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
+            onClick={() => setIsModalOpen(true)}
+          >
             <span className="font-semibold text-[14px] leading-[21px]">
               Add New Report
             </span>
@@ -219,6 +261,44 @@ const Reports: React.FC = () => {
             </ul>
           </div>
         </div>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
+              <button
+                onClick={() => handleModalClose()}
+                className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
+              >
+                &times;
+              </button>
+              <h6 className="text-lg font-semibold mb-4">Add New Report</h6>
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Report Name
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Name of the report"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-12">
+                  <button
+                    type="submit"
+                    className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

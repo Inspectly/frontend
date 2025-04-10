@@ -128,7 +128,9 @@ export interface Listing {
 
 export type ReportType = {
   id: number;
+  user_id: number;
   listing_id: number;
+  aws_link: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -148,10 +150,10 @@ export const statusMapping: Record<IssueStatus, string> = {
 };
 
 export const statusOptions = [
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In-progress" },
-  { value: "review", label: "Review" },
-  { value: "completed", label: "Completed" },
+  { value: "Status.OPEN", label: "Open" },
+  { value: "Status.IN_PROGRESS", label: "In-progress" },
+  { value: "Status.REVIEW", label: "Review" },
+  { value: "Status.COMPLETED", label: "Completed" },
 ];
 
 export type IssueType = {
@@ -162,10 +164,10 @@ export type IssueType = {
   description: string;
   severity: string;
   status: IssueStatus;
-  vendor_id: number;
+  vendor_id: number | null;
   image_url: string;
   cost: string;
-  active: string;
+  active: boolean;
   created_at: string;
   updated_at: string;
 };

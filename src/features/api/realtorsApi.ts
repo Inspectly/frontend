@@ -7,7 +7,7 @@ export const realtorsApi = api.injectEndpoints({
       query: () => "realtors/",
       providesTags: ["Realtors"],
     }),
-    getRealtorById: builder.query<Realtor, void>({
+    getRealtorById: builder.query<Realtor, string>({
       query: (id) => `realtors/${id}`,
       providesTags: ["Realtors"],
     }),
