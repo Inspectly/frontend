@@ -17,12 +17,15 @@ import {
   useDeleteAttachmentMutation,
   useGetAttachmentsQuery,
 } from "../features/api/attachmentsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 interface AttachmentsProps {
   issueId: number;
+  userType: string;
 }
 
-const Attachments: React.FC<AttachmentsProps> = ({ issueId }) => {
+const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
   const {
     data: attachments,
     error,
@@ -38,6 +41,8 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId }) => {
       attachments?.filter((attachment) => attachment.issue_id === issueId) || []
     );
   }, [attachments, issueId]);
+
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   const [visibleImages, setVisibleImages] = useState<Attachment[]>([]);
   const [imageSize, setImageSize] = useState(150);
@@ -219,17 +224,19 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId }) => {
           </button>
           <h2 className="text-lg font-semibold">Attachments</h2>
         </div>
-        <button
-          onClick={handleAddAttachment}
-          className="text-blue-500 hover:text-blue-700"
-          disabled={uploadStatus === "loading"}
-        >
-          {uploadStatus === "loading" ? (
-            "Loading..."
-          ) : (
-            <FontAwesomeIcon icon={faPlus} className="size-4" />
-          )}
-        </button>
+        {userType !== "vendor" && (
+          <button
+            onClick={handleAddAttachment}
+            className="text-blue-500 hover:text-blue-700"
+            disabled={uploadStatus === "loading"}
+          >
+            {uploadStatus === "loading" ? (
+              "Loading..."
+            ) : (
+              <FontAwesomeIcon icon={faPlus} className="size-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {attachmentsOpen && (
@@ -306,15 +313,15 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId }) => {
                       </div>
 
                       {/* Delete Button (Only if User Added) */}
-                      {/* {authUserId === attachment.addedBy && onDelete && ( */}
-                      <button
-                        className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
-                        disabled={isLoading || isDeleteLoading}
-                        onClick={() => handleDeleteAttachment(index)}
-                      >
-                        <FontAwesomeIcon icon={faTrashCan} />
-                      </button>
-                      {/* )} */}
+                      {userId === attachment.user_id && (
+                        <button
+                          className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
+                          disabled={isLoading || isDeleteLoading}
+                          onClick={() => handleDeleteAttachment(index)}
+                        >
+                          <FontAwesomeIcon icon={faTrashCan} />
+                        </button>
+                      )}
                     </div>
                   ))
                 ) : (
