@@ -16,7 +16,14 @@ export const issuesApi = api.injectEndpoints({
         body: updates,
       }),
     }),
+    createIssue: builder.mutation<IssueType, Partial<IssueType>>({
+      query: (newIssue) => ({
+        url: "issues/",
+        method: "POST",
+        body: newIssue,
+      }),
+    }),
   }),
 });
 
-export const { useGetIssuesQuery, useGetIssueByIdQuery, useUpdateIssueMutation } = issuesApi;
+export const { useGetIssuesQuery, useGetIssueByIdQuery, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;

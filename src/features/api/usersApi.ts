@@ -29,6 +29,6 @@ export const usersApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetUserByFirebaseIdQuery, useCreateUserMutation } = usersApi;
+export const { useGetUserByFirebaseIdQuery, useGetUserByIdQuery, useCreateUserMutation } = usersApi;
 
 export const { getUserByFirebaseId, getUserById } = usersApi.endpoints;

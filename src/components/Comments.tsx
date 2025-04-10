@@ -5,6 +5,7 @@ import {
   useGetCommentsQuery,
   useCreateCommentMutation,
 } from "../features/api/commentsApi";
+import UserName from "./UserName";
 
 interface CommentsProps {
   issueId: number;
@@ -88,7 +89,7 @@ const Comments: React.FC<CommentsProps> = ({ issueId }) => {
                 >
                   <div className="flex justify-between mb-2">
                     <span className="text-sm font-medium text-gray-700">
-                      {comment.user_id}
+                      <UserName userId={Number(comment.user_id)} />
                     </span>
                     <span className="text-xs text-gray-500">
                       {formatDate(comment.created_at)}

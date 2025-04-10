@@ -5,6 +5,7 @@ import {
   faArrowRight,
   faChevronDown,
   faMagnifyingGlass,
+  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
@@ -16,6 +17,7 @@ import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
 } from "../features/api/issuesApi";
+import { useCreateIssueMutation } from "../features/api/issuesApi";
 
 const ReportTable: React.FC = () => {
   const { listingId, reportId } = useParams<{
@@ -26,6 +28,7 @@ const ReportTable: React.FC = () => {
   const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
 
   const [updateIssue] = useUpdateIssueMutation();
+  const [createIssue] = useCreateIssueMutation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -36,6 +39,26 @@ const ReportTable: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState<{
+    type: string;
+    description: string;
+    summary: string;
+    severity: string;
+    status: IssueStatus;
+    active: boolean;
+    image_url: string;
+  }>({
+    type: "",
+    description: "",
+    summary: "",
+    severity: "",
+    status: "Status.OPEN",
+    active: true,
+    image_url: "",
+  });
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   const tableDropdownButtonRefs = useRef(new Map());
 
@@ -109,6 +132,58 @@ const ReportTable: React.FC = () => {
     } catch (error) {
       console.error("Error updating issue:", error);
     }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createIssue({
+        report_id: Number(reportId),
+        ...formData,
+        status: formData.status as IssueStatus,
+      }).unwrap();
+      refetch();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create listing:", err);
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setFormData({
+      type: "",
+      description: "",
+      summary: "",
+      severity: "",
+      status: "Status.OPEN",
+      active: true,
+      image_url: "",
+    });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Simulate uploading and getting a URL (replace with real upload later)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        setFormData((prev) => ({
+          ...prev,
+          image_url: reader.result as string, // base64 string or actual URL if uploaded
+        }));
+      }
+    };
+    reader.readAsDataURL(file); // base64 preview, not for production
   };
 
   const reportIssues =
@@ -239,6 +314,15 @@ const ReportTable: React.FC = () => {
             <option value="false">Not visible</option>
           </select>
         </div>
+        <button
+          className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
+          onClick={() => setIsModalOpen(true)}
+        >
+          <span className="font-semibold text-[14px] leading-[21px]">
+            Add New Issue
+          </span>
+          <FontAwesomeIcon icon={faPlus} />
+        </button>
       </div>
       <div className="bg-white p-6">
         {currentIssues.length === 0 ? (
@@ -456,6 +540,157 @@ const ReportTable: React.FC = () => {
             </li>
           </ul>
         </div>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
+              <button
+                onClick={handleModalClose}
+                className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
+              >
+                &times;
+              </button>
+              <h6 className="text-lg font-semibold mb-4">Create New Issue</h6>
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Type
+                  </label>
+                  <input
+                    type="text"
+                    name="type"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Issue type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Summary
+                  </label>
+                  <input
+                    type="text"
+                    name="summary"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Short summary"
+                    value={formData.summary}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Detailed description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Severity
+                  </label>
+                  <input
+                    type="text"
+                    name="severity"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="e.g., high, medium, low"
+                    value={formData.severity}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        status: e.target.value as IssueStatus,
+                      }))
+                    }
+                  >
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-span-12">
+                  <label className="inline-flex items-center space-x-2 text-sm leading-5 font-semibold text-gray-600">
+                    <input
+                      type="checkbox"
+                      name="active"
+                      checked={formData.active}
+                      onChange={(e) =>
+                        setFormData({ ...formData, active: e.target.checked })
+                      }
+                      className="form-checkbox h-4 w-4 text-blue-600"
+                    />
+                    <span>Active</span>
+                  </label>
+                </div>
+
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Upload Image
+                  </label>
+                  <div className="flex w-full">
+                    <label
+                      htmlFor="file-upload"
+                      className="cursor-pointer bg-gray-800 text-white text-sm px-4 py-2 rounded-l-lg flex items-center whitespace-nowrap"
+                    >
+                      Choose File
+                    </label>
+                    <span className="border border-l-0 border-gray-300 bg-white text-base px-5 py-2.5 rounded-r-lg w-full flex items-center">
+                      {selectedFileName || "No file chosen"}
+                    </span>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFileName(file.name);
+                          handleImageUpload(e); // handle storing image_url
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="col-span-12">
+                  <button
+                    type="submit"
+                    className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

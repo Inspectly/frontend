@@ -6,14 +6,12 @@ import {
   faChevronUp,
   faChevronDown,
   faTimes,
-  faPlus,
   faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
 import MapComponent from "./MapComponent";
-import VendorModal from "./VendorModal";
 import VendorName from "./VendorName";
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
@@ -53,7 +51,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [updateIssue] = useUpdateIssueMutation();
   const [createBid] = useCreateBidMutation();
 
-  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
   const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -374,6 +371,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                               : statusMapping[issue.status] === "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
+                          }  ${
+                            userType === "vendor" ? "pointer-events-none" : ""
                           }`}
                           ref={progressDropdownButtonRef}
                           onClick={() =>
@@ -471,78 +470,79 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 </div>
                 {descriptionOpen && (
                   <p className="mt-2 text-gray-700">
-                    A major pipe leakage is causing water overflow in the
-                    kitchen.
+                    {issue.description || "No description available."}
                   </p>
                 )}
               </div>
 
               {/* Location Section */}
-              <div>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setLocationOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {locationOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
-                  </button>
-                  <h2 className="text-lg font-semibold">Listing Location</h2>
-                </div>
+              {userType !== "vendor" && (
+                <div>
+                  <div
+                    className="flex items-center cursor-pointer"
+                    onClick={() => toggleSection(setLocationOpen)}
+                  >
+                    <button className="rounded bg-neutral-200 px-2 mr-2">
+                      {locationOpen ? (
+                        <FontAwesomeIcon
+                          icon={faChevronUp}
+                          className="size-2.5 align-middle"
+                        />
+                      ) : (
+                        <FontAwesomeIcon
+                          icon={faChevronDown}
+                          className="size-2.5 align-middle"
+                        />
+                      )}
+                    </button>
+                    <h2 className="text-lg font-semibold">Listing Location</h2>
+                  </div>
 
-                {locationOpen && (
-                  <div className="mt-2">
-                    {/* Map Preview */}
-                    {locationError ? (
-                      <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
-                        <p>
-                          Unable to load map. Location not found for this
-                          listing.
+                  {locationOpen && (
+                    <div className="mt-2">
+                      {/* Map Preview */}
+                      {locationError ? (
+                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
+                          <p>
+                            Unable to load map. Location not found for this
+                            listing.
+                          </p>
+                        </div>
+                      ) : coords ? (
+                        <MapComponent
+                          key="map-visible"
+                          latitude={coords.latitude}
+                          longitude={coords.longitude}
+                          listingName={listing?.address || ""}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 animate-pulse">
+                          <p className="text-gray-500">Loading map...</p>
+                        </div>
+                      )}
+
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Location
+                        </h4>
+                        <p className="text-base font-semibold text-gray-700">
+                          {listing?.address}, {listing?.city}, {listing?.state},{" "}
+                          {listing?.postal_code}, {listing?.country}
                         </p>
                       </div>
-                    ) : coords ? (
-                      <MapComponent
-                        key="map-visible"
-                        latitude={coords.latitude}
-                        longitude={coords.longitude}
-                        listingName={listing?.address || ""}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-64 w-full bg-gray-200 animate-pulse">
-                        <p className="text-gray-500">Loading map...</p>
-                      </div>
-                    )}
-
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Location
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        {listing?.address}, {listing?.city}, {listing?.state},{" "}
-                        {listing?.postal_code}, {listing?.country}
-                      </p>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Attachment Section */}
               <div>
-                <Attachments issueId={issue.id} />
+                <Attachments issueId={issue.id} userType={userType} />
               </div>
 
               {/* Comments Section */}
               <div>
-                <Comments issueId={issue.id} />
+                {userType !== "vendor" && <Comments issueId={issue.id} />}
               </div>
             </div>
 
@@ -576,12 +576,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         <h4 className="text-sm font-medium text-gray-500">
                           Vendor
                         </h4>
-                        <button
-                          onClick={() => setIsVendorModalOpen(true)}
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="size-3" />
-                        </button>
                       </div>
                       <p className="text-base font-semibold text-gray-700">
                         {issue.vendor_id ? (
@@ -590,20 +584,19 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                           "No vendor assigned"
                         )}
                       </p>
-
-                      {/* Vendor Modal */}
-                      <VendorModal
-                        isOpen={isVendorModalOpen}
-                        onClose={() => setIsVendorModalOpen(false)}
-                      />
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">
                         Realtor
                       </h4>
-                      {/* <p className="text-base font-semibold text-gray-700">
-                              {listing?.realtor_id}
-                            </p> */}
+                      <p className="text-base font-semibold text-gray-700">
+                        No Realtor assigned
+                        {/* {issue.realtor_id ? (
+                           {listing?.realtor_id}
+                        ) : (
+                          "No Realtor assigned"
+                        )} */}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -712,7 +705,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         {bids.map((bid) => (
                           <tr key={bid.id}>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              <VendorName vendorId={bid.vendor_id} />
+                              <VendorName
+                                vendorId={bid.vendor_id}
+                                isVendorId={false}
+                              />
                             </td>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
                               ${bid.price}
