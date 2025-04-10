@@ -84,44 +84,51 @@ const Login: React.FC = () => {
 
       console.log("Backend user found. Proceeding with login...");
 
-      await createUserLogin({
-        user_id: backendUser?.id || "",
-        email_login: loginMethod === "email",
-        email: loginMethod === "email" ? user.email : "",
-        phone_login: false,
-        phone: "",
-        gmail_login: loginMethod === "gmail",
-        gmail: loginMethod === "gmail" ? user.email : "",
-      })
-        .unwrap()
-        .then(async () => {
-          console.log("User login recorded. Creating session...");
-          await createUserSession({
-            user_id: backendUser?.id,
-            login: loginMethod,
-            authentication_code: token,
-          })
-            .unwrap()
-            .then(() => {
-              console.log(
-                "Session created. Dispatching login & redirecting..."
-              );
-              dispatch(login(backendUser));
-              navigate("/dashboard");
-            })
-            .catch(async (sessionError) => {
-              console.error("Session creation failed:", sessionError);
-              setError("Session creation failed. Try again.");
-              dispatch(logout());
-              dispatch(setPageLoading(false));
-            });
-        })
-        .catch(async (loginError) => {
-          console.error("User login creation failed:", loginError);
+      // Try to create user login
+      try {
+        await createUserLogin({
+          user_id: backendUser.id,
+          email_login: loginMethod === "email",
+          email: loginMethod === "email" ? user.email : "",
+          phone_login: false,
+          phone: "",
+          gmail_login: loginMethod === "gmail",
+          gmail: loginMethod === "gmail" ? user.email : "",
+        }).unwrap();
+        console.log("User login created.");
+      } catch (loginErr: any) {
+        if (
+          loginErr?.status === 400 &&
+          loginErr?.data?.detail?.includes("duplicate key value")
+        ) {
+          console.log("Login already exists, continuing...");
+        } else {
+          console.error("User login creation failed:", loginErr);
           setError("Login creation failed. Try again.");
           dispatch(logout());
           dispatch(setPageLoading(false));
-        });
+          return;
+        }
+      }
+
+      // Create session
+      try {
+        await createUserSession({
+          user_id: backendUser.id,
+          login: loginMethod,
+          authentication_code: token,
+        }).unwrap();
+        console.log("Session created.");
+      } catch (sessionErr) {
+        console.error("Session creation failed:", sessionErr);
+        setError("Session creation failed. Try again.");
+        dispatch(logout());
+        dispatch(setPageLoading(false));
+        return;
+      }
+
+      dispatch(login(backendUser));
+      navigate("/dashboard");
     } catch (err) {
       console.log("Error authenticating user:", err);
       setError("Failed to authenticate. Please try again.");
