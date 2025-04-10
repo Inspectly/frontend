@@ -150,10 +150,10 @@ export const statusMapping: Record<IssueStatus, string> = {
 };
 
 export const statusOptions = [
-  { value: "Status.OPEN", label: "Open" },
-  { value: "Status.IN_PROGRESS", label: "In-progress" },
-  { value: "Status.REVIEW", label: "Review" },
-  { value: "Status.COMPLETED", label: "Completed" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In-progress" },
+  { value: "review", label: "Review" },
+  { value: "completed", label: "Completed" },
 ];
 
 export type IssueType = {
