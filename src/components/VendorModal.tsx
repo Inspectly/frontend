@@ -252,18 +252,23 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                         <div
                           key={star}
                           onClick={() => handleStarFilter(star)}
-                          className={`flex items-center gap-2 px-2 cursor-pointer group transform transition-all duration-150 ${
+                          className={`flex items-center gap-2 px-2 group transform transition-all duration-150 ${
                             isActive
-                              ? "bg-blue-100 scale-[1.02] rounded-md"
+                              ? "bg-gray-200 scale-[1.02] rounded-md"
                               : "hover:scale-[1.01]"
+                          }
+                          ${
+                            count === 0
+                              ? "opacity-50 pointer-events-none"
+                              : "cursor-pointer"
                           }`}
                         >
                           <span className="text-sm font-medium w-6 text-yellow-500">
                             {star}★
                           </span>
-                          <div className="w-full h-3 bg-blue-100 rounded">
+                          <div className="w-full h-3 bg-gray-200 rounded">
                             <div
-                              className="h-3 bg-blue-600 rounded transition-all duration-300"
+                              className="h-3 bg-yellow-500 rounded transition-all duration-300"
                               style={{ width: `${percent}%` }}
                             />
                           </div>
