@@ -16,9 +16,9 @@ import VendorName from "./VendorName";
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
 import {
-  useCreateBidMutation,
-  useGetBidsByIssueIdQuery,
-} from "../features/api/issueBidsApi";
+  useCreateOfferMutation,
+  useGetOffersByIssueIdQuery,
+} from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
@@ -42,15 +42,15 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   );
 
   const {
-    data: bids = [],
-    isLoading: bidsLoading,
-    error: bidsError,
+    data: offers = [],
+    isLoading: offersLoading,
+    error: offersError,
     refetch,
-  } = useGetBidsByIssueIdQuery(issue?.id, {
+  } = useGetOffersByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
   const [updateIssue] = useUpdateIssueMutation();
-  const [createBid] = useCreateBidMutation();
+  const [createOffer] = useCreateOfferMutation();
 
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -72,9 +72,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     null
   );
 
-  const [isBidModalOpen, setIsBidModalOpen] = useState(false);
-  const [bidAmount, setBidAmount] = useState("");
-  const [bidError, setBidError] = useState("");
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerError, setOfferError] = useState("");
   const [commentVendor, setCommentVendor] = useState("");
   // const [commentClient, setCommentClient] = useState("");
 
@@ -82,10 +82,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const tableDropdownButtonRefs = useRef(new Map());
 
-  const highestBid =
-    bids.length > 0 ? Math.max(...bids.map((b) => b.price)) : 0;
+  const highestOffer =
+    offers.length > 0 ? Math.max(...offers.map((b) => b.price)) : 0;
 
-  const uniqueVendors = new Set(bids.map((bid) => bid.vendor_id)).size;
+  const uniqueVendors = new Set(offers.map((offer) => offer.vendor_id)).size;
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -121,24 +121,24 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     navigate(`?tab=${tab}`); // Update URL
   };
 
-  const handleBidSubmit = async () => {
-    const bidValue = parseFloat(bidAmount);
+  const handleOfferSubmit = async () => {
+    const offerValue = parseFloat(offerAmount);
 
-    if (isNaN(bidValue) || bidValue <= highestBid) {
-      setBidError(`Your bid must be more than $${highestBid}`);
+    if (isNaN(offerValue) || offerValue <= highestOffer) {
+      setOfferError(`Your offer must be more than $${highestOffer}`);
       return;
     }
 
     if (!userId) {
-      setBidError("User ID is missing. Please log in.");
+      setOfferError("User ID is missing. Please log in.");
       return;
     }
 
     try {
-      await createBid({
+      await createOffer({
         issue_id: issue.id,
         vendor_id: userId,
-        price: bidValue,
+        price: offerValue,
         status: "received",
         comment_vendor: commentVendor,
         comment_client: "",
@@ -147,14 +147,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       refetch();
 
       // Reset state
-      setBidAmount("");
+      setOfferAmount("");
       setCommentVendor("");
       // setCommentClient("");
-      setBidError("");
-      setIsBidModalOpen(false);
+      setOfferError("");
+      setIsOfferModalOpen(false);
     } catch (err) {
-      console.error("Failed to submit bid:", err);
-      setBidError("Failed to submit bid. Please try again.");
+      console.error("Failed to submit offer:", err);
+      setOfferError("Failed to submit offer. Please try again.");
     }
   };
 
@@ -233,17 +233,17 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           <li role="presentation">
             <button
               className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
-                activeTab === "bids"
+                activeTab === "offers"
                   ? "text-blue-600 border-blue-600"
                   : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
               }`}
               type="button"
               role="tab"
-              aria-controls="default-bids"
-              aria-selected={activeTab === "bids"}
-              onClick={() => handleTabChange("bids")}
+              aria-controls="default-offers"
+              aria-selected={activeTab === "offers"}
+              onClick={() => handleTabChange("offers")}
             >
-              Bids
+              Offers
             </button>
           </li>
         </ul>
@@ -252,7 +252,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       <div className="chat-message-list max-h-[568px] overflow-y-auto  px-6 pb-6 pt-2">
         {activeTab === "details" && (
           <div
-            id="default-bids"
+            id="default-offers"
             role="tabpanel"
             className="flex flex-col lg:flex-row gap-6"
           >
@@ -631,22 +631,23 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             </div>
           </div>
         )}
-        {activeTab === "bids" && (
-          <div id="default-bids" role="tabpanel" className="w-full">
-            {bidsLoading ? (
-              <p>Loading bids...</p>
-            ) : bidsError ? (
-              <p>Error loading bids</p>
+        {activeTab === "offers" && (
+          <div id="default-offers" role="tabpanel" className="w-full">
+            {offersLoading ? (
+              <p>Loading offers...</p>
+            ) : offersError ? (
+              <p>Error loading offers</p>
             ) : (
               <>
                 <div className="card-header bg-white pb-4 flex items-center flex-wrap gap-3 justify-between">
                   <div className="flex items-center flex-wrap gap-3">
                     <span className="text-base font-medium text-gray-600 mb-0">
-                      Bidders:{" "}
+                      Offerders:{" "}
                       <span className="text-gray-800">{uniqueVendors}</span>
                     </span>
                     <span className="text-base font-medium text-gray-600 mb-0">
-                      Bids: <span className="text-gray-800">{bids.length}</span>
+                      Offers:{" "}
+                      <span className="text-gray-800">{offers.length}</span>
                     </span>
                     <span className="text-base font-medium text-gray-600 mb-0">
                       Duration:{" "}
@@ -657,10 +658,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   </div>
                   {userType === "vendor" && (
                     <button
-                      onClick={() => setIsBidModalOpen(true)}
+                      onClick={() => setIsOfferModalOpen(true)}
                       className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
                     >
-                      Place Bid
+                      Place Offer
                     </button>
                   )}
                 </div>
@@ -677,7 +678,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                             Amount
                           </th>
                           <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Bid Time
+                            Offer Time
                           </th>
                           <th className="bg-gray-100 text-center font-medium px-4 py-3">
                             Actions
@@ -685,19 +686,19 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {bids.map((bid) => (
-                          <tr key={bid.id}>
+                        {offers.map((offer) => (
+                          <tr key={offer.id}>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
                               <VendorName
-                                vendorId={bid.vendor_id}
+                                vendorId={offer.vendor_id}
                                 isVendorId={false}
                               />
                             </td>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              ${bid.price}
+                              ${offer.price}
                             </td>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              {new Date(bid.created_at).toLocaleString(
+                              {new Date(offer.created_at).toLocaleString(
                                 "en-US",
                                 {
                                   year: "numeric",
@@ -717,25 +718,25 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 ref={(el) => {
                                   if (el)
                                     tableDropdownButtonRefs.current.set(
-                                      bid.id,
+                                      offer.id,
                                       el
                                     );
                                 }}
                                 onClick={() =>
                                   setTableDropdownOpen((prev) =>
-                                    prev === bid.id ? null : bid.id
+                                    prev === offer.id ? null : offer.id
                                   )
                                 }
                               >
                                 <FontAwesomeIcon icon={faEllipsisVertical} />
                               </button>
 
-                              {tableDropdownOpen === bid.id && (
+                              {tableDropdownOpen === offer.id && (
                                 <Dropdown
                                   buttonRef={{
                                     current:
                                       tableDropdownButtonRefs.current.get(
-                                        bid.id
+                                        offer.id
                                       ),
                                   }}
                                   onClose={() => setTableDropdownOpen(null)}
@@ -768,19 +769,19 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         )}
       </div>
 
-      {isBidModalOpen && (
+      {isOfferModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Place Your Bid</h2>
+            <h2 className="text-lg font-semibold mb-4">Place Your Offer</h2>
 
             <input
               type="number"
-              value={bidAmount}
+              value={offerAmount}
               onChange={(e) => {
-                setBidAmount(e.target.value);
-                setBidError("");
+                setOfferAmount(e.target.value);
+                setOfferError("");
               }}
-              placeholder={`Enter $${highestBid + 1} or more`}
+              placeholder={`Enter $${highestOffer + 1} or more`}
               className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
             />
 
@@ -800,30 +801,30 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               rows={2}
             /> */}
 
-            {bidError && (
-              <p className="text-red-600 text-sm mb-2">{bidError}</p>
+            {offerError && (
+              <p className="text-red-600 text-sm mb-2">{offerError}</p>
             )}
 
             <p className="text-sm text-gray-600 mb-2">
-              Enter <strong>${highestBid + 1}</strong> or more.
+              Enter <strong>${highestOffer + 1}</strong> or more.
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              By selecting <strong>Confirm bid</strong>, you are committing to
-              this issue if you are the winning bidder.
+              By selecting <strong>Confirm offer</strong>, you are committing to
+              this issue.
             </p>
 
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => setIsBidModalOpen(false)}
+                onClick={() => setIsOfferModalOpen(false)}
                 className="text-sm px-4 py-2 rounded border border-gray-400"
               >
                 Cancel
               </button>
               <button
-                onClick={handleBidSubmit}
+                onClick={handleOfferSubmit}
                 className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
               >
-                Confirm Bid
+                Confirm Offer
               </button>
             </div>
           </div>

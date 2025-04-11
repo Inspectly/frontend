@@ -55,91 +55,6 @@ const Login: React.FC = () => {
     skip: !firebaseUser,
   });
 
-  // Authenticate with Firebase & Backend
-  const authenticateUser = async (user: any, loginMethod: string) => {
-    try {
-      setLoading(true);
-      setIsBackendLoading(true);
-      setError(null);
-
-      const token = await getIdToken(user);
-      setFirebaseUser(user); // Store user to trigger backend query
-      setLoginMethod(loginMethod);
-      localStorage.setItem("authToken", token);
-
-      console.log("Waiting for backend user to load...");
-
-      // Wait for backend user query to complete
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Ensure backend user is fetched before proceeding
-      if (backendError || !backendUser) {
-        console.error("Backend user not found. Cannot proceed.");
-        setError("User not found in backend. Please sign up.");
-        setIsBackendLoading(false);
-        return;
-      }
-
-      setIsBackendLoading(false); // Stop loading once user is created
-
-      console.log("Backend user found. Proceeding with login...");
-
-      // Try to create user login
-      try {
-        await createUserLogin({
-          user_id: backendUser.id,
-          email_login: loginMethod === "email",
-          email: loginMethod === "email" ? user.email : "",
-          phone_login: false,
-          phone: "",
-          gmail_login: loginMethod === "gmail",
-          gmail: loginMethod === "gmail" ? user.email : "",
-        }).unwrap();
-        console.log("User login created.");
-      } catch (loginErr: any) {
-        if (
-          loginErr?.status === 409 ||
-          (loginErr?.status === 400 &&
-            loginErr?.data?.detail?.includes("duplicate key value"))
-        ) {
-          console.log("Login already exists, continuing...");
-        } else {
-          console.error("User login creation failed:", loginErr);
-          setError("Login creation failed. Try again.");
-          dispatch(logout());
-          dispatch(setPageLoading(false));
-          return;
-        }
-      }
-
-      // Create session
-      try {
-        await createUserSession({
-          user_id: backendUser.id,
-          login: loginMethod,
-          authentication_code: token,
-        }).unwrap();
-        console.log("Session created.");
-      } catch (sessionErr) {
-        console.error("Session creation failed:", sessionErr);
-        setError("Session creation failed. Try again.");
-        dispatch(logout());
-        dispatch(setPageLoading(false));
-        return;
-      }
-
-      dispatch(login(backendUser));
-      navigate("/dashboard");
-    } catch (err) {
-      console.log("Error authenticating user:", err);
-      setError("Failed to authenticate. Please try again.");
-      dispatch(logout());
-      dispatch(setPageLoading(false));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Handle Email/Password Login
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +68,11 @@ const Login: React.FC = () => {
     try {
       setLoading(true);
       const { user } = await signInWithEmailAndPassword(auth, email, password);
-      await authenticateUser(user, "email");
+      const token = await getIdToken(user);
+
+      setFirebaseUser(user);
+      setLoginMethod("email");
+      localStorage.setItem("authToken", token);
     } catch (err) {
       const error = err as AxiosError;
       console.error("Email login failed:", err);
@@ -171,10 +90,16 @@ const Login: React.FC = () => {
       setLoading(true);
       const provider = new GoogleAuthProvider();
       const { user } = await signInWithPopup(auth, provider);
-      await authenticateUser(user, "gmail");
+
+      const token = await getIdToken(user);
+
+      // Save Firebase user and token
+      setFirebaseUser(user);
+      setLoginMethod("gmail");
+      localStorage.setItem("authToken", token);
     } catch (err) {
       const error = err as AxiosError;
-      console.error("Email login failed:", err);
+      console.error("Google login failed:", error);
       setError(error.message || "Failed to sign in with Google.");
       dispatch(logout());
     } finally {
@@ -199,18 +124,66 @@ const Login: React.FC = () => {
 
   // Once `backendUser` is available, create user session
   useEffect(() => {
-    if (firebaseUser && backendUser && !backendLoading) {
-      console.log("Backend user found. Proceeding with session creation...");
-      authenticateUser(firebaseUser, loginMethod);
-    }
+    const proceed = async () => {
+      if (!firebaseUser || !backendUser) return;
 
-    if (!backendLoading && backendError) {
-      console.error("User not found in backend.");
-      setError("User not found in backend. Please sign up.");
-      setLoading(false);
-      setFirebaseUser(null);
+      console.log("Backend user found. Proceeding with login...");
+
+      try {
+        // Optional: Avoid duplicate login row
+        try {
+          await createUserLogin({
+            user_id: backendUser.id,
+            email_login: loginMethod === "email",
+            email: loginMethod === "email" ? firebaseUser.email : "",
+            phone_login: false,
+            phone: "",
+            gmail_login: loginMethod === "gmail",
+            gmail: loginMethod === "gmail" ? firebaseUser.email : "",
+          }).unwrap();
+          console.log("User login created.");
+        } catch (loginErr: any) {
+          if (
+            loginErr?.status === 409 ||
+            (loginErr?.status === 400 &&
+              loginErr?.data?.detail?.includes("duplicate key value"))
+          ) {
+            console.log("Login already exists. Skipping creation.");
+          } else {
+            throw loginErr;
+          }
+        }
+
+        // Create session
+        await createUserSession({
+          user_id: backendUser.id,
+          login: loginMethod,
+          authentication_code: localStorage.getItem("authToken") || "",
+        }).unwrap();
+
+        console.log("Session created. Dispatching login...");
+        dispatch(login(backendUser));
+        navigate("/dashboard");
+      } catch (err) {
+        console.error("Error during login/session:", err);
+        setError("Login failed. Please try again.");
+        dispatch(logout());
+      } finally {
+        setLoading(false);
+        dispatch(setPageLoading(false));
+      }
+    };
+
+    if (!backendLoading && firebaseUser) {
+      if (!backendUser && backendError) {
+        setError("User not found in backend. Please sign up.");
+        setLoading(false);
+        setFirebaseUser(null);
+        return;
+      }
+      proceed();
     }
-  }, [backendUser, backendLoading, backendError]);
+  }, [firebaseUser, backendUser, backendLoading, backendError]);
 
   return (
     <section className="relative container pb-12 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">

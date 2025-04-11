@@ -182,7 +182,7 @@ export type IssueType = {
   updated_at: string;
 };
 
-export type IssueBids = {
+export type IssueOffers = {
   id: number;
   issue_id: number;
   vendor_id: number;
@@ -212,7 +212,7 @@ export interface Attachment {
   created_at: string;
 }
 
-export interface Bid {
+export interface Offer {
   id: string;
   vendor: string;
   amount: string;

@@ -23,18 +23,18 @@ const progressBreakdown = [
 ];
 
 const vendorEngagement = [
-  { time: "Jan", views: 20, bids: 10, accepted: 5 },
-  { time: "Feb", views: 25, bids: 15, accepted: 8 },
-  { time: "Mar", views: 18, bids: 12, accepted: 6 },
+  { time: "Jan", views: 20, offers: 10, accepted: 5 },
+  { time: "Feb", views: 25, offers: 15, accepted: 8 },
+  { time: "Mar", views: 18, offers: 12, accepted: 6 },
 ];
 
-const bidComparison = [
-  { category: "Plumbing", bid1: 350, bid2: 400 },
-  { category: "Electrical", bid1: 250, bid2: 300 },
-  { category: "Structural", bid1: 400, bid2: 450 },
-  { category: "Example4", bid1: 400, bid2: 450 },
-  { category: "Example5", bid1: 400, bid2: 450 },
-  { category: "Example6", bid1: 400, bid2: 450 },
+const offerComparison = [
+  { category: "Plumbing", offer1: 350, offer2: 400 },
+  { category: "Electrical", offer1: 250, offer2: 300 },
+  { category: "Structural", offer1: 400, offer2: 450 },
+  { category: "Example4", offer1: 400, offer2: 450 },
+  { category: "Example5", offer1: 400, offer2: 450 },
+  { category: "Example6", offer1: 400, offer2: 450 },
 ];
 
 const issueResolutionTime = [
@@ -45,13 +45,13 @@ const issueResolutionTime = [
 
 const legendNames: Record<string, string> = {
   views: "Vendor Views",
-  bids: "Bids Placed",
+  offers: "Offers Placed",
   accepted: "Accepted Offers",
   todo: "To-Do",
   inProgress: "In-Progress",
   done: "Resolved",
-  bid1: "Lowest Bid",
-  bid2: "Highest Bid",
+  offer1: "Lowest Offer",
+  offer2: "Highest Offer",
   days: "Resolution Time (Days)",
 };
 
@@ -179,7 +179,7 @@ const DashboardCharts = () => {
               />
               <Area
                 type="monotone"
-                dataKey="bids"
+                dataKey="offers"
                 stackId="1"
                 stroke="#facc15"
                 fill="#fde68a"
@@ -196,10 +196,10 @@ const DashboardCharts = () => {
         </div>
       </div>
 
-      {/* Bid Comparison */}
+      {/* Offer Comparison */}
       <div className="bg-white rounded-lg">
         <div className="border-b border-gray-200 px-4 py-3 border-bottom flex items-center flex-wrap gap-2 justify-between">
-          <h6 className="font-bold text-lg mb-0">Bid Comparison</h6>
+          <h6 className="font-bold text-lg mb-0">Offer Comparison</h6>
         </div>
         <div className="p-6">
           <ResponsiveContainer
@@ -207,7 +207,7 @@ const DashboardCharts = () => {
             style={{ display: "flex", justifyContent: "start" }}
             height={300}
           >
-            <BarChart data={bidComparison} barSize={10} margin={{ left: 0 }}>
+            <BarChart data={offerComparison} barSize={10} margin={{ left: 0 }}>
               <XAxis dataKey="category" tick={{ fontSize: 12 }} />
               <YAxis tick={{ fontSize: 12 }} width={30} />
               <Tooltip
@@ -215,8 +215,8 @@ const DashboardCharts = () => {
                 content={<CustomTooltip />}
               />
               <Legend content={<CustomLegend />} />
-              <Bar dataKey="bid1" fill="#3b82f6" radius={10} />
-              <Bar dataKey="bid2" fill="#f87171" radius={10} />
+              <Bar dataKey="offer1" fill="#3b82f6" radius={10} />
+              <Bar dataKey="offer2" fill="#f87171" radius={10} />
             </BarChart>
           </ResponsiveContainer>
         </div>

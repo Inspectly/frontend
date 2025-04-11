@@ -257,7 +257,7 @@ const ClientDashboard: React.FC = () => {
                       Managing property repairs has never been easier. Upload
                       your inspection report, and our AI will instantly extract
                       key issues, saving you time. Active issues will receive
-                      competitive bids from verified vendors, schedule on-site
+                      competitive offers from verified vendors, schedule on-site
                       assessments, and track progress—all in one place. Take
                       control of your property maintenance with confidence.
                     </p>
@@ -463,7 +463,7 @@ const ClientDashboard: React.FC = () => {
             <div className="col-span-12 md:col-span-6 2xl:col-span-12">
               <div className="rounded-lg border-gray-600 bg-white h-full">
                 <div className="border-b border-gray-200 px-4 py-3 border-bottom flex items-center flex-wrap gap-2 justify-between">
-                  <h6 className="font-bold text-lg mb-0">Recent Bids</h6>
+                  <h6 className="font-bold text-lg mb-0">Recent Offers</h6>
                   <a
                     href={`/dashboard/${selectedListing}`}
                     className="text-blue-400 hover:text-blue-500 flex items-center gap-1"
@@ -496,7 +496,7 @@ const ClientDashboard: React.FC = () => {
                                 <div className="grow">
                                   <h6 className="text-base mb-0 font-medium">
                                     <Link
-                                      to={`/dashboard/${issue.report_id}/issue/${issue.id}?tab=bids`}
+                                      to={`/dashboard/${issue.report_id}/issue/${issue.id}?tab=offers`}
                                       className="text-blue-400 hover:underline"
                                     >
                                       {issue.id} {issue.type}
@@ -611,7 +611,7 @@ const ClientDashboard: React.FC = () => {
                     </div>
                   </div>
                   <span className="text-neutral-600 text-base font-medium">
-                    Bids placed: <a>30</a>
+                    Offers placed: <a>30</a>
                   </span>
                 </div>
               </div>

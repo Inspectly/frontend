@@ -223,7 +223,7 @@ const Signup: React.FC = () => {
     try {
       setLoading(true);
 
-      // Step 1: Create Firebase User First
+      // Create Firebase User First
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -237,17 +237,11 @@ const Signup: React.FC = () => {
 
       console.log("Firebase user created:", firebaseUser.uid);
 
-      // Step 2: Send Email Verification (Before Backend User)
+      // Send Email Verification (Before Backend User)
       await sendEmailVerification(firebaseUser);
       console.log("Verification email sent!");
 
-      const backendUser = await dispatch(
-        getUserByFirebaseId.initiate(firebaseUser.uid)
-      ).unwrap();
-
-      dispatch(login(backendUser));
-
-      // Step 3: Redirect to Verify Email Page
+      // Redirect to Verify Email Page
       if (formData.userType === "vendor") {
         navigate(
           `/verify-email?userType=${formData.userType}&vendorType=${
@@ -348,7 +342,7 @@ const Signup: React.FC = () => {
       };
 
       try {
-        // Step 3: Create the specific user type
+        // Create the specific user type
         await createUserType(
           backendUser,
           thirdPartyOption,
@@ -366,7 +360,7 @@ const Signup: React.FC = () => {
       }
 
       try {
-        // Step 4: Log the login method
+        // Log the login method
         await createUserLogin({
           user_id: backendUser.id,
           email_login: false,
@@ -398,7 +392,7 @@ const Signup: React.FC = () => {
 
         console.log("Sending payload:", payload);
 
-        // Step 5: Create User session
+        // Create User session
         const response = await createUserSession(payload).unwrap();
         console.log("User session created successfully:", response);
       } catch (error: any) {
@@ -411,7 +405,7 @@ const Signup: React.FC = () => {
         throw new Error("Failed to create session in backend.");
       }
 
-      // Step 6: Store user
+      // Store user
       const refreshedUser = await dispatch(
         getUserByFirebaseId.initiate(firebaseUser.uid)
       ).unwrap();
