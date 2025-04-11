@@ -241,7 +241,7 @@ const Issue: React.FC = () => {
                     }`}
                   >
                     {issue.vendor_id ? (
-                      <VendorName vendorId={filteredIssue.vendor_id} />
+                      <VendorName vendorId={Number(filteredIssue.vendor_id)} />
                     ) : (
                       "N/A"
                     )}

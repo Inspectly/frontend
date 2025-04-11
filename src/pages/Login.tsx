@@ -98,8 +98,9 @@ const Login: React.FC = () => {
         console.log("User login created.");
       } catch (loginErr: any) {
         if (
-          loginErr?.status === 400 &&
-          loginErr?.data?.detail?.includes("duplicate key value")
+          loginErr?.status === 409 ||
+          (loginErr?.status === 400 &&
+            loginErr?.data?.detail?.includes("duplicate key value"))
         ) {
           console.log("Login already exists, continuing...");
         } else {

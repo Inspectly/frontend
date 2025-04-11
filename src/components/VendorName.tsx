@@ -1,13 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   useGetVendorByIdQuery,
   useGetVendorByVendorUserIdQuery,
 } from "../features/api/vendorsApi";
+import VendorModal from "./VendorModal";
 
-const VendorName: React.FC<{ vendorId: number; isVendorId?: boolean }> = ({
-  vendorId,
-  isVendorId = true,
-}) => {
+const VendorName: React.FC<{
+  vendorId: number;
+  isVendorId?: boolean;
+  showRating?: boolean;
+}> = ({ vendorId, isVendorId = true, showRating = false }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const validVendorId = vendorId ? String(vendorId) : "";
 
   const {
@@ -29,9 +33,28 @@ const VendorName: React.FC<{ vendorId: number; isVendorId?: boolean }> = ({
   if (isVendorLoading || isVendorUserLoading) return <span>Loading...</span>;
   if (vendorError || vendorUserError) return <span>Error</span>;
 
-  const name = isVendorId ? vendor?.name : vendorByUser?.name;
+  const currentVendor = isVendorId ? vendor : vendorByUser;
+  const name = currentVendor?.name;
+  const rating = currentVendor?.rating;
 
-  return <span>{name || "Unknown Vendor"}</span>;
+  const displayName = showRating && rating ? `${name} (★ ${rating})` : name;
+
+  return (
+    <>
+      <span
+        onClick={() => setIsModalOpen(true)}
+        className="cursor-pointer text-blue-600 hover:underline"
+      >
+        {displayName || "Unknown Vendor"}
+      </span>
+      {isModalOpen && currentVendor && (
+        <VendorModal
+          vendor={currentVendor}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </>
+  );
 };
 
 export default VendorName;
