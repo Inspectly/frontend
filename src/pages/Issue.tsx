@@ -143,11 +143,11 @@ const Issue: React.FC = () => {
                 }
               >
                 {/* Notification Badge */}
-                {/* {filteredIssue.bids.length > 0 && (
+                {/* {filteredIssue.offers.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {filteredIssue.bids.length > 9
+                    {filteredIssue.offers.length > 9
                       ? "9+"
-                      : filteredIssue.bids.length}
+                      : filteredIssue.offers.length}
                   </span>
                 )} */}
 

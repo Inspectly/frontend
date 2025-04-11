@@ -241,12 +241,6 @@ const Signup: React.FC = () => {
       await sendEmailVerification(firebaseUser);
       console.log("Verification email sent!");
 
-      const backendUser = await dispatch(
-        getUserByFirebaseId.initiate(firebaseUser.uid)
-      ).unwrap();
-
-      dispatch(login(backendUser));
-
       // Step 3: Redirect to Verify Email Page
       if (formData.userType === "vendor") {
         navigate(

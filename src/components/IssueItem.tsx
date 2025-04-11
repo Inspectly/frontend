@@ -4,22 +4,22 @@ import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
-import { useGetBidsByIssueIdQuery } from "../features/api/issueBidsApi";
+import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
 
 interface IssueItemProps {
   issue: IssueType;
 }
 
 const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
-  const { data: bids, isLoading: bidLoading } = useGetBidsByIssueIdQuery(
+  const { data: offers, isLoading: offerLoading } = useGetOffersByIssueIdQuery(
     issue.id,
     {
       skip: !issue?.id,
     }
   );
 
-  const highestBid = bids?.length
-    ? [...bids].sort((a, b) => b.price - a.price)[0].price
+  const highestOffer = offers?.length
+    ? [...offers].sort((a, b) => b.price - a.price)[0].price
     : null;
 
   const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
@@ -58,12 +58,12 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
         {/* Cost */}
         <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
-          Current Bid:{" "}
-          {bidLoading
-            ? "Loading bid..."
-            : highestBid
-            ? `$${highestBid}`
-            : "No bids yet"}
+          Current Offer:{" "}
+          {offerLoading
+            ? "Loading offer..."
+            : highestOffer
+            ? `$${highestOffer}`
+            : "No offers yet"}
         </p>
 
         {/* Summary */}
