@@ -21,6 +21,7 @@ import {
 } from "../features/api/issueBidsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -51,7 +52,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [updateIssue] = useUpdateIssueMutation();
   const [createBid] = useCreateBidMutation();
 
-  const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
+  const [coords, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [imageOpen, setImageOpen] = useState(true);
@@ -112,24 +113,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       minute: "2-digit",
       hour12: true,
     });
-  };
-
-  const getCoordinatesFromAddress = async (address: string) => {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        address
-      )}`
-    );
-    const data = await response.json();
-
-    if (data.length > 0) {
-      return {
-        latitude: parseFloat(data[0].lat),
-        longitude: parseFloat(data[0].lon),
-      };
-    } else {
-      throw new Error("Location not found");
-    }
   };
 
   // Handle tab change
@@ -579,7 +562,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       </div>
                       <p className="text-base font-semibold text-gray-700">
                         {issue.vendor_id ? (
-                          <VendorName vendorId={issue.vendor_id} />
+                          <VendorName vendorId={issue.vendor_id} showRating />
                         ) : (
                           "No vendor assigned"
                         )}

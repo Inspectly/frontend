@@ -96,8 +96,9 @@ export type Realtor = {
 
 export type Vendor = {
   id: number;
-  vender_user_id: number;
-  vender_type: Vendor_Type;
+  vendor_user_id: number;
+  vendor_type: Vendor_Type;
+  vendor_types: string;
   code: string;
   name: string;
   email: string;
@@ -113,6 +114,15 @@ export type Vendor = {
   updated_at: string;
 };
 
+export type Vendor_Review = {
+  id: number;
+  vendor_user_id: number;
+  user_id: number;
+  rating: number;
+  review: string;
+  created_at: string;
+  updated_at: string;
+};
 export interface Listing {
   id: number;
   user_id: number;
