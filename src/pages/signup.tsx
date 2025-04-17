@@ -387,6 +387,7 @@ const Signup: React.FC = () => {
         const payload = {
           user_id: backendUser.id,
           login: "gmail",
+          login_time: new Date().toISOString(),
           authentication_code: token,
         };
 

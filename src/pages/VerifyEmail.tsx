@@ -294,6 +294,7 @@ const VerifyEmail: React.FC = () => {
         await createUserSession({
           user_id: backendUser?.id,
           login: "email",
+          login_time: new Date().toISOString(),
           authentication_code: token,
         }).unwrap();
 
