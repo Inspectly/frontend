@@ -50,6 +50,7 @@ function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
+  const [loadingUserType, setLoadingUserType] = useState(true);
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -175,6 +176,7 @@ function App() {
     const fetchUserType = async () => {
       if (user) {
         try {
+          setLoadingUserType(true);
           const response = await dispatch(
             getUserById.initiate(user.id)
           ).unwrap();
@@ -182,6 +184,8 @@ function App() {
           setUserInfo(response);
         } catch (error) {
           console.error("Error fetching user type:", error);
+        } finally {
+          setLoadingUserType(false);
         }
       }
     };
@@ -189,7 +193,7 @@ function App() {
     fetchUserType();
   }, [user]);
 
-  if (loadingAuthState) {
+  if (loadingAuthState || loadingUserType) {
     return <Preloader />;
   }
 
