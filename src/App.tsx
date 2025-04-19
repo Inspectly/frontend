@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import { SectionRefs } from "./types";
+import { SectionRefs, User } from "./types";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -28,7 +28,7 @@ import PriceSection from "./components/PriceSection";
 import AdminDashboard from "./pages/AdminDashboard";
 import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
-import { getUserByFirebaseId, getUserById } from "./features/api/usersApi";
+import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
 
@@ -48,7 +48,7 @@ function App() {
   const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
 
   const refs: SectionRefs = {

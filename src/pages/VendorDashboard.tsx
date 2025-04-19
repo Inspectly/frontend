@@ -1,32 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { CalendarEvent, IssueType, User } from "../types";
+import { EventSlot, IssueType, User } from "../types";
 import UserCalendar from "../components/UserCalendar";
-import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { Link } from "react-router-dom";
-import DashboardCharts from "../components/DashboardCharts";
+import VendorName from "../components/VendorName";
 
 interface DashboardProps {
   user: User;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<EventSlot[]>([]);
   const [selectedReport, setSelectedReport] = useState<string>("all");
-
-  // const {
-  //   data: listings,
-  //   error: listingsError,
-  //   isLoading: isListingsLoading,
-  // } = useGetListingsQuery();
-
-  // const {
-  //   data: reports,
-  //   error: reportsError,
-  //   isLoading: isReportsLoading,
-  //   refetch: refetchReports,
-  // } = useGetReportsQuery();
 
   const {
     data: issues,
@@ -35,21 +20,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     refetch: refetchIssues,
   } = useGetIssuesQuery();
 
-  console.log('user: ', user);
-  console.log('issues: ', issues);
-
   useEffect(() => {
     if (selectedReport !== "all") {
       refetchIssues();
     }
   }, [selectedReport, refetchIssues]);
 
-  const filteredIssues = selectedReport === "all"
-        ? issues || []
-        : issues?.filter((issue: IssueType) => issue.report_id.toString() === selectedReport) || [];
+  const filteredIssues =
+    selectedReport === "all"
+      ? issues || []
+      : issues?.filter(
+          (issue: IssueType) => issue.report_id.toString() === selectedReport
+        ) || [];
 
   useEffect(() => {
-    const dummyBookings: CalendarEvent[] = [
+    const dummyBookings: EventSlot[] = [
       {
         id: "1",
         title: "plumbing Repair Appointment",
@@ -73,15 +58,19 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   }, []);
 
   // Handling error state
-  // todo: maybe an error loading component? 
+  // todo: maybe an error loading component?
   if (issuesError) {
-    return <p>Error</p>; 
+    return <p>Error</p>;
   }
+
+  if (!user || isIssuesLoading) return <p>Loading...</p>;
 
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-semibold mb-0">Hello username!</h1>
+        <h1 className="text-2xl font-semibold mb-0">
+          Hello <VendorName vendorId={user.id} isVendorId={false} />!
+        </h1>
       </div>
       <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
         <div className="col-span-12 2xl:col-span-8">
@@ -106,7 +95,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                       The fastest way to find and fix property issues
                     </h4>
                     <p className="text-white text-base">
-                      Join our network of verified vendors and connect with homeowners in need of your services. Our AI-powered platform instantly analyzes inspection reports, matching you with relevant repair opportunities. Receive competitive bid requests, schedule on-site assessments, and manage projects seamlessly—all from your Vendor Dashboard. Get qualified leads and streamline your workflow today! 🚀
+                      Join our network of verified vendors and connect with
+                      homeowners in need of your services. Our AI-powered
+                      platform instantly analyzes inspection reports, matching
+                      you with relevant repair opportunities. Receive
+                      competitive bid requests, schedule on-site assessments,
+                      and manage projects seamlessly—all from your Vendor
+                      Dashboard. Get qualified leads and streamline your
+                      workflow today! 🚀
                     </p>
                   </div>
                 </div>
@@ -115,9 +111,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         </div>
       </div>
-      <h6 className="mb-4 font-semibold">
-        Current Bids & Active Jobs
-      </h6>
+      <h6 className="mb-4 font-semibold">Current Bids & Active Jobs</h6>
       <div className="col-span-12 2xl:col-span-4">
         <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
           <div className="col-span-12 md:col-span-6 2xl:col-span-12">
@@ -144,7 +138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                       (issue) =>
                         issue.cost && (
                           <div
-                            key={issue.id}
+                            key={`${issue.id}-${reportId}`}
                             className="flex items-center justify-between gap-2 mt-6"
                           >
                             <div className="flex items-center gap-3">
@@ -183,18 +177,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           </div> */}
         </div>
       </div>
-      <h6 className="mb-4 font-semibold">
-        Active Jobs
-      </h6>
+      <h6 className="mb-4 font-semibold">Active Jobs</h6>
       {/* todo: find active jobs component... */}
       {/* <div className="col-span-12">
         <div className="rounded-md bg-white h-full">
           <UserCalendar events={events} />
         </div>
       </div> */}
-      <h6 className="mb-4 font-semibold">
-        Upcoming Assessments/Repairs
-      </h6>
+      <h6 className="mb-4 font-semibold">Upcoming Assessments/Repairs</h6>
       <div className="col-span-12">
         <div className="rounded-md bg-white h-full">
           <UserCalendar events={events} />
