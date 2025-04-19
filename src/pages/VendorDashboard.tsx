@@ -80,13 +80,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 <img
                   src="/images/gradient-bg.png"
                   className="absolute start-0 top-0 w-full h-full z-[1]"
-                  alt=""
+                  alt="Welcome card background"
                 />
                 <div className="flex 3xl:gap-[80px] xl:gap-[32px] lg:gap-6 gap-4 items-center relative z-[1]">
                   <div className="sm:block hidden w-full">
                     <img
                       src="/images/ai_image.webp"
-                      alt=""
+                      alt="Welcome card icon"
                       className="w-full h-full object-fit-cover"
                     />
                   </div>
