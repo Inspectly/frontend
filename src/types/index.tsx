@@ -194,6 +194,51 @@ export type IssueOffers = {
   updated_at: string;
 };
 
+export enum IssueAssessmentStatus {
+  RECEIVED = "Assessment_Status.RECEIVED",
+  ACCEPTED = "Assessment_Status.ACCEPTED",
+  REJECTED = "Assessment_Status.REJECTED",
+}
+
+export const ISSUE_ASSESSMENT_STATUS_LABELS: Record<
+  IssueAssessmentStatus,
+  string
+> = {
+  [IssueAssessmentStatus.RECEIVED]: "Received",
+  [IssueAssessmentStatus.ACCEPTED]: "Accepted",
+  [IssueAssessmentStatus.REJECTED]: "Rejected",
+};
+
+export enum UserType {
+  ADMIN = "admin",
+  CLIENT = "client",
+  REALTOR = "realtor",
+  VENDOR = "vendor",
+}
+
+export type IssueAssessment = {
+  id: string;
+  issue_id: number;
+  user_id: number;
+  user_type: UserType;
+  interaction_id: string; // e.g., '5_7_2'
+  users_interaction_id: string; // e.g., '5_7_2'
+  start_time: string; // ISO string
+  end_time: string; // ISO string
+  status: IssueAssessmentStatus;
+  min_assessment_time: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export interface CalendarReadyAssessment extends IssueAssessment {
+  title: string;
+  start: Date;
+  end: Date;
+  isNew?: boolean;
+  isEdited?: boolean;
+}
+
 export interface Comment {
   id: number;
   issue_id: number;
@@ -219,7 +264,7 @@ export interface Offer {
   dateAdded: string;
 }
 
-export interface CalendarEvent {
+export interface EventSlot {
   id: string;
   title: string;
   start: Date;

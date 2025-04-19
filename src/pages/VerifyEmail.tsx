@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../../firebase";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   useCreateUserSessionMutation,
   useGetUserSessionByUserIdQuery,
@@ -11,7 +11,6 @@ import {
   useGetUserByFirebaseIdQuery,
 } from "../features/api/usersApi";
 import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
-import { User } from "../types";
 import { useCreateClientMutation } from "../features/api/clientsApi";
 import { useCreateRealtorMutation } from "../features/api/realtorsApi";
 import {
@@ -25,10 +24,6 @@ import { nanoid } from "nanoid";
 const VerifyEmail: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [searchParams] = useSearchParams(); // Retrieve query parameters
-  const userType = searchParams.get("userType") || "client";
-  const vendorType = searchParams.get("vendorType") || "general";
-  const vendorTypes = searchParams.get("vendorTypes") || "general";
 
   const [firebaseUser, setFirebaseUser] = useState(auth.currentUser);
   const [isVerified, setIsVerified] = useState(false);
@@ -36,9 +31,10 @@ const VerifyEmail: React.FC = () => {
   const [sessionExists, setSessionExists] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reauthNeeded, setReauthNeeded] = useState(false);
-
   const [resendDisabled, setResendDisabled] = useState(false);
   const [cooldown, setCooldown] = useState(60); // Cooldown in seconds
+  const [formData, setFormData] = useState<any>(null);
+  const [vendorTypes, setVendorTypes] = useState<any[]>([]);
 
   const [createBackendUser] = useCreateUserMutation();
   const [createUserSession] = useCreateUserSessionMutation();
@@ -49,20 +45,28 @@ const VerifyEmail: React.FC = () => {
 
   const { data: vendors } = useGetVendorsQuery();
 
-  // Fetch backend user only after email is verified
-  const { data: backendUserData, refetch: refetchUser } =
-    useGetUserByFirebaseIdQuery(firebaseUser?.uid as string, {
+  const { refetch: refetchUser } = useGetUserByFirebaseIdQuery(
+    firebaseUser?.uid as string,
+    {
       skip: !isVerified || !firebaseUser,
-    });
-  const backendUser: User | undefined = backendUserData;
+    }
+  );
 
-  // Fetch session after backend user exists
   const { data: userSession } = useGetUserSessionByUserIdQuery(
-    (backendUser as User)?.id?.toString(),
+    String(firebaseUser?.uid),
     {
       skip: !backendUserExists,
     }
   );
+
+  // Load stored signup info
+  useEffect(() => {
+    const storedUserData = localStorage.getItem("signupUserData");
+    const storedVendorTypes = localStorage.getItem("signupVendorTypes");
+
+    if (storedUserData) setFormData(JSON.parse(storedUserData));
+    if (storedVendorTypes) setVendorTypes(JSON.parse(storedVendorTypes));
+  }, []);
 
   const generateUniqueVendorCode = async (vendorName: string) => {
     // Extract first two letters of each word in the name
@@ -101,7 +105,9 @@ const VerifyEmail: React.FC = () => {
 
     if (userType === "client") {
       return createClient({ user_id: userId, ...userData }).unwrap();
-    } else if (userType === "vendor") {
+    }
+
+    if (userType === "vendor") {
       const { first_name, last_name, ...vendorData } = userData;
       const vendorName = `${userData.first_name} ${userData.last_name}`;
 
@@ -110,15 +116,19 @@ const VerifyEmail: React.FC = () => {
 
       return createVendor({
         vendor_user_id: userId,
-        vendor_type: { vendor_type: vendorType },
-        vendor_types: vendorTypes,
+        vendor_type: {
+          vendor_type: vendorTypes[0]?.value || "general",
+        },
+        vendor_types: vendorTypes.map((vt) => vt.value).join(", "),
         code: uniqueCode,
         name: vendorName,
         ...vendorData,
         rating: 5,
         review: "New Vendor",
       }).unwrap();
-    } else if (userType === "realtor") {
+    }
+
+    if (userType === "realtor") {
       return createRealtor({
         realtor_user_id: userId,
         realtor_firm_id: 1,
@@ -163,6 +173,7 @@ const VerifyEmail: React.FC = () => {
     }
   };
 
+  // Polling for verification status
   useEffect(() => {
     const interval = setInterval(async () => {
       await auth.currentUser?.reload();
@@ -177,18 +188,9 @@ const VerifyEmail: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // When backend user is found, update state
+  // After verification: Create backend user + session
   useEffect(() => {
-    if (backendUser) setBackendUserExists(true);
-  }, [backendUser]);
-
-  // When session is found, update state
-  useEffect(() => {
-    if (userSession) setSessionExists(true);
-  }, [userSession]);
-
-  useEffect(() => {
-    if (!isVerified || backendUserExists) return;
+    if (!isVerified || backendUserExists || !formData) return;
 
     const createUserAfterVerification = async () => {
       try {
@@ -196,49 +198,42 @@ const VerifyEmail: React.FC = () => {
 
         console.log("Email verified! Creating backend user...");
 
-        let newUser = backendUser as User; // Use existing backend user if already fetched
+        // Create Backend User
+        const createdUser = await createBackendUser({
+          firebase_id: firebaseUser.uid,
+          user_type: { user_type: formData.userType },
+          email: firebaseUser.email || "unknown@example.com",
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+        }).unwrap();
 
-        if (!backendUser) {
-          console.log("Backend user not found. Creating new backend user...");
+        console.log("Backend user created:", createdUser);
 
-          // Create Backend User
-          newUser = await createBackendUser({
-            firebase_id: firebaseUser.uid,
-            user_type: { user_type: userType },
-            email: firebaseUser.email || "unknown@example.com",
-            first_name: firebaseUser.displayName?.split(" ")[0] || "Unknown",
-            last_name: firebaseUser.displayName?.split(" ")[1] || "User",
-          }).unwrap();
-
-          console.log("Backend user created:", newUser);
-          await refetchUser();
-        }
-
+        // Refetch to get complete backend user object
+        const refreshedUser = await refetchUser().unwrap();
+        console.log("Backend user retrieved:", refreshedUser);
         setBackendUserExists(true);
-
-        console.log("Backend user retrieved:", backendUser);
 
         // Create User Type (Only if not created yet)
         console.log("Creating user type...");
         const updatedUserData = {
           email: firebaseUser.email || "",
-          first_name: firebaseUser.displayName?.split(" ")[0] || "",
-          last_name: firebaseUser.displayName?.split(" ")[1] || "",
-          phone: firebaseUser.phoneNumber || "",
-          address: "",
-          city: "",
-          state: "",
-          country: "",
-          postal_code: "",
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          country: formData.country,
+          postal_code: formData.postalCode,
         };
 
-        await createUserType(newUser, userType, updatedUserData);
+        await createUserType(refreshedUser, formData.userType, updatedUserData);
 
-        console.log("User type created");
-
+        // Create Login Record
         try {
           await createUserLogin({
-            user_id: newUser.id,
+            user_id: refreshedUser.id,
             email_login: true,
             email: firebaseUser.email || "",
             phone_login: false,
@@ -250,83 +245,62 @@ const VerifyEmail: React.FC = () => {
           console.log("Login method logged");
         } catch (loginErr: any) {
           if (
-            loginErr?.status !== 409 &&
+            loginErr?.status !== 400 &&
             !loginErr?.message?.includes("duplicate key value")
           ) {
-            await firebaseUser?.delete();
-            dispatch(logout());
-            return;
+            throw loginErr;
+          } else {
+            console.log("Login method already exists. Skipping.");
           }
         }
-      } catch (error: any) {
-        console.error("User creation failed:", error);
-        if (error?.message?.includes("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")) {
-          setReauthNeeded(true);
-        }
 
-        // Delete Firebase User on Failure
-        try {
-          await firebaseUser?.delete();
-          dispatch(logout());
-          console.log("Firebase user deleted due to failure");
-        } catch (firebaseError) {
-          console.error("Failed to delete Firebase user:", firebaseError);
-        }
-      }
-    };
-
-    createUserAfterVerification();
-  }, [isVerified, backendUserExists, backendUser, userType]);
-
-  // If backend user exists but session is missing, create it
-  useEffect(() => {
-    if (!backendUserExists || sessionExists || !auth.currentUser?.emailVerified)
-      return;
-
-    const createSessionAfterUserCreation = async () => {
-      try {
-        if (!firebaseUser) return;
-
-        console.log("Backend user exists. Checking session...");
-
+        // Create session
         const token = await getIdToken(firebaseUser);
 
         await createUserSession({
-          user_id: backendUser?.id,
+          user_id: refreshedUser.id,
           login: "email",
           login_time: new Date().toISOString(),
           authentication_code: token,
         }).unwrap();
 
-        localStorage.setItem("authToken", token);
-        setSessionExists(true);
-
         console.log("User session created! Dispatching login...");
-        dispatch(login(backendUser));
+        dispatch(login(refreshedUser));
+        localStorage.setItem("authToken", token);
+
+        // Clean up
+        localStorage.removeItem("signupUserData");
+        localStorage.removeItem("signupVendorTypes");
+
+        setSessionExists(true);
         setTimeout(() => {
           console.log("Redirecting to dashboard...");
           navigate("/dashboard");
           dispatch(setLoading(false));
         }, 1000);
-      } catch (sessionError: any) {
-        console.error("Session creation failed:", sessionError);
-        if (sessionError?.message?.includes("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")) {
+      } catch (error: any) {
+        console.error("User creation failed:", error);
+        if (error?.message?.includes("CREDENTIAL_TOO_OLD_LOGIN_AGAIN")) {
           setReauthNeeded(true);
-        }
-
-        // Delete Firebase user if session fails
-        try {
-          await firebaseUser?.delete();
-          dispatch(logout());
-          console.log("Firebase user deleted due to session failure");
-        } catch (firebaseError) {
-          console.error("Failed to delete Firebase user:", firebaseError);
+        } else {
+          // Only delete Firebase user if absolutely needed
+          try {
+            await firebaseUser?.delete();
+            dispatch(logout());
+            console.log("Firebase user deleted due to failure");
+          } catch (firebaseErr) {
+            console.error("Failed to delete Firebase user:", firebaseErr);
+          }
         }
       }
     };
 
-    createSessionAfterUserCreation();
-  }, [backendUserExists, sessionExists, firebaseUser]);
+    createUserAfterVerification();
+  }, [isVerified, backendUserExists, firebaseUser, formData]);
+
+  useEffect(() => {
+    if (userSession) setSessionExists(true);
+  }, [userSession]);
 
   return (
     <div className="flex flex-col lg:flex-row mt-10">

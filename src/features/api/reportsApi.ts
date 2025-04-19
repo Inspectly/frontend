@@ -6,7 +6,7 @@ export const reportsApi = api.injectEndpoints({
     getReports: builder.query<ReportType[], void>({
       query: () => "reports/",
     }),
-    getReportById: builder.query<ReportType, string>({
+    getReportById: builder.query<ReportType, number>({
       query: (id) => `reports/${id}`,
     }),
     createReport: builder.mutation<ReportType, Partial<ReportType>>({
