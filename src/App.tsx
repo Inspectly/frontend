@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import { SectionRefs } from "./types";
+import { SectionRefs, User } from "./types";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -48,7 +48,9 @@ function App() {
   const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1025);
+  const [userInfo, setUserInfo] = useState<User | null>(null);
   const [userType, setUserType] = useState<string | null>(null);
+  const [loadingUserType, setLoadingUserType] = useState(true);
 
   const refs: SectionRefs = {
     heroRef: useRef<HTMLDivElement>(null),
@@ -145,7 +147,7 @@ function App() {
       case "realtor":
         return <RealtorDashboard />;
       case "vendor":
-        return <VendorDashboard />;
+        return <VendorDashboard user={userInfo} />;
       default:
         return <Dashboard />; // Default dashboard
     }
@@ -174,12 +176,16 @@ function App() {
     const fetchUserType = async () => {
       if (user) {
         try {
+          setLoadingUserType(true);
           const response = await dispatch(
             getUserById.initiate(user.id)
           ).unwrap();
           setUserType(response.user_type);
+          setUserInfo(response);
         } catch (error) {
           console.error("Error fetching user type:", error);
+        } finally {
+          setLoadingUserType(false);
         }
       }
     };
@@ -187,7 +193,7 @@ function App() {
     fetchUserType();
   }, [user]);
 
-  if (loadingAuthState) {
+  if (loadingAuthState || loadingUserType) {
     return <Preloader />;
   }
 
