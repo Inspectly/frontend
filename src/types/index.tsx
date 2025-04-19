@@ -96,8 +96,9 @@ export type Realtor = {
 
 export type Vendor = {
   id: number;
-  vender_user_id: number;
-  vender_type: Vendor_Type;
+  vendor_user_id: number;
+  vendor_type: Vendor_Type;
+  vendor_types: string;
   code: string;
   name: string;
   email: string;
@@ -113,6 +114,15 @@ export type Vendor = {
   updated_at: string;
 };
 
+export type Vendor_Review = {
+  id: number;
+  vendor_user_id: number;
+  user_id: number;
+  rating: number;
+  review: string;
+  created_at: string;
+  updated_at: string;
+};
 export interface Listing {
   id: number;
   user_id: number;
@@ -128,7 +138,9 @@ export interface Listing {
 
 export type ReportType = {
   id: number;
+  user_id: number;
   listing_id: number;
+  aws_link: string;
   name: string;
   created_at: string;
   updated_at: string;
@@ -162,15 +174,15 @@ export type IssueType = {
   description: string;
   severity: string;
   status: IssueStatus;
-  vendor_id: number;
+  vendor_id: number | null;
   image_url: string;
   cost: string;
-  active: string;
+  active: boolean;
   created_at: string;
   updated_at: string;
 };
 
-export type IssueBids = {
+export type IssueOffers = {
   id: number;
   issue_id: number;
   vendor_id: number;
@@ -181,6 +193,51 @@ export type IssueBids = {
   created_at: string;
   updated_at: string;
 };
+
+export enum IssueAssessmentStatus {
+  RECEIVED = "Assessment_Status.RECEIVED",
+  ACCEPTED = "Assessment_Status.ACCEPTED",
+  REJECTED = "Assessment_Status.REJECTED",
+}
+
+export const ISSUE_ASSESSMENT_STATUS_LABELS: Record<
+  IssueAssessmentStatus,
+  string
+> = {
+  [IssueAssessmentStatus.RECEIVED]: "Received",
+  [IssueAssessmentStatus.ACCEPTED]: "Accepted",
+  [IssueAssessmentStatus.REJECTED]: "Rejected",
+};
+
+export enum UserType {
+  ADMIN = "admin",
+  CLIENT = "client",
+  REALTOR = "realtor",
+  VENDOR = "vendor",
+}
+
+export type IssueAssessment = {
+  id: string;
+  issue_id: number;
+  user_id: number;
+  user_type: UserType;
+  interaction_id: string; // e.g., '5_7_2'
+  users_interaction_id: string; // e.g., '5_7_2'
+  start_time: string; // ISO string
+  end_time: string; // ISO string
+  status: IssueAssessmentStatus;
+  min_assessment_time: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export interface CalendarReadyAssessment extends IssueAssessment {
+  title: string;
+  start: Date;
+  end: Date;
+  isNew?: boolean;
+  isEdited?: boolean;
+}
 
 export interface Comment {
   id: number;
@@ -200,14 +257,14 @@ export interface Attachment {
   created_at: string;
 }
 
-export interface Bid {
+export interface Offer {
   id: string;
   vendor: string;
   amount: string;
   dateAdded: string;
 }
 
-export interface CalendarEvent {
+export interface EventSlot {
   id: string;
   title: string;
   start: Date;

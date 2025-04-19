@@ -1,29 +1,45 @@
-import React, { useEffect, useRef, useState } from "react";
-import { IssueType, Listing, statusMapping, statusOptions } from "../types"; // Update paths as needed
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  IssueAssessment,
+  IssueType,
+  Listing,
+  statusMapping,
+  statusOptions,
+} from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
   faChevronUp,
   faChevronDown,
   faTimes,
-  faPlus,
   faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
 import MapComponent from "./MapComponent";
-import VendorModal from "./VendorModal";
 import VendorName from "./VendorName";
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
 import {
-  useCreateBidMutation,
-  useGetBidsByIssueIdQuery,
-} from "../features/api/issueBidsApi";
+  useCreateOfferMutation,
+  useGetOffersByIssueIdQuery,
+} from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
+import {
+  useGetAssessmentsByIssueIdQuery,
+  useGetAssessmentsByUsersInteractionIdQuery,
+  useUpdateAssessmentMutation,
+} from "../features/api/issueAssessmentsApi";
+import CalendarSelector from "./CalendarSelector";
+import AssessmentReview from "./AssessmentReview";
+import {
+  useGetVendorByVendorUserIdQuery,
+  useGetVendorsQuery,
+} from "../features/api/vendorsApi";
+import { useGetReportByIdQuery } from "../features/api/reportsApi";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -43,23 +59,59 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     (state: RootState) => state.auth.user?.user_type
   );
 
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
-    skip: !userId || userType !== "vendor",
-  });
-
   const {
-    data: bids = [],
-    isLoading: bidsLoading,
-    error: bidsError,
-    refetch,
-  } = useGetBidsByIssueIdQuery(issue?.id, {
+    data: offers = [],
+    isLoading: offersLoading,
+    error: offersError,
+    refetch: refetchOffers,
+  } = useGetOffersByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
-  const [updateIssue] = useUpdateIssueMutation();
-  const [createBid] = useCreateBidMutation();
+  const { data: allVendors = [] } = useGetVendorsQuery();
 
-  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
-  const [coords, setCoords] = useState({ latitude: 0, longitude: 0 });
+  const { data: report } = useGetReportByIdQuery(issue.report_id, {
+    skip: !issue.report_id,
+  });
+
+  const [updateIssue] = useUpdateIssueMutation();
+  const [createOffer] = useCreateOfferMutation();
+  const [updateAssessmentStatus] = useUpdateAssessmentMutation();
+
+  const isVendor = userType === "vendor";
+
+  const { data: currentVendor } = useGetVendorByVendorUserIdQuery(userId, {
+    skip: !isVendor || !userId,
+  });
+
+  const getUsersInteractionId = (vendorId: number) => {
+    if (!report?.user_id || !vendorId || !issue?.id) return "";
+    return `${report.user_id}_${vendorId}_${issue.id}`;
+  };
+
+  const usersInteractionId = currentVendor
+    ? getUsersInteractionId(currentVendor.id)
+    : "";
+
+  const assessmentsByInteraction = useGetAssessmentsByUsersInteractionIdQuery(
+    usersInteractionId,
+    { skip: !usersInteractionId }
+  );
+  const assessmentsByIssue = useGetAssessmentsByIssueIdQuery(issue.id, {
+    skip: !issue.id,
+  });
+
+  const assessmentsData = isVendor
+    ? assessmentsByInteraction
+    : assessmentsByIssue;
+
+  const {
+    data: assessments = [],
+    isLoading: assessmentsLoading,
+    refetch: refetchAssessments,
+    isFetching: assessmentsFetching,
+  } = assessmentsData;
+
+  const [coords, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [imageOpen, setImageOpen] = useState(true);
@@ -79,20 +131,21 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     null
   );
 
-  const [isBidModalOpen, setIsBidModalOpen] = useState(false);
-  const [bidAmount, setBidAmount] = useState("");
-  const [bidError, setBidError] = useState("");
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [offerAmount, setOfferAmount] = useState("");
+  const [offerError, setOfferError] = useState("");
   const [commentVendor, setCommentVendor] = useState("");
   // const [commentClient, setCommentClient] = useState("");
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
   const tableDropdownButtonRefs = useRef(new Map());
 
-  const highestBid =
-    bids.length > 0 ? Math.max(...bids.map((b) => b.price)) : 0;
+  const highestOffer =
+    offers.length > 0 ? Math.max(...offers.map((b) => b.price)) : 0;
 
-  const uniqueVendors = new Set(bids.map((bid) => bid.vendor_id)).size;
+  const uniqueVendors = new Set(offers.map((offer) => offer.vendor_id)).size;
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -122,66 +175,117 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     });
   };
 
-  const getCoordinatesFromAddress = async (address: string) => {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-        address
-      )}`
-    );
-    const data = await response.json();
-
-    if (data.length > 0) {
-      return {
-        latitude: parseFloat(data[0].lat),
-        longitude: parseFloat(data[0].lon),
-      };
-    } else {
-      throw new Error("Location not found");
-    }
-  };
-
   // Handle tab change
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     navigate(`?tab=${tab}`); // Update URL
   };
 
-  const handleBidSubmit = async () => {
-    const bidValue = parseFloat(bidAmount);
+  const handleOfferSubmit = async () => {
+    const offerValue = parseFloat(offerAmount);
 
-    if (isNaN(bidValue) || bidValue <= highestBid) {
-      setBidError(`Your bid must be more than $${highestBid}`);
+    if (isNaN(offerValue) || offerValue <= highestOffer) {
+      setOfferError(`Your offer must be more than $${highestOffer}`);
       return;
     }
 
     if (!userId) {
-      setBidError("User ID is missing. Please log in.");
+      setOfferError("User ID is missing. Please log in.");
       return;
     }
 
     try {
-      await createBid({
+      await createOffer({
         issue_id: issue.id,
-        vendor_id: vendor?.id,
-        price: bidValue,
+        vendor_id: userId,
+        price: offerValue,
         status: "received",
         comment_vendor: commentVendor,
         comment_client: "",
       }).unwrap();
 
-      refetch();
+      refetchOffers();
 
       // Reset state
-      setBidAmount("");
+      setOfferAmount("");
       setCommentVendor("");
       // setCommentClient("");
-      setBidError("");
-      setIsBidModalOpen(false);
+      setOfferError("");
+      setIsOfferModalOpen(false);
     } catch (err) {
-      console.error("Failed to submit bid:", err);
-      setBidError("Failed to submit bid. Please try again.");
+      console.error("Failed to submit offer:", err);
+      setOfferError("Failed to submit offer. Please try again.");
     }
   };
+
+  const handleAccept = async (
+    accepted: IssueAssessment,
+    rejected: IssueAssessment[]
+  ) => {
+    try {
+      await Promise.all([
+        updateAssessmentStatus({
+          ...accepted,
+          interaction_id: accepted.users_interaction_id,
+          status: "accepted",
+        }),
+        ...rejected
+          .map((a) => ({
+            ...a,
+            interaction_id: accepted.users_interaction_id,
+            status: "rejected",
+          }))
+          .map(updateAssessmentStatus),
+      ]);
+
+      refetchAssessments();
+    } catch (err) {
+      console.error("Failed to update assessment statuses", err);
+    }
+  };
+
+  const handlePostProposal = async () => {
+    setIsSubmittingProposal(true);
+    try {
+      await refetchAssessments().unwrap();
+    } catch (err) {
+      console.error("Failed to refresh proposals after submission", err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const handleRejectAll = async (vendorId: number) => {
+    const toReject = assessments.filter(
+      (a) => Number(a.users_interaction_id.split("_")[1]) === vendorId
+    );
+    setIsSubmittingProposal(true);
+
+    try {
+      await Promise.all(
+        toReject.map((a) =>
+          updateAssessmentStatus({
+            ...a,
+            interaction_id: a.users_interaction_id,
+            status: "rejected",
+          })
+        )
+      );
+      await refetchAssessments();
+    } catch (err) {
+      console.error("Failed to reject all", err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const vendorIdToName = useMemo(() => {
+    const map: Record<number, string> = {};
+    allVendors.forEach((vendor) => {
+      map[vendor.id] = vendor.name;
+    });
+    return map;
+  }, [allVendors]);
 
   useEffect(() => {
     if (!listing) return;
@@ -258,26 +362,42 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           <li role="presentation">
             <button
               className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
-                activeTab === "bids"
+                activeTab === "offers"
                   ? "text-blue-600 border-blue-600"
                   : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
               }`}
               type="button"
               role="tab"
-              aria-controls="default-bids"
-              aria-selected={activeTab === "bids"}
-              onClick={() => handleTabChange("bids")}
+              aria-controls="default-offers"
+              aria-selected={activeTab === "offers"}
+              onClick={() => handleTabChange("offers")}
             >
-              Bids
+              Offers
+            </button>
+          </li>
+          <li role="presentation">
+            <button
+              className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
+                activeTab === "assessments"
+                  ? "text-blue-600 border-blue-600"
+                  : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+              }`}
+              type="button"
+              role="tab"
+              aria-controls="default-assessments"
+              aria-selected={activeTab === "assessments"}
+              onClick={() => handleTabChange("assessments")}
+            >
+              Assessments
             </button>
           </li>
         </ul>
       </div>
 
-      <div className="chat-message-list max-h-[568px] overflow-y-auto  px-6 pb-6 pt-2">
+      <div className="h-[calc(100vh-320px)] overflow-y-auto px-6 pb-6 pt-2">
         {activeTab === "details" && (
           <div
-            id="default-bids"
+            id="default-offers"
             role="tabpanel"
             className="flex flex-col lg:flex-row gap-6"
           >
@@ -379,6 +499,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                               : statusMapping[issue.status] === "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
+                          }  ${
+                            userType === "vendor" ? "pointer-events-none" : ""
                           }`}
                           ref={progressDropdownButtonRef}
                           onClick={() =>
@@ -476,78 +598,79 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 </div>
                 {descriptionOpen && (
                   <p className="mt-2 text-gray-700">
-                    A major pipe leakage is causing water overflow in the
-                    kitchen.
+                    {issue.description || "No description available."}
                   </p>
                 )}
               </div>
 
               {/* Location Section */}
-              <div>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setLocationOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {locationOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
-                  </button>
-                  <h2 className="text-lg font-semibold">Listing Location</h2>
-                </div>
+              {userType !== "vendor" && (
+                <div>
+                  <div
+                    className="flex items-center cursor-pointer"
+                    onClick={() => toggleSection(setLocationOpen)}
+                  >
+                    <button className="rounded bg-neutral-200 px-2 mr-2">
+                      {locationOpen ? (
+                        <FontAwesomeIcon
+                          icon={faChevronUp}
+                          className="size-2.5 align-middle"
+                        />
+                      ) : (
+                        <FontAwesomeIcon
+                          icon={faChevronDown}
+                          className="size-2.5 align-middle"
+                        />
+                      )}
+                    </button>
+                    <h2 className="text-lg font-semibold">Listing Location</h2>
+                  </div>
 
-                {locationOpen && (
-                  <div className="mt-2">
-                    {/* Map Preview */}
-                    {locationError ? (
-                      <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
-                        <p>
-                          Unable to load map. Location not found for this
-                          listing.
+                  {locationOpen && (
+                    <div className="mt-2">
+                      {/* Map Preview */}
+                      {locationError ? (
+                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
+                          <p>
+                            Unable to load map. Location not found for this
+                            listing.
+                          </p>
+                        </div>
+                      ) : coords ? (
+                        <MapComponent
+                          key="map-visible"
+                          latitude={coords.latitude}
+                          longitude={coords.longitude}
+                          listingName={listing?.address || ""}
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 animate-pulse">
+                          <p className="text-gray-500">Loading map...</p>
+                        </div>
+                      )}
+
+                      <div className="mt-4">
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Location
+                        </h4>
+                        <p className="text-base font-semibold text-gray-700">
+                          {listing?.address}, {listing?.city}, {listing?.state},{" "}
+                          {listing?.postal_code}, {listing?.country}
                         </p>
                       </div>
-                    ) : coords ? (
-                      <MapComponent
-                        key="map-visible"
-                        latitude={coords.latitude}
-                        longitude={coords.longitude}
-                        listingName={listing?.address || ""}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-64 w-full bg-gray-200 animate-pulse">
-                        <p className="text-gray-500">Loading map...</p>
-                      </div>
-                    )}
-
-                    <div className="mt-4">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Location
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        {listing?.address}, {listing?.city}, {listing?.state},{" "}
-                        {listing?.postal_code}, {listing?.country}
-                      </p>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Attachment Section */}
               <div>
-                <Attachments issueId={issue.id} />
+                <Attachments issueId={issue.id} userType={userType} />
               </div>
 
               {/* Comments Section */}
               <div>
-                <Comments issueId={issue.id} />
+                {userType !== "vendor" && <Comments issueId={issue.id} />}
               </div>
             </div>
 
@@ -581,34 +704,27 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         <h4 className="text-sm font-medium text-gray-500">
                           Vendor
                         </h4>
-                        <button
-                          onClick={() => setIsVendorModalOpen(true)}
-                          className="text-blue-500 hover:text-blue-700"
-                        >
-                          <FontAwesomeIcon icon={faPlus} className="size-3" />
-                        </button>
                       </div>
                       <p className="text-base font-semibold text-gray-700">
                         {issue.vendor_id ? (
-                          <VendorName vendorId={issue.vendor_id} />
+                          <VendorName vendorId={issue.vendor_id} showRating />
                         ) : (
                           "No vendor assigned"
                         )}
                       </p>
-
-                      {/* Vendor Modal */}
-                      <VendorModal
-                        isOpen={isVendorModalOpen}
-                        onClose={() => setIsVendorModalOpen(false)}
-                      />
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-gray-500">
                         Realtor
                       </h4>
-                      {/* <p className="text-base font-semibold text-gray-700">
-                              {listing?.realtor_id}
-                            </p> */}
+                      <p className="text-base font-semibold text-gray-700">
+                        No Realtor assigned
+                        {/* {issue.realtor_id ? (
+                           {listing?.realtor_id}
+                        ) : (
+                          "No Realtor assigned"
+                        )} */}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -660,22 +776,23 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             </div>
           </div>
         )}
-        {activeTab === "bids" && (
-          <div id="default-bids" role="tabpanel" className="w-full">
-            {bidsLoading ? (
-              <p>Loading bids...</p>
-            ) : bidsError ? (
-              <p>Error loading bids</p>
+        {activeTab === "offers" && (
+          <div id="default-offers" role="tabpanel" className="w-full">
+            {offersLoading ? (
+              <p>Loading offers...</p>
+            ) : offersError ? (
+              <p>Error loading offers</p>
             ) : (
               <>
                 <div className="card-header bg-white pb-4 flex items-center flex-wrap gap-3 justify-between">
                   <div className="flex items-center flex-wrap gap-3">
                     <span className="text-base font-medium text-gray-600 mb-0">
-                      Bidders:{" "}
+                      Offerders:{" "}
                       <span className="text-gray-800">{uniqueVendors}</span>
                     </span>
                     <span className="text-base font-medium text-gray-600 mb-0">
-                      Bids: <span className="text-gray-800">{bids.length}</span>
+                      Offers:{" "}
+                      <span className="text-gray-800">{offers.length}</span>
                     </span>
                     <span className="text-base font-medium text-gray-600 mb-0">
                       Duration:{" "}
@@ -686,10 +803,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   </div>
                   {userType === "vendor" && (
                     <button
-                      onClick={() => setIsBidModalOpen(true)}
+                      onClick={() => setIsOfferModalOpen(true)}
                       className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
                     >
-                      Place Bid
+                      Place Offer
                     </button>
                   )}
                 </div>
@@ -706,7 +823,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                             Amount
                           </th>
                           <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Bid Time
+                            Offer Time
                           </th>
                           <th className="bg-gray-100 text-center font-medium px-4 py-3">
                             Actions
@@ -714,16 +831,19 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         </tr>
                       </thead>
                       <tbody>
-                        {bids.map((bid) => (
-                          <tr key={bid.id}>
+                        {offers.map((offer) => (
+                          <tr key={offer.id}>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              <VendorName vendorId={bid.vendor_id} />
+                              <VendorName
+                                vendorId={offer.vendor_id}
+                                isVendorId={false}
+                              />
                             </td>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              ${bid.price}
+                              ${offer.price}
                             </td>
                             <td className="text-left border-b border-gray-200 px-4 py-3">
-                              {new Date(bid.created_at).toLocaleString(
+                              {new Date(offer.created_at).toLocaleString(
                                 "en-US",
                                 {
                                   year: "numeric",
@@ -743,25 +863,25 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 ref={(el) => {
                                   if (el)
                                     tableDropdownButtonRefs.current.set(
-                                      bid.id,
+                                      offer.id,
                                       el
                                     );
                                 }}
                                 onClick={() =>
                                   setTableDropdownOpen((prev) =>
-                                    prev === bid.id ? null : bid.id
+                                    prev === offer.id ? null : offer.id
                                   )
                                 }
                               >
                                 <FontAwesomeIcon icon={faEllipsisVertical} />
                               </button>
 
-                              {tableDropdownOpen === bid.id && (
+                              {tableDropdownOpen === offer.id && (
                                 <Dropdown
                                   buttonRef={{
                                     current:
                                       tableDropdownButtonRefs.current.get(
-                                        bid.id
+                                        offer.id
                                       ),
                                   }}
                                   onClose={() => setTableDropdownOpen(null)}
@@ -792,21 +912,60 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             )}
           </div>
         )}
+        {activeTab === "assessments" && (
+          <div>
+            {userType === "vendor" && assessments.length === 0 ? (
+              <CalendarSelector
+                issueId={issue.id}
+                onSubmitted={() => refetchAssessments()}
+                usersInteractionId={usersInteractionId}
+                assessmentsLoading={assessmentsLoading || assessmentsFetching}
+                existingAssessments={assessments.map((a) => ({
+                  ...a,
+                  title: "Available",
+                  start: new Date(a.start_time),
+                  end: new Date(a.end_time),
+                  isNew: false,
+                }))}
+              />
+            ) : assessments.length === 0 &&
+              !assessmentsLoading &&
+              !assessmentsFetching ? (
+              <p className="text-gray-600">No assessment requested yet.</p>
+            ) : (
+              <AssessmentReview
+                assessments={assessments}
+                onAccept={handleAccept}
+                onRejectAll={handleRejectAll}
+                issueId={issue.id}
+                userId={userId}
+                userType={userType}
+                vendorIdToName={vendorIdToName}
+                usersInteractionId={usersInteractionId}
+                getUsersInteractionId={getUsersInteractionId}
+                onlyShowVendorId={currentVendor?.id}
+                isSubmittingProposal={isSubmittingProposal}
+                postProposal={handlePostProposal}
+                assessmentsLoading={assessmentsLoading || assessmentsFetching}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {isBidModalOpen && (
+      {isOfferModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Place Your Bid</h2>
+            <h2 className="text-lg font-semibold mb-4">Place Your Offer</h2>
 
             <input
               type="number"
-              value={bidAmount}
+              value={offerAmount}
               onChange={(e) => {
-                setBidAmount(e.target.value);
-                setBidError("");
+                setOfferAmount(e.target.value);
+                setOfferError("");
               }}
-              placeholder={`Enter $${highestBid + 1} or more`}
+              placeholder={`Enter $${highestOffer + 1} or more`}
               className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
             />
 
@@ -826,30 +985,30 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               rows={2}
             /> */}
 
-            {bidError && (
-              <p className="text-red-600 text-sm mb-2">{bidError}</p>
+            {offerError && (
+              <p className="text-red-600 text-sm mb-2">{offerError}</p>
             )}
 
             <p className="text-sm text-gray-600 mb-2">
-              Enter <strong>${highestBid + 1}</strong> or more.
+              Enter <strong>${highestOffer + 1}</strong> or more.
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              By selecting <strong>Confirm bid</strong>, you are committing to
-              this issue if you are the winning bidder.
+              By selecting <strong>Confirm offer</strong>, you are committing to
+              this issue.
             </p>
 
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => setIsBidModalOpen(false)}
+                onClick={() => setIsOfferModalOpen(false)}
                 className="text-sm px-4 py-2 rounded border border-gray-400"
               >
                 Cancel
               </button>
               <button
-                onClick={handleBidSubmit}
+                onClick={handleOfferSubmit}
                 className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
               >
-                Confirm Bid
+                Confirm Offer
               </button>
             </div>
           </div>

@@ -9,15 +9,31 @@ import {
 import { useNavigate } from "react-router-dom";
 import ImageComponent from "../components/ImageComponent";
 import { useGetListingsQuery } from "../features/api/listingsApi";
+import { useCreateListingMutation } from "../features/api/listingsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 const Listings: React.FC = () => {
-  const { data: listings, error, isLoading } = useGetListingsQuery();
+  const { data: listings, error, isLoading, refetch } = useGetListingsQuery();
+  const [createListing] = useCreateListingMutation();
+  const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    address: "",
+    city: "",
+    state: "",
+    country: "",
+    postal_code: "",
+    image_url: "",
+  });
+  const [selectedFileName, setSelectedFileName] = useState("");
 
   // Filtered listings based on search query
   const filteredListings =
@@ -32,6 +48,51 @@ const Listings: React.FC = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentListings = filteredListings.slice(startIndex, endIndex);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createListing({ user_id: user.id, ...formData }).unwrap();
+      refetch();
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error("Failed to create listing:", err);
+    }
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setFormData({
+      address: "",
+      city: "",
+      state: "",
+      country: "",
+      postal_code: "",
+      image_url: "",
+    });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Simulate uploading and getting a URL (replace with real upload later)
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        setFormData((prev) => ({
+          ...prev,
+          image_url: reader.result as string, // base64 string or actual URL if uploaded
+        }));
+      }
+    };
+    reader.readAsDataURL(file); // base64 preview, not for production
+  };
 
   // Adjust `itemsPerPage` dynamically based on the number of columns
   useEffect(() => {
@@ -102,7 +163,10 @@ const Listings: React.FC = () => {
               />
             </form>
           </div>
-          <button className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]">
+          <button
+            className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
+            onClick={() => setIsModalOpen(true)}
+          >
             <span className="font-semibold text-[14px] leading-[21px]">
               Add New Listing
             </span>
@@ -192,6 +256,129 @@ const Listings: React.FC = () => {
             </ul>
           </div>
         </div>
+
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
+              <button
+                onClick={() => handleModalClose()}
+                className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
+              >
+                &times;
+              </button>
+              <h6 className="text-lg font-semibold mb-4">Add New Listing</h6>
+              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Address
+                  </label>
+                  <input
+                    type="text"
+                    name="address"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="123 Main St"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    name="city"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    name="state"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="State"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    name="country"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-6">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    name="postal_code"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    placeholder="Postal Code"
+                    value={formData.postal_code}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="col-span-12">
+                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
+                    Upload Image
+                  </label>
+                  <div className="flex w-full">
+                    <label
+                      htmlFor="file-upload"
+                      className="cursor-pointer bg-gray-800 text-white text-sm px-4 py-2 rounded-l-lg flex items-center whitespace-nowrap"
+                    >
+                      Choose File
+                    </label>
+                    <span className="border border-l-0 border-gray-300 bg-white text-base px-5 py-2.5 rounded-r-lg w-full flex items-center">
+                      {selectedFileName || "No file chosen"}
+                    </span>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setSelectedFileName(file.name);
+                          handleImageUpload(e);
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="col-span-12">
+                  <button
+                    type="submit"
+                    className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
+                  >
+                    Submit
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

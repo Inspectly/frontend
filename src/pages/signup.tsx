@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { auth } from "../../firebase"; // Firebase initialized file
 import {
   createUserWithEmailAndPassword,
@@ -8,6 +8,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   getIdToken,
+  signOut,
 } from "firebase/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAt, faMobileScreen } from "@fortawesome/free-solid-svg-icons";
@@ -38,11 +39,16 @@ import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
-import { login, setLoading as setPageLoading } from "../features/authSlice";
+import {
+  login,
+  logout,
+  setLoading as setPageLoading,
+} from "../features/authSlice";
 import { nanoid } from "nanoid";
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch<AppDispatch>();
 
   const [createUser] = useCreateUserMutation();
@@ -217,7 +223,7 @@ const Signup: React.FC = () => {
     try {
       setLoading(true);
 
-      // Step 1: Create Firebase User First
+      // Create Firebase User First
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -231,20 +237,19 @@ const Signup: React.FC = () => {
 
       console.log("Firebase user created:", firebaseUser.uid);
 
-      // Step 2: Send Email Verification (Before Backend User)
+      // Send Email Verification (Before Backend User)
       await sendEmailVerification(firebaseUser);
       console.log("Verification email sent!");
 
-      // Step 3: Redirect to Verify Email Page
+      localStorage.setItem("signupUserData", JSON.stringify(formData));
       if (formData.userType === "vendor") {
-        navigate(
-          `/verify-email?userType=${formData.userType}&vendorType=${
-            selectedVendorTypes[0].value
-          }&vendorTypes=${formatVendorTypes(selectedVendorTypes || [])}`
+        localStorage.setItem(
+          "signupVendorTypes",
+          JSON.stringify(selectedVendorTypes)
         );
-      } else {
-        navigate(`/verify-email?userType=${formData.userType}`);
       }
+      // Redirect to Verify Email Page
+      navigate(`/verify-email`);
     } catch (err: any) {
       setLoading(false);
       if (err.code === "auth/email-already-in-use") {
@@ -279,44 +284,48 @@ const Signup: React.FC = () => {
       const firebaseUser = result.user;
       const token = await getIdToken(firebaseUser);
 
-      let backendUser;
+      // Check if backend user already exists
+      let backendUser = null;
+      let userExists = false;
 
       try {
-        try {
-          // Step 1: Check if user exists in backend
-          backendUser = await dispatch(
-            getUserByFirebaseId.initiate(firebaseUser.uid)
-          ).unwrap();
-          console.log("User already exists in backend:", backendUser);
-        } catch (error: any) {
-          if (error?.status === 404) {
-            console.warn(
-              "User not found in backend, proceeding to create a new user."
-            );
-          } else {
-            console.error("Error checking existing user:", error);
-            throw new Error("Failed to check user existence.");
-          }
-        }
-
-        if (!backendUser) {
-          // Step 2: Create backend user
-          backendUser = await createUser({
-            firebase_id: firebaseUser.uid,
-            user_type: { user_type: thirdPartyOption },
-          }).unwrap();
-          console.log("Backend user created:", backendUser);
-        }
+        backendUser = await dispatch(
+          getUserByFirebaseId.initiate(firebaseUser.uid)
+        ).unwrap();
+        userExists = true;
       } catch (error: any) {
-        console.error("Backend user creation failed:", error);
-
-        if (error?.response?.status !== 409) {
-          // 409 Conflict means user already exists
-          await firebaseUser.delete(); // Only delete Firebase user if the error is NOT a duplicate key
+        if (error?.status === 404) {
+          userExists = false;
+        } else {
+          throw new Error("Failed to check user existence.");
         }
-        dispatch(setPageLoading(false));
-        throw new Error("Failed to create user in backend.");
       }
+
+      if (userExists) {
+        // Immediately log out the user
+        dispatch(setPageLoading(true));
+
+        await signOut(auth);
+        localStorage.removeItem("authToken");
+        localStorage.removeItem("firebase_id");
+
+        dispatch(logout());
+        dispatch(setPageLoading(false));
+
+        navigate("/signup", {
+          state: {
+            error:
+              "An account with this Google email already exists. Please log in instead.",
+          },
+        });
+        return;
+      }
+
+      // User doesn't exist in backend — continue with account creation
+      backendUser = await createUser({
+        firebase_id: firebaseUser.uid,
+        user_type: { user_type: thirdPartyOption },
+      }).unwrap();
 
       // Extract user info from Firebase
       const updatedUserData = {
@@ -332,7 +341,7 @@ const Signup: React.FC = () => {
       };
 
       try {
-        // Step 3: Create the specific user type
+        // Create the specific user type
         await createUserType(
           backendUser,
           thirdPartyOption,
@@ -350,7 +359,7 @@ const Signup: React.FC = () => {
       }
 
       try {
-        // Step 4: Log the login method
+        // Log the login method
         await createUserLogin({
           user_id: backendUser.id,
           email_login: false,
@@ -377,12 +386,13 @@ const Signup: React.FC = () => {
         const payload = {
           user_id: backendUser.id,
           login: "gmail",
+          login_time: new Date().toISOString(),
           authentication_code: token,
         };
 
         console.log("Sending payload:", payload);
 
-        // Step 5: Create User session
+        // Create User session
         const response = await createUserSession(payload).unwrap();
         console.log("User session created successfully:", response);
       } catch (error: any) {
@@ -395,8 +405,12 @@ const Signup: React.FC = () => {
         throw new Error("Failed to create session in backend.");
       }
 
-      // Step 6: Store user
-      dispatch(login(backendUser));
+      // Store user
+      const refreshedUser = await dispatch(
+        getUserByFirebaseId.initiate(firebaseUser.uid)
+      ).unwrap();
+
+      dispatch(login(refreshedUser));
 
       navigate("/dashboard");
     } catch (err: any) {
@@ -405,6 +419,12 @@ const Signup: React.FC = () => {
       dispatch(setPageLoading(false));
     }
   };
+
+  useEffect(() => {
+    if (location.state?.error) {
+      setError(location.state.error);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     if (

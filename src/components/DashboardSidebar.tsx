@@ -27,8 +27,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 }) => {
   const [activePage, setActivePage] = useState(window.location.pathname);
 
-  const userType = useSelector(
-    (state: RootState) => state.auth.user?.user_type
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isAuthReady = useSelector(
+    (state: RootState) => state.auth.authenticated
   );
 
   const handleMenuClick = (page: string) => {
@@ -175,7 +176,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </a>
           </li>
 
-          {userType === "vendor" && (
+          {isAuthReady && user?.user_type === "vendor" && (
             <li className="mt-auto mb-2">
               <a
                 href="/marketplace"

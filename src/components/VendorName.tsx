@@ -1,21 +1,61 @@
-import React from "react";
-import { useGetVendorByIdQuery } from "../features/api/vendorsApi";
+import React, { useState } from "react";
+import {
+  useGetVendorByIdQuery,
+  useGetVendorByVendorUserIdQuery,
+} from "../features/api/vendorsApi";
+import VendorModal from "./VendorModal";
 
-const VendorName: React.FC<{ vendorId: number }> = ({ vendorId }) => {
+const VendorName: React.FC<{
+  vendorId: number;
+  isVendorId?: boolean;
+  showRating?: boolean;
+  className?: string;
+}> = ({ vendorId, isVendorId = true, showRating = false, className }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const validVendorId = vendorId ? String(vendorId) : "";
 
   const {
     data: vendor,
-    isLoading,
-    error,
+    isLoading: isVendorLoading,
+    error: vendorError,
   } = useGetVendorByIdQuery(validVendorId, {
-    skip: !vendorId, // Skip fetching if vendorId is missing
+    skip: !vendorId || !isVendorId,
   });
 
-  if (isLoading) return <span>Loading...</span>;
-  if (error) return <span>Error</span>;
+  const {
+    data: vendorByUser,
+    isLoading: isVendorUserLoading,
+    error: vendorUserError,
+  } = useGetVendorByVendorUserIdQuery(validVendorId, {
+    skip: !vendorId || isVendorId,
+  });
 
-  return <span>{vendor?.name || "Unknown Vendor"}</span>;
+  if (isVendorLoading || isVendorUserLoading) return <span>Loading...</span>;
+  if (vendorError || vendorUserError) return <span>Error</span>;
+
+  const currentVendor = isVendorId ? vendor : vendorByUser;
+  const name = currentVendor?.name;
+  const rating = currentVendor?.rating;
+
+  const displayName = showRating && rating ? `${name} (★ ${rating})` : name;
+
+  return (
+    <>
+      <span
+        onClick={() => setIsModalOpen(true)}
+        className={className ?? "cursor-pointer text-blue-600 hover:underline"}
+      >
+        {displayName || "Unknown Vendor"}
+      </span>
+      {isModalOpen && currentVendor && (
+        <VendorModal
+          vendor={currentVendor}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </>
+  );
 };
 
 export default VendorName;
