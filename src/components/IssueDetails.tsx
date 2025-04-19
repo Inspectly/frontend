@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
-import { IssueType, Listing, statusMapping, statusOptions } from "../types"; // Update paths as needed
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  IssueAssessment,
+  IssueType,
+  Listing,
+  statusMapping,
+  statusOptions,
+} from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -22,6 +28,18 @@ import {
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
+import {
+  useGetAssessmentsByIssueIdQuery,
+  useGetAssessmentsByUsersInteractionIdQuery,
+  useUpdateAssessmentMutation,
+} from "../features/api/issueAssessmentsApi";
+import CalendarSelector from "./CalendarSelector";
+import AssessmentReview from "./AssessmentReview";
+import {
+  useGetVendorByVendorUserIdQuery,
+  useGetVendorsQuery,
+} from "../features/api/vendorsApi";
+import { useGetReportByIdQuery } from "../features/api/reportsApi";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -45,12 +63,53 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     data: offers = [],
     isLoading: offersLoading,
     error: offersError,
-    refetch,
+    refetch: refetchOffers,
   } = useGetOffersByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
+  const { data: allVendors = [] } = useGetVendorsQuery();
+
+  const { data: report } = useGetReportByIdQuery(issue.report_id, {
+    skip: !issue.report_id,
+  });
+
   const [updateIssue] = useUpdateIssueMutation();
   const [createOffer] = useCreateOfferMutation();
+  const [updateAssessmentStatus] = useUpdateAssessmentMutation();
+
+  const isVendor = userType === "vendor";
+
+  const { data: currentVendor } = useGetVendorByVendorUserIdQuery(userId, {
+    skip: !isVendor || !userId,
+  });
+
+  const getUsersInteractionId = (vendorId: number) => {
+    if (!report?.user_id || !vendorId || !issue?.id) return "";
+    return `${report.user_id}_${vendorId}_${issue.id}`;
+  };
+
+  const usersInteractionId = currentVendor
+    ? getUsersInteractionId(currentVendor.id)
+    : "";
+
+  const assessmentsByInteraction = useGetAssessmentsByUsersInteractionIdQuery(
+    usersInteractionId,
+    { skip: !usersInteractionId }
+  );
+  const assessmentsByIssue = useGetAssessmentsByIssueIdQuery(issue.id, {
+    skip: !issue.id,
+  });
+
+  const assessmentsData = isVendor
+    ? assessmentsByInteraction
+    : assessmentsByIssue;
+
+  const {
+    data: assessments = [],
+    isLoading: assessmentsLoading,
+    refetch: refetchAssessments,
+    isFetching: assessmentsFetching,
+  } = assessmentsData;
 
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -77,6 +136,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [offerError, setOfferError] = useState("");
   const [commentVendor, setCommentVendor] = useState("");
   // const [commentClient, setCommentClient] = useState("");
+  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -144,7 +204,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         comment_client: "",
       }).unwrap();
 
-      refetch();
+      refetchOffers();
 
       // Reset state
       setOfferAmount("");
@@ -157,6 +217,75 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       setOfferError("Failed to submit offer. Please try again.");
     }
   };
+
+  const handleAccept = async (
+    accepted: IssueAssessment,
+    rejected: IssueAssessment[]
+  ) => {
+    try {
+      await Promise.all([
+        updateAssessmentStatus({
+          ...accepted,
+          interaction_id: accepted.users_interaction_id,
+          status: "accepted",
+        }),
+        ...rejected
+          .map((a) => ({
+            ...a,
+            interaction_id: accepted.users_interaction_id,
+            status: "rejected",
+          }))
+          .map(updateAssessmentStatus),
+      ]);
+
+      refetchAssessments();
+    } catch (err) {
+      console.error("Failed to update assessment statuses", err);
+    }
+  };
+
+  const handlePostProposal = async () => {
+    setIsSubmittingProposal(true);
+    try {
+      await refetchAssessments().unwrap();
+    } catch (err) {
+      console.error("Failed to refresh proposals after submission", err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const handleRejectAll = async (vendorId: number) => {
+    const toReject = assessments.filter(
+      (a) => Number(a.users_interaction_id.split("_")[1]) === vendorId
+    );
+    setIsSubmittingProposal(true);
+
+    try {
+      await Promise.all(
+        toReject.map((a) =>
+          updateAssessmentStatus({
+            ...a,
+            interaction_id: a.users_interaction_id,
+            status: "rejected",
+          })
+        )
+      );
+      await refetchAssessments();
+    } catch (err) {
+      console.error("Failed to reject all", err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
+  const vendorIdToName = useMemo(() => {
+    const map: Record<number, string> = {};
+    allVendors.forEach((vendor) => {
+      map[vendor.id] = vendor.name;
+    });
+    return map;
+  }, [allVendors]);
 
   useEffect(() => {
     if (!listing) return;
@@ -246,10 +375,26 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               Offers
             </button>
           </li>
+          <li role="presentation">
+            <button
+              className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
+                activeTab === "assessments"
+                  ? "text-blue-600 border-blue-600"
+                  : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+              }`}
+              type="button"
+              role="tab"
+              aria-controls="default-assessments"
+              aria-selected={activeTab === "assessments"}
+              onClick={() => handleTabChange("assessments")}
+            >
+              Assessments
+            </button>
+          </li>
         </ul>
       </div>
 
-      <div className="chat-message-list max-h-[568px] overflow-y-auto  px-6 pb-6 pt-2">
+      <div className="h-[calc(100vh-320px)] overflow-y-auto px-6 pb-6 pt-2">
         {activeTab === "details" && (
           <div
             id="default-offers"
@@ -764,6 +909,45 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   </div>
                 </div>
               </>
+            )}
+          </div>
+        )}
+        {activeTab === "assessments" && (
+          <div>
+            {userType === "vendor" && assessments.length === 0 ? (
+              <CalendarSelector
+                issueId={issue.id}
+                onSubmitted={() => refetchAssessments()}
+                usersInteractionId={usersInteractionId}
+                assessmentsLoading={assessmentsLoading || assessmentsFetching}
+                existingAssessments={assessments.map((a) => ({
+                  ...a,
+                  title: "Available",
+                  start: new Date(a.start_time),
+                  end: new Date(a.end_time),
+                  isNew: false,
+                }))}
+              />
+            ) : assessments.length === 0 &&
+              !assessmentsLoading &&
+              !assessmentsFetching ? (
+              <p className="text-gray-600">No assessment requested yet.</p>
+            ) : (
+              <AssessmentReview
+                assessments={assessments}
+                onAccept={handleAccept}
+                onRejectAll={handleRejectAll}
+                issueId={issue.id}
+                userId={userId}
+                userType={userType}
+                vendorIdToName={vendorIdToName}
+                usersInteractionId={usersInteractionId}
+                getUsersInteractionId={getUsersInteractionId}
+                onlyShowVendorId={currentVendor?.id}
+                isSubmittingProposal={isSubmittingProposal}
+                postProposal={handlePostProposal}
+                assessmentsLoading={assessmentsLoading || assessmentsFetching}
+              />
             )}
           </div>
         )}

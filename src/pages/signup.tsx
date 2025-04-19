@@ -241,16 +241,15 @@ const Signup: React.FC = () => {
       await sendEmailVerification(firebaseUser);
       console.log("Verification email sent!");
 
-      // Redirect to Verify Email Page
+      localStorage.setItem("signupUserData", JSON.stringify(formData));
       if (formData.userType === "vendor") {
-        navigate(
-          `/verify-email?userType=${formData.userType}&vendorType=${
-            selectedVendorTypes[0].value
-          }&vendorTypes=${formatVendorTypes(selectedVendorTypes || [])}`
+        localStorage.setItem(
+          "signupVendorTypes",
+          JSON.stringify(selectedVendorTypes)
         );
-      } else {
-        navigate(`/verify-email?userType=${formData.userType}`);
       }
+      // Redirect to Verify Email Page
+      navigate(`/verify-email`);
     } catch (err: any) {
       setLoading(false);
       if (err.code === "auth/email-already-in-use") {

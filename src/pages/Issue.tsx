@@ -241,7 +241,10 @@ const Issue: React.FC = () => {
                     }`}
                   >
                     {issue.vendor_id ? (
-                      <VendorName vendorId={Number(filteredIssue.vendor_id)} />
+                      <VendorName
+                        vendorId={Number(filteredIssue.vendor_id)}
+                        className="text-inherit hover:underline"
+                      />
                     ) : (
                       "N/A"
                     )}

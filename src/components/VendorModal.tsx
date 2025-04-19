@@ -201,13 +201,19 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                   <h4 className="text-base font-semibold text-gray-900 mb-1">
                     Review Summary
                   </h4>
-                  <div className="flex items-center gap-2 mb-1">
-                    {renderStars(parseFloat(vendor.rating))}
-                    <span className="text-sm text-gray-500">
-                      ({vendor.rating})
-                    </span>
-                  </div>
-                  <p className="text-gray-600">{vendor.review}</p>
+                  {reviews.length > 0 ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-1">
+                        {renderStars(parseFloat(vendor.rating))}
+                        <span className="text-sm text-gray-500">
+                          ({vendor.rating})
+                        </span>
+                      </div>
+                      <p className="text-gray-600">{vendor.review}</p>
+                    </>
+                  ) : (
+                    <p className="text-gray-500 italic">No reviews yet.</p>
+                  )}
                 </div>
               </div>
             )}
@@ -220,12 +226,18 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                     <h3 className="text-xl font-semibold text-gray-800 mb-1">
                       Reviews
                     </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-4xl font-bold text-gray-800">
-                        {vendor.rating}
-                      </span>
-                      {renderStars(Math.round(parseFloat(vendor.rating)))}
-                    </div>
+                    {reviews.length > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-4xl font-bold text-gray-800">
+                          {vendor.rating}
+                        </span>
+                        {renderStars(Math.round(parseFloat(vendor.rating)))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        No reviews yet
+                      </p>
+                    )}
                     <p className="text-sm text-gray-600">
                       {reviews.length} reviews
                     </p>
@@ -299,12 +311,12 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                         className="border rounded-lg p-4 bg-gray-50"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold">
+                          <h4 className="text-sm font-semibold text-gray-900">
                             Reviewer: <UserName userId={review.user_id} />
                           </h4>
                           {renderStars(review.rating)}
                         </div>
-                        <p className="text-sm text-gray-700 mb-1">
+                        <p className="text-sm font-medium text-gray-700 mb-1">
                           {review.review}
                         </p>
                         <p className="text-xs text-gray-500">

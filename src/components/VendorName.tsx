@@ -9,7 +9,8 @@ const VendorName: React.FC<{
   vendorId: number;
   isVendorId?: boolean;
   showRating?: boolean;
-}> = ({ vendorId, isVendorId = true, showRating = false }) => {
+  className?: string;
+}> = ({ vendorId, isVendorId = true, showRating = false, className }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const validVendorId = vendorId ? String(vendorId) : "";
@@ -43,7 +44,7 @@ const VendorName: React.FC<{
     <>
       <span
         onClick={() => setIsModalOpen(true)}
-        className="cursor-pointer text-blue-600 hover:underline"
+        className={className ?? "cursor-pointer text-blue-600 hover:underline"}
       >
         {displayName || "Unknown Vendor"}
       </span>
