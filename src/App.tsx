@@ -141,7 +141,7 @@ function App() {
 
     switch (userType) {
       case "client":
-        return <ClientDashboard />;
+        return userInfo ? <ClientDashboard user={userInfo} /> : <Preloader />;
       case "admin":
         return <AdminDashboard />;
       case "realtor":

@@ -245,7 +245,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       } else {
         await createOffer({
           issue_id: issue.id,
-          vendor_id: counterTarget?.vendor_id,
+          vendor_id: counterTarget?.vendor_id || userId,
           price: offerValue,
           status: "received",
           comment_vendor: commentVendor,

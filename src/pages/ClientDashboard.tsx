@@ -11,15 +11,20 @@ import {
   faWind,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { CalendarEvent, IssueType, ReportType } from "../types";
+import { CalendarReadyAssessment, IssueType, ReportType, User } from "../types";
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
+import { useGetClientsQuery } from "../features/api/clientsApi";
 
-const ClientDashboard: React.FC = () => {
+interface DashboardProps {
+  user: User;
+}
+
+const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const {
     data: listings,
     error: listingsError,
@@ -37,11 +42,13 @@ const ClientDashboard: React.FC = () => {
     isLoading: isIssuesLoading,
     refetch: refetchIssues,
   } = useGetIssuesQuery();
+  const { data: clients } = useGetClientsQuery();
+  const client = clients?.find((c) => c.user_id === user.id);
 
   const [files, setFiles] = useState<File[]>([]);
   const [selectedListing, setSelectedListing] = useState<string>("all");
   const [selectedReport, setSelectedReport] = useState<string>("all");
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarReadyAssessment[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -156,32 +163,6 @@ const ClientDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    // Dummy data to simulate user bookings
-    const dummyBookings: CalendarEvent[] = [
-      {
-        id: "1",
-        title: "plumbing Repair Appointment",
-        start: new Date("2025-02-15T10:00:00"),
-        end: new Date("2025-02-15T11:00:00"),
-      },
-      {
-        id: "2",
-        title: "Electrical Wiring Fix",
-        start: new Date("2025-02-20T14:00:00"),
-        end: new Date("2025-02-20T15:00:00"),
-      },
-      {
-        id: "3",
-        title: "AC Maintenance",
-        start: new Date("2025-02-25T09:30:00"),
-        end: new Date("2025-02-25T10:30:00"),
-      },
-    ];
-
-    setEvents(dummyBookings);
-  }, []);
-
-  useEffect(() => {
     if (selectedListing !== "all") {
       refetchReports();
     }
@@ -235,6 +216,9 @@ const ClientDashboard: React.FC = () => {
         <div className="col-span-12 2xl:col-span-8">
           <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
             <div className="col-span-12">
+              <h1 className="text-xl font-semibold mb-2">
+                Hello {client?.first_name} {client?.last_name}!
+              </h1>
               <div className="nft-promo-card card border-0 rounded-xl overflow-hidden relative z-1 py-6 3xl:px-[76px] 2xl:px-[56px] xl:px-[40px] lg:px-[28px] px-4">
                 <img
                   src="/images/gradient-bg.png"

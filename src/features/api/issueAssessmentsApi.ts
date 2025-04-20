@@ -1,12 +1,12 @@
 import { api } from "./apiSlice";
-import { IssueAssessment } from "../../types";
+import { CalendarReadyAssessment, IssueAssessment } from "../../types";
 
 export const issueAssessmentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getAssessmentsByIssueId: builder.query<IssueAssessment[], number>({
       query: (issueId) => `issue_assessments/issue/${issueId}`,
     }),
-    getAssessmentsByUsersInteractionId: builder.query<IssueAssessment[], string>({
+    getAssessmentsByUsersInteractionId: builder.query<CalendarReadyAssessment[], string>({
       query: (userInteractionId) => `issue_assessments/users_interaction/${userInteractionId}`,
     }),
     createAssessment: builder.mutation({
