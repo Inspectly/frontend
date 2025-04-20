@@ -307,7 +307,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
           setEvents((prev) => [...prev, newEvent]);
         }}
         onSelectEvent={(event) => {
-          if (event.isNew || event.user_id === userId) {
+          if (event.user_id === userId) {
             handleDelete(event);
           }
         }}
@@ -379,15 +379,14 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
                       })}
                     </strong>
                   </span>
-                  {event.isNew ||
-                    (event.user_id === userId && (
-                      <button
-                        onClick={() => handleDelete(event)}
-                        className="text-red-600 hover:underline text-sm"
-                      >
-                        Remove
-                      </button>
-                    ))}
+                  {event.user_id === userId && (
+                    <button
+                      onClick={() => handleDelete(event)}
+                      className="text-red-600 hover:underline text-sm"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </li>
               ))}
           </ul>

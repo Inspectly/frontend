@@ -430,7 +430,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           </li>
           <li role="presentation">
             <button
-              className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
+              className={`inline-block px-4 py-2.5 relative font-semibold border-b-2 rounded-t-lg ${
                 activeTab === "offers"
                   ? "text-blue-600 border-blue-600"
                   : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
@@ -442,6 +442,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               onClick={() => handleTabChange("offers")}
             >
               Offers
+              <span className="absolute -top-1 right-1 text-xl text-red-500 font-semibold">
+                •
+              </span>
             </button>
           </li>
           <li role="presentation">
@@ -878,6 +881,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     offers={offers}
                     vendorId={currentVendor?.id}
                     onOpenOfferModal={handleEditOfferModal}
+                    onOfferAccepted={(acceptedOffer) => {
+                      updateIssue({
+                        ...issue,
+                        status: statusMapping[issue.status],
+                        vendor_id: acceptedOffer.vendor_id,
+                      });
+                    }}
                   />
                 )}
               </>

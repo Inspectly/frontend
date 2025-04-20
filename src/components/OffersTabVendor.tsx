@@ -2,7 +2,10 @@ import React, { useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEllipsisVertical } from "@fortawesome/free-solid-svg-icons";
 import Dropdown from "./Dropdown";
-import { useDeleteOfferMutation } from "../features/api/issueOffersApi";
+import {
+  useDeleteOfferMutation,
+  useUpdateOfferMutation,
+} from "../features/api/issueOffersApi";
 import {
   ISSUE_OFFER_STATUS_LABELS,
   IssueOffer,
@@ -15,12 +18,14 @@ interface OffersTabVendorProps {
   offers: IssueOffer[];
   vendorId?: number | string;
   onOpenOfferModal: (editingOffer?: IssueOffer) => void;
+  onOfferAccepted?: (offer: IssueOffer) => void;
 }
 
 const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
   offers,
   vendorId,
   onOpenOfferModal,
+  onOfferAccepted,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | number | null>(
     null
@@ -29,6 +34,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
     new Map()
   );
   const [deleteOffer] = useDeleteOfferMutation();
+  const [updateOffer] = useUpdateOfferMutation();
 
   const { data: allVendors = [] } = useGetVendorsQuery();
 
@@ -57,10 +63,30 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
       if (!confirmWithdraw) return;
 
       try {
-        await deleteOffer(offer.id).unwrap();
+        await deleteOffer({
+          id: offer.id,
+          issue_id: offer.issue_id,
+        });
       } catch (err) {
         console.error("Failed to withdraw offer", err);
       }
+    } else if (action === "Accept") {
+      const confirmAccept = window.confirm(
+        "Are you sure you want to accept this offer?"
+      );
+      if (!confirmAccept) return;
+
+      await updateOffer({
+        id: offer.id,
+        issue_id: offer.issue_id,
+        vendor_id: offer.vendor_id,
+        price: offer.price,
+        status: "accepted",
+        comment_vendor: offer.comment_vendor || "",
+        comment_client: offer.comment_client || "",
+      }).unwrap();
+
+      if (onOfferAccepted) onOfferAccepted(offer);
     } else {
       try {
         onOpenOfferModal(offer);
@@ -116,6 +142,14 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
             <tbody>
               {formattedOffers.map((offer) => {
                 const offerId = String(offer.id);
+                const isCounter = offer.comment_client
+                  ?.toLowerCase()
+                  .includes("counter");
+                const actions = ["Edit", "Withdraw"];
+                if (isCounter && offer.status === IssueOfferStatus.RECEIVED) {
+                  actions.unshift("Accept");
+                }
+
                 return (
                   <tr
                     key={offerId}
@@ -165,7 +199,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
                     </td>
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <button
-                        disabled={hasAcceptedOffer}
+                        // disabled={hasAcceptedOffer}
                         className={`focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-3.5 py-1 text-neutral-700 text-lg ${
                           hasAcceptedOffer
                             ? "cursor-not-allowed"
@@ -188,7 +222,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
                           }}
                           onClose={() => setOpenDropdown(null)}
                         >
-                          {["Edit", "Withdraw"].map((action) => (
+                          {actions.map((action) => (
                             <button
                               key={action}
                               className="block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left"

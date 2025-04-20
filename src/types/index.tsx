@@ -166,6 +166,14 @@ export const statusOptions = [
   { value: "completed", label: "Completed" },
 ];
 
+export type IssueAddress = {
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+};
+
 export type IssueType = {
   id: number;
   report_id: number;

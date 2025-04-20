@@ -1,5 +1,5 @@
 import { api } from "./apiSlice";
-import { IssueType } from "../../types";
+import { IssueAddress, IssueType } from "../../types";
 
 export const issuesApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -8,6 +8,9 @@ export const issuesApi = api.injectEndpoints({
     }),
     getIssueById: builder.query<IssueType, string>({
       query: (id) => `issues/${id}`,
+    }),
+    getIssueAddressById: builder.query<IssueAddress, number>({
+      query: (id) => `issues/address/${id}`,
     }),
     updateIssue: builder.mutation({
       query: (body) => ({
@@ -26,4 +29,5 @@ export const issuesApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetIssuesQuery, useGetIssueByIdQuery, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
+export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetIssueAddressByIdQuery, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
+export const { getIssueAddressById } = issuesApi.endpoints;

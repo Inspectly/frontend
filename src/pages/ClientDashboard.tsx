@@ -11,7 +11,13 @@ import {
   faWind,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { CalendarReadyAssessment, IssueType, ReportType, User } from "../types";
+import {
+  CalendarReadyAssessment,
+  IssueAssessmentStatus,
+  IssueType,
+  ReportType,
+  User,
+} from "../types";
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
@@ -19,6 +25,7 @@ import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
+import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
 
 interface DashboardProps {
   user: User;
@@ -45,10 +52,20 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: clients } = useGetClientsQuery();
   const client = clients?.find((c) => c.user_id === user.id);
 
+  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(user.id);
+
+  const events: CalendarReadyAssessment[] = assessments
+    .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
+    .map((a) => ({
+      ...a,
+      title: `Issue #${a.issue_id} – Vendor #${a.interaction_id.split("_")[1]}`,
+      start: new Date(a.start_time),
+      end: new Date(a.end_time),
+    }));
+
   const [files, setFiles] = useState<File[]>([]);
   const [selectedListing, setSelectedListing] = useState<string>("all");
   const [selectedReport, setSelectedReport] = useState<string>("all");
-  const [events, setEvents] = useState<CalendarReadyAssessment[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

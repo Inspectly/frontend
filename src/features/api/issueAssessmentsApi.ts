@@ -6,6 +6,12 @@ export const issueAssessmentsApi = api.injectEndpoints({
     getAssessmentsByIssueId: builder.query<IssueAssessment[], number>({
       query: (issueId) => `issue_assessments/issue/${issueId}`,
     }),
+    getAssessmentsByUserId: builder.query<IssueAssessment[], number>({
+      query: (userId) => `issue_assessments/user_id/${userId}`,
+    }),
+    getAssessmentsByVendorId: builder.query<IssueAssessment[], number>({
+      query: (vendorId) => `issue_assessments/vendor_id/${vendorId}`,
+    }),
     getAssessmentsByUsersInteractionId: builder.query<CalendarReadyAssessment[], string>({
       query: (userInteractionId) => `issue_assessments/users_interaction/${userInteractionId}`,
     }),
@@ -33,4 +39,4 @@ export const issueAssessmentsApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetAssessmentsByIssueIdQuery, useGetAssessmentsByUsersInteractionIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery, useCreateAssessmentMutation, useDeleteAssessmentMutation, useUpdateAssessmentMutation } = issueAssessmentsApi;
+export const { useGetAssessmentsByIssueIdQuery, useGetAssessmentsByUserIdQuery, useGetAssessmentsByVendorIdQuery, useGetAssessmentsByUsersInteractionIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery, useCreateAssessmentMutation, useDeleteAssessmentMutation, useUpdateAssessmentMutation } = issueAssessmentsApi;

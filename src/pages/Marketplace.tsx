@@ -5,20 +5,17 @@ import {
   faArrowRight,
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import {
+  getIssueAddressById,
+  useGetIssuesQuery,
+} from "../features/api/issuesApi";
 import IssueItem from "../components/IssueItem";
-import { useGetListingsQuery } from "../features/api/listingsApi";
+import { IssueAddress, IssueType } from "../types";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
-import { getReportById } from "../features/api/reportsApi";
-import { IssueType, ReportType } from "../types";
 
 const Marketplace: React.FC = () => {
   const { data: issues, error, isLoading } = useGetIssuesQuery();
-  const { data: listings } = useGetListingsQuery();
-  const [reports, setReports] = useState<Record<number, ReportType>>({});
-  const [reportsLoaded, setReportsLoaded] = useState(false);
-
   const dispatch = useDispatch<AppDispatch>();
 
   const [filteredIssues, setFilteredIssues] = useState<IssueType[]>([]);
@@ -28,68 +25,73 @@ const Marketplace: React.FC = () => {
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedType, setSelectedType] = useState("");
+  const [addresses, setAddresses] = useState<Record<number, IssueAddress>>({});
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   useEffect(() => {
     if (!issues) return;
 
-    // Fetch reports for each issue
-    const fetchReports = async () => {
-      const reportPromises = issues.map((issue) =>
-        dispatch(getReportById.initiate(issue.report_id.toString())).unwrap()
-      );
-
+    // Fetch address by issue ID
+    const fetchAddresses = async () => {
       try {
-        const reportData = await Promise.all(reportPromises);
-        const reportMap = Object.fromEntries(
-          reportData.map((report: ReportType) => [report.id, report])
+        const addressPairs = await Promise.all(
+          issues.map(async (issue) => {
+            const data = await dispatch(
+              getIssueAddressById.initiate(issue.id)
+            ).unwrap();
+            return [issue.id, data] as [number, IssueAddress];
+          })
         );
-        setReports(reportMap);
-        setReportsLoaded(true);
-      } catch (error) {
-        console.error("Error fetching reports:", error);
+
+        setAddresses(Object.fromEntries(addressPairs));
+        setAddressesLoaded(true);
+      } catch (err) {
+        console.error("Failed to fetch issue addresses:", err);
       }
     };
 
-    fetchReports();
-  }, [issues, dispatch]);
+    fetchAddresses();
+  }, [issues]);
+
+  const isDataReady = !isLoading && issues && addressesLoaded;
 
   // Extract unique city, province, and types
-  const uniqueCity = [...new Set(listings?.map((listing) => listing?.city))];
-  const uniqueState = [...new Set(listings?.map((listing) => listing?.state))];
+  const uniqueCity = [...new Set(Object.values(addresses).map((a) => a.city))];
+  const uniqueState = [
+    ...new Set(Object.values(addresses).map((a) => a.state)),
+  ];
   const uniqueTypes = [...new Set(issues?.map((issue) => issue?.type))];
 
-  // Filter issues after fetching reports & listings
+  // Filter issues
   useEffect(() => {
-    if (!issues || Object.keys(reports).length === 0 || !listings) return;
+    if (!isDataReady) return;
 
-    const newFilteredIssues = issues.filter((issue) => {
-      if (!issue.active) return false;
+    const filtered = issues!.filter((issue) => {
+      if (!issue.active || issue.vendor_id) return false;
 
-      const report = reports[issue.report_id];
-      const listing = report
-        ? listings.find((l) => l.id === report.listing_id)
-        : null;
+      const address = addresses[issue.id];
+      if (!address) return false;
 
       const matchesSearch =
         searchQuery.trim() === "" ||
-        issue?.summary?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCity = selectedCity === "" || listing?.city === selectedCity;
+        issue.summary?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCity = selectedCity === "" || address.city === selectedCity;
       const matchesState =
-        selectedState === "" || listing?.state === selectedState;
-      const matchesType = selectedType === "" || issue?.type === selectedType;
+        selectedState === "" || address.state === selectedState;
+      const matchesType = selectedType === "" || issue.type === selectedType;
 
       return matchesSearch && matchesCity && matchesState && matchesType;
     });
 
-    setFilteredIssues(newFilteredIssues);
+    setFilteredIssues(filtered);
   }, [
     issues,
-    reports,
-    listings,
+    addresses,
     searchQuery,
     selectedCity,
     selectedState,
     selectedType,
+    isDataReady,
   ]);
 
   // Pagination calculations
@@ -140,8 +142,6 @@ const Marketplace: React.FC = () => {
     setSearchQuery(event.target.value);
     setCurrentPage(1); // Reset to first page on search
   };
-
-  const isDataReady = !isLoading && listings && reportsLoaded;
 
   if (error) return <p>Error loading issues</p>;
 

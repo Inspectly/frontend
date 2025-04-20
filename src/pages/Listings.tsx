@@ -39,7 +39,7 @@ const Listings: React.FC = () => {
   const filteredListings =
     listings?.filter((listing) =>
       searchQuery.trim() === ""
-        ? true // Return all listings if searchQuery is empty
+        ? listing?.user_id === user.id // Return all client listings if searchQuery is empty
         : listing?.address?.toLowerCase().includes(searchQuery.toLowerCase())
     ) ?? [];
 
