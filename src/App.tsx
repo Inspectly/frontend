@@ -147,7 +147,7 @@ function App() {
       case "realtor":
         return <RealtorDashboard />;
       case "vendor":
-        return <VendorDashboard user={userInfo} />;
+        return userInfo ? <VendorDashboard user={userInfo} /> : <Preloader />;
       default:
         return <Dashboard />; // Default dashboard
     }
@@ -174,24 +174,25 @@ function App() {
   // Fetch user type based on user ID
   useEffect(() => {
     const fetchUserType = async () => {
-      if (user) {
-        try {
-          setLoadingUserType(true);
-          const response = await dispatch(
-            getUserById.initiate(user.id)
-          ).unwrap();
-          setUserType(response.user_type);
-          setUserInfo(response);
-        } catch (error) {
-          console.error("Error fetching user type:", error);
-        } finally {
-          setLoadingUserType(false);
-        }
+      if (!user) {
+        setLoadingUserType(false);
+        return;
+      }
+
+      try {
+        setLoadingUserType(true);
+        const response = await dispatch(getUserById.initiate(user.id)).unwrap();
+        setUserType(response.user_type);
+        setUserInfo(response);
+      } catch (error) {
+        console.error("Error fetching user type:", error);
+      } finally {
+        setLoadingUserType(false);
       }
     };
 
     fetchUserType();
-  }, [user]);
+  }, [user, dispatch]);
 
   if (loadingAuthState || loadingUserType) {
     return <Preloader />;
