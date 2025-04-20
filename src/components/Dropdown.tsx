@@ -69,7 +69,7 @@ const Dropdown: React.FC<DropdownProps> = ({
         left: `${position.left}px`,
         zIndex: 1000,
       }}
-      className="bg-white shadow-lg rounded-lg border border-gray-300 p-2"
+      className="bg-white shadow-lg rounded-lg border border-gray-300 p-2 dropdown-content"
       // onClick={(e) => e.stopPropagation()}
     >
       {children}

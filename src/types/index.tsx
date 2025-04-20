@@ -182,12 +182,12 @@ export type IssueType = {
   updated_at: string;
 };
 
-export type IssueOffers = {
+export type IssueOffer = {
   id: number;
   issue_id: number;
   vendor_id: number;
   price: number;
-  status: string;
+  status: IssueOfferStatus;
   comment_vendor: string;
   comment_client: string;
   created_at: string;
@@ -207,6 +207,18 @@ export const ISSUE_ASSESSMENT_STATUS_LABELS: Record<
   [IssueAssessmentStatus.RECEIVED]: "Received",
   [IssueAssessmentStatus.ACCEPTED]: "Accepted",
   [IssueAssessmentStatus.REJECTED]: "Rejected",
+};
+
+export enum IssueOfferStatus {
+  RECEIVED = "Bid_Status.RECEIVED",
+  ACCEPTED = "Bid_Status.ACCEPTED",
+  REJECTED = "Bid_Status.REJECTED",
+}
+
+export const ISSUE_OFFER_STATUS_LABELS: Record<IssueOfferStatus, string> = {
+  [IssueOfferStatus.RECEIVED]: "Received",
+  [IssueOfferStatus.ACCEPTED]: "Accepted",
+  [IssueOfferStatus.REJECTED]: "Rejected",
 };
 
 export enum UserType {
@@ -255,13 +267,6 @@ export interface Attachment {
   url: string;
   user_id: string;
   created_at: string;
-}
-
-export interface Offer {
-  id: string;
-  vendor: string;
-  amount: string;
-  dateAdded: string;
 }
 
 export interface EventSlot {

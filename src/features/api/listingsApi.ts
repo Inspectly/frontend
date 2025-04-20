@@ -7,7 +7,7 @@ export const listingsApi = api.injectEndpoints({
       query: () => "listings/",
       providesTags: ["Listings"],
     }),
-    getListingById: builder.query<Listing, string>({
+    getListingById: builder.query<Listing, number>({
       query: (id) => `listings/${id}`,
     }),
     createListing: builder.mutation<Listing, Partial<Listing>>({

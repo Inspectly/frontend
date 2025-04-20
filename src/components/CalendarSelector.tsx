@@ -250,7 +250,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
         timeslots={2}
         selectable
         onEventDrop={({ event, start, end }) => {
-          if (!event.isNew || event.user_id === userId) return;
+          if (event.user_id !== userId) return;
           setEvents((prev) =>
             prev.map((e) =>
               e.id === event.id
@@ -267,7 +267,7 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
           );
         }}
         onEventResize={({ event, start, end }) => {
-          if (!event.isNew || event.user_id === userId) return;
+          if (event.user_id !== userId) return;
           setEvents((prev) =>
             prev.map((e) =>
               e.id === event.id

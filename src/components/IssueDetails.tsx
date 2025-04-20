@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   IssueAssessment,
+  IssueOffer,
   IssueType,
   Listing,
   statusMapping,
@@ -12,7 +13,6 @@ import {
   faChevronUp,
   faChevronDown,
   faTimes,
-  faEllipsisVertical,
 } from "@fortawesome/free-solid-svg-icons";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
@@ -24,6 +24,7 @@ import { useUpdateIssueMutation } from "../features/api/issuesApi";
 import {
   useCreateOfferMutation,
   useGetOffersByIssueIdQuery,
+  useUpdateOfferMutation,
 } from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -40,6 +41,8 @@ import {
   useGetVendorsQuery,
 } from "../features/api/vendorsApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
+import OffersTabClient from "./OffersTabClient";
+import OffersTabVendor from "./OffersTabVendor";
 
 export interface IssueDetailsProps {
   issue: IssueType;
@@ -75,6 +78,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
   const [updateIssue] = useUpdateIssueMutation();
   const [createOffer] = useCreateOfferMutation();
+  const [updateOffer] = useUpdateOfferMutation();
+
   const [updateAssessmentStatus] = useUpdateAssessmentMutation();
 
   const isVendor = userType === "vendor";
@@ -127,25 +132,33 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
   >(null);
-  const [tableDropdownOpen, setTableDropdownOpen] = useState<number | null>(
-    null
-  );
 
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  const [counterTarget, setCounterTarget] = useState<IssueOffer | null>(null);
   const [offerAmount, setOfferAmount] = useState("");
+  const [editingOffer, setEditingOffer] = useState<IssueOffer | null>(null);
   const [offerError, setOfferError] = useState("");
+  const [isOfferSubmitting, setIsOfferSubmitting] = useState(false);
+
   const [commentVendor, setCommentVendor] = useState("");
-  // const [commentClient, setCommentClient] = useState("");
+  const [commentClient, setCommentClient] = useState("");
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
-  const tableDropdownButtonRefs = useRef(new Map());
-
-  const highestOffer =
-    offers.length > 0 ? Math.max(...offers.map((b) => b.price)) : 0;
 
   const uniqueVendors = new Set(offers.map((offer) => offer.vendor_id)).size;
+
+  const handleOpenOfferModal = (counterOffer?: IssueOffer) => {
+    setCounterTarget(counterOffer || null);
+    setIsOfferModalOpen(true);
+  };
+
+  const handleEditOfferModal = (offer?: IssueOffer) => {
+    console.log(offer);
+    setEditingOffer(offer || null);
+    setIsOfferModalOpen(true);
+  };
 
   const toggleSection = (
     setter: React.Dispatch<React.SetStateAction<boolean>>
@@ -154,7 +167,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   };
 
   const handleProgressChange = (id: number, newProgress: string) => {
-    updateIssue({ id, progress: newProgress });
+    updateIssue({
+      ...issue,
+      status: statusMapping[issue.status],
+      progress: newProgress,
+    });
 
     setTimeout(() => {
       setProgressDropdownOpen(null); // Delay closing to let the event register
@@ -184,8 +201,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const handleOfferSubmit = async () => {
     const offerValue = parseFloat(offerAmount);
 
-    if (isNaN(offerValue) || offerValue <= highestOffer) {
-      setOfferError(`Your offer must be more than $${highestOffer}`);
+    if (isNaN(offerValue)) {
+      setOfferError("Please enter a valid offer amount.");
+      return;
+    }
+
+    if (offerValue <= 0) {
+      setOfferError("Offer amount must be greater than zero.");
       return;
     }
 
@@ -194,27 +216,60 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       return;
     }
 
-    try {
-      await createOffer({
-        issue_id: issue.id,
-        vendor_id: userId,
-        price: offerValue,
-        status: "received",
-        comment_vendor: commentVendor,
-        comment_client: "",
+    setIsOfferSubmitting(true);
+
+    if (counterTarget) {
+      await updateOffer({
+        id: counterTarget.id,
+        issue_id: counterTarget.issue_id,
+        vendor_id: counterTarget.vendor_id,
+        price: counterTarget.price,
+        status: "rejected",
+        comment_vendor: counterTarget.comment_vendor || "",
+        comment_client: counterTarget.comment_client || "",
       }).unwrap();
+    }
+
+    try {
+      if (editingOffer) {
+        // EDIT mode — update existing offer
+        await updateOffer({
+          id: editingOffer.id,
+          issue_id: editingOffer.issue_id,
+          vendor_id: editingOffer.vendor_id,
+          price: offerAmount,
+          status: "received",
+          comment_vendor: commentVendor || "",
+          comment_client: editingOffer.comment_client || "",
+        }).unwrap();
+      } else {
+        await createOffer({
+          issue_id: issue.id,
+          vendor_id: counterTarget?.vendor_id,
+          price: offerValue,
+          status: "received",
+          comment_vendor: commentVendor,
+          comment_client: counterTarget
+            ? "Client countered the offer"
+            : commentClient,
+        }).unwrap();
+      }
 
       refetchOffers();
 
       // Reset state
+      setCounterTarget(null);
       setOfferAmount("");
       setCommentVendor("");
       // setCommentClient("");
       setOfferError("");
+      setEditingOffer(null);
       setIsOfferModalOpen(false);
     } catch (err) {
       console.error("Failed to submit offer:", err);
       setOfferError("Failed to submit offer. Please try again.");
+    } finally {
+      setIsOfferSubmitting(false);
     }
   };
 
@@ -308,6 +363,16 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     setActiveTab(getTabFromURL());
   }, [location.search]);
 
+  useEffect(() => {
+    if (editingOffer) {
+      setOfferAmount(editingOffer.price.toString());
+      setCommentVendor(editingOffer.comment_vendor || "");
+    } else {
+      setOfferAmount("");
+      setCommentVendor("");
+    }
+  }, [editingOffer]);
+
   return (
     <div
       ref={cardRef}
@@ -324,7 +389,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           </h2>
           <button
             onClick={() =>
-              updateIssue({ id: issue.id, isVisible: !issue.active })
+              updateIssue({
+                ...issue,
+                status: statusMapping[issue.status],
+                isVisible: !issue.active,
+              })
             }
             className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
           >
@@ -707,7 +776,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       </div>
                       <p className="text-base font-semibold text-gray-700">
                         {issue.vendor_id ? (
-                          <VendorName vendorId={issue.vendor_id} showRating />
+                          <VendorName
+                            vendorId={issue.vendor_id}
+                            isVendorId={false}
+                            showRating
+                          />
                         ) : (
                           "No vendor assigned"
                         )}
@@ -784,130 +857,29 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <p>Error loading offers</p>
             ) : (
               <>
-                <div className="card-header bg-white pb-4 flex items-center flex-wrap gap-3 justify-between">
-                  <div className="flex items-center flex-wrap gap-3">
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Offerders:{" "}
-                      <span className="text-gray-800">{uniqueVendors}</span>
-                    </span>
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Offers:{" "}
-                      <span className="text-gray-800">{offers.length}</span>
-                    </span>
-                    <span className="text-base font-medium text-gray-600 mb-0">
-                      Duration:{" "}
-                      <span className="text-gray-800">
-                        *days issue is open for?*
-                      </span>
-                    </span>
-                  </div>
-                  {userType === "vendor" && (
-                    <button
-                      onClick={() => setIsOfferModalOpen(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium"
-                    >
-                      Place Offer
-                    </button>
-                  )}
-                </div>
+                {userType === "client" && (
+                  <OffersTabClient
+                    offers={offers}
+                    uniqueVendors={uniqueVendors}
+                    handleOpenOfferModal={handleOpenOfferModal}
+                    onOpenOfferModal={() => setIsOfferModalOpen(true)}
+                    onOfferAccepted={(acceptedOffer) => {
+                      updateIssue({
+                        ...issue,
+                        status: statusMapping[issue.status],
+                        vendor_id: acceptedOffer.vendor_id,
+                      });
+                    }}
+                  />
+                )}
 
-                <div className="bg-white">
-                  <div className="overflow-x-auto">
-                    <table className="table w-full min-w-max border-separate border-spacing-0 rounded-lg border border-gray-200 bordered-table sm-table mb-0">
-                      <thead>
-                        <tr>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3 rounded-tl-lg">
-                            Vendor
-                          </th>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Amount
-                          </th>
-                          <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                            Offer Time
-                          </th>
-                          <th className="bg-gray-100 text-center font-medium px-4 py-3">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {offers.map((offer) => (
-                          <tr key={offer.id}>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              <VendorName
-                                vendorId={offer.vendor_id}
-                                isVendorId={false}
-                              />
-                            </td>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              ${offer.price}
-                            </td>
-                            <td className="text-left border-b border-gray-200 px-4 py-3">
-                              {new Date(offer.created_at).toLocaleString(
-                                "en-US",
-                                {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "numeric",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                }
-                              )}
-                            </td>
-
-                            <td className="text-center border-b border-gray-200 px-4 py-3">
-                              <button
-                                className="focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg px-3.5 py-1 text-neutral-700 text-lg"
-                                type="button"
-                                ref={(el) => {
-                                  if (el)
-                                    tableDropdownButtonRefs.current.set(
-                                      offer.id,
-                                      el
-                                    );
-                                }}
-                                onClick={() =>
-                                  setTableDropdownOpen((prev) =>
-                                    prev === offer.id ? null : offer.id
-                                  )
-                                }
-                              >
-                                <FontAwesomeIcon icon={faEllipsisVertical} />
-                              </button>
-
-                              {tableDropdownOpen === offer.id && (
-                                <Dropdown
-                                  buttonRef={{
-                                    current:
-                                      tableDropdownButtonRefs.current.get(
-                                        offer.id
-                                      ),
-                                  }}
-                                  onClose={() => setTableDropdownOpen(null)}
-                                >
-                                  {["Accept", "Counter", "Reject"].map(
-                                    (action) => (
-                                      <button
-                                        key={action}
-                                        className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left`}
-                                        onClick={() => {
-                                          setTableDropdownOpen(null);
-                                        }}
-                                      >
-                                        {action}
-                                      </button>
-                                    )
-                                  )}
-                                </Dropdown>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                {userType === "vendor" && (
+                  <OffersTabVendor
+                    offers={offers}
+                    vendorId={currentVendor?.id}
+                    onOpenOfferModal={handleEditOfferModal}
+                  />
+                )}
               </>
             )}
           </div>
@@ -961,37 +933,57 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             <input
               type="number"
               value={offerAmount}
+              disabled={isOfferSubmitting}
               onChange={(e) => {
                 setOfferAmount(e.target.value);
                 setOfferError("");
               }}
-              placeholder={`Enter $${highestOffer + 1} or more`}
+              min="1"
+              placeholder={`Enter your offer amount`}
               className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
             />
 
-            <textarea
-              value={commentVendor}
-              onChange={(e) => setCommentVendor(e.target.value)}
-              placeholder="Comment for client (optional)"
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-1 text-sm"
-              rows={2}
-            />
+            {userType === "vendor" && (
+              <textarea
+                value={commentVendor}
+                disabled={isOfferSubmitting}
+                onChange={(e) => setCommentVendor(e.target.value)}
+                placeholder="Comment for client (optional)"
+                className="w-full border border-gray-300 rounded px-3 py-2 mb-1 text-sm"
+                rows={2}
+              />
+            )}
 
-            {/* <textarea
-              value={commentClient}
-              onChange={(e) => setCommentClient(e.target.value)}
-              placeholder="Private comment (optional)"
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
-              rows={2}
-            /> */}
+            {userType === "client" && (
+              <textarea
+                value={commentClient}
+                onChange={(e) => setCommentClient(e.target.value)}
+                placeholder="Private comment (optional)"
+                className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
+                rows={2}
+              />
+            )}
 
             {offerError && (
               <p className="text-red-600 text-sm mb-2">{offerError}</p>
             )}
 
-            <p className="text-sm text-gray-600 mb-2">
-              Enter <strong>${highestOffer + 1}</strong> or more.
-            </p>
+            {counterTarget ? (
+              <p className="text-sm text-gray-600 mb-3">
+                You are placing a <strong>counter</strong> to the original offer
+                of <strong>${counterTarget.price}</strong>
+              </p>
+            ) : (
+              <p className="text-sm text-gray-600 mb-2">
+                You are about to place an offer for:{" "}
+                <strong>
+                  $
+                  {new Intl.NumberFormat("en-US").format(
+                    Number(offerAmount) || 0
+                  )}
+                </strong>
+              </p>
+            )}
             <p className="text-xs text-gray-500 mt-2">
               By selecting <strong>Confirm offer</strong>, you are committing to
               this issue.
@@ -1001,14 +993,16 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <button
                 onClick={() => setIsOfferModalOpen(false)}
                 className="text-sm px-4 py-2 rounded border border-gray-400"
+                disabled={isOfferSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleOfferSubmit}
                 className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
+                disabled={isOfferSubmitting}
               >
-                Confirm Offer
+                {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
               </button>
             </div>
           </div>

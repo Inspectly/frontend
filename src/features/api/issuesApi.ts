@@ -10,10 +10,10 @@ export const issuesApi = api.injectEndpoints({
       query: (id) => `issues/${id}`,
     }),
     updateIssue: builder.mutation({
-      query: ({ id, ...updates }) => ({
-        url: `issues/${id}`,
+      query: (body) => ({
+        url: `issues/${body.id}`,
         method: "PUT",
-        body: updates,
+        body,
       }),
     }),
     createIssue: builder.mutation<IssueType, Partial<IssueType>>({

@@ -1,33 +1,66 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 interface IssueItemProps {
   issue: IssueType;
 }
 
 const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
-  const { data: offers, isLoading: offerLoading } = useGetOffersByIssueIdQuery(
-    issue.id,
-    {
-      skip: !issue?.id,
-    }
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector(
+    (state: RootState) => state.auth.user?.user_type
   );
 
-  const highestOffer = offers?.length
-    ? [...offers].sort((a, b) => b.price - a.price)[0].price
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
+    skip: !userId || userType !== "vendor",
+  });
+
+  const { data: offers = [], isLoading: offerLoading } =
+    useGetOffersByIssueIdQuery(issue.id, {
+      skip: !issue?.id,
+    });
+
+  // If client, get latest offers sorted by created_at descending
+  const sortedOffers = useMemo(() => {
+    return [...offers].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [offers]);
+
+  const latestOffer = sortedOffers.length ? sortedOffers[0].price : null;
+  const totalOffers = offers.length;
+
+  // If vendor, filter to only that vendor’s offers
+  const vendorOffers = offers.filter(
+    (offer) => String(offer.vendor_id) === String(vendor?.id)
+  );
+
+  const sortedVendorOffers = useMemo(() => {
+    return [...vendorOffers].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [vendorOffers]);
+
+  const latestVendorOffer = sortedVendorOffers.length
+    ? sortedVendorOffers[0].price
     : null;
 
   const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
-    issue.report_id.toString()
+    issue.report_id
   );
 
   const { data: listing, isLoading: listingLoading } = useGetListingByIdQuery(
-    report?.listing_id.toString() || "",
+    report?.listing_id || -1,
     {
       skip: !report, // Only fetch listing if report is available
     }
@@ -58,12 +91,40 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
         {/* Cost */}
         <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
-          Current Offer:{" "}
-          {offerLoading
-            ? "Loading offer..."
-            : highestOffer
-            ? `$${highestOffer}`
-            : "No offers yet"}
+          {offerLoading ? (
+            "Loading offer..."
+          ) : userType === "client" ? (
+            // CLIENT: show "latest overall" + "total offers"
+            latestOffer !== null ? (
+              <>
+                Current Offer: $
+                {new Intl.NumberFormat("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(latestOffer)}
+                <br />
+                Total Offers: {totalOffers}
+              </>
+            ) : (
+              "No offers yet"
+            )
+          ) : userType === "vendor" ? (
+            // VENDOR: show only their own latest offer
+            latestVendorOffer !== null ? (
+              <>
+                Your Offer: $
+                {new Intl.NumberFormat("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(latestVendorOffer)}
+              </>
+            ) : (
+              "No offers from you yet"
+            )
+          ) : (
+            // For other user types (e.g. not logged in) you can decide
+            "No offers to display"
+          )}
         </p>
 
         {/* Summary */}
