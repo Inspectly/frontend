@@ -43,3 +43,4 @@ export const issueOffersApi = api.injectEndpoints({
 });
 
 export const { useGetOffersByIssueIdQuery, useCreateOfferMutation, useUpdateOfferMutation, useDeleteOfferMutation } = issueOffersApi;
+export const { getOffersByIssueId } = issueOffersApi.endpoints;

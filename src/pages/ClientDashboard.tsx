@@ -1,19 +1,30 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import DashboardCharts from "../components/DashboardCharts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBolt,
+  faBroom,
+  faBuilding,
+  faGripLines,
+  faHammer,
   faHouse,
+  faLayerGroup,
+  faLeaf,
   faPaintRoller,
+  faQuestionCircle,
+  faSnowflake,
   faTint,
+  faToolbox,
   faWind,
   faWrench,
+  IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   CalendarReadyAssessment,
   IssueAssessmentStatus,
+  IssueOffer,
   IssueType,
   ReportType,
   User,
@@ -22,27 +33,32 @@ import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
-import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetReportsQuery } from "../features/api/reportsApi";
+import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
+import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
+import { getOffersByIssueId } from "../features/api/issueOffersApi";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../store/store";
 
 interface DashboardProps {
   user: User;
 }
 
 const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
+  const dispatch = useDispatch<AppDispatch>();
+
   const {
     data: listings,
     error: listingsError,
     isLoading: isListingsLoading,
-  } = useGetListingsQuery();
+  } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const {
     data: reports,
     error: reportsError,
     isLoading: isReportsLoading,
     refetch: refetchReports,
-  } = useGetReportsQuery();
+  } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
   const {
     data: issues,
     error: issuesError,
@@ -66,34 +82,61 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [selectedListing, setSelectedListing] = useState<string>("all");
   const [selectedReport, setSelectedReport] = useState<string>("all");
+  const [offersByIssueId, setOffersByIssueId] = useState<
+    Record<number, IssueOffer[]>
+  >({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const issueIcons: Record<string, any> = {
-    plumbing: faTint,
+  const issueIcons: Record<string, IconDefinition> = {
+    general: faToolbox,
+    structural: faBuilding,
+    electrician: faBolt,
+    plumber: faTint,
+    painter: faPaintRoller,
+    cleaner: faBroom,
     hvac: faWind,
-    electrical: faBolt,
     roofing: faHouse,
-    painting: faPaintRoller,
-    general: faWrench, // Default
+    insulation: faSnowflake,
+    drywall: faGripLines,
+    plaster: faLayerGroup,
+    carpentry: faHammer,
+    landscaping: faLeaf,
+    other: faQuestionCircle,
   };
 
   const issueColors: Record<string, string> = {
-    plumbing: "bg-blue-500",
-    hvac: "bg-teal-500",
-    electrical: "bg-yellow-500",
-    roofing: "bg-gray-600",
-    painting: "bg-green-500",
-    general: "bg-orange-500", // Default
+    general: "gray-600",
+    structural: "purple-600",
+    electrician: "yellow-500",
+    plumber: "blue-500",
+    painter: "pink-500",
+    cleaner: "green-400",
+    hvac: "teal-500",
+    roofing: "indigo-600",
+    insulation: "cyan-500",
+    drywall: "orange-400",
+    plaster: "red-400",
+    carpentry: "amber-700",
+    landscaping: "lime-500",
+    other: "neutral-500",
   };
 
   const issueGradients: Record<string, string> = {
-    plumbing: "from-blue-600/10 to-white",
+    general: "from-gray-600/10 to-white",
+    structural: "from-purple-600/10 to-white",
+    electrician: "from-yellow-500/10 to-white",
+    plumber: "from-blue-500/10 to-white",
+    painter: "from-pink-500/10 to-white",
+    cleaner: "from-green-400/10 to-white",
     hvac: "from-teal-500/10 to-white",
-    electrical: "from-yellow-500/10 to-white",
-    roofing: "from-gray-600/10 to-white",
-    painting: "from-green-500/10 to-white",
-    general: "from-orange-500/10 to-white", // Default
+    roofing: "from-indigo-600/10 to-white",
+    insulation: "from-cyan-500/10 to-white",
+    drywall: "from-orange-400/10 to-white",
+    plaster: "from-red-400/10 to-white",
+    carpentry: "from-amber-700/10 to-white",
+    landscaping: "from-lime-500/10 to-white",
+    other: "from-neutral-500/10 to-white",
   };
 
   const realtors = [
@@ -191,51 +234,96 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     }
   }, [selectedReport, refetchIssues]);
 
-  const filteredReports =
-    selectedListing === "all"
+  const filteredReports = useMemo(() => {
+    return selectedListing === "all"
       ? reports || []
       : reports?.filter(
           (report: ReportType) =>
             report.listing_id.toString() === selectedListing
         ) || [];
+  }, [reports, selectedListing]);
 
-  const filteredIssues =
-    selectedReport === "all"
-      ? issues || []
-      : issues?.filter(
-          (issue: IssueType) => issue.report_id.toString() === selectedReport
-        ) || [];
+  const filteredIssuesByUser = useMemo(() => {
+    const filteredIssues =
+      selectedReport === "all"
+        ? issues || []
+        : issues?.filter(
+            (issue: IssueType) => issue.report_id.toString() === selectedReport
+          ) || [];
 
-  const issueCounts = Object.values(filteredIssues)
-    .flat() // Flatten to a single array
-    .reduce((acc, issue) => {
-      acc[issue.type] = (acc[issue.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    return filteredIssues.filter((issue) => {
+      const report = reports?.find((r) => r.id === issue.report_id);
+      return report?.user_id === user?.id;
+    });
+  }, [issues, reports, selectedReport, user?.id]);
+
+  const issueCounts = filteredIssuesByUser.reduce((acc, issue) => {
+    acc[issue.type] = (acc[issue.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const mostRecentListing = listings?.reduce((latest, current) => {
+    return new Date(current.created_at) > new Date(latest.created_at)
+      ? current
+      : latest;
+  }, listings?.[0]);
+
+  const reportsForRecentListing = reports?.filter(
+    (r) => r.listing_id === mostRecentListing?.id
+  );
+
+  const issuesForRecentListing = issues?.filter((issue) =>
+    reportsForRecentListing?.some((report) => report.id === issue.report_id)
+  );
+
+  const recentIssueCounts = issuesForRecentListing?.reduce((acc, issue) => {
+    acc[issue.type] = (acc[issue.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  useEffect(() => {
+    if (filteredIssuesByUser.length === 0) return; // Wait until it's populated
+
+    const fetchOffers = async () => {
+      const results: Record<number, IssueOffer[]> = {};
+      for (const issue of filteredIssuesByUser) {
+        try {
+          const res = await dispatch(
+            getOffersByIssueId.initiate(issue.id)
+          ).unwrap();
+          results[issue.id] = res;
+        } catch (err) {
+          console.error("Failed to fetch offers for issue", issue.id, err);
+        }
+      }
+      setOffersByIssueId(results);
+    };
+
+    fetchOffers();
+  }, [filteredIssuesByUser, dispatch]);
 
   // Handling loading state
-  if (isIssuesLoading || isListingsLoading) {
+  if (isIssuesLoading || isReportsLoading || isListingsLoading) {
     return <p>Loading...</p>;
   }
 
   // Handling error state
-  if (issuesError || listingsError) {
+  if (issuesError || reportsError || listingsError) {
     return <p>Error</p>;
   }
 
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-semibold mb-0">Dashboard</h1>
+        <h1 className="text-2xl font-semibold mb-0">
+          {client?.first_name}'s Dashboard
+        </h1>
       </div>
 
       <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
         <div className="col-span-12 2xl:col-span-8">
           <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
             <div className="col-span-12">
-              <h1 className="text-xl font-semibold mb-2">
-                Hello {client?.first_name} {client?.last_name}!
-              </h1>
               <div className="nft-promo-card card border-0 rounded-xl overflow-hidden relative z-1 py-6 3xl:px-[76px] 2xl:px-[56px] xl:px-[40px] lg:px-[28px] px-4">
                 <img
                   src="/images/gradient-bg.png"
@@ -277,11 +365,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 onChange={(e) => setSelectedListing(e.target.value)}
               >
                 <option value="all">All Listings</option>
-                {listings?.map((listing) => (
-                  <option key={listing.id} value={listing.id}>
-                    {listing.address}
-                  </option>
-                ))}
+                {listings
+                  ?.filter((listing) => listing.user_id === user.id)
+                  .map((listing) => (
+                    <option key={listing.id} value={listing.id}>
+                      {listing.address}
+                    </option>
+                  ))}
               </select>
 
               {selectedListing !== "all" && (
@@ -305,6 +395,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
                 {Object.entries(issueCounts).map(([type, count]) => (
                   <div
+                    key={type}
                     className={`bg-white shadow-none border border-gray-200 rounded-lg h-full bg-gradient-to-r ${
                       issueGradients[type] || "from-red-500/10 to-white"
                     }`}
@@ -320,8 +411,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           </h6>
                         </div>
                         <div
-                          className={`w-[50px] h-[50px] ${
-                            issueColors[type] || "bg-red-500"
+                          className={`w-[50px] h-[50px] bg-${
+                            issueColors[type] || "red-500"
                           } rounded-full flex justify-center items-center`}
                         >
                           <FontAwesomeIcon
@@ -353,34 +444,33 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       <div className="bg-white rounded overflow-hidden shadow-4 relative">
                         <div className="rounded-xl overflow-hidden">
                           <img
-                            src="/images/house_example.jpg"
+                            src={
+                              mostRecentListing?.image_url ||
+                              "/images/property_card_holder.jpg"
+                            }
                             alt=""
                             className="w-full h-[250px] object-fit-cover"
                           />
                         </div>
                         <div className="absolute bottom-0 left-0 w-full rounded-b-xl bg-gradient-to-t from-black/40 via-black/60 to-transparent p-3">
                           <h6 className="text-base font-bold text-white mb-3">
-                            161 old pennywell road
+                            {listings?.[0]?.address || "No Recent Listings"}
                           </h6>
                           <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              className="badge text-sm font-semibold bg-blue-500 px-4 py-1.5 rounded text-white flex items-center gap-2"
-                            >
-                              plumbing
-                              <span className="badge text-neutral-900 bg-white w-5 h-5 flex items-center justify-center rounded text-xs">
-                                4
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              className="badge text-sm font-semibold bg-blue-500 px-4 py-1.5 rounded text-white flex items-center gap-2"
-                            >
-                              electrical
-                              <span className="badge text-neutral-900 bg-white w-5 h-5 flex items-center justify-center rounded text-xs">
-                                2
-                              </span>
-                            </button>
+                            {Object.entries(recentIssueCounts || {}).map(
+                              ([type, count]) => (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  className="badge text-sm font-semibold bg-blue-500 px-4 py-1.5 rounded text-white flex items-center gap-2"
+                                >
+                                  {type}
+                                  <span className="badge text-neutral-900 bg-white w-5 h-5 flex items-center justify-center rounded text-xs">
+                                    {count}
+                                  </span>
+                                </button>
+                              )
+                            )}
                           </div>
                         </div>
                       </div>
@@ -475,46 +565,55 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="card-body px-6 pb-6">
                   <div>
                     {Object.entries(
-                      filteredIssues.reduce((acc, issue) => {
+                      filteredIssuesByUser.reduce((acc, issue) => {
                         if (!acc[issue.report_id]) acc[issue.report_id] = [];
                         acc[issue.report_id].push(issue);
                         return acc;
                       }, {} as Record<string, IssueType[]>)
-                    ).map(([reportId, issueArray]) =>
-                      issueArray.map(
-                        (issue) =>
-                          issue.cost && (
-                            <div
-                              key={issue.id}
-                              className="flex items-center justify-between gap-2 mt-6"
-                            >
-                              <div className="flex items-center gap-3">
-                                <img
-                                  src={`/images/${issue.type.toLowerCase()}.png`}
-                                  alt=""
-                                  className="w-10 h-10 shrink-0 overflow-hidden"
-                                />
-                                <div className="grow">
-                                  <h6 className="text-base mb-0 font-medium">
-                                    <Link
-                                      to={`/dashboard/${issue.report_id}/issue/${issue.id}?tab=offers`}
-                                      className="text-blue-400 hover:underline"
-                                    >
-                                      {issue.id} {issue.type}
-                                    </Link>
-                                  </h6>
-                                  <span className="text-sm font-medium">
-                                    {issue.summary}
+                    ).map(([reportId, issueArray]) => (
+                      <React.Fragment key={reportId}>
+                        {issueArray.map((issue) => {
+                          const report = reports?.find(
+                            (r) => r.id === issue.report_id
+                          );
+                          const listingId = report?.listing_id;
+
+                          return listingId
+                            ? (offersByIssueId[issue.id]?.length || 0) > 0 && (
+                                <div
+                                  key={issue.id}
+                                  className="flex items-center justify-between gap-2 mt-6"
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <FontAwesomeIcon
+                                      icon={issueIcons[issue.type] || faWrench} // Default to faWrench if no match
+                                      className={`text-gray-400 text-3xl`}
+                                    />
+                                    <div className="grow">
+                                      <h6 className="text-base mb-0 font-medium">
+                                        <Link
+                                          to={`/listings/${listingId}/reports/${issue.report_id}/issues/${issue.id}?tab=offers`}
+                                          className="text-blue-400 hover:underline"
+                                        >
+                                          {issue.id} {issue.type}
+                                        </Link>
+                                      </h6>
+                                      <span className="text-sm font-medium">
+                                        {issue.summary}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-neutral-600 text-base font-medium">
+                                    $
+                                    {offersByIssueId[issue.id]?.[0]?.price ??
+                                      "N/A"}
                                   </span>
                                 </div>
-                              </div>
-                              <span className="text-neutral-600 text-base font-medium">
-                                {issue.cost}
-                              </span>
-                            </div>
-                          )
-                      )
-                    )}
+                              )
+                            : null;
+                        })}
+                      </React.Fragment>
+                    ))}
                   </div>
                 </div>
               </div>
