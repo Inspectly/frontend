@@ -1,7 +1,7 @@
 import React from "react";
 import { useGetUserByIdQuery } from "../features/api/usersApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
-import { useGetClientByIdQuery } from "../features/api/clientsApi";
+import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { useGetRealtorByIdQuery } from "../features/api/realtorsApi";
 
 const UserName: React.FC<{ userId: number }> = ({ userId }) => {
@@ -19,12 +19,10 @@ const UserName: React.FC<{ userId: number }> = ({ userId }) => {
       skip: !userId || user?.user_type !== "vendor",
     });
 
-  const { data: client, isLoading: isClientLoading } = useGetClientByIdQuery(
-    String(userId),
-    {
+  const { data: client, isLoading: isClientLoading } =
+    useGetClientByUserIdQuery(String(userId), {
       skip: !userId || user?.user_type !== "client",
-    }
-  );
+    });
 
   const { data: realtor, isLoading: isRealtorLoading } = useGetRealtorByIdQuery(
     String(userId),

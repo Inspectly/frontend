@@ -399,9 +399,12 @@ const ReportTable: React.FC = () => {
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       {issue.vendor_id ? (
-                        <VendorName vendorId={issue.vendor_id} />
+                        <VendorName
+                          vendorId={issue.vendor_id}
+                          isVendorId={false}
+                        />
                       ) : (
-                        "N/A"
+                        "No vendor assigned"
                       )}
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">

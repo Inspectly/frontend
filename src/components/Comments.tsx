@@ -9,9 +9,10 @@ import UserName from "./UserName";
 
 interface CommentsProps {
   issueId: number;
+  userId?: number;
 }
 
-const Comments: React.FC<CommentsProps> = ({ issueId }) => {
+const Comments: React.FC<CommentsProps> = ({ issueId, userId }) => {
   const { data: comments, error, isLoading } = useGetCommentsQuery();
   const [createAttachment] = useCreateCommentMutation();
 
@@ -28,7 +29,7 @@ const Comments: React.FC<CommentsProps> = ({ issueId }) => {
         await createAttachment({
           issueId,
           comment: newComment,
-          userId: 48,
+          userId: userId || -1,
         }).unwrap();
         setNewComment("");
       } catch (error) {

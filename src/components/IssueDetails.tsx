@@ -167,11 +167,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     setter((prev) => !prev);
   };
 
-  const handleProgressChange = (id: number, newProgress: string) => {
+  const handleStatusChange = (id: number, newStatus: string) => {
     updateIssue({
       ...issue,
-      status: statusMapping[issue.status as IssueStatus],
-      progress: newProgress,
+      status: newStatus,
     });
 
     setTimeout(() => {
@@ -393,7 +392,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               updateIssue({
                 ...issue,
                 status: statusMapping[issue.status as IssueStatus],
-                isVisible: !issue.active,
+                active: !issue.active,
               })
             }
             className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
@@ -613,7 +612,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                   }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleProgressChange(issue.id, value);
+                                    handleStatusChange(issue.id, value);
                                   }}
                                 >
                                   {label}
@@ -747,7 +746,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
               {/* Comments Section */}
               <div>
-                {userType !== "vendor" && <Comments issueId={issue.id} />}
+                {userType !== "vendor" && (
+                  <Comments issueId={issue.id} userId={userId} />
+                )}
               </div>
             </div>
 

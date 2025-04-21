@@ -91,7 +91,7 @@ const Issue: React.FC = () => {
           <li>-</li>
           <li className="font-medium">
             <a
-              href={`/dashboard/${listingId}`}
+              href={`/listings/${listingId}/reports/${reportId}`}
               className="flex items-center gap-2 hover:text-blue-400"
             >
               Report
@@ -246,6 +246,7 @@ const Issue: React.FC = () => {
                     {issue.vendor_id ? (
                       <VendorName
                         vendorId={Number(filteredIssue.vendor_id)}
+                        isVendorId={false}
                         className="text-inherit hover:underline"
                       />
                     ) : (

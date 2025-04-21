@@ -18,6 +18,21 @@ export const issuesApi = api.injectEndpoints({
         method: "PUT",
         body,
       }),
+      async onQueryStarted(updatedIssue, { dispatch, queryFulfilled }) {
+        // Optimistically update the getIssueById cache
+        const patchResult = dispatch(
+          issuesApi.util.updateQueryData("getIssueById", updatedIssue.id.toString(), (draft) => {
+            const updatedIssueWithStatus = { ...updatedIssue, status: `Status.${updatedIssue.status.toUpperCase()}` };
+            Object.assign(draft, updatedIssueWithStatus); // Merge updated fields into the cached draft
+          })
+        );
+    
+        try {
+          await queryFulfilled; // wait for backend to confirm
+        } catch {
+          patchResult.undo(); // rollback if the mutation fails
+        }
+      },
     }),
     createIssue: builder.mutation<IssueType, Partial<IssueType>>({
       query: (newIssue) => ({

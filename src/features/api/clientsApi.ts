@@ -11,6 +11,10 @@ export const clientsApi = api.injectEndpoints({
       query: (id) => `clients/${id}`,
       providesTags: ["Clients"],
     }),
+    getClientByUserId: builder.query<Client, string>({
+      query: (user_id) => `clients/user_id/${user_id}`,
+      providesTags: ["Clients"],
+    }),
     createClient: builder.mutation({
       query: (body) => ({
         url: "clients/",
@@ -40,6 +44,7 @@ export const clientsApi = api.injectEndpoints({
 export const {
   useGetClientsQuery,
   useGetClientByIdQuery,
+  useGetClientByUserIdQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeleteClientMutation,
