@@ -12,9 +12,11 @@ import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useCreateReportMutation } from "../features/api/reportsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import { useGetListingByIdQuery } from "../features/api/listingsApi";
 
 const Reports: React.FC = () => {
   const { data: reports, error, isLoading, refetch } = useGetReportsQuery();
+
   const [createReport] = useCreateReportMutation();
   const user = useSelector((state: RootState) => state.auth.user); // Get user object
 
@@ -23,6 +25,10 @@ const Reports: React.FC = () => {
   const { listingId } = useParams<{
     listingId: string;
   }>();
+
+  const { data: listing } = useGetListingByIdQuery(Number(listingId), {
+    skip: !listingId,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -130,7 +136,9 @@ const Reports: React.FC = () => {
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-2xl font-semibold mb-0">Reports</h1>
+        <h1 className="text-2xl font-semibold mb-0">
+          Reports for {listing?.address}
+        </h1>
         <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
           <li className="font-medium">
             <a

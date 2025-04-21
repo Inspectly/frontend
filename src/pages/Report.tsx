@@ -11,13 +11,11 @@ const Report: React.FC = () => {
     reportId: string;
   }>();
 
-  const validReportId = reportId ? String(reportId) : "";
-
   const {
     data: report,
     isLoading,
     error,
-  } = useGetReportByIdQuery(validReportId, {
+  } = useGetReportByIdQuery(Number(reportId), {
     skip: !reportId, // Skip fetching if reportId is missing
   });
 

@@ -13,7 +13,7 @@ import {
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import { statusMapping, statusOptions } from "../types";
+import { IssueStatus, statusMapping, statusOptions } from "../types";
 
 import VendorName from "../components/VendorName";
 import {
@@ -33,7 +33,6 @@ const Issue: React.FC = () => {
   }>();
 
   const validIssueId = issueId ? String(issueId) : "";
-  const validListingId = listingId ? String(listingId) : "";
 
   const {
     data: issue,
@@ -45,7 +44,7 @@ const Issue: React.FC = () => {
 
   const { data: issues } = useGetIssuesQuery();
 
-  const { data: listing } = useGetListingByIdQuery(validListingId, {
+  const { data: listing } = useGetListingByIdQuery(Number(listingId), {
     skip: !listingId, // Skip fetching if listingId is missing
   });
 
@@ -104,7 +103,7 @@ const Issue: React.FC = () => {
       </div>
 
       <div className="chat-wrapper grid grid-cols-1 md:grid-cols-12 gap-6">
-        <div className="rounded-lg bg-white overflow-hidden col-span-12 md:col-span-4">
+        <div className="h-[calc(100vh-180px)] rounded-lg bg-white overflow-hidden col-span-12 md:col-span-4">
           <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
             <div className="flex items-center gap-4">
               <div className="">
@@ -127,7 +126,7 @@ const Issue: React.FC = () => {
               placeholder="Search..."
             />
           </div>
-          <div className="chat-all-list flex flex-col gap-1.5 mt-3 max-h-[580px] overflow-y-auto">
+          <div className="chat-all-list flex flex-col gap-1.5 mt-3 h-[calc(100vh-298px)] overflow-y-auto">
             {filteredIssues?.map((filteredIssue) => (
               <div
                 key={filteredIssue.id}
@@ -183,18 +182,22 @@ const Issue: React.FC = () => {
                   Progress:{" "}
                   <span
                     className={`px-2.5 py-1.5 rounded font-medium text-md ${
-                      statusMapping[filteredIssue.status] === "open"
+                      statusMapping[filteredIssue.status as IssueStatus] ===
+                      "open"
                         ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                        : statusMapping[filteredIssue.status] === "in_progress"
+                        : statusMapping[filteredIssue.status as IssueStatus] ===
+                          "in_progress"
                         ? "bg-blue-100 text-blue-600 border border-blue-600"
-                        : statusMapping[filteredIssue.status] === "review"
+                        : statusMapping[filteredIssue.status as IssueStatus] ===
+                          "review"
                         ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                         : "bg-green-100 text-green-600 border border-green-600"
                     }`}
                   >
                     {statusOptions.find(
                       (option) =>
-                        option.value === statusMapping[filteredIssue.status]
+                        option.value ===
+                        statusMapping[filteredIssue.status as IssueStatus]
                     )?.label || "Unknown"}
                   </span>
                 </p>

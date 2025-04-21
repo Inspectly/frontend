@@ -1,6 +1,7 @@
 export interface Coordinates {
     latitude: number;
     longitude: number;
+    displayName: string;
   }
   
   /**
@@ -22,6 +23,7 @@ export interface Coordinates {
       return {
         latitude: parseFloat(data[0].lat),
         longitude: parseFloat(data[0].lon),
+        displayName: data[0].display_name,
       };
     } else {
       throw new Error("Location not found");

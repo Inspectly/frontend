@@ -268,19 +268,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       : latest;
   }, listings?.[0]);
 
-  const reportsForRecentListing = reports?.filter(
-    (r) => r.listing_id === mostRecentListing?.id
-  );
-
-  const issuesForRecentListing = issues?.filter((issue) =>
-    reportsForRecentListing?.some((report) => report.id === issue.report_id)
-  );
-
-  const recentIssueCounts = issuesForRecentListing?.reduce((acc, issue) => {
-    acc[issue.type] = (acc[issue.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-
   useEffect(() => {
     if (filteredIssuesByUser.length === 0) return; // Wait until it's populated
 
@@ -453,25 +440,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           />
                         </div>
                         <div className="absolute bottom-0 left-0 w-full rounded-b-xl bg-gradient-to-t from-black/40 via-black/60 to-transparent p-3">
-                          <h6 className="text-base font-bold text-white mb-3">
+                          <h6 className="text-base font-bold text-white mb-1">
                             {listings?.[0]?.address || "No Recent Listings"}
                           </h6>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {Object.entries(recentIssueCounts || {}).map(
-                              ([type, count]) => (
-                                <button
-                                  key={type}
-                                  type="button"
-                                  className="badge text-sm font-semibold bg-blue-500 px-4 py-1.5 rounded text-white flex items-center gap-2"
-                                >
-                                  {type}
-                                  <span className="badge text-neutral-900 bg-white w-5 h-5 flex items-center justify-center rounded text-xs">
-                                    {count}
-                                  </span>
-                                </button>
-                              )
-                            )}
-                          </div>
+                          <h6 className="text-sm text-white mb-2">
+                            {listings?.[0]?.postal_code}, {listings?.[0]?.city},{" "}
+                            {listings?.[0]?.state}, {listings?.[0]?.country}
+                          </h6>
                         </div>
                       </div>
 

@@ -126,7 +126,7 @@ const ReportTable: React.FC = () => {
       // Send the full object with updated status
       await updateIssue({
         ...issueToUpdate,
-        status: statusMapping[issueToUpdate.status],
+        status: statusMapping[issueToUpdate.status as IssueStatus],
         active: newActive, // Only this field changes
       }).unwrap();
 
@@ -165,7 +165,7 @@ const ReportTable: React.FC = () => {
       description: "",
       summary: "",
       severity: "",
-      status: "Status.OPEN",
+      status: "",
       active: true,
       image_url: "",
     });
@@ -408,11 +408,14 @@ const ReportTable: React.FC = () => {
                       <div className="relative">
                         <button
                           className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                            statusMapping[issue.status] === "open"
+                            statusMapping[issue.status as IssueStatus] ===
+                            "open"
                               ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : statusMapping[issue.status] === "in_progress"
+                              : statusMapping[issue.status as IssueStatus] ===
+                                "in_progress"
                               ? "bg-blue-100 text-blue-600 border border-blue-600"
-                              : statusMapping[issue.status] === "review"
+                              : statusMapping[issue.status as IssueStatus] ===
+                                "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
                           }`}
@@ -428,7 +431,8 @@ const ReportTable: React.FC = () => {
                         >
                           {statusOptions.find(
                             (option) =>
-                              option.value === statusMapping[issue.status]
+                              option.value ===
+                              statusMapping[issue.status as IssueStatus]
                           )?.label || "Unknown"}
 
                           <FontAwesomeIcon

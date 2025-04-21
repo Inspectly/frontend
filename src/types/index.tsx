@@ -181,7 +181,7 @@ export type IssueType = {
   summary: string;
   description: string;
   severity: string;
-  status: IssueStatus;
+  status: IssueStatus | string;
   vendor_id: number | null;
   image_url: string;
   cost: string;

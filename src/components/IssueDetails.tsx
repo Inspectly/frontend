@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   IssueAssessment,
   IssueOffer,
+  IssueStatus,
   IssueType,
   Listing,
   statusMapping,
@@ -169,7 +170,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const handleProgressChange = (id: number, newProgress: string) => {
     updateIssue({
       ...issue,
-      status: statusMapping[issue.status],
+      status: statusMapping[issue.status as IssueStatus],
       progress: newProgress,
     });
 
@@ -391,7 +392,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             onClick={() =>
               updateIssue({
                 ...issue,
-                status: statusMapping[issue.status],
+                status: statusMapping[issue.status as IssueStatus],
                 isVisible: !issue.active,
               })
             }
@@ -499,7 +500,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 {imageOpen && (
                   <div className="mt-4 w-full">
                     <img
-                      src={issue.image_url}
+                      src={issue.image_url || "/images/no-image.webp"}
                       alt="Issue"
                       className="rounded-lg w-full h-[300px] object-cover cursor-pointer"
                       onClick={() => setSelectedImage(issue.image_url)}
@@ -564,11 +565,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         </h4>
                         <button
                           className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                            statusMapping[issue.status] === "open"
+                            statusMapping[issue.status as IssueStatus] ===
+                            "open"
                               ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : statusMapping[issue.status] === "in_progress"
+                              : statusMapping[issue.status as IssueStatus] ===
+                                "in_progress"
                               ? "bg-blue-100 text-blue-600 border border-blue-600"
-                              : statusMapping[issue.status] === "review"
+                              : statusMapping[issue.status as IssueStatus] ===
+                                "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
                           }  ${
@@ -583,7 +587,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                         >
                           {statusOptions.find(
                             (option) =>
-                              option.value === statusMapping[issue.status]
+                              option.value ===
+                              statusMapping[issue.status as IssueStatus]
                           )?.label || "Unknown"}
 
                           <FontAwesomeIcon
@@ -869,7 +874,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     onOfferAccepted={(acceptedOffer) => {
                       updateIssue({
                         ...issue,
-                        status: statusMapping[issue.status],
+                        status: statusMapping[issue.status as IssueStatus],
                         vendor_id: acceptedOffer.vendor_id,
                       });
                     }}
@@ -884,7 +889,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     onOfferAccepted={(acceptedOffer) => {
                       updateIssue({
                         ...issue,
-                        status: statusMapping[issue.status],
+                        status: statusMapping[issue.status as IssueStatus],
                         vendor_id: acceptedOffer.vendor_id,
                       });
                     }}

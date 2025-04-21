@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStar as faStarOutline } from "@fortawesome/free-regular-svg-icons";
-import { faPen, faStar, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faStar, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
 import { Vendor, Vendor_Review } from "../types";
 import UserName from "./UserName";
