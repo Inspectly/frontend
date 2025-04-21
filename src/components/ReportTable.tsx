@@ -18,6 +18,7 @@ import {
   useUpdateIssueMutation,
 } from "../features/api/issuesApi";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
+import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 
 const ReportTable: React.FC = () => {
   const { listingId, reportId } = useParams<{
@@ -26,6 +27,7 @@ const ReportTable: React.FC = () => {
   }>();
 
   const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
+  const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
 
   const [updateIssue] = useUpdateIssueMutation();
   const [createIssue] = useCreateIssueMutation();
@@ -46,7 +48,7 @@ const ReportTable: React.FC = () => {
     description: string;
     summary: string;
     severity: string;
-    status: IssueStatus;
+    status: IssueStatus | string;
     active: boolean;
     image_url: string;
   }>({
@@ -54,7 +56,7 @@ const ReportTable: React.FC = () => {
     description: "",
     summary: "",
     severity: "",
-    status: "Status.OPEN",
+    status: "",
     active: true,
     image_url: "",
   });
@@ -552,19 +554,47 @@ const ReportTable: React.FC = () => {
               </button>
               <h6 className="text-lg font-semibold mb-4">Create New Issue</h6>
               <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
-                <div className="col-span-12">
+                <div className="relative col-span-12">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Type
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="type"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
-                    placeholder="Issue type"
+                    className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none"
                     value={formData.type}
-                    onChange={handleInputChange}
                     required
-                  />
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        type: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="" disabled hidden>
+                      Select an issue type
+                    </option>
+                    {fetchedVendorTypes?.map((option) => (
+                      <option key={option.id} value={option.vendor_type}>
+                        {option.vendor_type}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
+                    <svg
+                      className="w-5 h-5 text-gray-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
                 </div>
 
                 <div className="col-span-12">
@@ -596,42 +626,90 @@ const ReportTable: React.FC = () => {
                   />
                 </div>
 
-                <div className="col-span-6">
+                <div className="relative col-span-6">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Severity
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="severity"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
-                    placeholder="e.g., high, medium, low"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
                     value={formData.severity}
-                    onChange={handleInputChange}
                     required
-                  />
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        severity: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="" disabled hidden>
+                      Select a severity
+                    </option>
+                    {["low", "medium", "high"].map((option, index) => (
+                      <option key={index} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
+                    <svg
+                      className="w-5 h-5 text-gray-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
                 </div>
 
-                <div className="col-span-6">
+                <div className="relative col-span-6">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Status
                   </label>
                   <select
                     name="status"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
                     value={formData.status}
+                    required
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        status: e.target.value as IssueStatus,
+                        status: e.target.value,
                       }))
                     }
                   >
+                    <option value="" disabled hidden>
+                      Select a status
+                    </option>
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
                     ))}
                   </select>
+                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
+                    <svg
+                      className="w-5 h-5 text-gray-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                      />
+                    </svg>
+                  </div>
                 </div>
 
                 <div className="col-span-12">
