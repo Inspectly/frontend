@@ -343,78 +343,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
 
             <div className="col-span-12">
-              <select
-                className="px-3 pr-10 py-1.5 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
-                style={{
-                  backgroundImage: "url('images/chevron.svg')",
-                }}
-                value={selectedListing}
-                onChange={(e) => setSelectedListing(e.target.value)}
-              >
-                <option value="all">All Listings</option>
-                {listings
-                  ?.filter((listing) => listing.user_id === user.id)
-                  .map((listing) => (
-                    <option key={listing.id} value={listing.id}>
-                      {listing.address}
-                    </option>
-                  ))}
-              </select>
-
-              {selectedListing !== "all" && (
-                <select
-                  className="px-3 pr-10 py-1.5 ml-2 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
-                  style={{
-                    backgroundImage: "url('images/chevron.svg')",
-                  }}
-                  value={selectedReport}
-                  onChange={(e) => setSelectedReport(e.target.value)}
-                >
-                  <option value="all">All Reports</option>
-                  {filteredReports?.map((report) => (
-                    <option key={report.id} value={report.id}>
-                      {report.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
-                {Object.entries(issueCounts).map(([type, count]) => (
-                  <div
-                    key={type}
-                    className={`bg-white shadow-none border border-gray-200 rounded-lg h-full bg-gradient-to-r ${
-                      issueGradients[type] || "from-red-500/10 to-white"
-                    }`}
-                  >
-                    <div className="p-5">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-neutral-900 mb-1">
-                            {type}
-                          </p>
-                          <h6 className="mb-0 font-medium text-xl">
-                            {count} Issues
-                          </h6>
-                        </div>
-                        <div
-                          className={`w-[50px] h-[50px] bg-${
-                            issueColors[type] || "red-500"
-                          } rounded-full flex justify-center items-center`}
-                        >
-                          <FontAwesomeIcon
-                            icon={issueIcons[type] || faWrench} // Default to faWrench if no match
-                            className="text-white text-xl"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="col-span-12">
               <div className="rounded-md bg-white h-full">
                 <div className="border-b border-gray-200 px-4 py-3 md:px-6 border-bottom flex items-center flex-wrap gap-2 justify-between">
                   <h6 className="font-bold text-lg mb-0">Recent Listing</h6>
@@ -514,6 +442,78 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="col-span-12">
+              <select
+                className="px-3 pr-10 py-1.5 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
+                style={{
+                  backgroundImage: "url('images/chevron.svg')",
+                }}
+                value={selectedListing}
+                onChange={(e) => setSelectedListing(e.target.value)}
+              >
+                <option value="all">All Listings</option>
+                {listings
+                  ?.filter((listing) => listing.user_id === user.id)
+                  .map((listing) => (
+                    <option key={listing.id} value={listing.id}>
+                      {listing.address}
+                    </option>
+                  ))}
+              </select>
+
+              {selectedListing !== "all" && (
+                <select
+                  className="px-3 pr-10 py-1.5 ml-2 text-sm leading-5 appearance-none bg-no-repeat bg-[right_0.75rem_center] bg-[length:0.75em_0.75em] w-auto bg-neutral-50 border rounded-full"
+                  style={{
+                    backgroundImage: "url('images/chevron.svg')",
+                  }}
+                  value={selectedReport}
+                  onChange={(e) => setSelectedReport(e.target.value)}
+                >
+                  <option value="all">All Reports</option>
+                  {filteredReports?.map((report) => (
+                    <option key={report.id} value={report.id}>
+                      {report.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                {Object.entries(issueCounts).map(([type, count]) => (
+                  <div
+                    key={type}
+                    className={`bg-white shadow-none border border-gray-200 rounded-lg h-full bg-gradient-to-r ${
+                      issueGradients[type] || "from-red-500/10 to-white"
+                    }`}
+                  >
+                    <div className="p-5">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-neutral-900 mb-1">
+                            {type}
+                          </p>
+                          <h6 className="mb-0 font-medium text-xl">
+                            {count} Issues
+                          </h6>
+                        </div>
+                        <div
+                          className={`w-[50px] h-[50px] bg-${
+                            issueColors[type] || "red-500"
+                          } rounded-full flex justify-center items-center`}
+                        >
+                          <FontAwesomeIcon
+                            icon={issueIcons[type] || faWrench} // Default to faWrench if no match
+                            className="text-white text-xl"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
