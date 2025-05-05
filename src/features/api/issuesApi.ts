@@ -12,6 +12,16 @@ export const issuesApi = api.injectEndpoints({
     getIssueAddressById: builder.query<IssueAddress, number>({
       query: (id) => `issues/address/${id}`,
     }),
+    getAllIssueAddresses: builder.query<IssueAddress[], void>({
+      query: () => "issues/addresses/all",
+    }),
+    getAddressesByIssueIds: builder.mutation<IssueAddress[], number[]>({
+      query: (issueIds) => ({
+        url: "issues/addresses/issue_ids",
+        method: "POST",
+        body: { issue_ids: issueIds },
+      }),
+    }),
     updateIssue: builder.mutation({
       query: (body) => ({
         url: `issues/${body.id}`,
@@ -44,5 +54,5 @@ export const issuesApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetIssueAddressByIdQuery, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
+export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetIssueAddressByIdQuery, useGetAllIssueAddressesQuery, useGetAddressesByIssueIdsMutation, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
 export const { getIssueAddressById } = issuesApi.endpoints;

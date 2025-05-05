@@ -6,17 +6,15 @@ import {
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import {
-  getIssueAddressById,
+  useGetAllIssueAddressesQuery,
   useGetIssuesQuery,
 } from "../features/api/issuesApi";
 import IssueItem from "../components/IssueItem";
 import { IssueAddress, IssueType } from "../types";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../store/store";
 
 const Marketplace: React.FC = () => {
   const { data: issues, error, isLoading } = useGetIssuesQuery();
-  const dispatch = useDispatch<AppDispatch>();
+  const { data: allAddresses } = useGetAllIssueAddressesQuery();
 
   const [filteredIssues, setFilteredIssues] = useState<IssueType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -29,29 +27,17 @@ const Marketplace: React.FC = () => {
   const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   useEffect(() => {
-    if (!issues) return;
+    if (!issues || !allAddresses) return;
 
-    // Fetch address by issue ID
-    const fetchAddresses = async () => {
-      try {
-        const addressPairs = await Promise.all(
-          issues.map(async (issue) => {
-            const data = await dispatch(
-              getIssueAddressById.initiate(issue.id)
-            ).unwrap();
-            return [issue.id, data] as [number, IssueAddress];
-          })
-        );
+    const pageIssueIds = issues.map((issue) => issue.id);
+    const filtered = allAddresses.filter((addr) =>
+      pageIssueIds.includes(addr.issue_id)
+    );
 
-        setAddresses(Object.fromEntries(addressPairs));
-        setAddressesLoaded(true);
-      } catch (err) {
-        console.error("Failed to fetch issue addresses:", err);
-      }
-    };
-
-    fetchAddresses();
-  }, [issues]);
+    const addressMap = Object.fromEntries(filtered.map((a) => [a.issue_id, a]));
+    setAddresses(addressMap);
+    setAddressesLoaded(true);
+  }, [issues, allAddresses]);
 
   const isDataReady = !isLoading && issues && addressesLoaded;
 

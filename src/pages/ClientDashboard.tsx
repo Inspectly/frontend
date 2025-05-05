@@ -68,7 +68,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: clients } = useGetClientsQuery();
   const client = clients?.find((c) => c.user_id === user.id);
 
-  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(user.id);
+  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(
+    Number(client?.id)
+  );
 
   const events: CalendarReadyAssessment[] = assessments
     .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
