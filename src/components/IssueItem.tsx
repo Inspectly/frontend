@@ -1,28 +1,22 @@
 import React, { useMemo } from "react";
-import { useGetReportByIdQuery } from "../features/api/reportsApi";
-import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import { IssueType } from "../types";
+import { IssueAddress, IssueType, Vendor } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 interface IssueItemProps {
   issue: IssueType;
+  vendor?: Vendor;
+  userType?: string;
+  address?: IssueAddress;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
-  const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const userType = useSelector(
-    (state: RootState) => state.auth.user?.user_type
-  );
-
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
-    skip: !userId || userType !== "vendor",
-  });
-
+const IssueItem: React.FC<IssueItemProps> = ({
+  issue,
+  vendor,
+  userType,
+  address,
+}) => {
   const { data: offers = [], isLoading: offerLoading } =
     useGetOffersByIssueIdQuery(issue.id, {
       skip: !issue?.id,
@@ -54,17 +48,6 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
   const latestVendorOffer = sortedVendorOffers.length
     ? sortedVendorOffers[0].price
     : null;
-
-  const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
-    issue.report_id
-  );
-
-  const { data: listing, isLoading: listingLoading } = useGetListingByIdQuery(
-    report?.listing_id || -1,
-    {
-      skip: !report, // Only fetch listing if report is available
-    }
-  );
 
   const navigate = useNavigate();
 
@@ -134,10 +117,9 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
         {/* Location */}
         <p className="text-gray-600 text-xs group-hover:underline">
-          {reportLoading || listingLoading
-            ? "Loading..."
-            : `${listing?.address || "Unknown"},
-            ${listing?.postal_code || "Unknown"}`}
+          {address
+            ? `${address.address}, ${address.postal_code}`
+            : "Loading address..."}
         </p>
       </div>
     </div>

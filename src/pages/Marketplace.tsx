@@ -6,15 +6,27 @@ import {
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import {
-  useGetAllIssueAddressesQuery,
+  useGetAddressesByIssueIdsMutation,
   useGetIssuesQuery,
 } from "../features/api/issuesApi";
 import IssueItem from "../components/IssueItem";
 import { IssueAddress, IssueType } from "../types";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
 
 const Marketplace: React.FC = () => {
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const userType = useSelector(
+    (state: RootState) => state.auth.user?.user_type
+  );
+
   const { data: issues, error, isLoading } = useGetIssuesQuery();
-  const { data: allAddresses } = useGetAllIssueAddressesQuery();
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
+    skip: !userId || userType !== "vendor",
+  });
+
+  const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
 
   const [filteredIssues, setFilteredIssues] = useState<IssueType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -27,17 +39,24 @@ const Marketplace: React.FC = () => {
   const [addressesLoaded, setAddressesLoaded] = useState(false);
 
   useEffect(() => {
-    if (!issues || !allAddresses) return;
+    if (!issues || issues.length === 0) return;
 
-    const pageIssueIds = issues.map((issue) => issue.id);
-    const filtered = allAddresses.filter((addr) =>
-      pageIssueIds.includes(addr.issue_id)
-    );
+    const fetchAddresses = async () => {
+      try {
+        const issueIds = issues.map((issue) => issue.id);
+        const addressList = await getAddressesByIssueIds(issueIds).unwrap();
+        const addressMap = Object.fromEntries(
+          addressList.map((a) => [a.issue_id, a])
+        );
+        setAddresses(addressMap);
+        setAddressesLoaded(true);
+      } catch (err) {
+        console.error("Failed to fetch batch addresses", err);
+      }
+    };
 
-    const addressMap = Object.fromEntries(filtered.map((a) => [a.issue_id, a]));
-    setAddresses(addressMap);
-    setAddressesLoaded(true);
-  }, [issues, allAddresses]);
+    fetchAddresses();
+  }, [issues]);
 
   const isDataReady = !isLoading && issues && addressesLoaded;
 
@@ -217,7 +236,17 @@ const Marketplace: React.FC = () => {
               }}
             >
               {currentIssues.map((issue) => (
-                <IssueItem key={issue.id} issue={issue} />
+                <IssueItem
+                  key={issue.id}
+                  issue={issue}
+                  vendor={vendor}
+                  userType={userType}
+                  address={
+                    addresses[issue.id]
+                      ? addresses[issue.id]
+                      : ({} as IssueAddress)
+                  }
+                />
               ))}
             </div>
           )}
