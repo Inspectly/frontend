@@ -60,6 +60,7 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
         vendor_id: offer.vendor_id,
         price: offer.price,
         status,
+        user_last_viewed: new Date().toISOString(),
         comment_vendor: offer.comment_vendor || "",
         comment_client: offer.comment_client || "",
       }).unwrap();
@@ -153,7 +154,7 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
                             {ISSUE_OFFER_STATUS_LABELS[offer.status]}
                           </span>
                         </td>
-                        <td className="text-left border-b border-gray-200 px-4 py-3 capitalize">
+                        <td className="text-left border-b border-gray-200 px-4 py-3 capitalize max-w-72">
                           {offer.comment_vendor || "No comment"}
                         </td>
                         <td className="text-left border-b border-gray-200 px-4 py-3">

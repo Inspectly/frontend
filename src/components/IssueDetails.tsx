@@ -282,12 +282,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         updateAssessmentStatus({
           ...accepted,
           interaction_id: accepted.users_interaction_id,
+          user_last_viewed: new Date().toISOString(),
           status: "accepted",
         }),
         ...rejected
           .map((a) => ({
             ...a,
             interaction_id: accepted.users_interaction_id,
+            user_last_viewed: new Date().toISOString(),
             status: "rejected",
           }))
           .map(updateAssessmentStatus),
