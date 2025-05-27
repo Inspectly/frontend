@@ -1,48 +1,34 @@
 import React, { useMemo } from "react";
-import { useGetReportByIdQuery } from "../features/api/reportsApi";
-import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import { IssueType } from "../types";
+import { IssueAddress, IssueType, Vendor } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
-import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
+import {
+  useGetOffersByIssueIdQuery,
+  useGetOffersByVendorIdQuery,
+} from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 interface IssueItemProps {
   issue: IssueType;
+  vendor?: Vendor;
+  userType?: string;
+  address?: IssueAddress;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
-  const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const userType = useSelector(
-    (state: RootState) => state.auth.user?.user_type
-  );
+const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
+  const vendorId = useSelector((state: RootState) => state.auth.user?.id);
 
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
-    skip: !userId || userType !== "vendor",
-  });
-
-  const { data: offers = [], isLoading: offerLoading } =
-    useGetOffersByIssueIdQuery(issue.id, {
-      skip: !issue?.id,
+  const { data: allVendorOffers = [], isLoading: offerLoading } =
+    useGetOffersByVendorIdQuery(vendorId || "", {
+      skip: !vendorId || userType !== "vendor",
     });
 
-  // If client, get latest offers sorted by created_at descending
-  const sortedOffers = useMemo(() => {
-    return [...offers].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [offers]);
+  const navigate = useNavigate();
 
-  const latestOffer = sortedOffers.length ? sortedOffers[0].price : null;
-  const totalOffers = offers.length;
-
-  // If vendor, filter to only that vendor’s offers
-  const vendorOffers = offers.filter(
-    (offer) => String(offer.vendor_id) === String(vendor?.id)
-  );
+  const vendorOffers = useMemo(() => {
+    return allVendorOffers.filter((offer) => offer.issue_id === issue.id);
+  }, [allVendorOffers, issue.id]);
 
   const sortedVendorOffers = useMemo(() => {
     return [...vendorOffers].sort(
@@ -54,19 +40,6 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
   const latestVendorOffer = sortedVendorOffers.length
     ? sortedVendorOffers[0].price
     : null;
-
-  const { data: report, isLoading: reportLoading } = useGetReportByIdQuery(
-    issue.report_id
-  );
-
-  const { data: listing, isLoading: listingLoading } = useGetListingByIdQuery(
-    report?.listing_id || -1,
-    {
-      skip: !report, // Only fetch listing if report is available
-    }
-  );
-
-  const navigate = useNavigate();
 
   return (
     <div
@@ -93,21 +66,6 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
         <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
           {offerLoading ? (
             "Loading offer..."
-          ) : userType === "client" ? (
-            // CLIENT: show "latest overall" + "total offers"
-            latestOffer !== null ? (
-              <>
-                Current Offer: $
-                {new Intl.NumberFormat("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(latestOffer)}
-                <br />
-                Total Offers: {totalOffers}
-              </>
-            ) : (
-              "No offers yet"
-            )
           ) : userType === "vendor" ? (
             // VENDOR: show only their own latest offer
             latestVendorOffer !== null ? (
@@ -134,10 +92,9 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue }) => {
 
         {/* Location */}
         <p className="text-gray-600 text-xs group-hover:underline">
-          {reportLoading || listingLoading
-            ? "Loading..."
-            : `${listing?.address || "Unknown"},
-            ${listing?.postal_code || "Unknown"}`}
+          {address
+            ? `${address.address}, ${address.postal_code}`
+            : "Loading address..."}
         </p>
       </div>
     </div>

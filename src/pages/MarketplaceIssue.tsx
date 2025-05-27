@@ -24,7 +24,7 @@ const MarketplaceIssue: React.FC = () => {
     data: report,
     isLoading: reportLoading,
     error: reportError,
-  } = useGetReportByIdQuery(issue?.report_id?.toString() ?? "", {
+  } = useGetReportByIdQuery(issue?.report_id ?? -1, {
     skip: !issue?.report_id,
   });
 
@@ -33,7 +33,7 @@ const MarketplaceIssue: React.FC = () => {
     data: listing,
     isLoading: listingLoading,
     error: listingError,
-  } = useGetListingByIdQuery(report?.listing_id?.toString() ?? "", {
+  } = useGetListingByIdQuery(report?.listing_id ?? -1, {
     skip: !report?.listing_id,
   });
 

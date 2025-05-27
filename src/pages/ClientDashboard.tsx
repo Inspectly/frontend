@@ -68,7 +68,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: clients } = useGetClientsQuery();
   const client = clients?.find((c) => c.user_id === user.id);
 
-  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(user.id);
+  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(
+    Number(client?.id)
+  );
 
   const events: CalendarReadyAssessment[] = assessments
     .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
@@ -106,20 +108,20 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   };
 
   const issueColors: Record<string, string> = {
-    general: "gray-600",
-    structural: "purple-600",
-    electrician: "yellow-500",
-    plumber: "blue-500",
-    painter: "pink-500",
-    cleaner: "green-400",
-    hvac: "teal-500",
-    roofing: "indigo-600",
-    insulation: "cyan-500",
-    drywall: "orange-400",
-    plaster: "red-400",
-    carpentry: "amber-700",
-    landscaping: "lime-500",
-    other: "neutral-500",
+    general: "bg-gray-600",
+    structural: "bg-purple-600",
+    electrician: "bg-yellow-500",
+    plumber: "bg-blue-500",
+    painter: "bg-pink-500",
+    cleaner: "bg-green-400",
+    hvac: "bg-teal-500",
+    roofing: "bg-indigo-600",
+    insulation: "bg-cyan-500",
+    drywall: "bg-orange-400",
+    plaster: "bg-red-400",
+    carpentry: "bg-amber-700",
+    landscaping: "bg-lime-500",
+    other: "bg-neutral-500",
   };
 
   const issueGradients: Record<string, string> = {
@@ -398,8 +400,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           </h6>
                         </div>
                         <div
-                          className={`w-[50px] h-[50px] bg-${
-                            issueColors[type] || "red-500"
+                          className={`w-[50px] h-[50px] ${
+                            issueColors[type] || "bg-red-500"
                           } rounded-full flex justify-center items-center`}
                         >
                           <FontAwesomeIcon

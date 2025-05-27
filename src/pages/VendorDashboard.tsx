@@ -4,12 +4,28 @@ import UserCalendar from "../components/UserCalendar";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { Link } from "react-router-dom";
 import VendorName from "../components/VendorName";
+import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 interface DashboardProps {
   user: User;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+  const {
+    data: vendor,
+    isLoading: isVendorLoading,
+    error: vendorError,
+  } = useGetVendorByVendorUserIdQuery(String(user.id));
+
+  const {
+    data: assessments,
+    isLoading: isAssessmentsLoading,
+    error: assessmentsError,
+  } = useGetAssessmentsByUserIdQuery(Number(vendor?.id), {
+    skip: !vendor?.id, // Only run this query after vendor is loaded
+  });
+
   const [events, setEvents] = useState<EventSlot[]>([]);
   const [selectedReport, setSelectedReport] = useState<string>("all");
 
@@ -34,28 +50,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         ) || [];
 
   useEffect(() => {
-    const dummyBookings: EventSlot[] = [
-      {
-        id: "1",
-        title: "plumbing Repair Appointment",
-        start: new Date("2025-03-15T10:00:00"),
-        end: new Date("2025-03-15T11:00:00"),
-      },
-      {
-        id: "2",
-        title: "Electrical Wiring Fix",
-        start: new Date("2025-03-20T14:00:00"),
-        end: new Date("2025-03-20T15:00:00"),
-      },
-      {
-        id: "3",
-        title: "AC Maintenance",
-        start: new Date("2025-03-25T09:30:00"),
-        end: new Date("2025-03-25T10:30:00"),
-      },
-    ];
-    setEvents(dummyBookings);
-  }, []);
+    if (!assessments) return;
+
+    const calendarEvents: EventSlot[] = assessments.map((a) => ({
+      id: String(a.id),
+      title: `Assessment for Issue #${a.issue_id}`,
+      start: new Date(a.start_time),
+      end: new Date(a.end_time),
+    }));
+
+    setEvents(calendarEvents);
+  }, [assessments]);
 
   // Handling error state
   // todo: maybe an error loading component?
@@ -63,7 +68,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     return <p>Error</p>;
   }
 
-  if (!user || isIssuesLoading) return <p>Loading...</p>;
+  if (!user || isIssuesLoading || isVendorLoading || isAssessmentsLoading)
+    return <p>Loading assessments...</p>;
+  if (vendorError || assessmentsError)
+    return <p>Failed to load vendor or assessments.</p>;
 
   return (
     <div className="p-6">

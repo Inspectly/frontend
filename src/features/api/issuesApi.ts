@@ -6,11 +6,47 @@ export const issuesApi = api.injectEndpoints({
     getIssues: builder.query<IssueType[], void>({
       query: () => "issues/",
     }),
+    getPaginatedIssues: builder.query<
+      { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} },
+      {
+        offset: number;
+        limit: number;
+        search?: string;
+        type?: string;
+        city?: string;
+        state?: string;
+        vendor_assigned?: boolean;
+      }
+    >({
+      query: ({ offset, limit, search = "", type = "", city = "", state = "" }) => {
+        const params = new URLSearchParams({
+          offset: offset.toString(),
+          limit: limit.toString(),
+        });
+    
+        if (search) params.append("search", search);
+        if (type) params.append("type", type);
+        if (city) params.append("city", city);
+        if (state) params.append("state", state);
+    
+        return `/issues/filter?${params.toString()}`;
+      },
+    }),
     getIssueById: builder.query<IssueType, string>({
       query: (id) => `issues/${id}`,
     }),
     getIssueAddressById: builder.query<IssueAddress, number>({
       query: (id) => `issues/address/${id}`,
+    }),
+    getAllIssueAddresses: builder.query<IssueAddress[], void>({
+      query: () => "issues/addresses/all",
+    }),
+    getAddressesByIssueIds: builder.mutation<IssueAddress[], number[]>({
+      query: (issueIds) => ({
+        url: "issues/addresses/issue_ids",
+        method: "POST",
+        body: { issue_ids: issueIds },
+      }),
     }),
     updateIssue: builder.mutation({
       query: (body) => ({
@@ -44,5 +80,5 @@ export const issuesApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetIssueAddressByIdQuery, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
+export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetPaginatedIssuesQuery, useGetIssueAddressByIdQuery, useGetAllIssueAddressesQuery, useGetAddressesByIssueIdsMutation, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
 export const { getIssueAddressById } = issuesApi.endpoints;

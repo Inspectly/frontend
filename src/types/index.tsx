@@ -167,6 +167,7 @@ export const statusOptions = [
 ];
 
 export type IssueAddress = {
+  issue_id: number;
   address: string;
   city: string;
   state: string;
