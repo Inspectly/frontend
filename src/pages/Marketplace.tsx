@@ -7,10 +7,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {
   useGetAddressesByIssueIdsMutation,
-  useGetIssuesQuery,
+  useGetPaginatedIssuesQuery,
 } from "../features/api/issuesApi";
 import IssueItem from "../components/IssueItem";
-import { IssueAddress, IssueType } from "../types";
+import { IssueAddress } from "../types";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -21,20 +21,34 @@ const Marketplace: React.FC = () => {
     (state: RootState) => state.auth.user?.user_type
   );
 
-  const { data: issues, error, isLoading } = useGetIssuesQuery();
   const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
     skip: !userId || userType !== "vendor",
   });
 
   const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
 
-  const [filteredIssues, setFilteredIssues] = useState<IssueType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12); // Default to 12 items
+  const [itemsPerPage, setItemsPerPage] = useState(12);
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedState, setSelectedState] = useState("");
   const [selectedType, setSelectedType] = useState("");
+
+  const offset = (currentPage - 1) * itemsPerPage;
+
+  const { data, error, isLoading } = useGetPaginatedIssuesQuery({
+    offset,
+    limit: itemsPerPage,
+    search: searchQuery,
+    city: selectedCity,
+    state: selectedState,
+    type: selectedType,
+  });
+
+  const issues = data?.issues || [];
+  const totalItems = data?.total_filtered?.count || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
   const [addresses, setAddresses] = useState<Record<number, IssueAddress>>({});
   const [addressesLoaded, setAddressesLoaded] = useState(false);
 
@@ -67,44 +81,6 @@ const Marketplace: React.FC = () => {
   ];
   const uniqueTypes = [...new Set(issues?.map((issue) => issue?.type))];
 
-  // Filter issues
-  useEffect(() => {
-    if (!isDataReady) return;
-
-    const filtered = issues!.filter((issue) => {
-      if (!issue.active || issue.vendor_id) return false;
-
-      const address = addresses[issue.id];
-      if (!address) return false;
-
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        issue.summary?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCity = selectedCity === "" || address.city === selectedCity;
-      const matchesState =
-        selectedState === "" || address.state === selectedState;
-      const matchesType = selectedType === "" || issue.type === selectedType;
-
-      return matchesSearch && matchesCity && matchesState && matchesType;
-    });
-
-    setFilteredIssues(filtered);
-  }, [
-    issues,
-    addresses,
-    searchQuery,
-    selectedCity,
-    selectedState,
-    selectedType,
-    isDataReady,
-  ]);
-
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentIssues = filteredIssues.slice(startIndex, endIndex);
-
   // Adjust `itemsPerPage` dynamically based on the number of columns
   useEffect(() => {
     const updateItemsPerPage = () => {
@@ -115,7 +91,7 @@ const Marketplace: React.FC = () => {
       if (width >= 768) columns = 3; // `md:grid-cols-3`
       if (width >= 1536) columns = 4; // `2xl:grid-cols-4`
 
-      const rows = 3; // Always display at least 3 rows
+      const rows = 4; // Always display at least 4 rows
       setItemsPerPage(columns * rows);
     };
 
@@ -179,7 +155,10 @@ const Marketplace: React.FC = () => {
               <select
                 className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
                 value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCity(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">All Cities</option>
                 {uniqueCity.map((city) => (
@@ -193,7 +172,10 @@ const Marketplace: React.FC = () => {
               <select
                 className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
                 value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
+                onChange={(e) => {
+                  setSelectedState(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">All States</option>
                 {uniqueState.map((state) => (
@@ -207,7 +189,10 @@ const Marketplace: React.FC = () => {
               <select
                 className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
                 value={selectedType}
-                onChange={(e) => setSelectedType(e.target.value)}
+                onChange={(e) => {
+                  setSelectedType(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">All Types</option>
                 {uniqueTypes.map((type) => (
@@ -224,7 +209,7 @@ const Marketplace: React.FC = () => {
             <div className="text-center text-gray-500 animate-pulse py-10">
               Loading issues...
             </div>
-          ) : currentIssues.length === 0 ? (
+          ) : issues.length === 0 ? (
             <div className="text-center text-gray-500">
               You have no current issues.
             </div>
@@ -235,7 +220,7 @@ const Marketplace: React.FC = () => {
                 gridAutoRows: "minmax(150px, auto)",
               }}
             >
-              {currentIssues.map((issue) => (
+              {issues.map((issue) => (
                 <IssueItem
                   key={issue.id}
                   issue={issue}
@@ -253,9 +238,9 @@ const Marketplace: React.FC = () => {
 
           <div className="flex items-center justify-between flex-wrap gap-2 mt-6">
             <span>
-              Showing {startIndex + 1} to{" "}
-              {Math.min(endIndex, filteredIssues.length)} of{" "}
-              {filteredIssues.length} entries
+              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+              {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}{" "}
+              entries
             </span>
             <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
               <li className="page-item">
