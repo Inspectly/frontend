@@ -28,18 +28,20 @@ import {
   IssueType,
   ReportType,
   User,
+  Vendor,
 } from "../types";
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
-import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
+import { getVendorById } from "../features/api/vendorsApi";
 
 interface DashboardProps {
   user: User;
@@ -68,18 +70,62 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: clients } = useGetClientsQuery();
   const client = clients?.find((c) => c.user_id === user.id);
 
-  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(
-    Number(client?.id)
-  );
+  const { data: assessments = [] } =
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id);
 
-  const events: CalendarReadyAssessment[] = assessments
+  const acceptedAssessments = assessments
     .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
     .map((a) => ({
       ...a,
-      title: `Issue #${a.issue_id} – Vendor #${a.interaction_id.split("_")[1]}`,
+      vendor_id: parseInt(a.users_interaction_id.split("_")[1], 10), // safely extract vendor_id
+    }));
+
+  const issueIds = [...new Set(acceptedAssessments.map((a) => a.issue_id))];
+  const vendorIds = [...new Set(acceptedAssessments.map((a) => a.vendor_id))];
+
+  const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
+  const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const issuePromises = issueIds.map((id) =>
+        dispatch(getIssueById.initiate(String(id)))
+      );
+      const vendorPromises = vendorIds.map((id) =>
+        dispatch(getVendorById.initiate(String(id)))
+      );
+
+      const issueResults = await Promise.all(issuePromises);
+      const vendorResults = await Promise.all(vendorPromises);
+
+      const issueData = Object.fromEntries(
+        issueResults.map((r) => [r?.data?.id, r?.data])
+      );
+      const vendorData = Object.fromEntries(
+        vendorResults.map((r) => [r?.data?.id, r?.data])
+      );
+
+      setIssueMap(issueData);
+      setVendorMap(vendorData);
+    };
+
+    fetchData();
+  }, [JSON.stringify(issueIds), JSON.stringify(vendorIds)]);
+
+  const events: CalendarReadyAssessment[] = acceptedAssessments.map((a) => {
+    const issue = issueMap[a.issue_id];
+    const vendor = vendorMap[a.vendor_id];
+    console.log(issue);
+
+    return {
+      ...a,
+      title: `${vendor?.name || "Vendor #" + a.vendor_id} Assessment: ${
+        issue.summary || "Issue #" + a.issue_id
+      }`,
       start: new Date(a.start_time),
       end: new Date(a.end_time),
-    }));
+    };
+  });
 
   const [files, setFiles] = useState<File[]>([]);
   const [selectedListing, setSelectedListing] = useState<string>("all");

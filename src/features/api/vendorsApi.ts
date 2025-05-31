@@ -27,3 +27,4 @@ export const vendorsApi = api.injectEndpoints({
 });
 
 export const { useGetVendorsQuery, useGetVendorByIdQuery, useGetVendorByVendorUserIdQuery, useCreateVendorMutation } = vendorsApi;
+export const { getVendorById } = vendorsApi.endpoints;

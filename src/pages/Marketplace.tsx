@@ -43,6 +43,7 @@ const Marketplace: React.FC = () => {
     city: selectedCity,
     state: selectedState,
     type: selectedType,
+    vendor_assigned: true, // Only fetch issues assigned to vendors
   });
 
   const issues = data?.issues || [];

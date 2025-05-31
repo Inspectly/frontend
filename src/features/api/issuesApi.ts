@@ -18,10 +18,11 @@ export const issuesApi = api.injectEndpoints({
         vendor_assigned?: boolean;
       }
     >({
-      query: ({ offset, limit, search = "", type = "", city = "", state = "" }) => {
+      query: ({ offset, limit, search = "", type = "", city = "", state = "", vendor_assigned }) => {
         const params = new URLSearchParams({
           offset: offset.toString(),
           limit: limit.toString(),
+          vendor_assigned: vendor_assigned ? "true" : "false",
         });
     
         if (search) params.append("search", search);
@@ -81,4 +82,4 @@ export const issuesApi = api.injectEndpoints({
 });
 
 export const { useGetIssuesQuery, useGetIssueByIdQuery, useGetPaginatedIssuesQuery, useGetIssueAddressByIdQuery, useGetAllIssueAddressesQuery, useGetAddressesByIssueIdsMutation, useUpdateIssueMutation, useCreateIssueMutation } = issuesApi;
-export const { getIssueAddressById } = issuesApi.endpoints;
+export const { getIssueById, getIssueAddressById } = issuesApi.endpoints;
