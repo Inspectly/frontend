@@ -576,8 +576,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
-                          }  ${
-                            userType === "vendor" ? "pointer-events-none" : ""
                           }`}
                           ref={progressDropdownButtonRef}
                           onClick={() =>

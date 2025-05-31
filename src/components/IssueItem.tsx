@@ -2,10 +2,7 @@ import React, { useMemo } from "react";
 import { IssueAddress, IssueType, Vendor } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate } from "react-router-dom";
-import {
-  useGetOffersByIssueIdQuery,
-  useGetOffersByVendorIdQuery,
-} from "../features/api/issueOffersApi";
+import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 
