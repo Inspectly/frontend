@@ -115,12 +115,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const events: CalendarReadyAssessment[] = acceptedAssessments.map((a) => {
     const issue = issueMap[a.issue_id];
     const vendor = vendorMap[a.vendor_id];
-    console.log(issue);
 
     return {
       ...a,
       title: `${vendor?.name || "Vendor #" + a.vendor_id} Assessment: ${
-        issue.summary || "Issue #" + a.issue_id
+        issue?.summary || "Issue #" + a.issue_id
       }`,
       start: new Date(a.start_time),
       end: new Date(a.end_time),
