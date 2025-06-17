@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { useGetClientsQuery } from "../features/api/clientsApi";
 import {
   faBars,
   faMagnifyingGlass,
@@ -27,6 +28,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch clients from API
+  const { data: clients } = useGetClientsQuery();
+
+  // Match client by email
+  const client = clients?.find((c) => c.email === currentUser?.email);
 
   // Monitor authentication state
   useEffect(() => {
@@ -95,7 +102,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 <div className="py-3 px-4 bg-blue-100 mb-4 rounded-lg flex items-center justify-between gap-2">
                   <div>
                     <h6 className="text-lg text-neutral-900 font-semibold mb-0">
-                      {currentUser?.displayName || "User"}
+                      {client
+                        ? `${client.first_name} ${client.last_name}`
+                        : currentUser?.displayName ||
+                          currentUser?.email?.split("@")[0] ||
+                          "User"}
                     </h6>
                     <span className="text-neutral-500">
                       {currentUser?.email || "user@example.com"}
