@@ -339,14 +339,15 @@ const ReportTable: React.FC = () => {
                   <th className="bg-gray-100 text-center font-medium px-4 py-3 first:rounded-tl-lg">
                     Severity
                   </th>
-                  <th className="bg-gray-100 text-left font-medium px-4 py-3">
+                  {/* Below code add's issue id. Uncomment if needed */}
+                  {/* <th className="bg-gray-100 text-left font-medium px-4 py-3">
                     ID
+                  </th> */}
+                  <th className="bg-gray-100 text-left font-medium px-4 py-3">
+                    Summary
                   </th>
                   <th className="bg-gray-100 text-left font-medium px-4 py-3">
                     Type
-                  </th>
-                  <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                    Summary
                   </th>
                   <th className="bg-gray-100 text-left font-medium px-4 py-3">
                     Vendor
@@ -361,7 +362,7 @@ const ReportTable: React.FC = () => {
                     Cost
                   </th>
                   <th className="bg-gray-100 text-center font-medium px-4 py-3">
-                    Actions
+                    Marketplace
                   </th>
                 </tr>
               </thead>
@@ -382,13 +383,10 @@ const ReportTable: React.FC = () => {
                         }`}
                       ></span>
                     </td>
-
-                    <td className="text-left border-b border-gray-200 px-4 py-3">
+                    {/* Below code add's issue id. Uncomment if needed */}
+                    {/* <td className="text-left border-b border-gray-200 px-4 py-3">
                       {issue.id}
-                    </td>
-                    <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.type}
-                    </td>
+                    </td> */}
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <Link
                         to={`/listings/${listingId}/reports/${reportId}/issues/${issue.id}`}
@@ -396,6 +394,9 @@ const ReportTable: React.FC = () => {
                       >
                         {issue.summary}
                       </Link>
+                    </td>
+                    <td className="text-left border-b border-gray-200 px-4 py-3">
+                      {issue.type}
                     </td>
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       {issue.vendor_id ? (
@@ -407,7 +408,9 @@ const ReportTable: React.FC = () => {
                         "No vendor assigned"
                       )}
                     </td>
-                    <td className="text-left border-b border-gray-200 px-4 py-3">
+
+                    {/* Below code changes read only status to setting status by dropdown */}
+                    {/* <td className="text-left border-b border-gray-200 px-4 py-3">
                       <div className="relative">
                         <button
                           className={`px-2.5 py-1.5 rounded font-medium text-sm ${
@@ -474,7 +477,27 @@ const ReportTable: React.FC = () => {
                           </Dropdown>
                         )}
                       </div>
+                    </td> */}
+
+                    <td className="text-left border-b border-gray-200 px-4 py-3">
+                      <span
+                        className={`inline-block px-2.5 py-1.5 rounded font-medium text-sm ${
+                          statusMapping[issue.status as IssueStatus] === "open"
+                            ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                            : statusMapping[issue.status as IssueStatus] === "in_progress"
+                            ? "bg-blue-100 text-blue-600 border border-blue-600"
+                            : statusMapping[issue.status as IssueStatus] === "review"
+                            ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
+                            : "bg-green-100 text-green-600 border border-green-600"
+                        }`}
+                      >
+                        {statusOptions.find(
+                          (option) =>
+                            option.value === statusMapping[issue.status as IssueStatus]
+                        )?.label || "Unknown"}
+                      </span>
                     </td>
+
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       {formatDate(issue.created_at)}
                     </td>
@@ -483,18 +506,26 @@ const ReportTable: React.FC = () => {
                       {issue.cost || "N/A"}
                     </td>
                     <td className="text-center border-b border-gray-200 px-4 py-3">
-                      <button
-                        onClick={() =>
-                          handleActiveChange(issue.id, !issue.active)
-                        }
-                        className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
-                      >
-                        <FontAwesomeIcon
-                          icon={issue.active ? faEye : faEyeSlash}
-                          className={`text-blue-600 size-3.5`}
+                      <label className="inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={issue.active}
+                          onChange={() => handleActiveChange(issue.id, !issue.active)}
                         />
-                      </button>
+                        <span className="relative w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer dark:bg-gray-500 
+                          peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
+                          peer-checked:after:border-white 
+                          after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 
+                          after:border after:rounded-full after:h-5 after:w-5 after:transition-all 
+                          dark:border-gray-600 peer-checked:bg-green-600"
+                        ></span>
+                        <span className="line-height-1 font-medium ms-3 peer-checked:text-green-600 text-md text-gray-600 dark:text-gray-300">
+                          {/* {issue.active ? "Active" : "Inactive"} */}
+                        </span>
+                      </label>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
