@@ -253,7 +253,9 @@ function App() {
               />
               <Route
                 path="/dashboard/settings"
-                element={<PrivateRoute element={<Settings />} />}
+                 element={
+                  userType ? (<PrivateRoute element={<Settings userType={userType} />} />) : (<Preloader />)
+                }
               />
               <Route
                 path="*"

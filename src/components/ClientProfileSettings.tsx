@@ -1,34 +1,38 @@
 import React, { useState, ChangeEvent, FormEvent } from "react";
 
-interface FormData {
-  businessName: string;
-  ownerName: string;
+interface ClientFormData {
+  first_name: string;
+  last_name: string;
   email: string;
   phone: string;
-  street: string;
+  address: string;
   city: string;
   state: string;
-  zipcode: string;
-  businessType: string;
-  serviceAreas: string;
-  languages: string;
+  country: string;
+  postal_code: string;
 }
 
-const ProfileSettings: React.FC = () => {
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
-    businessName: "",
-    ownerName: "",
+const ClientProfileSettings: React.FC = () => {
+  const [formData, setFormData] = useState<ClientFormData>({
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
-    street: "",
+    address: "",
     city: "",
     state: "",
-    zipcode: "",
-    businessType: "",
-    serviceAreas: "",
-    languages: "",
+    country: "",
+    postal_code: "",
   });
+
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const handleChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,13 +43,6 @@ const ProfileSettings: React.FC = () => {
     }
   };
 
-  const handleChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({ ...prev, [id]: value }));
-  };
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     console.log("Submitted:", formData);
@@ -54,9 +51,9 @@ const ProfileSettings: React.FC = () => {
 
   return (
     <div className="card-body">
-      <h6 className="text-base text-neutral-600 mb-4">Company Logo / Profile Photo</h6>
+      <h6 className="text-base text-neutral-600 mb-4">Profile Photo</h6>
 
-      {/* Upload Image */}
+      {/* Image Upload */}
       <div className="mb-6 mt-4 relative w-[120px] h-[120px]">
         <div className="avatar-upload relative w-full h-full rounded-full overflow-hidden border border-gray-300">
           {imagePreview ? (
@@ -87,36 +84,36 @@ const ProfileSettings: React.FC = () => {
       {/* Form */}
       <form onSubmit={handleSubmit}>
         <div className="mb-5">
-          <label htmlFor="businessName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Name <span className="text-red-600">*</span>
+          <label htmlFor="first_name" className="block font-semibold text-sm text-neutral-600 mb-2">
+            First Name
           </label>
           <input
             type="text"
-            id="businessName"
+            id="first_name"
             className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter business name"
-            value={formData.businessName}
+            placeholder="Enter first name"
+            value={formData.first_name}
             onChange={handleChange}
           />
         </div>
 
         <div className="mb-5">
-          <label htmlFor="ownerName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Owner Name <span className="text-red-600">*</span>
+          <label htmlFor="last_name" className="block font-semibold text-sm text-neutral-600 mb-2">
+            Last Name
           </label>
           <input
             type="text"
-            id="ownerName"
+            id="last_name"
             className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter owner name"
-            value={formData.ownerName}
+            placeholder="Enter last name"
+            value={formData.last_name}
             onChange={handleChange}
           />
         </div>
 
         <div className="mb-5">
           <label htmlFor="email" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Email Address <span className="text-red-600">*</span>
+            Email Address
           </label>
           <input
             type="email"
@@ -142,90 +139,54 @@ const ProfileSettings: React.FC = () => {
           />
         </div>
 
-        {/* Address Fields */}
         <div className="mb-5">
-          <label className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Address
+          <label htmlFor="address" className="block font-semibold text-sm text-neutral-600 mb-2">
+            Address
           </label>
           <input
             type="text"
-            id="street"
-            className="w-full border rounded-lg px-3 py-2 mb-4"
-            placeholder="Street address"
-            value={formData.street}
-            onChange={handleChange}
-          />
-          <div className="flex gap-4 mb-4">
-            <input
-              type="text"
-              id="city"
-              className="w-[300px] border rounded-lg px-3 py-2"
-              placeholder="City"
-              value={formData.city}
-              onChange={handleChange}
-            />
-            <input
-              type="text"
-              id="state"
-              className="w-[150px] border rounded-lg px-3 py-2"
-              placeholder="State"
-              value={formData.state}
-              onChange={handleChange}
-            />
-          </div>
-          <input
-            type="text"
-            id="zipcode"
-            className="w-52 border rounded-lg px-3 py-2"
-            placeholder="Zip Code"
-            value={formData.zipcode}
+            id="address"
+            className="w-full border rounded-lg px-3 py-2"
+            placeholder="Enter address"
+            value={formData.address}
             onChange={handleChange}
           />
         </div>
 
-        <div className="mb-5">
-          <label htmlFor="businessType" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Type
-          </label>
-          <select
-            id="businessType"
-            className="w-full border rounded-lg px-3 py-2"
-            value={formData.businessType}
-            onChange={handleChange}
-          >
-            <option value="">Select business type</option>
-            <option>Plumbing</option>
-            <option>Electrical</option>
-            <option>General Contractor</option>
-            <option>Landscaping</option>
-            <option>Cleaning Services</option>
-          </select>
-        </div>
-
-        <div className="mb-5">
-          <label htmlFor="serviceAreas" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Service Area (comma-separated)
-          </label>
+        <div className="flex gap-4 mb-5">
           <input
             type="text"
-            id="serviceAreas"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="e.g. Dhaka, Sylhet, Chittagong"
-            value={formData.serviceAreas}
+            id="city"
+            className="w-[300px] border rounded-lg px-3 py-2"
+            placeholder="City"
+            value={formData.city}
+            onChange={handleChange}
+          />
+          <input
+            type="text"
+            id="state"
+            className="w-[150px] border rounded-lg px-3 py-2"
+            placeholder="State"
+            value={formData.state}
             onChange={handleChange}
           />
         </div>
 
-        <div className="mb-5">
-          <label htmlFor="languages" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Languages Spoken (comma-separated)
-          </label>
+        <div className="flex gap-4 mb-5">
           <input
             type="text"
-            id="languages"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="e.g. English, Bangla"
-            value={formData.languages}
+            id="country"
+            className="w-[300px] border rounded-lg px-3 py-2"
+            placeholder="Country"
+            value={formData.country}
+            onChange={handleChange}
+          />
+          <input
+            type="text"
+            id="postal_code"
+            className="w-[150px] border rounded-lg px-3 py-2"
+            placeholder="Postal Code"
+            value={formData.postal_code}
             onChange={handleChange}
           />
         </div>
@@ -249,4 +210,4 @@ const ProfileSettings: React.FC = () => {
   );
 };
 
-export default ProfileSettings;
+export default ClientProfileSettings;
