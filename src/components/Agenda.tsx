@@ -1,12 +1,12 @@
 import React, { useRef, useState } from "react";
 import moment from "moment";
-import { CalendarEvent } from "../types";
+import { CalendarReadyAssessment } from "../types";
 import Dropdown from "./Dropdown";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEllipsisVertical } from "@fortawesome/free-solid-svg-icons";
 
 interface AgendaProps {
-  events: CalendarEvent[];
+  events: CalendarReadyAssessment[];
 }
 
 const Agenda: React.FC<AgendaProps> = ({ events }) => {
@@ -31,7 +31,7 @@ const Agenda: React.FC<AgendaProps> = ({ events }) => {
 
   return (
     <>
-      {events.map((event) => (
+      {events.filter((event)=>moment(event.start).isSameOrAfter(moment(),'day')).map((event) => (
         <div className="event-item flex items-center justify-between gap-4 pb-4 mb-4 border-b border-neutral-200">
           <div className="">
             <div className="flex items-center gap-2.5">
