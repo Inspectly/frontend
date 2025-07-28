@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -11,7 +11,7 @@ import { Link, useParams } from "react-router-dom";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 
 import VendorName from "./VendorName";
-import { IssueStatus } from "../types";
+import { IssueStatus, IssueOfferStatus } from "../types";
 import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
@@ -19,6 +19,27 @@ import {
 } from "../features/api/issuesApi";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
+import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
+
+// Component to display the cost based on accepted offers
+const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
+  const { data: offers = [] } = useGetOffersByIssueIdQuery(issueId);
+  
+  const acceptedOffer = offers.find(offer => offer.status === IssueOfferStatus.ACCEPTED);
+  
+  if (acceptedOffer) {
+    return (
+      <span>
+        ${new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Number(acceptedOffer.price))}
+      </span>
+    );
+  }
+  
+  return <span>N/A</span>;
+};
 
 const ReportTable: React.FC = () => {
   const { listingId, reportId } = useParams<{
@@ -503,7 +524,7 @@ const ReportTable: React.FC = () => {
                     </td>
 
                     <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.cost || "N/A"}
+                      <CostCell issueId={issue.id} />
                     </td>
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <label className="inline-flex items-center cursor-pointer">
