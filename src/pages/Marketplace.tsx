@@ -221,18 +221,20 @@ const Marketplace: React.FC = () => {
                 gridAutoRows: "minmax(150px, auto)",
               }}
             >
-              {issues.map((issue) => (
-                <IssueItem
-                  key={issue.id}
-                  issue={issue}
-                  vendor={vendor}
-                  userType={userType}
-                  address={
-                    addresses[issue.id]
-                      ? addresses[issue.id]
-                      : ({} as IssueAddress)
-                  }
-                />
+              {issues
+                .filter((issue) => issue.vendor_id === null) // only issues with no vendor
+                .map((issue) => (
+                  <IssueItem
+                    key={issue.id}
+                    issue={issue}
+                    vendor={vendor}
+                    userType={userType}
+                    address={
+                      addresses[issue.id]
+                        ? addresses[issue.id]
+                        : ({} as IssueAddress)
+                    }
+                  />
               ))}
             </div>
           )}
