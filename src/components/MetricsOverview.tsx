@@ -43,7 +43,7 @@ const MetricsOverview: React.FC<MetricsOverviewProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800 mb-2">

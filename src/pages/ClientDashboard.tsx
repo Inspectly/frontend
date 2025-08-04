@@ -517,19 +517,23 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   return (
     <div className="p-6">
       {/* Metrics Overview - Always show */}
-      <MetricsOverview
-        userName={client?.first_name || 'User'}
-        userType={dashboardConfig.userType}
-        metrics={dashboardConfig.metrics}
-        quickActions={dashboardConfig.quickActions}
-      />
+      <div className="mb-6">
+        <MetricsOverview
+          userName={client?.first_name || 'User'}
+          userType={dashboardConfig.userType}
+          metrics={dashboardConfig.metrics}
+          quickActions={dashboardConfig.quickActions}
+        />
+      </div>
 
       {/* Hero Banner - Conditional */}
       {shouldShowComponent(dashboardConfig.heroData) && (
-        <HeroBanner
-          heroData={dashboardConfig.heroData!}
-          userType={dashboardConfig.userType}
-        />
+        <div className="mb-6">
+          <HeroBanner
+            heroData={dashboardConfig.heroData!}
+            userType={dashboardConfig.userType}
+          />
+        </div>
       )}
 
       {/* Quick Actions + Recent Listings Side by Side */}
