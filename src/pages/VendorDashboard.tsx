@@ -410,28 +410,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {/* Metrics Overview */}
       {dashboardConfig && shouldShowComponent(dashboardConfig.metrics) && (
-        <MetricsOverview 
-          metrics={dashboardConfig.metrics!} 
-          userType="vendor"
-          userName={vendor?.name || 'Vendor'}
-        />
+        <div className="mb-6">
+          <MetricsOverview 
+            metrics={dashboardConfig.metrics!} 
+            userType="vendor"
+            userName={vendor?.name || 'Vendor'}
+          />
+        </div>
       )}
 
       {/* Hero Banner */}
       {dashboardConfig && shouldShowComponent(dashboardConfig.heroData) && (
-        <HeroBanner 
-          heroData={dashboardConfig.heroData!} 
-          userType="vendor"
-        />
+        <div className="mb-6">
+          <HeroBanner
+            heroData={dashboardConfig.heroData!}
+            userType="vendor"
+          />
+        </div>
       )}
 
       {/* Quick Actions */}
       {dashboardConfig && shouldShowComponent(dashboardConfig.quickActionCards) && (
-        <QuickActions 
-          actions={dashboardConfig.quickActionCards!}
-          userType="vendor"
-          fileInputRef={fileInputRef}
-        />
+        <div className="mb-6">
+          <QuickActions 
+            actions={dashboardConfig.quickActionCards!}
+            userType="vendor"
+            fileInputRef={fileInputRef}
+          />
+      </div>
       )}
 
       <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
@@ -439,12 +445,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
             {/* Smart Insights */}
             {dashboardConfig && shouldShowComponent(dashboardConfig.smartInsights) && (
-              <div className="col-span-12">
+              <div className="col-span-12 mb-6">
                 <SmartInsights 
                   insights={dashboardConfig.smartInsights!}
                   userType="vendor"
-                />
-              </div>
+                    />
+                  </div>
             )}
 
             {/* Assessment Calendar */}
@@ -452,8 +458,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="bg-white rounded-xl border border-gray-200 p-6">
                 <h3 className="text-xl font-semibold mb-4">Assessment Schedule</h3>
                 <UserCalendar events={calendarEvents as any} />
-              </div>
-            </div>
+                  </div>
+                </div>
 
             {/* Upcoming Events */}
             <div className="col-span-12">
@@ -466,28 +472,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
 
         {/* Sidebar */}
-        <div className="col-span-12 2xl:col-span-4">
+      <div className="col-span-12 2xl:col-span-4">
           <div className="gap-6 grid grid-cols-1">
             {/* Priority Actions */}
             {dashboardConfig && shouldShowComponent(dashboardConfig.priorityActions) && (
-              <PriorityActions 
-                actions={dashboardConfig.priorityActions!}
-                title="High-Value Opportunities"
-                subtitle="Projects worth your immediate attention"
-                userType="vendor"
-              />
+              <div className="mb-6">
+                <PriorityActions 
+                  actions={dashboardConfig.priorityActions!}
+                  title="High-Value Opportunities"
+                  subtitle="Projects worth your immediate attention"
+                  userType="vendor"
+                />
+              </div>
             )}
 
             {/* Achievements */}
             {dashboardConfig && shouldShowComponent(dashboardConfig.achievements) && (
-              <Achievements 
-                achievements={dashboardConfig.achievements!}
-                userType="vendor"
-              />
+              <div className="mb-6">
+                <Achievements 
+                  achievements={dashboardConfig.achievements!}
+                  userType="vendor"
+                />
+              </div>
             )}
-          </div>
-        </div>
-      </div>
+                </div>
+              </div>
+            </div>
 
       {/* Hidden file input for uploads */}
       <input
