@@ -17,6 +17,7 @@ import {
   faLeaf,
   faPaintRoller,
   faBuilding,
+  faStar,
   IconDefinition
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -42,6 +43,7 @@ const iconMap: Record<string, IconDefinition> = {
   'leaf': faLeaf,
   'paint-roller': faPaintRoller,
   'building': faBuilding,
+  'star': faStar,
 };
 
 // Get FontAwesome icon from backend string identifier
