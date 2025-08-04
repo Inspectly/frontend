@@ -14,7 +14,7 @@ export interface PriorityAction {
   iconColor: string;
   ctaText: string;
   ctaLink: string;
-  metadata?: string; // e.g., "3 competitive offers"
+  metadata?: string;
 }
 
 interface PriorityActionsProps {
@@ -37,7 +37,7 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
   subtitle = "Time-sensitive opportunities",
   emptyStateConfig,
   maxItems = 3,
-  userType
+  userType: _userType
 }) => {
   // Don't render if no actions and no empty state
   if ((!actions || actions.length === 0) && !emptyStateConfig) {
@@ -120,7 +120,7 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
                     <div className="flex items-center justify-between">
                       {action.savings && (
                         <p className="text-green-600 text-xs font-bold">
-                          Save up to ${action.savings}
+                          ${action.savings?.toLocaleString()}
                         </p>
                       )}
                       {action.metadata && (

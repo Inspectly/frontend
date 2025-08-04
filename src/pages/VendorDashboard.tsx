@@ -38,8 +38,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const {
     data: assessments,
-    isLoading: isAssessmentsLoading,
-    error: assessmentsError,
   } = useGetAssessmentsByUserIdQuery(Number(vendor?.id), {
     skip: !vendor?.id, // Only run this query after vendor is loaded
   });
@@ -81,27 +79,27 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       // Generate mock upcoming events if no real assessments
       const today = new Date();
       return [
-        {
-          id: 'mock_1',
-          title: '⚡ Electrical Assessment - Issue #247',
-          start: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-          end: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
-          user_id: user.id
-        },
-        {
-          id: 'mock_2', 
-          title: '🏠 HVAC System Inspection - Issue #251',
-          start: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
-          end: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
-          user_id: user.id
-        },
-        {
-          id: 'mock_3',
-          title: '🚿 Plumbing Emergency Assessment - Issue #253',
-          start: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now  
-          end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000), // 1.5 hours duration
-          user_id: user.id
-        }
+                 {
+           id: 'mock_1',
+           title: 'Electrical Assessment - Issue #247',
+           start: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+           end: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
+           user_id: user.id
+         },
+         {
+           id: 'mock_2', 
+           title: 'HVAC System Inspection - Issue #251',
+           start: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
+           end: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
+           user_id: user.id
+         },
+         {
+           id: 'mock_3',
+           title: 'Plumbing Emergency Assessment - Issue #253',
+           start: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now  
+           end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000), // 1.5 hours duration
+           user_id: user.id
+         }
       ];
     }
     
@@ -123,44 +121,44 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const priorityActions = useMemo(() => {
     if (!vendorOffers.length) {
       // Generate compelling mock opportunities if no real offers
-      return [
-        {
-          id: 'urgent_electrical',
-          title: '⚡ Urgent Electrical Repair - $2,400',
-          description: 'Emergency power outage fix needed ASAP. Premium client with 5-star rating. Only 2 competing bids.',
-          urgencyLevel: 'HIGH' as const,
-          savings: 2400,
-          iconType: 'bolt',
-          iconColor: 'bg-red-500',
-          ctaText: 'Bid Now',
-          ctaLink: '/marketplace',
-          metadata: '🔥 Expires in 4 hours'
-        },
-        {
-          id: 'hvac_premium',
-          title: '❄️ HVAC System Upgrade - $3,200',
-          description: 'High-end residential HVAC replacement. Client pays 15% above market rate for quality work.',
-          urgencyLevel: 'HIGH' as const,
-          savings: 3200,
-          iconType: 'wind',
-          iconColor: 'bg-blue-500',
-          ctaText: 'Submit Bid',
-          ctaLink: '/marketplace',
-          metadata: '💎 Premium client • 2 days left'
-        },
-        {
-          id: 'repeat_client',
-          title: '🏠 Plumbing Job - $1,800',
-          description: 'Repeat client requesting your services specifically. Guaranteed win with your competitive pricing.',
-          urgencyLevel: 'MEDIUM' as const,
-          savings: 1800,
-          iconType: 'tint',
-          iconColor: 'bg-green-500',
-          ctaText: 'Accept Job',
-          ctaLink: '/marketplace',
-          metadata: '🎯 Direct request • 67% faster than competition'
-        }
-      ];
+             return [
+         {
+           id: 'urgent_electrical',
+           title: 'Urgent Electrical Repair - $2,400',
+           description: 'Emergency power outage fix needed ASAP. Premium client with 5-star rating. Only 2 competing bids.',
+           urgencyLevel: 'HIGH' as const,
+           savings: 2400,
+           iconType: 'bolt',
+           iconColor: 'bg-red-500',
+           ctaText: 'Bid Now',
+           ctaLink: '/marketplace',
+           metadata: 'High priority project'
+         },
+         {
+           id: 'hvac_premium',
+           title: 'HVAC System Upgrade - $3,200',
+           description: 'High-end residential HVAC replacement. Client pays 15% above market rate for quality work.',
+           urgencyLevel: 'HIGH' as const,
+           savings: 3200,
+           iconType: 'wind',
+           iconColor: 'bg-blue-500',
+           ctaText: 'Submit Bid',
+           ctaLink: '/marketplace',
+           metadata: 'Premium client'
+         },
+         {
+           id: 'repeat_client',
+           title: 'Plumbing Job - $1,800',
+           description: 'Repeat client requesting your services specifically. Guaranteed win with your competitive pricing.',
+           urgencyLevel: 'MEDIUM' as const,
+           savings: 1800,
+           iconType: 'tint',
+           iconColor: 'bg-green-500',
+           ctaText: 'Accept Job',
+           ctaLink: '/marketplace',
+           metadata: 'Direct request'
+         }
+       ];
     }
 
     const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
@@ -173,21 +171,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           offer.price > 2000 ? 'HIGH' : offer.price > 1000 ? 'MEDIUM' : 'LOW';
         
         const competitorCount = Math.floor(Math.random() * 5) + 1;
-        const timeLeft = Math.floor(Math.random() * 48) + 2;
         
-        return {
-          id: `offer_${offer.id}`,
-          title: `💰 ${issue?.type || 'Issue'} Job - $${offer.price?.toLocaleString()}`,
-          description: `${issue?.summary || 'Premium opportunity'} • ${competitorCount} other bids • Your response time advantage: 67% faster`,
-          urgencyLevel,
-          savings: offer.price,
-          iconType: getIssueIcon(issue?.type || ''),
-          iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 
-                    urgencyLevel === 'MEDIUM' ? 'bg-blue-500' : 'bg-gray-500',
-          ctaText: 'Submit Competitive Bid',
-          ctaLink: `/marketplace/issue/${issue?.id}?tab=bids`,
-          metadata: `⏰ ${timeLeft}h left • ${competitorCount} competing`
-        };
+                 return {
+           id: `offer_${offer.id}`,
+           title: `${issue?.type || 'Issue'} Job - $${offer.price?.toLocaleString()}`,
+           description: `${issue?.summary || 'Premium opportunity'} • ${competitorCount} other bids • Your response time advantage: 67% faster`,
+           urgencyLevel,
+           savings: offer.price,
+           iconType: getIssueIcon(issue?.type || ''),
+           iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 
+                     urgencyLevel === 'MEDIUM' ? 'bg-blue-500' : 'bg-gray-500',
+           ctaText: 'Submit Competitive Bid',
+           ctaLink: `/marketplace/issue/${issue?.id}?tab=bids`,
+           metadata: `${competitorCount} competing vendors`
+         };
       });
 
     return highValueOpportunities;
@@ -258,48 +255,48 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               valueColor: 'text-purple-600'
             }
           ],
-          heroContent: {
-            backgroundImage: "/images/gradient-bg.png",
-            socialProofText: `⚡ ${Math.floor(Math.random() * 12) + 8} new opportunities this week`,
-            title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
-            subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
-            badges: [
-              { iconType: 'fire', label: 'Hot specialty: Electrical' },
-              { iconType: 'trending-up', label: `+${Math.floor(Math.random() * 30) + 15}% vs last month` },
-              { iconType: 'medal', label: `Top ${Math.floor(Math.random() * 15) + 5}% performer` }
-            ],
-            userInitials: ['⚡', '💰', '🏆'] // Energy, Money, Achievement
-          },
-          quickActionCards: [
-            {
-              id: 'hotProjects',
-              type: 'upload',
-              title: '🔥 Hot Projects Alert',
-              subtitle: `$${((Math.floor(Math.random() * 8) + 12) * 1000).toLocaleString()} in total project value`,
-              description: `${Math.floor(Math.random() * 8) + 5} urgent electrical jobs posted in the last 24hrs`,
-              ctaText: 'Bid Now',
-              isLimitedTime: true,
-              iconType: 'fire',
-              iconColor: 'text-red-600',
-              gradientFrom: 'from-red-50',
-              gradientTo: 'to-orange-50',
-              borderColor: 'border-red-200',
-              features: [
-                { iconType: 'clock', text: 'Fast turnaround', color: 'text-red-500' },
-                { iconType: 'trending-up', text: 'Premium rates', color: 'text-green-500' },
-                { iconType: 'star', text: 'High-rating clients', color: 'text-yellow-500' }
-              ],
-              stats: `Only ${Math.floor(Math.random() * 4) + 2} vendors competing`
-            },
-            {
-              id: 'aiPricing',
-              type: 'preview',
-              title: '🤖 AI Pricing Assistant',
-              description: 'Get competitive pricing recommendations based on your win rate and market data',
-              ctaText: 'Optimize Bids',
-              image: '/images/ai_image.webp'
-            }
-          ],
+                     heroContent: {
+             backgroundImage: "/images/gradient-bg.png",
+             socialProofText: `${Math.floor(Math.random() * 12) + 8} new opportunities this week`,
+             title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
+             subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
+             badges: [
+               { iconType: 'fire', label: 'Specialty: Electrical' },
+               { iconType: 'trending-up', label: `+${Math.floor(Math.random() * 30) + 15}% vs last month` },
+               { iconType: 'medal', label: `Top ${Math.floor(Math.random() * 15) + 5}% performer` }
+             ],
+             userInitials: ['V', 'P', 'E'] // Vendor, Professional, Expert
+           },
+                     quickActionCards: [
+             {
+               id: 'hotProjects',
+               type: 'upload',
+               title: 'High Priority Projects',
+               subtitle: `$${((Math.floor(Math.random() * 8) + 12) * 1000).toLocaleString()} in total project value`,
+               description: `${Math.floor(Math.random() * 8) + 5} urgent electrical jobs posted in the last 24hrs`,
+               ctaText: 'Bid Now',
+               isLimitedTime: true,
+               iconType: 'fire',
+               iconColor: 'text-red-600',
+               gradientFrom: 'from-red-50',
+               gradientTo: 'to-orange-50',
+               borderColor: 'border-red-200',
+               features: [
+                 { iconType: 'clock', text: 'Fast turnaround', color: 'text-red-500' },
+                 { iconType: 'trending-up', text: 'Premium rates', color: 'text-green-500' },
+                 { iconType: 'star', text: 'High-rating clients', color: 'text-yellow-500' }
+               ],
+               stats: `Only ${Math.floor(Math.random() * 4) + 2} vendors competing`
+             },
+             {
+               id: 'aiPricing',
+               type: 'preview',
+               title: 'AI Pricing Assistant',
+               description: 'Get competitive pricing recommendations based on your win rate and market data',
+               ctaText: 'Optimize Bids',
+               image: '/images/ai_image.webp'
+             }
+           ],
           priorityActions: priorityActions,
           achievements: [
             {
@@ -335,35 +332,35 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               type: 'number'
             }
           ],
-          smartInsights: [
-            {
-              id: 'market_surge',
-              type: 'urgent',
-              title: '🔥 Electrical Jobs Surge +47%',
-              description: `Perfect timing for your specialty! ${Math.floor(Math.random() * 12) + 8} high-value electrical projects posted this week. Average bid: $1,850.`,
-              ctaText: 'View Hot Projects',
-              ctaEndpoint: '/marketplace?category=electrical',
-              iconType: 'fire'
-            },
-            {
-              id: 'competitive_advantage',
-              type: 'opportunity',
-              title: '⚡ Your Speed Advantage',
-              description: 'Your 2.1hr response time beats 89% of vendors. Clients pay 12% more for fast responders. Leverage this in your next bid!',
-              ctaText: 'Optimize Pricing',
-              ctaEndpoint: '/api/pricing-optimizer',
-              iconType: 'rocket'
-            },
-            {
-              id: 'weekend_premium',
-              type: 'savings',
-              title: '💰 Weekend Premium Alert',
-              description: 'Weekend assessments are paying 28% more this month. Consider expanding your availability for emergency calls.',
-              ctaText: 'Update Availability',
-              ctaEndpoint: '/api/schedule-weekend',
-              iconType: 'calendar-plus'
-            }
-          ],
+                     smartInsights: [
+             {
+               id: 'market_surge',
+               type: 'urgent',
+               title: 'Electrical Jobs Surge +47%',
+               description: `Perfect timing for your specialty! ${Math.floor(Math.random() * 12) + 8} high-value electrical projects posted this week. Average bid: $1,850.`,
+               ctaText: 'View Available Projects',
+               ctaEndpoint: '/marketplace?category=electrical',
+               iconType: 'fire'
+             },
+             {
+               id: 'competitive_advantage',
+               type: 'opportunity',
+               title: 'Response Time Advantage',
+               description: 'Your 2.1hr response time beats 89% of vendors. Clients pay 12% more for fast responders. Leverage this in your next bid!',
+               ctaText: 'Optimize Pricing',
+               ctaEndpoint: '/api/pricing-optimizer',
+               iconType: 'rocket'
+             },
+             {
+               id: 'weekend_premium',
+               type: 'savings',
+               title: 'Weekend Premium Opportunity',
+               description: 'Weekend assessments are paying 28% more this month. Consider expanding your availability for emergency calls.',
+               ctaText: 'Update Availability',
+               ctaEndpoint: '/api/schedule-weekend',
+               iconType: 'calendar-plus'
+             }
+           ],
           emptyStateConfig: {
             title: 'Ready to Grow Your Business?',
             description: 'Start bidding on projects and build your reputation in our vendor network!',
