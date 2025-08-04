@@ -206,7 +206,7 @@ export const generateSampleConfig = (
           },
           {
             id: 'urgent',
-            label: 'urgent items',
+            label: 'Urgent Items',
             value: 1,
             icon: faExclamationTriangle,
             iconColor: 'text-orange-500',
@@ -214,7 +214,7 @@ export const generateSampleConfig = (
           },
           {
             id: 'completion',
-            label: '85% completion rate',
+            label: 'Completion Rate',
             value: '',
             icon: faBullseye,
             iconColor: 'text-blue-600',

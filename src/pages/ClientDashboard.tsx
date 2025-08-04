@@ -260,7 +260,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             },
             {
               id: 'urgent',
-              label: 'urgent items',
+              label: 'Urgent Items',
               value: filteredIssuesByUser.filter(issue => issue.severity === 'high').length || 0,
               iconType: 'exclamation-triangle',
               iconColor: 'text-orange-500',
@@ -268,8 +268,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             },
             {
               id: 'completion',
-              label: '85% completion rate',
-              value: '',
+              label: 'Completion Rate',
+              value: '85%',
               iconType: 'bullseye',
               iconColor: 'text-blue-600',
               dotColor: 'bg-purple-500'
