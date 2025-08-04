@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EventSlot, User } from "../types";
+import { User, IssueOfferStatus } from "../types";
 import UserCalendar from "../components/UserCalendar";
 import Agenda from "../components/Agenda";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
@@ -44,27 +44,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     skip: !vendor?.id, // Only run this query after vendor is loaded
   });
 
+
+
   const {
     data: vendorOffers = [],
-  } = useGetOffersByVendorIdQuery(String(vendor?.id), {
+  } = useGetOffersByVendorIdQuery(Number(vendor?.id), {
     skip: !vendor?.id,
   });
 
-  const [events, setEvents] = useState<EventSlot[]>([]);
-  const [selectedReport, setSelectedReport] = useState<string>("all");
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
 
   const {
     data: issues,
     error: issuesError,
-    isLoading: isIssuesLoading,
-    refetch: refetchIssues,
   } = useGetIssuesQuery();
 
   // Calculate vendor metrics and performance data
   const vendorMetrics = useMemo(() => {
-    const acceptedOffers = vendorOffers.filter(offer => offer.status === 'accepted');
-    const pendingOffers = vendorOffers.filter(offer => offer.status === 'received');
+    const acceptedOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.ACCEPTED);
+    const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
     const totalRevenue = acceptedOffers.reduce((sum, offer) => sum + (offer.price || 0), 0);
     const completionRate = assessments && assessments.length > 0 ? Math.round((acceptedOffers.length / assessments.length) * 100) : 0;
 
@@ -79,7 +77,33 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Transform assessments into calendar events
   const calendarEvents = useMemo(() => {
-    if (!assessments) return [];
+    if (!assessments || assessments.length === 0) {
+      // Generate mock upcoming events if no real assessments
+      const today = new Date();
+      return [
+        {
+          id: 'mock_1',
+          title: '⚡ Electrical Assessment - Issue #247',
+          start: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
+          end: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
+          user_id: user.id
+        },
+        {
+          id: 'mock_2', 
+          title: '🏠 HVAC System Inspection - Issue #251',
+          start: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
+          end: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
+          user_id: user.id
+        },
+        {
+          id: 'mock_3',
+          title: '🚿 Plumbing Emergency Assessment - Issue #253',
+          start: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now  
+          end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000), // 1.5 hours duration
+          user_id: user.id
+        }
+      ];
+    }
     
     return assessments
       .filter((assessment) => {
@@ -91,8 +115,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         title: `Assessment - Issue #${assessment.issue_id}`,
         start: new Date(assessment.start_time),
         end: new Date(assessment.end_time),
+        user_id: assessment.user_id
       }));
-  }, [assessments]);
+  }, [assessments, user.id]);
 
   // Generate priority actions from high-value opportunities
   const priorityActions = useMemo(() => {
@@ -138,7 +163,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       ];
     }
 
-    const pendingOffers = vendorOffers.filter(offer => offer.status === 'received');
+    const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
     const highValueOpportunities = pendingOffers
       .filter(offer => offer.price && offer.price > 500)
       .slice(0, 3)

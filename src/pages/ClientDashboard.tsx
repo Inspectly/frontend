@@ -60,7 +60,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id);
 
   // Transform existing data logic (unchanged)
-  const acceptedAssessments = assessments
+  const acceptedAssessments = useMemo(() => assessments
     .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
     .map((a) => {
       const parts = a.users_interaction_id.split("_");
@@ -70,10 +70,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         vendor_id: vendorId && !isNaN(vendorId) ? vendorId : null,
       };
     })
-    .filter((a) => a.vendor_id !== null); // Remove invalid entries
+    .filter((a) => a.vendor_id !== null), [assessments]); // Remove invalid entries
 
-  const issueIds = [...new Set(acceptedAssessments.map((a) => a.issue_id))];
-  const vendorIds = [...new Set(acceptedAssessments.map((a) => a.vendor_id).filter((id): id is number => id !== null))];
+  const issueIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.issue_id))], [acceptedAssessments]);
+  const vendorIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.vendor_id).filter((id): id is number => id !== null))], [acceptedAssessments]);
 
   const [_issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
   const [_vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
@@ -435,7 +435,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     loadDashboardConfig();
-  }, [user.id, filteredIssuesByUser, offersByIssueId, reports, assessments]);
+  }, [user.id, filteredIssuesByUser.length, Object.keys(offersByIssueId).length, reports?.length, assessments?.length]);
 
   // Existing data processing logic
   useEffect(() => {

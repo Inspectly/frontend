@@ -130,12 +130,22 @@ export const transformApiResponseToConfig = (
         icon: getIconFromType(feature.iconType)
       })),
       ctaAction: () => {
+        console.log('Card clicked:', { id: card.id, type: card.type, ctaEndpoint: card.ctaEndpoint });
+        
         if (card.type === 'upload' && card.id === 'upload' && navigationCallbacks.onUpload) {
+          console.log('Using onUpload callback');
           navigationCallbacks.onUpload();
+        } else if (card.id === 'hotProjects' && navigationCallbacks.onNavigate) {
+          console.log('Navigating hotProjects to /marketplace');
+          navigationCallbacks.onNavigate('/marketplace');
         } else if (card.id === 'recent' && navigationCallbacks.onNavigate) {
+          console.log('Navigating recent to /listings');
           navigationCallbacks.onNavigate('/listings');
         } else if (card.ctaEndpoint && navigationCallbacks.onApiCall) {
+          console.log('Using onApiCall with endpoint:', card.ctaEndpoint);
           navigationCallbacks.onApiCall(card.ctaEndpoint);
+        } else {
+          console.log('No matching navigation condition');
         }
       }
     }));
@@ -159,7 +169,7 @@ export const transformApiResponseToConfig = (
 // Generate sample configurations for different user types
 export const generateSampleConfig = (
   userType: 'client' | 'vendor' | 'admin' | 'realtor',
-  userName: string
+  _userName: string
 ): DashboardConfig => {
   const baseConfig: DashboardConfig = {
     userType,
