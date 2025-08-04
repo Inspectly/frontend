@@ -11,6 +11,7 @@ import {
 import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
+import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
@@ -230,6 +231,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         // Generate real priority actions
         const realPriorityActions = generatePriorityActions();
         
+        // Get recent listings for the quick actions
+        const recentListings = [...(_listings || [])]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 3);
+        
         // This would be a real API call: const response = await fetch('/api/dashboard/client');
         // For now, we'll simulate the API response
         const mockApiResponse: DashboardApiResponse = {
@@ -388,7 +394,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               type: 'upload',
               title: 'Upload Inspection Report',
               subtitle: 'This month only: Free priority analysis + $50 bonus for new uploads',
-              description: 'Upload Your Inspection Report & Get 3 Competitive Offers',
+              description: 'Upload Your Inspection Report & Get Competitive Offers',
               ctaText: 'Upload Report Now',
               isLimitedTime: true,
               iconType: 'toolbox',
@@ -403,14 +409,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               ],
               stats: 'Join 847 property owners who uploaded inspection reports this week'
             },
-            {
+            // Remove the single recent listings card - we'll create a separate section
+            ...(recentListings.length > 0 ? [] : [{
               id: 'recent',
-              type: 'preview',
+              type: 'preview' as const,
               title: 'Recent Listings',
-              description: 'View your latest property analysis',
-              ctaText: 'View Listings',
+              description: 'No listings yet. Create your first listing to get started.',
+              ctaText: 'Create Listing',
               image: '/images/property_card_holder.jpg'
-            }
+            }])
           ],
           priorityActions: realPriorityActions,
           emptyStateConfig: {
@@ -435,7 +442,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     loadDashboardConfig();
-  }, [user.id, filteredIssuesByUser.length, Object.keys(offersByIssueId).length, reports?.length, assessments?.length]);
+  }, [user.id, filteredIssuesByUser.length, Object.keys(offersByIssueId).length, reports?.length, assessments?.length, _listings?.length]);
 
   // Existing data processing logic
   useEffect(() => {
@@ -525,16 +532,69 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         />
       )}
 
-      {/* Quick Actions - Conditional */}
-      {shouldShowComponent(dashboardConfig.quickActionCards) && (
-        <QuickActions
-          actions={dashboardConfig.quickActionCards!}
-          userType={dashboardConfig.userType}
-          fileInputRef={fileInputRef}
-          onFileChange={handleFileChange}
-          onDrop={handleDrop}
-        />
-      )}
+      {/* Quick Actions + Recent Listings Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Upload Inspection Report Card */}
+        {shouldShowComponent(dashboardConfig.quickActionCards) && (
+          <div className="[&>div]:!grid-cols-1 [&>div]:!mb-0">
+            <QuickActions
+              actions={dashboardConfig.quickActionCards!}
+              userType={dashboardConfig.userType}
+              fileInputRef={fileInputRef}
+              onFileChange={handleFileChange}
+              onDrop={handleDrop}
+            />
+          </div>
+        )}
+
+        {/* Recent Listings */}
+        {_listings && _listings.length > 0 && (
+          <div>
+            <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">Recent Listings</h3>
+                <button
+                  onClick={() => navigate('/listings')}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  View All
+                </button>
+              </div>
+              <div className="space-y-3">
+                {[..._listings]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 3)
+                  .map((listing) => (
+                    <div
+                      key={listing.id}
+                      onClick={() => navigate(`/listings/${listing.id}`)}
+                      className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 hover:border-blue-300 flex gap-3"
+                    >
+                      <div className="w-20 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                        <ImageComponent
+                          src={listing.image_url}
+                          fallback="/images/property_card_holder.jpg"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-gray-900 mb-1 truncate text-sm">
+                          {listing.address}
+                        </h4>
+                        <p className="text-xs text-gray-600 mb-1">
+                          {listing.city}, {listing.state}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Added {new Date(listing.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Smart Insights - Conditional */}
       {shouldShowComponent(dashboardConfig.smartInsights) && (
