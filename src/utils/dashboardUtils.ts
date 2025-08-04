@@ -96,7 +96,13 @@ export const transformApiResponseToConfig = (
   if (apiResponse.priorityActions) {
     config.priorityActions = apiResponse.priorityActions.map(action => ({
       ...action,
-      icon: getIconFromType(action.iconType)
+      icon: getIconFromType(action.iconType),
+      ctaAction: () => {
+        console.log('Priority action clicked, navigating to:', action.ctaLink);
+        if (navigationCallbacks.onNavigate) {
+          navigationCallbacks.onNavigate(action.ctaLink);
+        }
+      }
     }));
   }
 

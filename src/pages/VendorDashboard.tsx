@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { store } from "../store/store";
 import { User, IssueOfferStatus } from "../types";
 import UserCalendar from "../components/UserCalendar";
 import Agenda from "../components/Agenda";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetListingsQuery } from "../features/api/listingsApi";
 
 import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
-import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
+import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 
 // Import new reusable components
 import MetricsOverview from "../components/MetricsOverview";
@@ -22,12 +25,14 @@ import Achievements from "../components/Achievements";
 import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
 import { transformApiResponseToConfig, shouldShowComponent } from "../utils/dashboardUtils";
 
+
 interface DashboardProps {
   user: User;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -56,6 +61,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     data: issues,
     error: issuesError,
   } = useGetIssuesQuery();
+
+  const {
+    data: listings,
+  } = useGetListingsQuery();
 
   // Calculate vendor metrics and performance data
   const vendorMetrics = useMemo(() => {
@@ -117,79 +126,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
       }));
   }, [assessments, user.id]);
 
-  // Generate priority actions from high-value opportunities
-  const priorityActions = useMemo(() => {
-    if (!vendorOffers.length) {
-      // Generate compelling mock opportunities if no real offers
-             return [
-         {
-           id: 'urgent_electrical',
-           title: 'Urgent Electrical Repair - $2,400',
-           description: 'Emergency power outage fix needed ASAP. Premium client with 5-star rating. Only 2 competing bids.',
-           urgencyLevel: 'HIGH' as const,
-           savings: 2400,
-           iconType: 'bolt',
-           iconColor: 'bg-red-500',
-           ctaText: 'Bid Now',
-           ctaLink: '/marketplace',
-           metadata: 'High priority project'
-         },
-         {
-           id: 'hvac_premium',
-           title: 'HVAC System Upgrade - $3,200',
-           description: 'High-end residential HVAC replacement. Client pays 15% above market rate for quality work.',
-           urgencyLevel: 'HIGH' as const,
-           savings: 3200,
-           iconType: 'wind',
-           iconColor: 'bg-blue-500',
-           ctaText: 'Submit Bid',
-           ctaLink: '/marketplace',
-           metadata: 'Premium client'
-         },
-         {
-           id: 'repeat_client',
-           title: 'Plumbing Job - $1,800',
-           description: 'Repeat client requesting your services specifically. Guaranteed win with your competitive pricing.',
-           urgencyLevel: 'MEDIUM' as const,
-           savings: 1800,
-           iconType: 'tint',
-           iconColor: 'bg-green-500',
-           ctaText: 'Accept Job',
-           ctaLink: '/marketplace',
-           metadata: 'Direct request'
-         }
-       ];
-    }
-
-    const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
-    const highValueOpportunities = pendingOffers
-      .filter(offer => offer.price && offer.price > 500)
-      .slice(0, 3)
-      .map(offer => {
-        const issue = issues?.find(i => i.id === offer.issue_id);
-        const urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 
-          offer.price > 2000 ? 'HIGH' : offer.price > 1000 ? 'MEDIUM' : 'LOW';
-        
-        const competitorCount = Math.floor(Math.random() * 5) + 1;
-        
-                 return {
-           id: `offer_${offer.id}`,
-           title: `${issue?.type || 'Issue'} Job - $${offer.price?.toLocaleString()}`,
-           description: `${issue?.summary || 'Premium opportunity'} • ${competitorCount} other bids • Your response time advantage: 67% faster`,
-           urgencyLevel,
-           savings: offer.price,
-           iconType: getIssueIcon(issue?.type || ''),
-           iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 
-                     urgencyLevel === 'MEDIUM' ? 'bg-blue-500' : 'bg-gray-500',
-           ctaText: 'Submit Competitive Bid',
-           ctaLink: `/marketplace/issue/${issue?.id}?tab=bids`,
-           metadata: `${competitorCount} competing vendors`
-         };
-      });
-
-    return highValueOpportunities;
-  }, [issues, vendorOffers]);
-
   // Map issue types to icons (same as client dashboard)
   const getIssueIcon = (type: string) => {
     const typeMap: Record<string, string> = {
@@ -209,6 +145,142 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     };
     return typeMap[type.toLowerCase()] || 'wrench';
   };
+
+  // Get earning multiplier based on issue type
+  const getTypeMultiplier = (type: string): number => {
+    const multipliers: Record<string, number> = {
+      'electrical': 1.2,     // Higher skill, higher pay
+      'plumbing': 1.1,
+      'hvac': 1.3,          // Specialized equipment
+      'structural': 1.4,     // High complexity
+      'roofing': 1.2,
+      'painting': 0.8,       // Lower skill barrier
+      'flooring': 1.0,
+      'windows': 1.1,
+      'doors': 0.9,
+      'insulation': 1.0,
+      'landscaping': 0.9
+    };
+    return multipliers[type?.toLowerCase()] || 1.0;
+  };
+
+  // State for priority actions with async calculation (API format before transformation)
+  const [priorityActions, setPriorityActions] = useState<Array<{
+    id: string;
+    title: string;
+    description: string;
+    urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW';
+    savings?: number;
+    offersCount?: number;
+    iconType: string;
+    iconColor: string;
+    ctaText: string;
+    ctaLink: string;
+    metadata?: string;
+  }>>([]);
+
+  // Generate priority actions from high-value opportunities based on listings with high/medium severity issues
+  useEffect(() => {
+    const calculatePriorityActions = async () => {
+      if (!issues || !listings) {
+        setPriorityActions([]);
+        return;
+      }
+
+      // Filter issues by high and medium severity
+      const highValueIssues = issues.filter(issue => 
+        issue.severity === 'high' || issue.severity === 'medium'
+      );
+
+      // Prioritize high severity first, then medium
+      const sortedIssues = highValueIssues.sort((a, b) => {
+        if (a.severity === 'high' && b.severity !== 'high') return -1;
+        if (b.severity === 'high' && a.severity !== 'high') return 1;
+        return 0;
+      });
+
+      try {
+        // Take top 3 opportunities and calculate earnings based on actual bids
+        const opportunities = await Promise.all(
+          sortedIssues.slice(0, 3).map(async (issue) => {
+            const urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 
+              issue.severity === 'high' ? 'HIGH' : 
+              issue.severity === 'medium' ? 'MEDIUM' : 'LOW';
+            
+            // Fetch actual bids for this issue to calculate realistic earning potential
+            let estimatedEarnings = 0;
+            let competitorCount = 0;
+            let offers: any[] = [];
+            
+            try {
+              const offersResult = await store.dispatch(getOffersByIssueId.initiate(issue.id));
+              offers = offersResult.data || [];
+              competitorCount = offers.length;
+              
+              if (offers.length > 0) {
+                // Calculate average of existing bids as earning potential
+                const totalBids = offers.reduce((sum, offer) => sum + (offer.price || 0), 0);
+                estimatedEarnings = Math.round(totalBids / offers.length);
+              } else {
+                // Fallback: estimate based on severity and issue type if no bids yet
+                const baseEarnings = issue.severity === 'high' ? 3000 : 2000;
+                const typeMultiplier = getTypeMultiplier(issue.type);
+                estimatedEarnings = Math.round(baseEarnings * typeMultiplier);
+              }
+            } catch (error) {
+              console.error('Error fetching offers for issue:', issue.id, error);
+              // Fallback calculation
+              estimatedEarnings = issue.severity === 'high' ? 3000 : 2000;
+            }
+            
+            const titleText = offers?.length > 0 ? 
+              `${issue.type} - Avg Bid: $${estimatedEarnings.toLocaleString()}` : 
+              `${issue.type} - Be First to Bid`;
+            
+            return {
+              id: `opportunity_${issue.id}`,
+              title: titleText,
+              description: `${issue.summary} • ${issue.severity} severity${competitorCount > 0 ? ` • ${competitorCount} existing bids` : ' • No bids yet'}`,
+              urgencyLevel,
+              savings: offers?.length > 0 ? estimatedEarnings : undefined, // Only show savings if there are actual bids
+              iconType: getIssueIcon(issue.type || 'electrical'),
+              iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 'bg-orange-500',
+              ctaText: competitorCount > 0 ? 'Submit Bid' : 'Be First to Bid',
+              ctaLink: `/marketplace/${issue.id}`,
+              metadata: competitorCount > 0 ? `${competitorCount} competing bids` : 'No competition yet'
+            };
+          })
+        );
+
+        // If no high/medium severity issues, show fallback
+        if (opportunities.length === 0) {
+          setPriorityActions([
+            {
+              id: 'no_opportunities',
+              title: 'New Opportunities Coming Soon',
+              description: 'Check back regularly for high-value projects matching your expertise.',
+              urgencyLevel: 'LOW' as const,
+              savings: undefined, // No savings amount for this fallback
+              iconType: 'toolbox',
+              iconColor: 'bg-gray-500',
+              ctaText: 'Browse All',
+              ctaLink: '/marketplace',
+              metadata: 'Stay updated'
+            }
+          ]);
+        } else {
+          setPriorityActions(opportunities);
+        }
+      } catch (error) {
+        console.error('Error calculating priority actions:', error);
+        setPriorityActions([]);
+      }
+    };
+
+    calculatePriorityActions();
+  }, [issues, listings, dispatch]);
+
+
 
   // Load vendor dashboard configuration
   useEffect(() => {
@@ -493,8 +565,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                   achievements={dashboardConfig.achievements!}
                   userType="vendor"
                 />
-              </div>
-            )}
+                          </div>
+                  )}
                 </div>
               </div>
             </div>
