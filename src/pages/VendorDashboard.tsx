@@ -285,6 +285,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   // Load vendor dashboard configuration
   useEffect(() => {
     const loadDashboardConfig = async () => {
+
       try {
 
         const mockApiResponse: DashboardApiResponse = {
@@ -447,6 +448,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           onApiCall: (endpoint: string) => console.log('API call to:', endpoint)
         });
 
+
         setDashboardConfig(config);
       } catch (error) {
         console.error('Failed to load dashboard config:', error);
@@ -454,7 +456,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     loadDashboardConfig();
-  }, [vendorOffers.length, issues?.length, assessments?.length, vendor?.id, navigate]);
+  }, [vendorOffers.length, issues?.length, assessments?.length, vendor?.id, navigate, priorityActions]);
 
   // Handling error state
   if (issuesError) {
