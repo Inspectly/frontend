@@ -305,7 +305,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             {
               id: 'revenue_goal',
               label: 'Revenue Goal Progress',
-              value: `$${vendorMetrics?.monthlyRevenue || 2800}`,
+              value: `${vendorMetrics?.monthlyRevenue || 2800}`,
               subValue: `$${5000 - (vendorMetrics?.monthlyRevenue || 2800)} to reach $5K goal`,
               color: 'green',
               type: 'currency'
@@ -313,7 +313,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             {
               id: 'market_share',
               label: 'Market Position',
-              value: `Top ${Math.floor(Math.random() * 15) + 5}%`,
+              value: `Top ${Math.floor(Math.random() * 15) + 5}`,
               subValue: `Outperforming ${Math.floor(Math.random() * 200) + 150} vendors`,
               color: 'blue',
               type: 'percentage'
@@ -321,7 +321,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             {
               id: 'efficiency',
               label: 'Efficiency Score',
-              value: `${Math.floor(Math.random() * 20) + 85}%`,
+              value: `${Math.floor(Math.random() * 20) + 85}`,
               subValue: `${Math.floor(Math.random() * 15) + 5}% above network average`,
               color: 'purple',
               type: 'percentage'
