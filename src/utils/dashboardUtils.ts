@@ -17,6 +17,11 @@ import {
   faLeaf,
   faPaintRoller,
   faBuilding,
+  faFire,
+  faMedal,
+  faClock,
+  faRocket,
+  faCalendarPlus,
   faStar,
   IconDefinition
 } from '@fortawesome/free-solid-svg-icons';
@@ -43,6 +48,13 @@ const iconMap: Record<string, IconDefinition> = {
   'leaf': faLeaf,
   'paint-roller': faPaintRoller,
   'building': faBuilding,
+  // Additional identifiers used by dashboards
+  'fire': faFire,
+  'medal': faMedal,
+  'clock': faClock,
+  'rocket': faRocket,
+  'calendar-plus': faCalendarPlus,
+  'trending-up': faChartLine,
   'star': faStar,
 };
 
