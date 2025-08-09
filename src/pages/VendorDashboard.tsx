@@ -330,7 +330,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           ],
                      heroContent: {
              backgroundImage: "/images/gradient-bg.png",
-             socialProofText: `${Math.floor(Math.random() * 12) + 8} new opportunities this week`,
+            socialProofText: `${Math.floor(Math.random() * 12) + 8} new opportunities this week`,
              title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
              subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
              badges: [
@@ -338,7 +338,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                { iconType: 'trending-up', label: `+${Math.floor(Math.random() * 30) + 15}% vs last month` },
                { iconType: 'medal', label: `Top ${Math.floor(Math.random() * 15) + 5}% performer` }
              ],
-             userInitials: ['V', 'P', 'E'] // Vendor, Professional, Expert
+            // Remove mock initials to avoid misleading UI
+            userInitials: []
            },
                      quickActionCards: [
              {

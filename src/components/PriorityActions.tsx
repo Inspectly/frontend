@@ -74,10 +74,10 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
       <div className="border-b border-blue-200 px-6 py-4 bg-white/50 rounded-t-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2">
               {title}
             </h3>
-            <p className="text-gray-600 text-sm">{subtitle}</p>
+            <p className="text-gray-600 text-xs md:text-sm">{subtitle}</p>
           </div>
           {hasUrgentActions && (
             <div className="bg-red-100 px-2 py-1 rounded-full text-xs font-bold text-red-700 animate-pulse">
@@ -111,20 +111,20 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
                     </div>
                   </div>
                   <div className="mb-3">
-                    <h4 className="font-bold text-gray-800 text-sm mb-1">
+                    <h4 className="font-bold text-gray-800 text-xs md:text-sm mb-1">
                       {action.title}
                     </h4>
-                    <p className="text-gray-600 text-xs mb-2 line-clamp-2">
+                    <p className="text-gray-600 text-[11px] md:text-xs mb-2 line-clamp-2">
                       {action.description}
                     </p>
                     <div className="flex items-center justify-between">
                       {action.savings && (
-                        <p className="text-green-600 text-xs font-bold">
+                        <p className="text-green-600 text-[11px] md:text-xs font-bold">
                           ${action.savings?.toLocaleString()}
                         </p>
                       )}
                       {action.metadata && (
-                        <p className="text-blue-600 text-xs font-medium">
+                        <p className="text-blue-600 text-[11px] md:text-xs font-medium">
                           {action.metadata}
                         </p>
                       )}
@@ -132,7 +132,7 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
                   </div>
                   <Link
                     to={action.ctaLink}
-                    className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-bold text-sm"
+                    className="block w-full text-center bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:to-purple-700 transition font-bold text-xs md:text-sm"
                   >
                     {action.ctaText}
                   </Link>

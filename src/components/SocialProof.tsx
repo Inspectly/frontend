@@ -9,7 +9,7 @@ export interface Testimonial {
   rating: number;
   text: string;
   avatar?: string;
-  metrics?: string; // e.g., "Saved $1,200 • 3 days turnaround"
+  metrics?: string; // e.g. "Saved $1,200 • 3 days turnaround"
 }
 
 export interface CommunityStat {
@@ -32,8 +32,8 @@ interface SocialProofProps {
 const SocialProof: React.FC<SocialProofProps> = ({
   testimonials,
   communityStats,
-  title = "Join Thousands of Successful Users",
-  subtitle = "Real results from real customers",
+  title,
+  subtitle,
   ctaText = "Get Started",
   ctaAction,
   userType
@@ -77,11 +77,16 @@ const SocialProof: React.FC<SocialProofProps> = ({
     return colors;
   };
 
+  // Derive member-aware defaults so dashboards show consistent messaging
+  const isMember = ['client', 'vendor', 'admin', 'realtor'].includes(userType);
+  const resolvedTitle = title ?? (isMember ? 'What members are saying' : 'Join Thousands of Successful Users');
+  const resolvedSubtitle = subtitle ?? (isMember ? 'Real outcomes from our community' : 'Real results from real customers');
+
   return (
     <div className="mt-6 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 rounded-xl border-2 border-indigo-200 p-8">
       <div className="text-center mb-8">
-        <h3 className="text-2xl font-bold text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-600">{subtitle}</p>
+        <h3 className="text-2xl font-bold text-gray-800 mb-2">{resolvedTitle}</h3>
+        <p className="text-gray-600">{resolvedSubtitle}</p>
       </div>
       
       {testimonials && testimonials.length > 0 && (
@@ -127,7 +132,7 @@ const SocialProof: React.FC<SocialProofProps> = ({
                 </div>
               ))}
             </div>
-            <p className="text-gray-600 mb-4">Ready to join our community?</p>
+            <p className="text-gray-600 mb-4">{isMember ? 'Ready for your next report?' : 'Ready to join our community?'}</p>
             {ctaAction && ctaText && (
               <button 
                 onClick={ctaAction}

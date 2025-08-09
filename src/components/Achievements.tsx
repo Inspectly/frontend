@@ -112,13 +112,13 @@ const Achievements: React.FC<AchievementsProps> = ({
 
   return (
     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
-      <div className="border-b border-green-200 px-6 py-4 bg-white/50 rounded-t-xl">
+      <div className="border-b border-green-200 px-4 md:px-6 py-3 md:py-4 bg-white/50 rounded-t-xl">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <h3 className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2">
               {title}
             </h3>
-            <p className="text-gray-600 text-sm">{subtitle}</p>
+            <p className="text-gray-600 text-xs md:text-sm">{subtitle}</p>
           </div>
           {statusBadge && (
             <div className={`px-3 py-1 rounded-full text-xs font-bold ${getBadgeClasses(statusBadge.color)}`}>
@@ -127,13 +127,13 @@ const Achievements: React.FC<AchievementsProps> = ({
           )}
         </div>
       </div>
-      <div className="p-6">
-        <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="p-4 md:p-6">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
           {achievements.map((achievement) => {
             const colors = getColorClasses(achievement.color);
             return (
-              <div key={achievement.id} className={`bg-white rounded-lg p-4 text-center border ${colors.bg}`}>
-                <div className={`text-2xl font-bold mb-1 ${colors.text}`}>
+              <div key={achievement.id} className={`bg-white rounded-lg p-3 md:p-4 text-center border ${colors.bg}`}>
+                <div className={`text-xl md:text-2xl font-bold mb-1 ${colors.text}`}>
                   {formatValue(achievement)}
                 </div>
                 <div className="text-xs text-gray-600">{achievement.label}</div>
@@ -148,13 +148,13 @@ const Achievements: React.FC<AchievementsProps> = ({
         </div>
         
         {progressGoal && (
-          <div className="bg-white rounded-lg p-4 border border-green-200">
+          <div className="bg-white rounded-lg p-3 md:p-4 border border-green-200">
             <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
               {progressGoal.title}
             </h4>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-600">{progressGoal.description}</span>
-              <span className="text-sm font-bold text-green-600">{progressGoal.progress}%</span>
+              <span className="text-xs md:text-sm text-gray-600">{progressGoal.description}</span>
+              <span className="text-xs md:text-sm font-bold text-green-600">{progressGoal.progress}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 

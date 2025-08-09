@@ -277,7 +277,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           ],
           heroContent: {
             backgroundImage: "/images/gradient-bg.png",
-            socialProofText: "Join 12,847+ smart property owners",
+            // Member-appropriate social proof for logged-in users
+            socialProofText: "You're among 12,847+ smart property owners",
             title: "You've Saved $2,340 This Year!",
             subtitle: "Our AI-powered platform has helped you find the best deals and avoid costly mistakes. Keep the momentum going with your next inspection report!",
             badges: [
@@ -285,7 +286,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               { iconType: 'dollar-sign', label: 'Average 23% savings' },
               { iconType: 'trophy', label: '98% satisfaction' }
             ],
-            userInitials: ['C', 'P', 'S']
+            userInitials: []
           },
           smartInsights: [
             {

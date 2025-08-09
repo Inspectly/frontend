@@ -160,9 +160,12 @@ function App() {
   // Handle window resize to toggle sidebar visibility
   useEffect(() => {
     const handleResize = () => {
-      setIsSidebarOpen(window.innerWidth >= 1025);
+      // Auto-close sidebar sooner to free horizontal space and prevent hero content clipping
+      setIsSidebarOpen(window.innerWidth >= 1200);
     };
     window.addEventListener("resize", handleResize);
+    // Run once on mount to ensure correct initial state
+    handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 

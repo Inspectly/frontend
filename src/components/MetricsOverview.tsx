@@ -43,13 +43,13 @@ const MetricsOverview: React.FC<MetricsOverviewProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 md:mb-4 gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800 mb-2">
             {getGreeting()}
           </h1>
-          <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 md:gap-6">
             {metrics.map((metric) => (
               <div key={metric.id} className="flex items-center gap-2">
                 <div className={`w-2 h-2 ${metric.dotColor} rounded-full`}></div>
