@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import DashboardCharts from "../components/DashboardCharts";
+import { useUploadReportFileMutation } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBolt,
@@ -34,7 +35,7 @@ import VendorMap from "../components/VendorMap";
 import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
-import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
+import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
@@ -42,6 +43,8 @@ import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
+import AddNewListingModal, { ListingFormData } from "../components/AddNewListingModal";
+import { handleAddListingWithReport } from "../utils/reportUtil";
 
 interface DashboardProps {
   user: User;
@@ -85,6 +88,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
   const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
+
+  const [isAddListingModalOpen, setIsAddListingModalOpen] = useState(false);
+  const [createListing] = useCreateListingMutation();
+  const [uploadReportFile] = useUploadReportFileMutation();
+
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -498,65 +507,19 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       </div>
 
                       <div className="bg-white rounded overflow-hidden shadow-4 flex">
-                        {/* Drag & Drop Area */}
                         <div
                           className="border-2 h-[250px] w-full border-dashed border-gray-400 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3 cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition"
-                          onDrop={handleDrop}
-                          onDragOver={(e) => e.preventDefault()}
-                          onClick={(e) => {
-                            e.stopPropagation(); // Prevents bubbling to parent
-                            fileInputRef.current?.click();
-                          }}
                         >
                           <p className="text-gray-500 font-semibold">
-                            Drag & Drop your PDF files here
+                            Add a new listing
                           </p>
-                          <span className="text-gray-400">or</span>
-                          <button
-                            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevents opening twice
-                              fileInputRef.current?.click();
-                            }}
-                          >
-                            Choose File
-                          </button>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            hidden
-                            accept="application/pdf"
-                            multiple
-                            onChange={handleFileChange}
-                          />
+                            <button
+                              className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                              onClick={() => setIsAddListingModalOpen(true)}
+                            >
+                              Create Listing
+                            </button>
                         </div>
-
-                        {/* File Preview List */}
-                        {files.length > 0 && (
-                          <div className="mt-4">
-                            <h3 className="text-gray-700 font-semibold mb-2">
-                              Uploaded Files:
-                            </h3>
-                            <ul className="space-y-2">
-                              {files.map((file, index) => (
-                                <li
-                                  key={index}
-                                  className="flex items-center justify-between bg-gray-100 p-2 rounded-md"
-                                >
-                                  <span className="text-gray-700">
-                                    {file.name}
-                                  </span>
-                                  <button
-                                    className="text-red-500 hover:text-red-700"
-                                    onClick={() => handleRemoveFile(index)}
-                                  >
-                                    ✕
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -752,6 +715,24 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         </div>
       </div>
+      <AddNewListingModal
+        isOpen={isAddListingModalOpen}
+        onClose={() => setIsAddListingModalOpen(false)}
+        onSubmit={async (formData: ListingFormData) => {
+          try {
+            await handleAddListingWithReport({
+              formData,
+              user_id: user.id,
+              createListing,
+              uploadReportFile, 
+              refetch: refetchReports,
+              onClose: () => setIsAddListingModalOpen(false),
+            });
+          } catch (err) {
+            console.error("Failed to create listing:", err);
+          }
+        }}
+      />
     </div>
   );
 };
