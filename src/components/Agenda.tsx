@@ -32,7 +32,7 @@ const Agenda: React.FC<AgendaProps> = ({ events }) => {
   return (
     <>
       {events.filter((event)=>moment(event.start).isSameOrAfter(moment(),'day')).map((event) => (
-        <div className="event-item flex items-center justify-between gap-4 pb-4 mb-4 border-b border-neutral-200">
+        <div key={event.id} className="event-item flex items-center justify-between gap-4 pb-4 mb-4 border-b border-neutral-200">
           <div className="">
             <div className="flex items-center gap-2.5">
               <span className="w-3 h-3 bg-yellow-500 rounded-full font-medium"></span>
