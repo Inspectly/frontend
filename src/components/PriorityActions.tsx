@@ -15,6 +15,7 @@ export interface PriorityAction {
   ctaText: string;
   ctaLink: string;
   metadata?: string;
+  reasons?: string[];
 }
 
 interface PriorityActionsProps {
@@ -29,6 +30,7 @@ interface PriorityActionsProps {
   };
   maxItems?: number;
   userType: 'client' | 'vendor' | 'admin' | 'realtor';
+  isLoading?: boolean;
 }
 
 const PriorityActions: React.FC<PriorityActionsProps> = ({
@@ -37,11 +39,32 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
   subtitle = "Time-sensitive opportunities",
   emptyStateConfig,
   maxItems = 3,
-  userType: _userType
+  userType: _userType,
+  isLoading = false
 }) => {
   // Don't render if no actions and no empty state
   if ((!actions || actions.length === 0) && !emptyStateConfig) {
-    return null;
+    return isLoading ? (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+        <div className="border-b border-blue-200 px-6 py-4 bg-white/50 rounded-t-xl">
+          <div className="h-6 w-40 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-64 bg-gray-100 rounded mt-2 animate-pulse" />
+        </div>
+        <div className="p-6 space-y-3">
+          {[0,1,2].map((i) => (
+            <div key={i} className="border rounded-lg p-4 bg-white/70">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
+                <div className="h-5 w-20 bg-gray-200 rounded-full animate-pulse" />
+              </div>
+              <div className="h-4 w-3/5 bg-gray-200 rounded mb-2 animate-pulse" />
+              <div className="h-3 w-4/5 bg-gray-100 rounded mb-3 animate-pulse" />
+              <div className="h-8 w-full bg-gray-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null;
   }
 
   const getUrgencyConfig = (level: PriorityAction['urgencyLevel']) => {
@@ -117,6 +140,15 @@ const PriorityActions: React.FC<PriorityActionsProps> = ({
                     <p className="text-gray-600 text-[11px] md:text-xs mb-2 line-clamp-2">
                       {action.description}
                     </p>
+                    {action.reasons && action.reasons.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {action.reasons.slice(0,3).map((reason, idx) => (
+                          <span key={idx} className="text-[10px] md:text-[11px] px-2 py-0.5 rounded-full bg-white/70 border border-blue-200 text-blue-700 whitespace-nowrap">
+                            {reason}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       {action.savings && (
                         <p className="text-green-600 text-[11px] md:text-xs font-bold">

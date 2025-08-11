@@ -184,6 +184,18 @@ export const transformApiResponseToConfig = (
   return config;
 };
 
+// Centralized social proof messaging for dashboards
+export const getSocialProofForDashboard = (
+  userType: 'client' | 'vendor'
+): string => {
+  if (userType === 'vendor') {
+    // Vendor: emphasize new opportunities this week
+    return `${Math.floor(Math.random() * 12) + 8} new opportunities this week`;
+  }
+  // Client (and default): emphasize membership/community
+  return "You're among 12,847+ smart property owners";
+};
+
 // Generate sample configurations for different user types
 export const generateSampleConfig = (
   userType: 'client' | 'vendor' | 'admin' | 'realtor',

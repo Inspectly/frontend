@@ -47,6 +47,7 @@ export interface PriorityAction {
   ctaText: string;
   ctaLink: string;
   metadata?: string;
+  reasons?: string[];
 }
 
 export interface Achievement {
@@ -174,6 +175,7 @@ export interface DashboardApiResponse {
     ctaText: string;
     ctaLink: string;
     metadata?: string;
+    reasons?: string[];
   }>;
   achievements?: Array<{
     id: string;

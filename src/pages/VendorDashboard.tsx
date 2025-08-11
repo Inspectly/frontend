@@ -23,7 +23,7 @@ import Achievements from "../components/Achievements";
 
 // Import types and utilities
 import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
-import { transformApiResponseToConfig, shouldShowComponent } from "../utils/dashboardUtils";
+import { transformApiResponseToConfig, shouldShowComponent, getSocialProofForDashboard } from "../utils/dashboardUtils";
 
 
 interface DashboardProps {
@@ -177,6 +177,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     ctaText: string;
     ctaLink: string;
     metadata?: string;
+    reasons?: string[];
   }>>([]);
 
   // Generate priority actions from high-value opportunities based on listings with high/medium severity issues
@@ -236,6 +237,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             const titleText = offers?.length > 0 ? 
               `${issue.type} - Avg Bid: $${estimatedEarnings.toLocaleString()}` : 
               `${issue.type} - Be First to Bid`;
+            // Determine reason candidates with weights for ordering
+            const averageTicket = (vendorMetrics?.activeJobs || 0) > 0
+              ? (vendorMetrics?.monthlyRevenue || 0) / Math.max(1, vendorMetrics.activeJobs)
+              : 0;
+            const isHighEarnings = estimatedEarnings > Math.max(1500, (averageTicket || 1000) * 1.2);
+            const createdAt = (issue as any).created_at ? new Date((issue as any).created_at) : null;
+            const hoursSinceCreated = createdAt ? (Date.now() - createdAt.getTime()) / (1000 * 60 * 60) : Infinity;
+            const isNewlyPosted = hoursSinceCreated <= 72; // 3 days
+
+            const reasonCandidates: Array<{ label: string; ok: boolean; weight: number }> = [
+              { label: 'High urgency', ok: issue.severity === 'high', weight: 100 },
+              { label: 'High earnings potential', ok: isHighEarnings, weight: 90 },
+              { label: 'Low competition', ok: competitorCount <= 1, weight: 80 },
+              { label: 'Newly posted', ok: isNewlyPosted, weight: 70 },
+              { label: 'High vendor rating', ok: (vendorMetrics?.avgRating || 0) >= 4.5, weight: 60 },
+              { label: 'Bandwidth available', ok: (vendorMetrics?.pendingBids || 0) < 5, weight: 50 },
+            ];
+            const reasons = reasonCandidates
+              .filter(r => r.ok)
+              .sort((a, b) => b.weight - a.weight)
+              .map(r => r.label)
+              .slice(0, 3);
             
             return {
               id: `opportunity_${issue.id}`,
@@ -247,7 +270,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 'bg-orange-500',
               ctaText: competitorCount > 0 ? 'Submit Bid' : 'Be First to Bid',
               ctaLink: `/marketplace/${issue.id}`,
-              metadata: competitorCount > 0 ? `${competitorCount} competing bids` : 'No competition yet'
+              metadata: competitorCount > 0 ? `${competitorCount} competing bids` : 'No competition yet',
+              reasons
             };
           })
         );
@@ -330,7 +354,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
           ],
                      heroContent: {
              backgroundImage: "/images/gradient-bg.png",
-            socialProofText: `${Math.floor(Math.random() * 12) + 8} new opportunities this week`,
+            socialProofText: getSocialProofForDashboard('vendor'),
              title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
              subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
              badges: [
@@ -406,8 +430,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
               type: 'number'
             }
           ],
-                     smartInsights: [
-             {
+                      smartInsights: [
+            {
                id: 'market_surge',
                type: 'urgent',
                title: 'Electrical Jobs Surge +47%',
@@ -416,7 +440,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                ctaEndpoint: '/marketplace?category=electrical',
                iconType: 'fire'
              },
-             {
+            // Follow up stale bids insight (bids older than 48h that are still RECEIVED)
+            ...(() => {
+              try {
+                const now = Date.now();
+                const staleBids = (vendorOffers || []).filter(b => b.status === IssueOfferStatus.RECEIVED && (now - new Date(b.created_at).getTime()) / (1000 * 60 * 60) > 48);
+                if (staleBids.length > 0) {
+                  return [{
+                    id: 'follow_up_bids',
+                    type: 'opportunity' as const,
+                    title: 'Follow Up On Pending Bids',
+                    description: `${staleBids.length} bid${staleBids.length > 1 ? 's' : ''} pending for over 48h. A quick follow-up can increase win rate by 18%.`,
+                    ctaText: 'Review Pending Bids',
+                    ctaEndpoint: '/marketplace?tab=my-bids',
+                    iconType: 'clock'
+                  }];
+                }
+                return [];
+              } catch {
+                return [];
+              }
+            })(),
+            {
                id: 'competitive_advantage',
                type: 'opportunity',
                title: 'Response Time Advantage',
@@ -557,6 +602,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                   title="High-Value Opportunities"
                   subtitle="Projects worth your immediate attention"
                   userType="vendor"
+                  isLoading={isVendorLoading}
                 />
               </div>
             )}
