@@ -33,7 +33,7 @@ import SocialProof from "../components/SocialProof";
 
 // Import types and utils
 import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
-import { transformApiResponseToConfig, shouldShowComponent } from "../utils/dashboardUtils";
+import { transformApiResponseToConfig, shouldShowComponent, getSocialProofForDashboard } from "../utils/dashboardUtils";
 
 interface DashboardProps {
   user: User;
@@ -71,7 +71,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         vendor_id: vendorId && !isNaN(vendorId) ? vendorId : null,
       };
     })
-    .filter((a) => a.vendor_id !== null), [assessments]); // Remove invalid entries
+    .filter((a) => a.vendor_id !== null), [assessments]);
 
   const issueIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.issue_id))], [acceptedAssessments]);
   const vendorIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.vendor_id).filter((id): id is number => id !== null))], [acceptedAssessments]);
@@ -209,6 +209,25 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             return typeMap[type.toLowerCase()] || 'wrench';
           };
           
+          // Determine reasons with thresholds and order
+          const savingsThreshold = Math.max(500, savings * 0.2); // either >$500 or >20% of max offer if meaningful
+          const isHighSavings = savings > savingsThreshold;
+          const createdAt = (issue as any).created_at ? new Date((issue as any).created_at) : null;
+          const hoursSinceCreated = createdAt ? (Date.now() - createdAt.getTime()) / (1000 * 60 * 60) : Infinity;
+          const isNewlyPosted = hoursSinceCreated <= 72; // 3 days
+
+          const reasonCandidates: Array<{ label: string; ok: boolean; weight: number }> = [
+            { label: 'High urgency', ok: issue.severity === 'high', weight: 100 },
+            { label: 'High savings potential', ok: isHighSavings, weight: 90 },
+            { label: 'Multiple offers', ok: offers.length >= 3, weight: 80 },
+            { label: 'Newly posted', ok: isNewlyPosted, weight: 70 },
+          ];
+          const reasons = reasonCandidates
+            .filter(r => r.ok)
+            .sort((a, b) => b.weight - a.weight)
+            .map(r => r.label)
+            .slice(0, 3);
+
           return {
             id: `issue_${issue.id}`,
             title: `${issue.type.charAt(0).toUpperCase() + issue.type.slice(1)} Issue #${issue.id}`,
@@ -220,7 +239,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       urgencyLevel === 'MEDIUM' ? 'bg-orange-500' : 'bg-green-500',
             ctaText: urgencyLevel === 'HIGH' ? 'Review Now' : 'View Offers',
             ctaLink: `/listings/${listingId}/reports/${issue.report_id}/issues/${issue.id}?tab=offers`,
-            metadata: `${offers.length} competitive offers`
+            metadata: `${offers.length} competitive offers`,
+            reasons
           };
         });
     };
@@ -277,8 +297,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           ],
           heroContent: {
             backgroundImage: "/images/gradient-bg.png",
-            // Member-appropriate social proof for logged-in users
-            socialProofText: "You're among 12,847+ smart property owners",
+            // Centralized social proof for consistency
+            socialProofText: getSocialProofForDashboard('client'),
             title: "You've Saved $2,340 This Year!",
             subtitle: "Our AI-powered platform has helped you find the best deals and avoid costly mistakes. Keep the momentum going with your next inspection report!",
             badges: [
@@ -509,7 +529,21 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
           <div className="h-32 bg-gray-200 rounded mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded mb-4"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div className="h-48 bg-gray-200 rounded"></div>
+            <div className="h-48 bg-gray-100 rounded"></div>
+          </div>
+          <div className="grid grid-cols-1 2xl:grid-cols-12 gap-6">
+            <div className="col-span-12 2xl:col-span-8 space-y-6">
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+            <div className="col-span-12 2xl:col-span-4 space-y-6">
+              <div className="h-60 bg-gray-100 rounded"></div>
+              <div className="h-60 bg-gray-100 rounded"></div>
+            </div>
+          </div>
         </div>
       </div>
     );
