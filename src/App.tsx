@@ -31,6 +31,7 @@ import VendorDashboard from "./pages/VendorDashboard";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
+import ReportReviewPage from "./pages/ReportReviewPage";
 
 function App() {
   const location = useLocation();
@@ -249,6 +250,10 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/issues/:issueId"
                 element={<PrivateRoute element={<Issue />} />}
+              />
+              <Route
+                path="/listings/:listingId/reports/:reportId/review"
+                element={<PrivateRoute element={<ReportReviewPage />} />}
               />
               <Route
                 path="*"
