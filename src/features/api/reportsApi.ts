@@ -19,9 +19,22 @@ export const reportsApi = api.injectEndpoints({
         body: newReport,
       }),
     }),
+    uploadReportFile: builder.mutation<any, FormData>({
+      query: (formData) => ({
+        url: "reports/extract/issues",
+        method: "POST",
+        body: formData,
+      }),
+    }),
   }),
 });
 
-export const { useGetReportsQuery, useGetReportByIdQuery, useGetReportsByUserIdQuery, useCreateReportMutation } = reportsApi;
+export const {
+  useGetReportsQuery,
+  useGetReportByIdQuery,
+  useGetReportsByUserIdQuery,
+  useCreateReportMutation,
+  useUploadReportFileMutation,
+} = reportsApi;
 
 export const { getReportById } = reportsApi.endpoints;

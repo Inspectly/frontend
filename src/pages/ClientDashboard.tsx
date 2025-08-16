@@ -1,7 +1,29 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
+import DashboardCharts from "../components/DashboardCharts";
+import { useUploadReportFileMutation } from "../features/api/reportsApi";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faBolt,
+  faBroom,
+  faBuilding,
+  faGripLines,
+  faHammer,
+  faHouse,
+  faLayerGroup,
+  faLeaf,
+  faPaintRoller,
+  faQuestionCircle,
+  faSnowflake,
+  faTint,
+  faToolbox,
+  faWind,
+  faWrench,
+  IconDefinition,
+} from "@fortawesome/free-solid-svg-icons";
+import {
+  CalendarReadyAssessment,
   IssueAssessmentStatus,
   IssueOffer,
   IssueType,
@@ -13,7 +35,7 @@ import Agenda from "../components/Agenda";
 import Realtors from "../components/Realtors";
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
-import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
+import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
@@ -21,6 +43,8 @@ import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
+import AddNewListingModal, { ListingFormData } from "../components/AddNewListingModal";
+import { handleAddListingWithReport } from "../utils/reportUtil";
 
 // Import new reusable components
 import MetricsOverview from "../components/MetricsOverview";
@@ -63,6 +87,124 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Transform existing data logic (unchanged)
   const acceptedAssessments = useMemo(() => assessments
     .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
+    .map((a) => ({
+      ...a,
+      vendor_id: parseInt(a.users_interaction_id.split("_")[1], 10), // safely extract vendor_id
+    }));
+
+  const issueIds = [...new Set(acceptedAssessments.map((a) => a.issue_id))];
+  const vendorIds = [...new Set(acceptedAssessments.map((a) => a.vendor_id))];
+
+  const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
+  const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
+
+  const [isAddListingModalOpen, setIsAddListingModalOpen] = useState(false);
+  const [createListing] = useCreateListingMutation();
+  const [uploadReportFile] = useUploadReportFileMutation();
+
+
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const issuePromises = issueIds.map((id) =>
+        dispatch(getIssueById.initiate(String(id)))
+      );
+      const vendorPromises = vendorIds.map((id) =>
+        dispatch(getVendorById.initiate(String(id)))
+      );
+
+      const issueResults = await Promise.all(issuePromises);
+      const vendorResults = await Promise.all(vendorPromises);
+
+      const issueData = Object.fromEntries(
+        issueResults.map((r) => [r?.data?.id, r?.data])
+      );
+      const vendorData = Object.fromEntries(
+        vendorResults.map((r) => [r?.data?.id, r?.data])
+      );
+
+      setIssueMap(issueData);
+      setVendorMap(vendorData);
+    };
+
+    fetchData();
+  }, [JSON.stringify(issueIds), JSON.stringify(vendorIds)]);
+
+  const events: CalendarReadyAssessment[] = acceptedAssessments.map((a) => {
+    const issue = issueMap[a.issue_id];
+    const vendor = vendorMap[a.vendor_id];
+
+    return {
+      ...a,
+      title: `${vendor?.name || "Vendor #" + a.vendor_id} Assessment: ${
+        issue?.summary || "Issue #" + a.issue_id
+      }`,
+      start: new Date(a.start_time),
+      end: new Date(a.end_time),
+    };
+  });
+
+  const [files, setFiles] = useState<File[]>([]);
+  const [selectedListing, setSelectedListing] = useState<string>("all");
+  const [selectedReport, setSelectedReport] = useState<string>("all");
+  const [offersByIssueId, setOffersByIssueId] = useState<
+    Record<number, IssueOffer[]>
+  >({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const issueIcons: Record<string, IconDefinition> = {
+    general: faToolbox,
+    structural: faBuilding,
+    electrician: faBolt,
+    plumber: faTint,
+    painter: faPaintRoller,
+    cleaner: faBroom,
+    hvac: faWind,
+    roofing: faHouse,
+    insulation: faSnowflake,
+    drywall: faGripLines,
+    plaster: faLayerGroup,
+    carpentry: faHammer,
+    landscaping: faLeaf,
+    other: faQuestionCircle,
+  };
+
+  const issueColors: Record<string, string> = {
+    general: "bg-gray-600",
+    structural: "bg-purple-600",
+    electrician: "bg-yellow-500",
+    plumber: "bg-blue-500",
+    painter: "bg-pink-500",
+    cleaner: "bg-green-400",
+    hvac: "bg-teal-500",
+    roofing: "bg-indigo-600",
+    insulation: "bg-cyan-500",
+    drywall: "bg-orange-400",
+    plaster: "bg-red-400",
+    carpentry: "bg-amber-700",
+    landscaping: "bg-lime-500",
+    other: "bg-neutral-500",
+  };
+
+  const issueGradients: Record<string, string> = {
+    general: "from-gray-600/10 to-white",
+    structural: "from-purple-600/10 to-white",
+    electrician: "from-yellow-500/10 to-white",
+    plumber: "from-blue-500/10 to-white",
+    painter: "from-pink-500/10 to-white",
+    cleaner: "from-green-400/10 to-white",
+    hvac: "from-teal-500/10 to-white",
+    roofing: "from-indigo-600/10 to-white",
+    insulation: "from-cyan-500/10 to-white",
+    drywall: "from-orange-400/10 to-white",
+    plaster: "from-red-400/10 to-white",
+    carpentry: "from-amber-700/10 to-white",
+    landscaping: "from-lime-500/10 to-white",
+    other: "from-neutral-500/10 to-white",
+  };
+
+  const realtors = [
     .map((a) => {
       const parts = a.users_interaction_id.split("_");
       const vendorId = parts.length > 1 ? parseInt(parts[1], 10) : null;
@@ -657,11 +799,24 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
             </div>
 
-            {}
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Upcoming Events</h3>
-                <Agenda events={calendarEvents as any} />
+                      <div className="bg-white rounded overflow-hidden shadow-4 flex">
+                        <div
+                          className="border-2 h-[250px] w-full border-dashed border-gray-400 p-6 rounded-xl flex flex-col items-center justify-center text-center gap-3 cursor-pointer bg-neutral-50 hover:bg-neutral-100 transition"
+                        >
+                          <p className="text-gray-500 font-semibold">
+                            Add a new listing
+                          </p>
+                            <button
+                              className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                              onClick={() => setIsAddListingModalOpen(true)}
+                            >
+                              Create Listing
+                            </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -722,6 +877,24 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         </div>
       </div>
+      <AddNewListingModal
+        isOpen={isAddListingModalOpen}
+        onClose={() => setIsAddListingModalOpen(false)}
+        onSubmit={async (formData: ListingFormData) => {
+          try {
+            await handleAddListingWithReport({
+              formData,
+              user_id: user.id,
+              createListing,
+              uploadReportFile, 
+              refetch: refetchReports,
+              onClose: () => setIsAddListingModalOpen(false),
+            });
+          } catch (err) {
+            console.error("Failed to create listing:", err);
+          }
+        }}
+      />
     </div>
   );
 };
