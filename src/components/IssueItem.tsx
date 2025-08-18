@@ -77,7 +77,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
       </div>
 
       {/* Details Section */}
-      <div className="p-4">
+      <div className="p-6">
         {/* Issue Type and Timestamp */}
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-white bg-blue-500 px-3 py-1 rounded">
