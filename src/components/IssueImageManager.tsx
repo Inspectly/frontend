@@ -37,6 +37,14 @@ interface IssueImageManagerProps {
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(n, max));
 
+/** Deduplicate files by name+size+lastModified */
+const mergeFiles = (existing: File[], incoming: File[]) => {
+  const key = (f: File) => `${f.name}__${f.size}__${f.lastModified}`;
+  const map = new Map(existing.map(f => [key(f), f]));
+  for (const f of incoming) map.set(key(f), f);
+  return Array.from(map.values());
+};
+
 /**
  * Single, self-contained interactive image slider:
  * - Built-in slider (no external component)
@@ -69,6 +77,10 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
   const [addTab, setAddTab] = useState<"upload" | "report">("upload");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [selectSet, setSelectSet] = useState<Set<number>>(new Set());
+
+  // Upload drag state
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Preview modal
   const [previewSrc, setPreviewSrc] = useState<string | null>(null);
@@ -109,7 +121,6 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
     }
     const wrapped = (i + count) % count;
     setSlideIndex(wrapped);
-    // Only sync activeIndex when we actually have real items (not placeholder)
     if (items.length) setActiveIndex(wrapped);
   };
   const next = () => goto(slideIndex + 1);
@@ -145,7 +156,6 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
       setBusy(true);
       await onRemove(currentIssueImageId);
     } catch (e) {
-      // rollback
       console.error("Failed to remove image", e);
       setItems(prev);
       setActiveIndex(idx);
@@ -240,6 +250,33 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
   const onThumbDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+  };
+
+  /* ---------- Upload tab drag & drop handlers ---------- */
+  const handleFiles = (files: FileList | File[]) => {
+    const list = Array.from(files).filter(f => f.type.startsWith("image/"));
+    if (list.length === 0) return;
+    setUploadFiles(prev => mergeFiles(prev, list));
+  };
+
+  const onDropFiles: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer?.files?.length) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+  const onDragOverUpload: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+  const onDragEnterUpload: React.DragEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+  const onDragLeaveUpload: React.DragEventHandler<HTMLDivElement> = (e) => {
+    // Only set false when actually leaving the dropzone (not entering children)
+    if (e.currentTarget === e.target) setIsDragOver(false);
   };
 
   /* ---------- Render ---------- */
@@ -414,6 +451,7 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
                   setIsAddOpen(false);
                   setUploadFiles([]);
                   setSelectSet(new Set());
+                  setIsDragOver(false);
                 }}
               >
                 Close
@@ -424,23 +462,71 @@ const IssueImageManager: React.FC<IssueImageManagerProps> = ({
             <div className="p-4">
               {addTab === "upload" ? (
                 <div className="space-y-3">
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                  {/* DROPZONE */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    onDrop={onDropFiles}
+                    onDragOver={onDragOverUpload}
+                    onDragEnter={onDragEnterUpload}
+                    onDragLeave={onDragLeaveUpload}
+                    className={[
+                      "rounded-lg p-6 text-center cursor-pointer transition-colors border-2 border-dashed",
+                      isDragOver
+                        ? "bg-blue-50 border-blue-500"
+                        : "border-neutral-300 hover:bg-neutral-50",
+                    ].join(" ")}
+                    aria-label="Upload images by clicking or dragging files here"
+                  >
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept="image/*"
                       multiple
-                      onChange={(e) => setUploadFiles(Array.from(e.target.files || []))}
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files) handleFiles(e.target.files);
+                      }}
                     />
-                    <p className="text-xs text-neutral-500 mt-2">
+                    <p className="text-sm font-medium">
+                      Drag & drop images here, or <span className="underline">click to browse</span>
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-1">
                       JPG, PNG, WEBP (Max 10–20MB each per backend policy)
                     </p>
                     {uploadFiles.length > 0 && (
-                      <p className="text-sm mt-2">
-                        Selected: {uploadFiles.length} file{uploadFiles.length > 1 ? "s" : ""}
-                      </p>
+                      <div className="mt-3 text-left">
+                        <p className="text-sm font-medium">
+                          Selected: {uploadFiles.length} file{uploadFiles.length > 1 ? "s" : ""}
+                        </p>
+                        <ul className="mt-1 max-h-32 overflow-auto text-xs text-neutral-600 list-disc list-inside">
+                          {uploadFiles.map((f, i) => (
+                            <li key={`${f.name}-${f.size}-${f.lastModified}-${i}`}>
+                              {f.name} ({Math.round(f.size / 1024)} KB)
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </div>
-                  <div className="flex justify-end">
+
+                  <div className="flex justify-end gap-2">
+                    {uploadFiles.length > 0 && (
+                      <button
+                        className="px-3 py-1.5 text-sm rounded-lg border hover:bg-neutral-50"
+                        onClick={() => setUploadFiles([])}
+                        disabled={busy}
+                      >
+                        Clear
+                      </button>
+                    )}
                     <button
                       className="px-3 py-1.5 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50"
                       disabled={busy || uploadFiles.length === 0}
