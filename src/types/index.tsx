@@ -189,6 +189,7 @@ export type IssueType = {
   active: boolean;
   created_at: string;
   updated_at: string;
+  review_status: string;
 };
 
 export type IssueOffer = {
