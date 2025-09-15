@@ -7,7 +7,7 @@ type CheckoutPayload = {
 };
 
 type CheckoutResponse = {
-  sessionUrl: string;
+  session_url: string;
 };
 
 export const stripePaymentsApi = api.injectEndpoints({

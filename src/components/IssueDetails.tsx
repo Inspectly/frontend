@@ -367,6 +367,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     setActiveTab(getTabFromURL());
   }, [location.search]);
 
+
   useEffect(() => {
     if (editingOffer) {
       setOfferAmount(editingOffer.price.toString());
@@ -881,7 +882,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                             vendor_id: acceptedOffer.vendor_id,
                             offer_id: acceptedOffer.id,
                           }).unwrap();
-                          window.location.href = response.sessionUrl;
+                          window.location.href = response.session_url;
                         } catch (err) {
                           console.error("Stripe error", err);
                           alert("Could not start payment, please try again.");
