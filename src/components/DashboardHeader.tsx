@@ -5,9 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import {
   faBars,
-  faMagnifyingGlass,
   faPowerOff,
-  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
 
@@ -15,6 +13,7 @@ interface DashboardHeaderProps {
   handleLogout: () => void;
   toggleSidebar: () => void;
   isSidebarOpen: boolean;
+  pageTitle?: string;
   children: React.ReactNode;
 }
 
@@ -22,6 +21,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   handleLogout,
   toggleSidebar,
   isSidebarOpen,
+  pageTitle,
   children,
 }) => {
   const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
@@ -66,26 +66,23 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       } flex flex-col flex-wrap min-h-screen transition-all duration-300 ease-in-out ml-0 bg-neutral-100 text-neutral-900`}
     >
       <header className="sticky top-0 z-20 h-18 bg-white border-0 px-6 py-4 border-b border-neutral-200">
-        <div className="flex items-center justify-between">
+        <div className="relative flex items-center justify-between">
           <div className="col-auto flex items-center gap-4">
-            <button className="sidebar-toggle" onClick={toggleSidebar}>
-              <FontAwesomeIcon
-                icon={isSidebarOpen ? faTimes : faBars}
-                className="size-5"
-              />
-            </button>
-            <form className="hidden lg:inline-block relative">
-              <input
-                type="text"
-                placeholder="Search"
-                className="h-10 w-[24.25rem] rounded-lg border border-gray-300 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900"
-              />
-              <FontAwesomeIcon
-                icon={faMagnifyingGlass}
-                className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-gray-600"
-              />
-            </form>
+            {!isSidebarOpen && (
+              <button className="sidebar-toggle" onClick={toggleSidebar}>
+                <FontAwesomeIcon
+                  icon={faBars}
+                  className="size-5"
+                />
+              </button>
+            )}
           </div>
+          
+          {pageTitle && (
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <h1 className="text-2xl font-bold text-gray-800">{pageTitle}</h1>
+            </div>
+          )}
           <div className="col-auto flex items-center gap-3">
             <button
               className="w-10 h-10 bg-neutral-200 rounded-full flex items-center justify-center"

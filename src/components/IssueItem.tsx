@@ -1,10 +1,7 @@
-import React, { useMemo } from "react";
-import { IssueAddress, IssueType, Vendor } from "../types";
+import React from "react";
+import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
-import { useNavigate } from "react-router-dom";
-import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
   faMapMarkerAlt, 
@@ -16,35 +13,13 @@ import {
 
 interface IssueItemProps {
   issue: IssueType;
-  vendor?: Vendor;
   userType?: string;
   address?: IssueAddress;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
-  const vendorId = useSelector((state: RootState) => state.auth.user?.id);
-
-  const { data: allVendorOffers = [], isLoading: offerLoading } =
-    useGetOffersByVendorIdQuery(vendorId || "", {
-      skip: !vendorId || userType !== "vendor",
-    });
-
+const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
   const navigate = useNavigate();
-
-  const vendorOffers = useMemo(() => {
-    return allVendorOffers.filter((offer) => offer.issue_id === issue.id);
-  }, [allVendorOffers, issue.id]);
-
-  const sortedVendorOffers = useMemo(() => {
-    return [...vendorOffers].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [vendorOffers]);
-
-  const latestVendorOffer = sortedVendorOffers.length
-    ? sortedVendorOffers[0].price
-    : null;
+  const [searchParams] = useSearchParams();
 
   // Helper function to get severity icon and color
   const getSeverityIcon = (severity: string) => {
@@ -64,26 +39,37 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
 
   return (
     <div
-      onClick={() => navigate(`/marketplace/${issue.id}`)}
-      className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white"
+      onClick={() => {
+        const currentParams = new URLSearchParams(searchParams);
+        const paramsString = currentParams.toString();
+        const url = `/marketplace/${issue.id}${paramsString ? `?${paramsString}` : ''}`;
+        navigate(url);
+      }}
+      className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white h-[350px]"
     >
-      {/* Compact Header Image */}
-      <div className="relative h-[120px] w-full">
+      {/* Image Section - Top 3/4 */}
+      <div className="h-3/4 overflow-hidden relative">
         <ImageComponent
           src={issue.image_url}
           fallback="/images/property_card_holder.jpg"
-          className="w-full h-full object-cover transition-transform duration-300"
+          className="w-full h-full object-cover"
         />
-      </div>
-
-      {/* Details Section */}
-      <div className="p-6">
-        {/* Issue Type and Timestamp */}
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-white bg-blue-500 px-3 py-1 rounded">
+        {/* Issue Type Label - Bottom Left Corner of Image */}
+        <div className="absolute bottom-3 left-3">
+          <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
             {issue.type}
           </span>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
+        </div>
+      </div>
+
+      {/* Content Section - Bottom 1/4 */}
+      <div className="h-1/4 p-4 flex flex-col justify-between">
+        {/* Top Row: Summary and Days aligned horizontally */}
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-medium text-gray-900 text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
+            {issue.summary}
+          </h3>
+          <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
             <FontAwesomeIcon icon={faClock} className="text-gray-400" />
             <span>
               {new Date(issue.created_at).toLocaleDateString() === new Date().toLocaleDateString() 
@@ -93,17 +79,12 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
           </div>
         </div>
 
-        {/* Summary */}
-        <h3 className="font-medium text-gray-900 mb-3 text-sm line-clamp-2 group-hover:underline">
-          {issue.summary}
-        </h3>
-
         {/* Bottom Row: City, Severity, Rating */}
         <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-gray-600">
               <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
-              <span className="font-medium text-gray-700">
+              <span>
                 {address?.city || "Loading..."}
               </span>
             </div>
@@ -115,7 +96,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-yellow-400">★</span>
+            <span className="text-yellow-500">★</span>
             <span className="font-medium text-gray-700">4.97</span>
           </div>
         </div>

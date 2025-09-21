@@ -31,9 +31,24 @@ import VendorDashboard from "./pages/VendorDashboard";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
+import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 
 function App() {
   const location = useLocation();
+  
+  // Get page title based on current route
+  const getPageTitle = (pathname: string): string => {
+    const pathMap: Record<string, string> = {
+      '/': 'Dashboard',
+      '/dashboard': 'Dashboard',
+      '/marketplace': 'Marketplace',
+      '/listings': 'Listings',
+      '/reports': 'Reports',
+      '/issues': 'Issues',
+      '/pricing': 'Pricing',
+    };
+    return pathMap[pathname] || 'Dashboard';
+  };
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
 
@@ -154,8 +169,28 @@ function App() {
   };
 
   useEffect(() => {
+    // Initialize prefetch service with dispatch
+    marketplacePrefetchService.initialize(dispatch);
     dispatch(checkAuthState());
   }, [dispatch]);
+
+  // Handle marketplace prefetching - trigger when user is on dashboard
+  useEffect(() => {
+    if (authenticated && user?.id && user?.user_type && userInfo && !loadingUserType) {
+      // User is fully logged in and on dashboard - trigger prefetch if not already running
+      if (!marketplacePrefetchService.isActive()) {
+        setTimeout(() => {
+          marketplacePrefetchService.startPrefetch().catch(error => {
+            console.warn("Marketplace prefetch failed:", error);
+          });
+        }, 2000); // 2 second delay to let dashboard fully load first
+      }
+    } else if (!authenticated) {
+      // User logged out - clean up prefetch
+      marketplacePrefetchService.stopPrefetch();
+      marketplacePrefetchService.clearPrefetchCache();
+    }
+  }, [authenticated, user?.id, user?.user_type, userInfo, loadingUserType]);
 
   // Handle window resize to toggle sidebar visibility
   useEffect(() => {
@@ -197,6 +232,7 @@ function App() {
     fetchUserType();
   }, [user, dispatch]);
 
+
   if (loadingAuthState || loadingUserType) {
     return <Preloader />;
   }
@@ -213,6 +249,7 @@ function App() {
             handleLogout={handleLogout}
             toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             isSidebarOpen={isSidebarOpen}
+            pageTitle={getPageTitle(location.pathname)}
           >
             <Routes>
               <Route
