@@ -65,11 +65,11 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
     >
       {/* Image Section - Top 3/4 */}
       <div className="h-3/4 overflow-hidden relative">
-        <ImageComponent
-          src={currentIssue.image_url}
-          fallback="/images/property_card_holder.jpg"
-          className="w-full h-full object-cover"
-        />
+          <ImageComponent
+            src={currentIssue.image_url || "/images/property_card_holder.jpg"}
+            fallback="/images/property_card_holder.jpg"
+            className="w-full h-full object-cover"
+          />
         
         {/* Issue Count and Type Labels - Bottom Left Corner of Image */}
         <div className="absolute bottom-3 left-3 flex items-center gap-2">

@@ -1,5 +1,5 @@
 import { AppDispatch } from '../store/store';
-import { api } from '../features/api/apiSlice';
+import { issuesApi } from '../features/api/issuesApi';
 
 /**
  * Marketplace Prefetch Service
@@ -114,7 +114,7 @@ class MarketplacePrefetchService {
 
     // Fetch first page to get total count
     const firstPageResult = await this.dispatch(
-      api.endpoints.getPaginatedIssues.initiate({
+      issuesApi.endpoints.getPaginatedIssues.initiate({
         offset: 0,
         limit,
         search: '',
@@ -141,7 +141,7 @@ class MarketplacePrefetchService {
       offset += limit;
       
       const pageResult = await this.dispatch(
-        api.endpoints.getPaginatedIssues.initiate({
+        issuesApi.endpoints.getPaginatedIssues.initiate({
           offset,
           limit,
           search: '',

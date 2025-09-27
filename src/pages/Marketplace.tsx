@@ -93,6 +93,7 @@ const Marketplace: React.FC = () => {
     skip: shouldUsePrefetch && !!prefetchedData
   });
 
+
   // Separate API call to get ALL issues for dropdown options (without city/state filters)
   const { data: allIssuesData } = useGetPaginatedIssuesQuery({
     offset: 0,
@@ -119,7 +120,7 @@ const Marketplace: React.FC = () => {
     if (!selectedType) return rawIssues;
     
     const typeVariations = getTypeVariations(selectedType);
-    return rawIssues.filter(issue => {
+    return rawIssues.filter((issue: IssueType) => {
       const issueType = issue.type?.toLowerCase() || '';
       return typeVariations.some(variation => 
         issueType.includes(variation.toLowerCase()) || 
@@ -149,17 +150,6 @@ const Marketplace: React.FC = () => {
     ? filteredIssues.length  // Use filtered count when type filtering is applied
     : (prefetchedData?.total_filtered?.count || data?.total_filtered?.count || 0);
 
-  // Fetch addresses for ALL issues (for dropdown options)
-  useEffect(() => {
-    if (allIssuesData?.issues?.length > 0) {
-      const issueIds = allIssuesData.issues.map((issue) => issue.id);
-      getAddressesByIssueIds(issueIds)
-        .unwrap()
-        .then(setAddresses)
-        .catch((err) => console.error("Error fetching addresses:", err));
-    }
-  }, [allIssuesData?.issues, getAddressesByIssueIds]);
-
   // Create address map for easy lookup
   const addressMap = useMemo(() => {
     return addresses.reduce((acc, addr) => {
@@ -168,45 +158,77 @@ const Marketplace: React.FC = () => {
     }, {} as Record<number, IssueAddress>);
   }, [addresses]);
 
-  // Extract unique cities and states from address data
-  const uniqueCities = useMemo(() => {
-    return [...new Set(addresses.map((addr) => addr.city).filter(Boolean))].sort();
-  }, [addresses]);
+  // Fetch addresses for ALL issues (for dropdown options)
+  useEffect(() => {
+    if (allIssuesData?.issues && allIssuesData.issues.length > 0) {
+      const issueIds = allIssuesData.issues.map((issue) => issue.id);
+      getAddressesByIssueIds(issueIds)
+        .unwrap()
+        .then(setAddresses)
+        .catch((err) => console.error("Error fetching addresses:", err));
+    }
+  }, [allIssuesData?.issues, getAddressesByIssueIds]);
 
-  const uniqueStates = useMemo(() => {
-    return [...new Set(addresses.map((addr) => addr.state).filter(Boolean))].sort();
-  }, [addresses]);
+
+  // Extract unique cities and states from address data
+  // When type is selected, only show cities/states that have issues of that type
+  const uniqueCities: string[] = useMemo(() => {
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.city).filter(Boolean))].sort() as string[];
+  }, [addresses, selectedType, filteredIssues, addressMap]);
+
+  const uniqueStates: string[] = useMemo(() => {
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.state).filter(Boolean))].sort() as string[];
+  }, [addresses, selectedType, filteredIssues, addressMap]);
 
   // Filter cities based on selected state (for cascading dropdown)
-  const filteredCities = useMemo(() => {
+  const filteredCities: string[] = useMemo(() => {
     if (!selectedProvince) {
       return uniqueCities; // Show all cities if no state selected
     }
     
-    const citiesInState = addresses
-      .filter((addr) => addr.state === selectedProvince)
-      .map((addr) => addr.city)
+    // Use contextually relevant addresses (filtered by type if type is selected)
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    const citiesInState = relevantAddresses
+      .filter((addr: IssueAddress) => addr.state === selectedProvince)
+      .map((addr: IssueAddress) => addr.city)
       .filter(Boolean);
     
-    return [...new Set(citiesInState)].sort();
-  }, [uniqueCities, addresses, selectedProvince]);
+    return [...new Set(citiesInState)].sort() as string[];
+  }, [uniqueCities, addresses, selectedProvince, selectedType, filteredIssues, addressMap]);
 
   // Create a mapping of city to state for auto-selecting state when city is chosen
   const cityToStateMap = useMemo(() => {
     const map: Record<string, string> = {};
-    addresses.forEach((addr) => {
+    
+    // Use contextually relevant addresses (filtered by type if type is selected)
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    relevantAddresses.forEach((addr: IssueAddress) => {
       if (addr.city && addr.state) {
         map[addr.city] = addr.state;
       }
     });
     return map;
-  }, [addresses]);
+  }, [addresses, selectedType, filteredIssues, addressMap]);
 
   // Group issues by address when grouping is enabled (works with filtered issues)
-  const groupedIssues = useMemo(() => {
+  const groupedIssues: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
     if (!groupByAddress || addresses.length === 0) return [];
 
-    const groups = filteredIssues.reduce((acc, issue) => {
+    const groups = filteredIssues.reduce((acc: Record<string, { address: IssueAddress; issues: IssueType[] }>, issue: IssueType) => {
       const address = addressMap[issue.id];
       if (!address) return acc;
 
@@ -230,7 +252,7 @@ const Marketplace: React.FC = () => {
     : Math.ceil(totalItems / itemsPerPage);
 
   // For grouped view, paginate the groups client-side
-  const paginatedGroups = useMemo(() => {
+  const paginatedGroups: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
     if (!groupByAddress) return groupedIssues;
     
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -386,9 +408,9 @@ const Marketplace: React.FC = () => {
                 setCurrentPage(1);
               }}
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
-                >
-                  <option value="">All Cities</option>
-                  {filteredCities.map((city) => (
+            >
+              <option value="">All Cities</option>
+                  {filteredCities.map((city: string) => (
                 <option key={city} value={city}>
                   {city}
                 </option>
@@ -493,7 +515,7 @@ const Marketplace: React.FC = () => {
                     issues={group.issues}
                   />
               ))
-            : issues.map((issue) => (
+            : issues.map((issue: IssueType) => (
                   <IssueItem
                     key={issue.id}
                     issue={issue}
