@@ -10,6 +10,7 @@ import {
   faExclamationCircle,
   faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
+import { formatRelativeTime } from "../utils/dateUtils";
 
 interface IssueItemProps {
   issue: IssueType;
@@ -72,9 +73,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
           <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
             <FontAwesomeIcon icon={faClock} className="text-gray-400" />
             <span>
-              {new Date(issue.created_at).toLocaleDateString() === new Date().toLocaleDateString() 
-                ? 'Today'
-                : `${Math.floor((new Date().getTime() - new Date(issue.created_at).getTime()) / (1000 * 60 * 60 * 24))} Days ago`}
+              {formatRelativeTime(issue.created_at)}
             </span>
           </div>
         </div>
