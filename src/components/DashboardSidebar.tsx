@@ -44,7 +44,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     >
       <button
         type="button"
-        className="lg:hidden absolute top-1.5 right-[0.625rem] inline-flex items-center justify-center h-7 w-7 rounded-full border border-gray-300 mt-4"
+        className="absolute top-[22px] right-4 inline-flex items-center justify-center h-7 w-7 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors z-10"
         onClick={toggleSidebar}
       >
         <FontAwesomeIcon icon={faClose} />

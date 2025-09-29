@@ -5,12 +5,18 @@ export const reportsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getReports: builder.query<ReportType[], void>({
       query: () => "reports/",
+      providesTags: ["Reports"],
     }),
     getReportById: builder.query<ReportType, number>({
       query: (id) => `reports/${id}`,
+      providesTags: (_, __, id) => [{ type: "Reports", id }],
     }),
     getReportsByUserId: builder.query<ReportType[], number>({
       query: (userId) => `reports/user/${userId}`,
+      providesTags: (result, error, userId) => [
+        { type: "Reports", id: `USER_${userId}` },
+        ...(result || []).map((report) => ({ type: "Reports" as const, id: report.id }))
+      ],
     }),
     createReport: builder.mutation<ReportType, Partial<ReportType>>({
       query: (newReport) => ({
@@ -18,6 +24,7 @@ export const reportsApi = api.injectEndpoints({
         method: "POST",
         body: newReport,
       }),
+      invalidatesTags: ["Reports"],
     }),
     uploadReportFile: builder.mutation<any, FormData>({
       query: (formData) => ({
@@ -25,6 +32,7 @@ export const reportsApi = api.injectEndpoints({
         method: "POST",
         body: formData,
       }),
+      invalidatesTags: ["Reports", "Issues"],
     }),
   }),
 });

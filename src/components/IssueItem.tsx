@@ -1,98 +1,105 @@
-import React, { useMemo } from "react";
-import { IssueAddress, IssueType, Vendor } from "../types";
+import React from "react";
+import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
-import { useNavigate } from "react-router-dom";
-import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { 
+  faMapMarkerAlt, 
+  faExclamationTriangle, 
+  faClock,
+  faExclamationCircle,
+  faInfoCircle
+} from "@fortawesome/free-solid-svg-icons";
 
 interface IssueItemProps {
   issue: IssueType;
-  vendor?: Vendor;
   userType?: string;
   address?: IssueAddress;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue, userType, address }) => {
-  const vendorId = useSelector((state: RootState) => state.auth.user?.id);
-
-  const { data: allVendorOffers = [], isLoading: offerLoading } =
-    useGetOffersByVendorIdQuery(vendorId || "", {
-      skip: !vendorId || userType !== "vendor",
-    });
-
+const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const vendorOffers = useMemo(() => {
-    return allVendorOffers.filter((offer) => offer.issue_id === issue.id);
-  }, [allVendorOffers, issue.id]);
+  // Helper function to get severity icon and color
+  const getSeverityIcon = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'high':
+        return { icon: faExclamationTriangle, color: 'text-red-500' };
+      case 'medium':
+        return { icon: faExclamationCircle, color: 'text-orange-500' };
+      case 'low':
+        return { icon: faInfoCircle, color: 'text-blue-500' };
+      default:
+        return { icon: faExclamationCircle, color: 'text-orange-500' };
+    }
+  };
 
-  const sortedVendorOffers = useMemo(() => {
-    return [...vendorOffers].sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [vendorOffers]);
-
-  const latestVendorOffer = sortedVendorOffers.length
-    ? sortedVendorOffers[0].price
-    : null;
+  const severityConfig = getSeverityIcon(issue.severity);
 
   return (
     <div
-      onClick={() => navigate(`/marketplace/${issue.id}`)}
-      className="group cursor-pointer border border-gray-300 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white max-w-[381px] min-w-[242px]"
+      onClick={() => {
+        const currentParams = new URLSearchParams(searchParams);
+        const paramsString = currentParams.toString();
+        const url = `/marketplace/${issue.id}${paramsString ? `?${paramsString}` : ''}`;
+        navigate(url);
+      }}
+      className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white h-[350px]"
     >
-      {/* Image Section */}
-      <div className="relative h-[240px] w-full">
+      {/* Image Section - Top 3/4 */}
+      <div className="h-3/4 overflow-hidden relative">
         <ImageComponent
-          src={issue.image_url}
+          src={issue.image_url || "/images/property_card_holder.jpg"}
           fallback="/images/property_card_holder.jpg"
-          className="w-full h-full object-cover transition-transform duration-300"
+          className="w-full h-full object-cover"
         />
+        {/* Issue Type Label - Bottom Left Corner of Image */}
+        <div className="absolute bottom-3 left-3">
+          <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
+            {issue.type}
+          </span>
+        </div>
       </div>
 
-      {/* Details Section */}
-      <div className="p-3">
-        {/* Issue Type */}
-        <span className="text-sm font-semibold text-blue-600 bg-blue-100 px-2 py-1 rounded">
-          {issue.type}
-        </span>
+      {/* Content Section - Bottom 1/4 */}
+      <div className="h-1/4 p-4 flex flex-col justify-between">
+        {/* Top Row: Summary and Days aligned horizontally */}
+        <div className="flex items-start justify-between mb-2">
+          <h3 className="font-medium text-gray-900 text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
+            {issue.summary}
+          </h3>
+          <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+            <FontAwesomeIcon icon={faClock} className="text-gray-400" />
+            <span>
+              {new Date(issue.created_at).toLocaleDateString() === new Date().toLocaleDateString() 
+                ? 'Today'
+                : `${Math.floor((new Date().getTime() - new Date(issue.created_at).getTime()) / (1000 * 60 * 60 * 24))} Days ago`}
+            </span>
+          </div>
+        </div>
 
-        {/* Cost */}
-        <p className="text-lg font-semibold text-gray-900 mt-2 group-hover:underline">
-          {offerLoading ? (
-            "Loading offer..."
-          ) : userType === "vendor" ? (
-            // VENDOR: show only their own latest offer
-            latestVendorOffer !== null ? (
-              <>
-                Your Offer: $
-                {new Intl.NumberFormat("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                }).format(latestVendorOffer)}
-              </>
-            ) : (
-              "No offers from you yet"
-            )
-          ) : (
-            // For other user types (e.g. not logged in) you can decide
-            "No offers to display"
-          )}
-        </p>
-
-        {/* Summary */}
-        <p className="text-gray-800 text-sm line-clamp-2 group-hover:underline">
-          {issue.summary}
-        </p>
-
-        {/* Location */}
-        <p className="text-gray-600 text-xs group-hover:underline">
-          {address
-            ? `${address.address}, ${address.postal_code}`
-            : "Loading address..."}
-        </p>
+        {/* Bottom Row: City, Severity, Rating */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 text-gray-600">
+              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
+              <span>
+                {address?.city || "Loading..."}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
+              <span className="text-gray-600 capitalize">
+                {issue.severity || 'Medium'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-yellow-500">★</span>
+            <span className="font-medium text-gray-700">4.97</span>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ export const issuesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getIssues: builder.query<IssueType[], void>({
       query: () => "issues/",
+      providesTags: ["Issues"],
     }),
     getPaginatedIssues: builder.query<
       { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} },
