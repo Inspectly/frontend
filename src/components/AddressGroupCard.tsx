@@ -11,7 +11,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import GroupedIssuesModal from "./GroupedIssuesModal";
+import { formatRelativeTime } from "../utils/dateUtils";
 
 interface AddressGroupCardProps {
   address: IssueAddress;
@@ -20,8 +21,7 @@ interface AddressGroupCardProps {
 
 const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) => {
   const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const currentIssue = issues[currentIssueIndex];
 
@@ -52,13 +52,11 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
   };
 
   const handleCardClick = () => {
-    const currentParams = new URLSearchParams(searchParams);
-    const paramsString = currentParams.toString();
-    const url = `/marketplace/${currentIssue.id}${paramsString ? `?${paramsString}` : ''}`;
-    navigate(url);
+    setIsModalOpen(true);
   };
 
   return (
+    <>
     <div
       onClick={handleCardClick}
       className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white h-[350px]"
@@ -71,14 +69,59 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
             className="w-full h-full object-cover"
           />
         
-        {/* Issue Count and Type Labels - Bottom Left Corner of Image */}
+        {/* Issue Type and Count Labels - Bottom Left Corner of Image */}
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
-          <div className="bg-blue-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm shadow-lg">
+          <div className="relative group">
+            <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg flex items-center gap-1">
+              {(() => {
+                const uniqueTypes = [...new Set(issues.map(issue => issue.type))];
+                return uniqueTypes.length > 1 ? 'Mixed Types' : currentIssue.type;
+              })()}
+              {(() => {
+                const uniqueTypes = [...new Set(issues.map(issue => issue.type))];
+                return uniqueTypes.length > 1 ? (
+                  <span className="text-white bg-white/20 rounded-full w-4 h-4 flex items-center justify-center text-xs font-bold">i</span>
+                ) : null;
+              })()}
+            </span>
+            
+            {/* Tooltip for Mixed Types */}
+            {(() => {
+              const uniqueTypes = [...new Set(issues.map(issue => issue.type))];
+              if (uniqueTypes.length > 1) {
+                const typeCounts = issues.reduce((acc, issue) => {
+                  acc[issue.type] = (acc[issue.type] || 0) + 1;
+                  return acc;
+                }, {} as Record<string, number>);
+                
+                return (
+                  <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                    {(() => {
+                      const typeEntries = Object.entries(typeCounts)
+                        .sort(([,a], [,b]) => b - a); // Sort by count (highest first)
+                      
+                      const maxTypesToShow = 3;
+                      const visibleTypes = typeEntries.slice(0, maxTypesToShow);
+                      const remainingCount = typeEntries.length - maxTypesToShow;
+                      
+                      const visibleText = visibleTypes
+                        .map(([type, count]) => `${type} (${count})`)
+                        .join(', ');
+                      
+                      return remainingCount > 0 
+                        ? `${visibleText} + ${remainingCount} more`
+                        : visibleText;
+                    })()}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+          
+          <div className="bg-blue-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
             {issues.length} Issue{issues.length > 1 ? 's' : ''}
           </div>
-          <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
-            {currentIssue.type}
-          </span>
         </div>
 
         {/* Navigation Controls - Center of Image (only if multiple issues) */}
@@ -120,9 +163,7 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
           <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
             <FontAwesomeIcon icon={faClock} className="text-gray-400" />
             <span>
-              {new Date(currentIssue.created_at).toLocaleDateString() === new Date().toLocaleDateString() 
-                ? 'Today'
-                : `${Math.floor((new Date().getTime() - new Date(currentIssue.created_at).getTime()) / (1000 * 60 * 60 * 24))} Days ago`}
+              {formatRelativeTime(currentIssue.created_at)}
             </span>
           </div>
         </div>
@@ -150,6 +191,15 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
         </div>
       </div>
     </div>
+
+    {/* Grouped Issues Modal */}
+    <GroupedIssuesModal
+      address={address}
+      issues={issues}
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+    />
+  </>
   );
 };
 
