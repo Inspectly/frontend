@@ -1,9 +1,13 @@
-// src/pages/ReportReviewPage.tsx
-import { useParams, Link } from "react-router-dom";
+
+import {
+  useGetReportByIdQuery,
+  useUpdateReportMutation,
+} from "../features/api/reportsApi";
+
+import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faArrowLeft,
   faWrench,
   faBolt,
   faBuilding,
@@ -18,20 +22,22 @@ import {
   faHammer,
   faLeaf,
   faQuestionCircle,
-  faPlus,
-  faCheck,
-  faXmark,
-  faCircle,
+  faListCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
   useCreateIssueMutation,
+  useDeleteIssueMutation,
 } from "../features/api/issuesApi";
 
-import { IssueType } from "../types";
-import IssueImageManager, { IssueImage, ReportImage } from "../components/IssueImageManager";
+import { IssueStatus, IssueType, statusMapping } from "../types";
+import { IssueImage, ReportImage } from "../components/IssueImageManager";
+import ReviewIssueEditor from "../components/ReviewIssueEditor";
+import ReviewSidebar from "../components/ReviewSidebar";
+
+/* ---------------- helpers & constants ---------------- */
 
 type RouteParams = { listingId?: string; reportId?: string };
 
@@ -98,10 +104,15 @@ function mapUiSeverityToServer(s?: UiSeverity | string): string {
   return "None";
 }
 
-/** Build a FULL Issue body for PUT by merging original + patch */
+function statusToApi(status: string): string {
+  if (status.startsWith("Status.")) {
+    return statusMapping[status as IssueStatus] || "open";
+  }
+  return status; // already in simple format
+}
+
 function buildIssuePutBody(original: IssueType, patch: Partial<IssueType>) {
   const merged: any = {
-    id: original.id,
     report_id: (patch as any).report_id ?? (original as any).report_id,
     vendor_id: (patch as any).vendor_id ?? (original as any).vendor_id ?? null,
 
@@ -113,7 +124,9 @@ function buildIssuePutBody(original: IssueType, patch: Partial<IssueType>) {
       (patch as any).severity ?? mapServerSeverityToUi((original as any).severity)
     ),
 
-    status: (patch as any).status ?? (original as any).status ?? "open",
+    // Convert status to API format (remove Status. prefix)
+    status: statusToApi((patch as any).status ?? (original as any).status ?? "open"),
+
     active:
       typeof (patch as any).active === "boolean"
         ? (patch as any).active
@@ -133,10 +146,25 @@ function buildIssuePutBody(original: IssueType, patch: Partial<IssueType>) {
 
   if (merged.images === undefined) delete merged.images;
 
-  return merged as IssueType;
+  // Add the ID back for RTK Query URL building
+  return { ...merged, id: original.id } as IssueType;
 }
 
-/** Lightweight modal */
+function buildReportPutBody(r: any, status: "not_reviewed" | "in_review" | "completed") {
+  if (!r) return null;
+  return {
+    id: r.id,              
+    user_id: r.user_id,
+    listing_id: r.listing_id,
+    aws_link: r.aws_link ?? "",
+    name: r.name ?? "",
+    review_status: status,
+  };
+}
+
+
+/* ----------------- lightweight modal ----------------- */
+
 function Modal({
   open,
   title,
@@ -190,8 +218,17 @@ function Modal({
   );
 }
 
+/* -------------------- page component -------------------- */
+
 export default function ReportReviewPage() {
+  const navigate = useNavigate();
   const { listingId, reportId } = useParams<RouteParams>();
+
+  const { data: report } = useGetReportByIdQuery(Number(reportId), {
+    skip: !reportId,
+  });
+
+
   const {
     data: issues = [],
     isLoading,
@@ -201,6 +238,9 @@ export default function ReportReviewPage() {
 
   const [updateIssue] = useUpdateIssueMutation();
   const [createIssue] = useCreateIssueMutation();
+  const [deleteIssue] = useDeleteIssueMutation();
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [updateReport] = useUpdateReportMutation();
 
   const reportIssues: IssueType[] = useMemo(() => {
     if (!reportId) return [];
@@ -210,6 +250,14 @@ export default function ReportReviewPage() {
   }, [issues, reportId]);
 
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
+
+  const allReviewed = useMemo(
+    () =>
+      reportIssues.length > 0 &&
+      reportIssues.every((i) => (i as any).review_status === "completed"),
+    [reportIssues]
+  );
+
   useEffect(() => {
     setSelectedIssueId((prev) =>
       prev && reportIssues.some((i) => i.id === prev)
@@ -222,6 +270,17 @@ export default function ReportReviewPage() {
     () => reportIssues.find((i) => i.id === selectedIssueId) ?? null,
     [reportIssues, selectedIssueId]
   );
+
+  useEffect(() => {
+    if (!report) return;
+    const current = String(report.review_status || "").toLowerCase();
+    if (current === "not_reviewed") {
+      const body = buildReportPutBody(report, "in_review");
+      if (body) {
+        updateReport(body as any).unwrap().catch(() => {});
+      }
+    }
+  }, [report, updateReport]);
 
   // Build report-wide image pool (distinct URLs)
   const reportImagePool: ReportImage[] = useMemo(() => {
@@ -250,29 +309,26 @@ export default function ReportReviewPage() {
 
   // --- Add Issue Modal state ---
   const [isAddIssueModalOpen, setIsAddIssueModalOpen] = useState(false);
+  const initialForm = {
+    type: "",
+    description: "",
+    summary: "",
+    severity: "",
+    active: true,
+  };
   const [formData, setFormData] = useState<{
     type: string;
     description: string;
     summary: string;
     severity: string; // ui: "low" | "medium" | "high"
     active: boolean;
-  }>({
-    type: "",
-    description: "",
-    summary: "",
-    severity: "",
-    active: true,
-  });
+  }>(initialForm);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleModalClose = () => {
     setIsAddIssueModalOpen(false);
-    setFormData({
-      type: "",
-      description: "",
-      summary: "",
-      severity: "",
-      active: true,
-    });
+    setFormData(initialForm);
+    setIsCreating(false);
   };
 
   const handleInputChange = (
@@ -285,6 +341,7 @@ export default function ReportReviewPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsCreating(true);
       const created = await createIssue({
         report_id: Number(reportId),
         type: formData.type,
@@ -292,19 +349,23 @@ export default function ReportReviewPage() {
         summary: formData.summary,
         severity: mapUiSeverityToServer(formData.severity as UiSeverity),
         active: formData.active,
-        status: "open",          
-        review_status: "completed", 
-        image_url: "",           
+        status: "open",
+        review_status: "completed",
+        image_url: "",
       } as any).unwrap();
+
+      // reset the form whether or not we close the modal
+      setFormData(initialForm);
 
       await refetch();
       setIsAddIssueModalOpen(false);
-
       if (created?.id && String(created.report_id) === String(reportId)) {
         setSelectedIssueId(created.id);
       }
     } catch (err) {
       console.error("Failed to create issue:", err);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -329,9 +390,12 @@ export default function ReportReviewPage() {
 
     if (rs === "not_reviewed") {
       const body = buildIssuePutBody(selectedIssue, { review_status: "in_review" } as any);
-      updateIssue(body).unwrap().catch((e) => console.error("Failed to set in_review:", e));
+      updateIssue(body)
+        .unwrap()
+        .then(() => refetch())
+        .catch((e) => console.error("Failed to set in_review:", e));
     }
-  }, [selectedIssue, updateIssue]);
+  }, [selectedIssue, updateIssue, refetch]);
 
   if (isLoading) return <div className="p-6">Loading…</div>;
   if (isError) return <div className="p-6">Failed to load issues.</div>;
@@ -340,182 +404,58 @@ export default function ReportReviewPage() {
     <div className="bg-neutral-50">
       {/* Header / breadcrumb */}
       <header className="sticky top-0 z-10 bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center gap-3">
-          <Link
-            to={`/listings/${listingId}`}
-            className="text-blue-600 hover:underline flex items-center gap-2"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-            Back to Reports
-          </Link>
-          <span className="text-neutral-400">/</span>
-          <span className="text-neutral-700 font-bold">Reviewing Report</span>
+        <div className="max-w-7xl mx-auto px-4 h-14 flex gap-3 justify-end">
+                  <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
+                    <li className="font-medium">
+                      <a
+                        href="/listings"
+                        className="flex items-center gap-2 hover:text-blue-400"
+                      >
+                        <FontAwesomeIcon icon={faListCheck} className="size-4" />
+                        Listings
+                      </a>
+                    </li>
+                    <li>-</li>
+                    <li className="font-medium">
+                      <a
+                        href={`/listings/${listingId}`}
+                        className="flex items-center gap-2 hover:text-blue-400"
+                      >
+                        Reports
+                      </a>
+                    </li>
+                    <li>-</li>
+                    <li className="font-medium">Review Report</li>
+                  </ul>
         </div>
       </header>
 
       {/* Workspace */}
       <div className="max-w-7xl mx-auto px-4 py-6 flex gap-6">
         {/* Sidebar */}
-        <aside className="w-80 shrink-0 bg-white border rounded-xl h-[calc(100vh-140px)] sticky top-[88px] overflow-hidden flex flex-col">
-          {/* Top bar */}
-          <div className="px-4 py-3 border-b flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold">
-                Issues ({reportIssues.length})
-              </h2>
-              <p className="text-xs text-neutral-500">
-                Select an issue to review & update
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border hover:bg-neutral-50"
-                title="Add Issue"
-                onClick={() => setIsAddIssueModalOpen(true)}
-              >
-                <FontAwesomeIcon color={"blue"} icon={faPlus} />
-              </button>
-            </div>
-          </div>
+        <ReviewSidebar
+          issues={reportIssues}
+          selectedIssueId={selectedIssueId}
+          onSelectIssue={(id) => setSelectedIssueId(id)}
+          onCreateIssueClick={() => setIsAddIssueModalOpen(true)}
+          onAcceptOne={async (issue) => {
+            try {
+              const body = buildIssuePutBody(issue, { review_status: "completed" } as any);
+              await updateIssue(body as any).unwrap();
+              await refetch();
+            } catch (e) {
+              console.error("Mark completed failed:", e);
+            }
+          }}
+          onDeleteOne={(id) => setPendingDeleteIssueId(id)}
+          onAcceptAllClick={() => setAcceptAllOpen(true)}
+          onCompleteClick={() => setCompleteOpen(true)}
+          allReviewed={allReviewed}
+          isCompletingAll={isCompletingAll}
+          completeCount={completeCount}
+          completeErrors={completeErrors}
+        />
 
-          {/* Scrollable items */}
-          <div className="flex-1 overflow-y-auto">
-            {reportIssues.length === 0 ? (
-              <div className="p-4 text-sm text-neutral-600">
-                No issues found for this report.
-              </div>
-            ) : (
-              <ul className="p-2">
-                {reportIssues.map((issue) => {
-                  const active = issue.id === selectedIssueId;
-                  const icon = issueIcons[(issue.type || "").toLowerCase()] || faWrench;
-
-                  return (
-                    <li key={issue.id} className="mb-2">
-                      <div
-                        className={[
-                          "w-full rounded-lg border p-2 transition",
-                          active
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : "hover:bg-neutral-50 border-transparent",
-                        ].join(" ")}
-                      >
-                        {/* Row 1: icon + title + dot */}
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => setSelectedIssueId(issue.id)}
-                            className="shrink-0"
-                            title="Open"
-                          >
-                            <FontAwesomeIcon
-                              icon={icon}
-                              className={active ? "" : "text-neutral-500"}
-                            />
-                          </button>
-
-                          <button
-                            onClick={() => setSelectedIssueId(issue.id)}
-                            className="min-w-0 text-left flex-1"
-                            title="Open"
-                          >
-                            <div className="text-sm font-medium truncate">
-                              {issue.type || "other"}
-                            </div>
-                          </button>
-
-                          {/* Status dot */}
-                          <span
-                            className="inline-flex items-center justify-center w-5 h-5 rounded-full"
-                            title={(issue as any).review_status || "not_reviewed"}
-                          >
-                            <FontAwesomeIcon
-                              icon={faCircle}
-                              className={
-                                (issue as any).review_status === "completed"
-                                  ? "text-green-600"
-                                  : (issue as any).review_status === "in_review"
-                                  ? "text-amber-500"
-                                  : "text-neutral-300"
-                              }
-                            />
-                          </span>
-                        </div>
-
-                        {/* Row 2: summary */}
-                        <div className="text-xs text-neutral-500 truncate">
-                          {snippet(issue.summary)}
-                        </div>
-
-                        {/* Row 3: bottom-right actions */}
-                        <div className="mt-1 flex justify-end">
-                          <div className="ml-2 flex gap-1">
-                            <button
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-md border hover:bg-green-50"
-                              title="Accept issue"
-                              onClick={() => {
-                                const body = buildIssuePutBody(issue, { review_status: "completed" } as any);
-                                updateIssue(body)
-                                  .unwrap()
-                                  .catch((e) => console.error("Mark completed failed:", e));
-                              }}
-                            >
-                              <FontAwesomeIcon icon={faCheck} className="text-green-600" />
-                            </button>
-                            <button
-                              className="inline-flex items-center justify-center w-8 h-8 rounded-md border hover:bg-red-50"
-                              title="Delete issue"
-                              onClick={() => setPendingDeleteIssueId(issue.id)}
-                            >
-                              <FontAwesomeIcon icon={faXmark} className="text-red-600" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* Rigid footer */}
-          <div className="border-t px-4 py-3 flex justify-end gap-2">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-50"
-              title="Accept All"
-              onClick={() => setAcceptAllOpen(true)}
-              disabled={reportIssues.length === 0}
-            >
-              Accept All
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm hover:bg-neutral-50"
-              title="Cancel"
-              onClick={() => console.log("cancel clicked")}
-            >
-              Cancel
-            </button>
-          </div>
-
-          {/* Progress area (shows while Accept All loop runs) */}
-          {isCompletingAll && (
-            <div className="px-4 pb-3 text-xs text-neutral-700">
-              Completing issues… {completeCount}/{reportIssues.length}
-              {completeErrors > 0 && (
-                <span className="text-red-600"> • errors: {completeErrors}</span>
-              )}
-              <div className="mt-1 h-1 w-full bg-neutral-200 rounded">
-                <div
-                  className="h-1 bg-blue-600 rounded"
-                  style={{ width: `${(completeCount / Math.max(1, reportIssues.length)) * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-        </aside>
 
         {/* Main card with locked header & footer, scrollable body */}
         <main className="flex-1">
@@ -542,13 +482,15 @@ export default function ReportReviewPage() {
                     Select an issue from the left to review.
                   </div>
                 ) : (
-                  <IssueEditor
+                  <ReviewIssueEditor
                     key={selectedIssue.id}
                     issue={selectedIssue}
                     reportImages={reportImagePool}
                     saveSignal={saveSignal}
                     resetSignal={resetSignal}
                     updateIssue={updateIssue}
+                    refetch={refetch}
+                    buildIssuePutBody={buildIssuePutBody}
                   />
                 )}
               </div>
@@ -592,7 +534,12 @@ export default function ReportReviewPage() {
           setCompleteCount(0);
           setCompleteErrors(0);
 
-          for (const it of reportIssues) {
+          // only update issues not yet completed
+          const pending = reportIssues.filter(
+            (it) => (it as any).review_status !== "completed"
+          );
+
+          for (const it of pending) {
             try {
               const body = buildIssuePutBody(it, { review_status: "completed" } as any);
               await updateIssue(body as any).unwrap();
@@ -602,10 +549,39 @@ export default function ReportReviewPage() {
             }
           }
 
+          await refetch();
           setTimeout(() => setIsCompletingAll(false), 600);
         }}
         onClose={() => setAcceptAllOpen(false)}
       />
+
+      {/* Complete Modal */}
+      <Modal
+        open={completeOpen}
+        title="Mark Report as Reviewed"
+        body={
+          <p>
+            You’re about to <strong>mark this report as reviewed</strong>. All accepted
+            issues will be published and visible in the report.
+          </p>
+        }
+        confirmText="Complete"
+        onConfirm={async () => {
+          try {
+            const payload = buildReportPutBody(report, "completed");
+            if (payload) {
+              await updateReport(payload as any).unwrap();
+            }
+            navigate(`/listings/${listingId ?? ""}`);
+          } catch (e) {
+            console.error("Failed to mark report completed:", (e as any)?.data ?? e);
+          } finally {
+            await refetch(); // refresh issues view just in case
+          }
+        }}
+        onClose={() => setCompleteOpen(false)}
+      />
+
 
       {/* Add Issue Modal */}
       {isAddIssueModalOpen && (
@@ -627,9 +603,10 @@ export default function ReportReviewPage() {
                 </label>
                 <select
                   name="type"
-                  className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none"
+                  className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none disabled:opacity-60"
                   value={formData.type}
                   required
+                  disabled={isCreating}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -667,10 +644,11 @@ export default function ReportReviewPage() {
                 <input
                   type="text"
                   name="summary"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 disabled:opacity-60"
                   placeholder="Short summary"
                   value={formData.summary}
                   onChange={handleInputChange}
+                  disabled={isCreating}
                   required
                 />
               </div>
@@ -682,10 +660,11 @@ export default function ReportReviewPage() {
                 </label>
                 <textarea
                   name="description"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 disabled:opacity-60"
                   placeholder="Detailed description"
                   value={formData.description}
                   onChange={handleInputChange}
+                  disabled={isCreating}
                   required
                 />
               </div>
@@ -697,9 +676,10 @@ export default function ReportReviewPage() {
                 </label>
                 <select
                   name="severity"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none disabled:opacity-60"
                   value={formData.severity}
                   required
+                  disabled={isCreating}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
@@ -729,7 +709,7 @@ export default function ReportReviewPage() {
                 </div>
               </div>
 
-              {/* Marketplace visibility (new line, same look/feel as review page) */}
+              {/* Marketplace visibility */}
               <div className="col-span-12">
                 <div className="rounded-xl border-2 p-4 bg-blue-50/40 border-blue-200">
                   <div className="flex items-start justify-between gap-4">
@@ -746,6 +726,7 @@ export default function ReportReviewPage() {
                         className="peer sr-only"
                         checked={formData.active}
                         onChange={(e) => setFormData((prev) => ({ ...prev, active: e.target.checked }))}
+                        disabled={isCreating}
                       />
                       <span className="w-10 h-6 bg-neutral-300 rounded-full peer-checked:bg-blue-600 transition relative">
                         <span className="absolute top-0.5 left-0.5 h-5 w-5 bg-white rounded-full transition peer-checked:translate-x-4" />
@@ -762,9 +743,29 @@ export default function ReportReviewPage() {
               <div className="col-span-12">
                 <button
                   type="submit"
-                  className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
+                  disabled={isCreating}
+                  className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600 disabled:opacity-60 inline-flex items-center gap-2"
                 >
-                  Submit
+                  {isCreating ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        ></path>
+                      </svg>
+                      Submitting…
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
                 </button>
               </div>
             </form>
@@ -772,7 +773,7 @@ export default function ReportReviewPage() {
         </div>
       )}
 
-      {/* Delete Issue Dialog (wired later) */}
+      {/* Delete Issue Dialog (wired) */}
       <Modal
         open={pendingDeleteIssueId !== null}
         title="Delete Issue"
@@ -784,307 +785,24 @@ export default function ReportReviewPage() {
         }
         confirmText="Delete"
         danger
-        onConfirm={() => {
-          console.log("Delete issue confirmed (to be wired)", pendingDeleteIssueId);
+        onConfirm={async () => {
+          if (pendingDeleteIssueId == null) return;
+          const idToDelete = pendingDeleteIssueId;
+
+          // choose a fallback selection from the same report BEFORE deleting
+          const remaining = reportIssues.filter((i) => i.id !== idToDelete);
+          const nextSelectedId = remaining[0]?.id ?? null;
+
+          try {
+            await deleteIssue(idToDelete).unwrap();
+            if (selectedIssueId === idToDelete) {
+              setSelectedIssueId(nextSelectedId);
+            }
+          } catch (e) {
+            console.error("Delete failed", e);
+          }
         }}
         onClose={() => setPendingDeleteIssueId(null)}
-      />
-    </div>
-  );
-}
-
-/** Editable Issue card */
-function IssueEditor({
-  issue,
-  reportImages,
-  saveSignal,
-  resetSignal,
-  updateIssue,
-}: {
-  issue: IssueType;
-  reportImages: ReportImage[];
-  saveSignal: number;
-  resetSignal: number;
-  updateIssue: ReturnType<typeof useUpdateIssueMutation>[0];
-}) {
-  type Severity = "low" | "medium" | "high";
-  const SEVERITY_OPTIONS: { value: Severity; label: string }[] = [
-    { value: "low", label: "Low" },
-    { value: "medium", label: "Medium" },
-    { value: "high", label: "High" },
-  ];
-
-  const [summary, setSummary] = useState<string>(issue.summary ?? "");
-  const [description, setDescription] = useState<string>(
-    (issue as any).description ?? ""
-  );
-  const [active, setActive] = useState<boolean>(Boolean((issue as any).active));
-  const [severity, setSeverity] = useState<Severity>(
-    mapServerSeverityToUi((issue as any).severity) as Severity
-  );
-
-  // local confirm dialogs (opened by parent signals)
-  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-
-  // open modals when signals increment
-  const prevSaveSig = useRef(saveSignal);
-  const prevResetSig = useRef(resetSignal);
-  useEffect(() => {
-    if (saveSignal !== prevSaveSig.current) {
-      prevSaveSig.current = saveSignal;
-      setConfirmSaveOpen(true);
-    }
-  }, [saveSignal]);
-  useEffect(() => {
-    if (resetSignal !== prevResetSig.current) {
-      prevResetSig.current = resetSignal;
-      setConfirmResetOpen(true);
-    }
-  }, [resetSignal]);
-
-  // Build initial current images (demo)
-  const initialIssueImages: IssueImage[] = useMemo(() => {
-    const urls: string[] = Array.isArray((issue as any).images)
-      ? ((issue as any).images as string[])
-      : (issue as any).image_url
-      ? [String((issue as any).image_url)]
-      : [];
-    return urls.map((u, idx) => ({
-      issue_image_id: idx + 1,
-      image_id: 1000 + idx + 1,
-      url: u,
-      thumb_url: u,
-      order_index: idx,
-    }));
-  }, [issue]);
-
-  const [currentImages, setCurrentImages] = useState<IssueImage[]>(
-    initialIssueImages
-  );
-
-  const idSeqRef = useRef<number>(currentImages.length + 1);
-  const genLinkId = () => idSeqRef.current++;
-  const genFileId = () => 100000 + idSeqRef.current++;
-
-  const onAttachExisting = async (imageIds: number[]): Promise<IssueImage[]> => {
-    const picked = reportImages.filter((ri) => imageIds.includes(ri.image_id));
-    const newly: IssueImage[] = picked.map((ri) => ({
-      issue_image_id: genLinkId(),
-      image_id: ri.image_id ?? genFileId(),
-      url: ri.url,
-      thumb_url: ri.thumb_url ?? ri.url,
-      order_index: 0,
-    }));
-    setCurrentImages((prev) =>
-      [...prev, ...newly].map((it, i) => ({ ...it, order_index: i }))
-    );
-    return newly;
-  };
-
-  const createdObjectUrlsRef = useRef<string[]>([]);
-  useEffect(() => {
-    return () => {
-      createdObjectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, []);
-
-  const onUploadNew = async (files: File[]): Promise<IssueImage[]> => {
-    const newly: IssueImage[] = files.map((file) => {
-      const url = URL.createObjectURL(file);
-      createdObjectUrlsRef.current.push(url);
-      return {
-        issue_image_id: genLinkId(),
-        image_id: genFileId(),
-        url,
-        thumb_url: url,
-        order_index: 0,
-      };
-    });
-    setCurrentImages((prev) =>
-      [...prev, ...newly].map((it, i) => ({ ...it, order_index: i }))
-    );
-    return newly;
-  };
-
-  const onRemove = async (issueImageId: number): Promise<void> => {
-    setCurrentImages((prev) =>
-      prev
-        .filter((it) => it.issue_image_id !== issueImageId)
-        .map((it, i) => ({ ...it, order_index: i }))
-    );
-  };
-
-  const onReorder = async (orderedIssueImageIds: number[]): Promise<void> => {
-    setCurrentImages((prev) => {
-      const byId = new Map(prev.map((p) => [p.issue_image_id, p]));
-      const next = orderedIssueImageIds
-        .map((id, i) => ({ ...(byId.get(id) as IssueImage), order_index: i }))
-        .filter(Boolean);
-      return next;
-    });
-  };
-
-  // actual save / reset
-  const doSave = async () => {
-    try {
-      const body = buildIssuePutBody(issue, {
-        summary,
-        description,
-        active,
-        severity, // UI -> server mapping inside buildIssuePutBody
-        review_status: "completed",
-      } as any);
-      await updateIssue(body as any).unwrap();
-    } catch (e) {
-      console.error("Save failed", e);
-    }
-  };
-
-  const doReset = () => {
-    setSummary(issue.summary ?? "");
-    setDescription((issue as any).description ?? "");
-    setActive(Boolean((issue as any).active));
-    setSeverity(mapServerSeverityToUi((issue as any).severity) as any);
-    const reset = (Array.isArray((issue as any).images)
-      ? ((issue as any).images as string[])
-      : (issue as any).image_url
-      ? [String((issue as any).image_url)]
-      : []
-    ).map((u, idx) => ({
-      issue_image_id: idx + 1,
-      image_id: 1000 + idx + 1,
-      url: u,
-      thumb_url: u,
-      order_index: idx,
-    })) as IssueImage[];
-    setCurrentImages(reset);
-    idSeqRef.current = reset.length + 1;
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* Type + Severity (inline row) */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-        {/* Type */}
-        <div className="flex-1">
-          <label className="text-sm font-medium text-neutral-700">Type</label>
-          <div className="mt-1 text-sm px-3 py-2 rounded-lg border bg-neutral-50">
-            {issue.type || "other"}
-          </div>
-        </div>
-
-        {/* Severity */}
-        <div className="sm:w-auto">
-          <label htmlFor="severity" className="text-sm font-medium text-neutral-700">
-            Severity
-          </label>
-          <div className="mt-1 relative">
-            <select
-              id="severity"
-              className="block w-40 appearance-none rounded-lg border px-3 py-2 text-sm pr-9"
-              value={severity}
-              onChange={(e) => setSeverity(e.target.value as Severity)}
-            >
-              {SEVERITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-neutral-400">
-              ▾
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div>
-        <label className="text-sm font-medium text-neutral-700">Summary</label>
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-          rows={3}
-          value={summary}
-          onChange={(e) => setSummary(e.target.value)}
-        />
-      </div>
-
-      {/* Description */}
-      <div>
-        <label className="text-sm font-medium text-neutral-700">Description</label>
-        <textarea
-          className="mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-          rows={6}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
-
-      {/* Images */}
-      <div>
-        <label className="text-sm font-medium text-neutral-700">Images</label>
-        <div className="mt-2">
-          <IssueImageManager
-            currentImages={currentImages}
-            reportImages={reportImages}
-            onAttachExisting={onAttachExisting}
-            onUploadNew={onUploadNew}
-            onRemove={onRemove}
-            onReorder={onReorder}
-            heightClassName="h-72 sm:h-80 md:h-96"
-          />
-        </div>
-      </div>
-
-      {/* Visibility (same as your request) */}
-      <div className="rounded-xl border-2 p-4 bg-blue-50/40 border-blue-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h4 className="font-semibold text-blue-900">Marketplace visibility</h4>
-            <p className="text-sm text-blue-800/80 mt-1">
-              If <strong>Active</strong>, this issue will appear in the marketplace
-              for vendors. Turn it off to keep it hidden from vendors.
-            </p>
-          </div>
-          <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-            />
-            <span className="w-10 h-6 bg-neutral-300 rounded-full peer-checked:bg-blue-600 transition relative">
-              <span className="absolute top-0.5 left-0.5 h-5 w-5 bg-white rounded-full transition peer-checked:translate-x-4" />
-            </span>
-            <span className="text-sm font-medium">
-              {active ? "Active" : "Inactive"}
-            </span>
-          </label>
-        </div>
-      </div>
-
-      {/* Modals (triggered by parent) */}
-      <Modal
-        open={confirmSaveOpen}
-        title="Accept & Save Changes"
-        body={
-          <p>
-            You are about to <strong>save</strong> changes for this issue. This cannot be
-            undone and means you are accepting this issue. Proceed?
-          </p>
-        }
-        confirmText="Save Changes"
-        onConfirm={doSave}
-        onClose={() => setConfirmSaveOpen(false)}
-      />
-      <Modal
-        open={confirmResetOpen}
-        title="Reset Issue Changes"
-        body={<p>You are about to reset all unsaved changes for this issue. Continue?</p>}
-        confirmText="Reset"
-        onConfirm={doReset}
-        onClose={() => setConfirmResetOpen(false)}
       />
     </div>
   );

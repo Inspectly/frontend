@@ -1,5 +1,5 @@
 import { api } from "./apiSlice";
-import { ReportType } from "../../types";
+import { ReportType, UpdateReportPutPayload } from "../../types";
 
 export const reportsApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -26,6 +26,15 @@ export const reportsApi = api.injectEndpoints({
         body: formData,
       }),
     }),
+
+
+    updateReport: builder.mutation<ReportType, UpdateReportPutPayload>({
+      query: ({ id, ...full }) => ({
+        url: `reports/${id}`, 
+        method: "PUT",
+        body: full,
+      }),
+    }),
   }),
 });
 
@@ -35,6 +44,7 @@ export const {
   useGetReportsByUserIdQuery,
   useCreateReportMutation,
   useUploadReportFileMutation,
+  useUpdateReportMutation,
 } = reportsApi;
 
 export const { getReportById } = reportsApi.endpoints;

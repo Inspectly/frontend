@@ -1,32 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ReportCard, { ReportStatus } from "./ReportCard";
+import ReportCard, {
+  ReportLite,
+} from "./ReportCard";
 import { useGetTasksByReportIdQuery } from "../features/api/taskApi";
+import { ExtractionStatus, ReportCardMode, ReviewStatus } from "../types";
 
-
-type ReportLite = {
-  id: number;
-  name?: string | null;
-  is_reviewed?: boolean;
+const normalizeTaskStatus = (raw?: string): ExtractionStatus => {
+  if (!raw) return "NOT_STARTED";
+  const core = raw.split(".").pop()?.toUpperCase() ?? raw.toUpperCase();
+  return (["PENDING", "IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
+    ? core
+    : "NOT_STARTED") as ExtractionStatus;
 };
 
 interface Props {
-  report: ReportLite;
+  report: ReportLite & { review_status?: ReviewStatus | null };
   onOpen: () => void;
-  onReview: () => void;
+  onReview: () => void; 
   onRetry?: () => void;
 }
 
-const normalize = (raw?: string): ReportStatus => {
-  if (!raw) return "NOT_STARTED";
-  const core = raw.includes(".") ? raw.split(".")[1] : raw; // "Status.IN_PROGRESS" -> "IN_PROGRESS"
-  if (core === "PENDING" || core === "IN_PROGRESS" || core === "FAILED" || core === "COMPLETED") {
-    return core as ReportStatus;
-  }
-  return "NOT_STARTED";
-};
-
-const ReportCardWithStatus: React.FC<Props> = ({ report, onOpen, onReview, onRetry }) => {
-  // Poll while active; stop when terminal or reviewed.
+const ReportCardWithStatus: React.FC<Props> = ({
+  report,
+  onOpen,
+  onReview,
+  onRetry,
+}) => {
   const [stopPolling, setStopPolling] = useState(false);
 
   const { data: tasks = [] } = useGetTasksByReportIdQuery(report.id, {
@@ -35,26 +34,41 @@ const ReportCardWithStatus: React.FC<Props> = ({ report, onOpen, onReview, onRet
     refetchOnMountOrArgChange: true,
   });
 
-  const latestStatus: ReportStatus = useMemo(() => {
-    if (!tasks.length) return "NOT_STARTED";
+  const extractionStatus: ExtractionStatus = useMemo(() => {
+    if (!tasks.length) return "PENDING"; // treat no tasks yet as pending
     const latest = tasks
       .slice()
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-    return normalize(latest?.status);
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+    return normalizeTaskStatus(latest?.status);
   }, [tasks]);
 
-  // Stop polling when terminal or reviewed
   useEffect(() => {
-    if (latestStatus === "COMPLETED" || latestStatus === "FAILED" || report.is_reviewed) {
+    console.log(report)
+    if (extractionStatus === "COMPLETED" || extractionStatus === "FAILED") {
       setStopPolling(true);
     }
-  }, [latestStatus, report.is_reviewed]);
+  }, [extractionStatus]);
+
+  const reviewStatus: ReviewStatus = (report.review_status ??
+    "not_reviewed") as ReviewStatus;
+
+  let mode: ReportCardMode = "NONE";
+  if (reviewStatus === "completed") mode = "VIEW";
+  else if (reviewStatus === "in_review") mode = "CONTINUE_REVIEW";
+  else if (
+    reviewStatus === "not_reviewed" &&
+    extractionStatus === "COMPLETED"
+  )
+    mode = "REVIEW";
 
   return (
     <ReportCard
       report={report}
-      status={latestStatus}
-      isReviewed={!!report.is_reviewed}
+      mode={mode}
+      extractionStatus={extractionStatus}
       onOpen={onOpen}
       onReview={onReview}
       onRetry={onRetry}
