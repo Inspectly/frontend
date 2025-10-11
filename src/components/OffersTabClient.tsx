@@ -46,30 +46,26 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
   });
 
   const handleStatusChange = async (offer: IssueOffer, action: string) => {
-    const status =
-      action === "Accept"
-        ? "accepted"
-        : action === "Reject"
-        ? "rejected"
-        : "received";
-
-    try {
-      await updateOffer({
-        id: offer.id,
-        issue_id: offer.issue_id,
-        vendor_id: offer.vendor_id,
-        price: offer.price,
-        status,
-        user_last_viewed: new Date().toISOString(),
-        comment_vendor: offer.comment_vendor || "",
-        comment_client: offer.comment_client || "",
-      }).unwrap();
-    } catch (err) {
-      console.error("Failed to update offer", err);
-    }
 
     if (action === "Accept") {
       if (onOfferAccepted) onOfferAccepted(offer);
+    }
+    else if (action==="Reject") {
+      const updated_status = "rejected"
+      try {
+            await updateOffer({
+              id: offer.id,
+              issue_id: offer.issue_id,
+              vendor_id: offer.vendor_id,
+              price: offer.price,
+              status: updated_status,
+              user_last_viewed: new Date().toISOString(),
+              comment_vendor: offer.comment_vendor || "",
+              comment_client: offer.comment_client || "",
+            }).unwrap();
+          } catch (err) {
+            console.error("Failed to update offer", err);
+          }
     }
   };
 
