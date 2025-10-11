@@ -1,294 +1,582 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
   faMagnifyingGlass,
+  faAngleDoubleLeft,
+  faAngleDoubleRight,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   useGetAddressesByIssueIdsMutation,
   useGetPaginatedIssuesQuery,
 } from "../features/api/issuesApi";
 import IssueItem from "../components/IssueItem";
-import { IssueAddress } from "../types";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
-import { useSelector } from "react-redux";
-import { RootState } from "../store/store";
+import AddressGroupCard from "../components/AddressGroupCard";
+import { IssueAddress, IssueType } from "../types";
+import { marketplacePrefetchService } from "../services/marketplacePrefetchService";
 
 const Marketplace: React.FC = () => {
-  const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const userType = useSelector(
-    (state: RootState) => state.auth.user?.user_type
-  );
-
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(userId || "", {
-    skip: !userId || userType !== "vendor",
-  });
-
-  const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
-
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-  const [selectedCity, setSelectedCity] = useState("");
-  const [selectedState, setSelectedState] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState("");
-
-  const offset = (currentPage - 1) * itemsPerPage;
-
-  const { data, error, isLoading } = useGetPaginatedIssuesQuery({
-    offset,
-    limit: itemsPerPage,
-    search: searchQuery,
-    city: selectedCity,
-    state: selectedState,
-    type: selectedType,
-    vendor_assigned: false, // Only fetch issues assigned to vendors
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [groupByAddress, setGroupByAddress] = useState(() => {
+    return searchParams.get('grouped') === 'true';
   });
 
-  const issues = data?.issues || [];
-  const totalItems = data?.total_filtered?.count || 0;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const itemsPerPage = 12;
+  const maxFetchLimit = 50000; // Configurable limit for grouping - can be adjusted based on system capacity
 
-  const [addresses, setAddresses] = useState<Record<number, IssueAddress>>({});
-  const [addressesLoaded, setAddressesLoaded] = useState(false);
-
+  // Update URL when groupByAddress changes
   useEffect(() => {
-    if (!issues || issues.length === 0) return;
+    const newParams = new URLSearchParams(searchParams);
+    if (groupByAddress) {
+      newParams.set('grouped', 'true');
+    } else {
+      newParams.delete('grouped');
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [groupByAddress, searchParams, setSearchParams]);
 
-    const fetchAddresses = async () => {
-      try {
-        const issueIds = issues.map((issue) => issue.id);
-        const addressList = await getAddressesByIssueIds(issueIds).unwrap();
-        const addressMap = Object.fromEntries(
-          addressList.map((a) => [a.issue_id, a])
-        );
-        setAddresses(addressMap);
-        setAddressesLoaded(true);
-      } catch (err) {
-        console.error("Failed to fetch batch addresses", err);
-      }
+  // Type mapping to handle variations in issue types
+  const getTypeVariations = useCallback((selectedType: string): string[] => {
+    const typeMap: Record<string, string[]> = {
+      electrical: ['electrical', 'electrician', 'electric', 'wiring', 'outlet', 'circuit'],
+      plumbing: ['plumbing', 'plumber', 'pipe', 'pipes', 'water', 'drain', 'faucet', 'toilet'],
+      hvac: ['hvac', 'heating', 'cooling', 'furnace', 'ac', 'air conditioning', 'ventilation'],
+      roofing: ['roofing', 'roof', 'roofer', 'shingle', 'shingles', 'gutter', 'gutters'],
+      flooring: ['flooring', 'floor', 'floors', 'carpet', 'hardwood', 'tile', 'laminate'],
+      painting: ['painting', 'paint', 'painter', 'wall', 'walls', 'interior', 'exterior'],
+      landscaping: ['landscaping', 'landscape', 'landscaper', 'yard', 'garden', 'lawn', 'tree'],
+      structural: ['structural', 'structure', 'foundation', 'beam', 'support', 'framing', 'load bearing'],
+      'dry wall': ['dry wall', 'drywall', 'wall', 'sheetrock', 'gypsum', 'patching', 'texture'],
+      carpentry: ['carpentry', 'carpenter', 'wood', 'trim', 'cabinet', 'door', 'window', 'molding'],
+      other: ['other', 'misc', 'miscellaneous', 'general', 'repair', 'maintenance']
     };
-
-    fetchAddresses();
-  }, [issues]);
-
-  const isDataReady = !isLoading && issues && addressesLoaded;
-
-  // Extract unique city, province, and types
-  const uniqueCity = [...new Set(Object.values(addresses).map((a) => a.city))];
-  const uniqueState = [
-    ...new Set(Object.values(addresses).map((a) => a.state)),
-  ];
-  const uniqueTypes = [...new Set(issues?.map((issue) => issue?.type))];
-
-  // Adjust `itemsPerPage` dynamically based on the number of columns
-  useEffect(() => {
-    const updateItemsPerPage = () => {
-      const width = window.innerWidth;
-      let columns = 1; // Default to 1 column
-
-      if (width >= 640) columns = 2; // `sm:grid-cols-2`
-      if (width >= 768) columns = 3; // `md:grid-cols-3`
-      if (width >= 1536) columns = 4; // `2xl:grid-cols-4`
-
-      const rows = 4; // Always display at least 4 rows
-      setItemsPerPage(columns * rows);
-    };
-
-    updateItemsPerPage();
-    window.addEventListener("resize", updateItemsPerPage);
-
-    return () => {
-      window.removeEventListener("resize", updateItemsPerPage);
-    };
+    
+    return typeMap[selectedType] || [selectedType];
   }, []);
 
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
+  // Determine API parameters - fetch all available data when grouping or type filtering
+  const apiParams = useMemo(() => {
+    return {
+      offset: (groupByAddress || selectedType) ? 0 : (currentPage - 1) * itemsPerPage,
+      limit: (groupByAddress || selectedType) ? maxFetchLimit : itemsPerPage, // Use configurable limit for grouping
+      search: searchTerm.trim(),
+      type: "", // Don't send type to API, we'll filter client-side for better matching
+    city: selectedCity,
+      state: selectedProvince,
+      vendor_assigned: false,
+    };
+  }, [currentPage, itemsPerPage, searchTerm, selectedType, selectedCity, selectedProvince, groupByAddress, maxFetchLimit]);
+
+  // Check if we should use prefetched data (when no filters are applied)
+  const shouldUsePrefetch = useMemo(() => {
+    return !searchTerm.trim() && !selectedType && !selectedCity && !selectedProvince;
+  }, [searchTerm, selectedType, selectedCity, selectedProvince]);
+
+  // Try to get prefetched data
+  const prefetchedData = useMemo(() => {
+    if (shouldUsePrefetch) {
+      return marketplacePrefetchService.findCachedData(groupByAddress);
     }
+    return null;
+  }, [shouldUsePrefetch, groupByAddress]);
+
+  // API query - skip if we have valid prefetched data
+  const { data, error, isLoading } = useGetPaginatedIssuesQuery(apiParams, {
+    skip: shouldUsePrefetch && !!prefetchedData
+  });
+
+
+  // Separate API call to get ALL issues for dropdown options (without city/state filters)
+  const { data: allIssuesData } = useGetPaginatedIssuesQuery({
+    offset: 0,
+    limit: maxFetchLimit,
+    search: "",
+    type: "",
+    city: "",
+    state: "",
+    vendor_assigned: false,
+  });
+
+  // Get addresses for issues
+  const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
+  const [addresses, setAddresses] = useState<IssueAddress[]>([]);
+
+
+  // Use prefetched data if available, otherwise use API data
+  const rawIssues = useMemo(() => {
+    return prefetchedData?.issues || data?.issues || [];
+  }, [prefetchedData?.issues, data?.issues]);
+
+  // Apply client-side type filtering for better matching
+  const filteredIssues = useMemo(() => {
+    if (!selectedType) return rawIssues;
+    
+    const typeVariations = getTypeVariations(selectedType);
+    return rawIssues.filter((issue: IssueType) => {
+      const issueType = issue.type?.toLowerCase() || '';
+      return typeVariations.some(variation => 
+        issueType.includes(variation.toLowerCase()) || 
+        variation.toLowerCase().includes(issueType)
+      );
+    });
+  }, [rawIssues, selectedType, getTypeVariations]);
+
+  // For ungrouped view, paginate the issues client-side when using prefetched data or filtering
+  const issues = useMemo(() => {
+    if (!groupByAddress) {
+      // Only do client-side pagination when we have prefetched data or type filtering
+      // Otherwise, the API already sent us the correct page
+      if (prefetchedData?.issues || selectedType) {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return filteredIssues.slice(startIndex, endIndex);
+      }
+      // For API data without prefetch, return as-is (already paginated by server)
+      return filteredIssues;
+    }
+    return filteredIssues;
+  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.issues, selectedType]);
+  
+  // Calculate total items based on filtering
+  const totalItems = selectedType 
+    ? filteredIssues.length  // Use filtered count when type filtering is applied
+    : (prefetchedData?.total_filtered?.count || data?.total_filtered?.count || 0);
+
+  // Create address map for easy lookup
+  const addressMap = useMemo(() => {
+    return addresses.reduce((acc, addr) => {
+      acc[addr.issue_id] = addr;
+      return acc;
+    }, {} as Record<number, IssueAddress>);
+  }, [addresses]);
+
+  // Fetch addresses for ALL issues (for dropdown options)
+  useEffect(() => {
+    if (allIssuesData?.issues && allIssuesData.issues.length > 0) {
+      const issueIds = allIssuesData.issues.map((issue) => issue.id);
+      getAddressesByIssueIds(issueIds)
+        .unwrap()
+        .then(setAddresses)
+        .catch((err) => console.error("Error fetching addresses:", err));
+    }
+  }, [allIssuesData?.issues, getAddressesByIssueIds]);
+
+
+  // Extract unique cities and states from address data
+  // When type is selected, only show cities/states that have issues of that type
+  const uniqueCities: string[] = useMemo(() => {
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.city).filter(Boolean))].sort() as string[];
+  }, [addresses, selectedType, filteredIssues, addressMap]);
+
+  const uniqueStates: string[] = useMemo(() => {
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.state).filter(Boolean))].sort() as string[];
+  }, [addresses, selectedType, filteredIssues, addressMap]);
+
+  // Filter cities based on selected state (for cascading dropdown)
+  const filteredCities: string[] = useMemo(() => {
+    if (!selectedProvince) {
+      return uniqueCities; // Show all cities if no state selected
+    }
+    
+    // Use contextually relevant addresses (filtered by type if type is selected)
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    const citiesInState = relevantAddresses
+      .filter((addr: IssueAddress) => addr.state === selectedProvince)
+      .map((addr: IssueAddress) => addr.city)
+      .filter(Boolean);
+    
+    return [...new Set(citiesInState)].sort() as string[];
+  }, [uniqueCities, addresses, selectedProvince, selectedType, filteredIssues, addressMap]);
+
+  // Create a mapping of city to state for auto-selecting state when city is chosen
+  const cityToStateMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    
+    // Use contextually relevant addresses (filtered by type if type is selected)
+    const relevantAddresses = selectedType 
+      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
+      : addresses;
+    
+    relevantAddresses.forEach((addr: IssueAddress) => {
+      if (addr.city && addr.state) {
+        map[addr.city] = addr.state;
+      }
+    });
+    return map;
+  }, [addresses, selectedType, filteredIssues, addressMap]);
+
+  // Group issues by address when grouping is enabled (works with filtered issues)
+  const groupedIssues: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
+    if (!groupByAddress || addresses.length === 0) return [];
+
+    const groups = filteredIssues.reduce((acc: Record<string, { address: IssueAddress; issues: IssueType[] }>, issue: IssueType) => {
+      const address = addressMap[issue.id];
+      if (!address) return acc;
+
+      const key = `${address.address}_${address.city}_${address.state}`;
+      if (!acc[key]) {
+        acc[key] = {
+          address,
+          issues: [],
+        };
+      }
+      acc[key].issues.push(issue);
+        return acc;
+    }, {} as Record<string, { address: IssueAddress; issues: IssueType[] }>);
+
+    return Object.values(groups);
+  }, [filteredIssues, addressMap, groupByAddress, addresses.length]);
+
+  // Calculate pagination based on view type
+  const totalPages = groupByAddress 
+    ? Math.ceil(groupedIssues.length / itemsPerPage)
+    : Math.ceil(totalItems / itemsPerPage);
+
+  // For grouped view, paginate the groups client-side
+  const paginatedGroups: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
+    if (!groupByAddress) return groupedIssues;
+    
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+    return groupedIssues.slice(startIndex, endIndex);
+  }, [groupedIssues, groupByAddress, currentPage, itemsPerPage]);
+
+  // Smart pagination: show ellipsis for large page counts
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, "...");
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push("...", totalPages);
+    } else {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
   };
 
-  const handleNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
-  };
-
-  const handlePageClick = (page: number) => {
+  const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    window.scrollTo(0, 0);
   };
 
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to first page on search
+  const handleSearch = () => {
+    setCurrentPage(1);
   };
 
-  if (error) return <p>Error loading issues</p>;
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedType("");
+    setSelectedCity("");
+    setSelectedProvince("");
+    setCurrentPage(1);
+  };
+
+  // Show loading only if we don't have prefetched data and API is loading
+  const isDataLoading = isLoading && !prefetchedData;
+  
+  if (isDataLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen text-red-600">
+        Error loading marketplace data. Please try again.
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6">
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <h1 className="text-2xl font-semibold mb-0">Marketplace</h1>
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="container mx-auto px-4">
+
+        {/* Search and Filter Section */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">Search & Filter</h2>
+            <p className="text-sm text-gray-600">Find the perfect issues for your expertise</p>
       </div>
 
-      <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
-        <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
-          <div className="flex items-center flex-wrap gap-3">
-            <form className="relative">
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+            <div className="relative">
               <input
                 type="text"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                className="h-10 w-[20rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900"
+                    placeholder="Search issues..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
               />
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
-                className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-gray-600"
+                    className="absolute left-3 top-3.5 text-gray-400"
               />
-            </form>
+                </div>
+            </div>
 
-            {/* Filter Dropdowns */}
-            <div className="flex flex-wrap gap-3">
-              {/* Address Filter */}
-              <select
-                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
-                value={selectedCity}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <select
+                  value={selectedType}
                 onChange={(e) => {
-                  setSelectedCity(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">All Cities</option>
-                {uniqueCity.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+                    setSelectedType(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                >
+                  <option value="">All Types</option>
+                  <option value="electrical">Electrical</option>
+                  <option value="plumbing">Plumbing</option>
+                  <option value="hvac">HVAC</option>
+                  <option value="roofing">Roofing</option>
+                  <option value="flooring">Flooring</option>
+                  <option value="painting">Painting</option>
+                  <option value="landscaping">Landscaping</option>
+                  <option value="structural">Structural</option>
+                  <option value="dry wall">Dry Wall</option>
+                  <option value="carpentry">Carpentry</option>
+                  <option value="other">Other</option>
+                </select>
+          </div>
 
-              {/* Postal Code Filter */}
-              <select
-                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
-                value={selectedState}
-                onChange={(e) => {
-                  setSelectedState(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">All States</option>
-                {uniqueState.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+            <select
+              value={selectedCity}
+              onChange={(e) => {
+                const newCity = e.target.value;
+                setSelectedCity(newCity);
+                
+                // Auto-select state when city is chosen
+                if (newCity && cityToStateMap[newCity]) {
+                  setSelectedProvince(cityToStateMap[newCity]);
+                } else if (!newCity) {
+                  // Don't clear state when "All Cities" is selected - let user keep state filter
+                }
+                
+                setCurrentPage(1);
+              }}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+            >
+              <option value="">All Cities</option>
+                  {filteredCities.map((city: string) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+            </div>
 
-              {/* Type Filter */}
-              <select
-                className="h-10 bg-gray-100 border-r-8 border-transparent outline outline-gray-200 rounded-lg px-3 cursor-pointer"
-                value={selectedType}
-                onChange={(e) => {
-                  setSelectedType(e.target.value);
-                  setCurrentPage(1);
-                }}
-              >
-                <option value="">All Types</option>
-                {uniqueTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+            <select
+                  value={selectedProvince}
+              onChange={(e) => {
+                const newState = e.target.value;
+                setSelectedProvince(newState);
+                
+                // Clear city if it's not available in the new state
+                if (selectedCity && newState) {
+                  const citiesInNewState = addresses
+                    .filter((addr) => addr.state === newState)
+                    .map((addr) => addr.city)
+                    .filter(Boolean);
+                  
+                  const uniqueCitiesInState = [...new Set(citiesInNewState)];
+                  
+                  if (!uniqueCitiesInState.includes(selectedCity)) {
+                    setSelectedCity(""); // Clear city if it doesn't exist in the new state
+                  }
+                }
+                
+                setCurrentPage(1);
+              }}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+            >
+                  <option value="">All States</option>
+                  {uniqueStates.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+              </div>
+
+              <div className="flex flex-col justify-end">
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSearch}
+                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                  >
+                    Search
+                  </button>
+                  <button
+                    onClick={clearFilters}
+                    className="px-4 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium border border-gray-300"
+                  >
+                    Clear
+            </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+              <label className="flex items-center space-x-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={groupByAddress}
+              onChange={(e) => {
+                  setGroupByAddress(e.target.checked);
+                setCurrentPage(1);
+              }}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
+              />
+                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                  📍 Group by address
+                </span>
+            </label>
+
             </div>
           </div>
+          </div>
+
+        {/* Results Section */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-800">
+              {groupByAddress ? "Grouped Issues" : "All Issues"}
+            </h2>
+            <span className="text-gray-600">
+              {groupByAddress
+                ? `${groupedIssues.length} address groups found`
+                : `${totalItems} issues found`}
+            </span>
         </div>
-        <div className="bg-white p-6">
-          {!isDataReady ? (
-            <div className="text-center text-gray-500 animate-pulse py-10">
-              Loading issues...
-            </div>
-          ) : issues.length === 0 ? (
-            <div className="text-center text-gray-500">
-              You have no current issues.
-            </div>
-          ) : (
-            <div
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-6"
-              style={{
-                gridAutoRows: "minmax(150px, auto)",
-              }}
-            >
-              {issues
-                .filter((issue) => issue.vendor_id === null) // only issues with no vendor
-                .map((issue) => (
+      </div>
+
+        {/* Issues Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {groupByAddress
+            ? paginatedGroups.map((group, index) => (
+                  <AddressGroupCard
+                  key={`${group.address.address}_${index}`}
+                    address={group.address}
+                    issues={group.issues}
+                  />
+              ))
+            : issues.map((issue: IssueType) => (
                   <IssueItem
                     key={issue.id}
                     issue={issue}
-                    vendor={vendor}
-                    userType={userType}
-                    address={
-                      addresses[issue.id]
-                        ? addresses[issue.id]
-                        : ({} as IssueAddress)
-                    }
+                  address={addressMap[issue.id]}
                   />
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
 
-          <div className="flex items-center justify-between flex-wrap gap-2 mt-6">
-            <span>
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems}{" "}
-              entries
-            </span>
-            <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
-              <li className="page-item">
-                <button
-                  className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
-                    currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  onClick={handlePrevious}
-                  disabled={currentPage === 1}
-                >
-                  <FontAwesomeIcon icon={faArrowLeft} />
-                </button>
-              </li>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <li key={page} className="page-item">
-                    <button
-                      className={`page-link font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 ${
-                        currentPage === page
-                          ? "bg-blue-400 text-white"
-                          : "bg-neutral-200"
-                      }`}
-                      onClick={() => handlePageClick(page)}
-                    >
-                      {page}
-                    </button>
-                  </li>
-                )
-              )}
-              <li className="page-item">
-                <button
-                  className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
-                    currentPage === totalPages
-                      ? "opacity-50 cursor-not-allowed"
-                      : ""
-                  }`}
-                  onClick={handleNext}
-                  disabled={currentPage === totalPages}
-                >
-                  <FontAwesomeIcon icon={faArrowRight} />
-                </button>
-              </li>
-            </ul>
+        {/* Pagination - show for both grouped and ungrouped views when there are multiple pages */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-8">
+              <button
+              onClick={() => handlePageChange(Math.max(1, currentPage - 5))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FontAwesomeIcon icon={faAngleDoubleLeft} />
+              </button>
+
+              <button
+              onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+              <FontAwesomeIcon icon={faArrowLeft} />
+              </button>
+
+            {getPageNumbers().map((page, index) => (
+              <button
+                key={index}
+                onClick={() => typeof page === "number" && handlePageChange(page)}
+                disabled={page === "..."}
+                className={`px-3 py-2 rounded-lg border ${
+                  page === currentPage
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : page === "..."
+                    ? "bg-white border-gray-300 text-gray-400 cursor-default"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FontAwesomeIcon icon={faArrowRight} />
+              </button>
+
+              <button
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 5))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FontAwesomeIcon icon={faAngleDoubleRight} />
+              </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
