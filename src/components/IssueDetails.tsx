@@ -261,7 +261,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       setCounterTarget(null);
       setOfferAmount("");
       setCommentVendor("");
-      // setCommentClient("");
       setOfferError("");
       setEditingOffer(null);
       setIsOfferModalOpen(false);
