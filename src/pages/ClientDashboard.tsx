@@ -39,7 +39,7 @@ import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
-import AddNewListingModal, { ListingFormData } from "../components/AddNewListingModal";
+import  AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
 
 // dashboard pieces
@@ -684,10 +684,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         </div>
       </div>
 
-      <AddNewListingModal
+      <AddListingByReportModal
         isOpen={isAddListingModalOpen}
         onClose={() => setIsAddListingModalOpen(false)}
-        onSubmit={async (formData: ListingFormData) => {
+        onSubmit={async (formData: ListingByReportFormData) => {
           try {
             await handleAddListingWithReport({
               formData,

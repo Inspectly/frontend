@@ -1,4 +1,5 @@
-import React, { useRef, useState, useMemo } from "react";
+// src/components/ReportTable.tsx
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -16,17 +17,22 @@ import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
+  useCreateIssueMutation,
 } from "../features/api/issuesApi";
-import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
 
-// Component to display the cost based on accepted offers
+/* ---------------- types & small helpers ---------------- */
+
+type ReportTableProps = {
+  /** If true, opens the Add Issue modal on mount (or when this flips true). */
+  openAddIssueOnMount?: boolean;
+};
+
+// Display the cost based on accepted offers
 const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
   const { data: offers = [] } = useGetOffersByIssueIdQuery(issueId);
-  
-  const acceptedOffer = offers.find(offer => offer.status === IssueOfferStatus.ACCEPTED);
-  
+  const acceptedOffer = offers.find((offer) => offer.status === IssueOfferStatus.ACCEPTED);
   if (acceptedOffer) {
     return (
       <span>
@@ -37,11 +43,10 @@ const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
       </span>
     );
   }
-  
   return <span>N/A</span>;
 };
 
-const ReportTable: React.FC = () => {
+const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   const { listingId, reportId } = useParams<{
     listingId: string;
     reportId: string;
@@ -64,6 +69,15 @@ const ReportTable: React.FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Open the modal on mount if parent requested it
+  useEffect(() => {
+    if (openAddIssueOnMount) {
+      setIsModalOpen(true);
+    }
+  }, [openAddIssueOnMount]);
+
+  // ✅ Default status to "open"
   const [formData, setFormData] = useState<{
     type: string;
     description: string;
@@ -77,12 +91,21 @@ const ReportTable: React.FC = () => {
     description: "",
     summary: "",
     severity: "",
-    status: "",
+    status: "open",
     active: true,
     image_url: "",
   });
-  const [selectedFileName, setSelectedFileName] = useState("");
 
+  useEffect(() => {
+    if (isModalOpen) {
+      setFormData((prev) => ({
+        ...prev,
+        status: prev.status || "open",
+      }));
+    }
+  }, [isModalOpen]);
+
+  const [selectedFileName, setSelectedFileName] = useState("");
   const tableDropdownButtonRefs = useRef(new Map());
 
   const statusMapping: Record<IssueStatus, string> = {
@@ -102,30 +125,24 @@ const ReportTable: React.FC = () => {
   const handleFilterChange = (field: string, value: string) => {
     setFilters((prev) => ({
       ...prev,
-      [field]: value === "all" ? "" : value, // Convert "all" back to empty string
+      [field]: value === "all" ? "" : value,
     }));
   };
 
   const handleProgressChange = async (id: number, newProgress: string) => {
     try {
-      // Get the existing issue data before updating
       const issueToUpdate = issues?.find((issue) => issue.id === id);
-
       if (!issueToUpdate) {
         console.error("Issue not found:", id);
         return;
       }
-
       console.log("Issue before update:", issueToUpdate);
-
-      // Send the full object with updated status
       await updateIssue({
         ...issueToUpdate,
-        status: newProgress, // Only this field changes
+        status: newProgress,
       }).unwrap();
 
       refetch();
-
       setDropdownOpen(null);
     } catch (error) {
       console.error("Error updating issue:", error);
@@ -134,21 +151,16 @@ const ReportTable: React.FC = () => {
 
   const handleActiveChange = async (id: number, newActive: boolean) => {
     try {
-      // Get the existing issue data before updating
       const issueToUpdate = issues?.find((issue) => issue.id === id);
-
       if (!issueToUpdate) {
         console.error("Issue not found:", id);
         return;
       }
-
       console.log("Issue before update:", issueToUpdate);
-
-      // Send the full object with updated status
       await updateIssue({
         ...issueToUpdate,
         status: statusMapping[issueToUpdate.status as IssueStatus],
-        active: newActive, // Only this field changes
+        active: newActive,
       }).unwrap();
 
       refetch();
@@ -175,7 +187,7 @@ const ReportTable: React.FC = () => {
       refetch();
       setIsModalOpen(false);
     } catch (err) {
-      console.error("Failed to create listing:", err);
+      console.error("Failed to create issue:", err);
     }
   };
 
@@ -186,91 +198,82 @@ const ReportTable: React.FC = () => {
       description: "",
       summary: "",
       severity: "",
-      status: "",
+      status: "open",
       active: true,
       image_url: "",
     });
+    setSelectedFileName("");
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Simulate uploading and getting a URL (replace with real upload later)
+    // For now use base64 preview (replace with real upload later)
     const reader = new FileReader();
     reader.onloadend = () => {
       if (reader.result) {
         setFormData((prev) => ({
           ...prev,
-          image_url: reader.result as string, // base64 string or actual URL if uploaded
+          image_url: reader.result as string,
         }));
       }
     };
-    reader.readAsDataURL(file); // base64 preview, not for production
+    reader.readAsDataURL(file);
   };
 
   const reportIssues =
     issues?.filter((issue) => issue.report_id.toString() === reportId) || [];
 
-  // Filter logic
   const filteredIssues = reportIssues.filter((issue) => {
-    const matchesSearchQuery =
-      issue.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      issue.id.toString().toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const matchesSearch =
+      issue.summary.toLowerCase().includes(q) ||
+      issue.id.toString().toLowerCase().includes(q);
+
     const matchesSeverity =
       filters.severity === "" || issue.severity === filters.severity;
-    const matchesProgress =
+
+    const matchesStatus =
       filters.status === "" || issue.status === filters.status;
+
     const matchesVisibility =
       filters.isVisible === "" || String(issue.active) === filters.isVisible;
 
-    return (
-      matchesSearchQuery &&
-      matchesSeverity &&
-      matchesProgress &&
-      matchesVisibility
-    );
+    return matchesSearch && matchesSeverity && matchesStatus && matchesVisibility;
   });
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage) || 1;
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentIssues = filteredIssues.slice(startIndex, endIndex);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   };
 
   const handleItemsPerPageChange = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
     setItemsPerPage(parseInt(event.target.value, 10));
-    setCurrentPage(1); // Reset to first page on items per page change
+    setCurrentPage(1);
   };
 
   const handlePrevious = () => {
-    if (currentPage > 1) {
-      setCurrentPage((prev) => prev - 1);
-    }
+    if (currentPage > 1) setCurrentPage((prev) => prev - 1);
   };
 
   const handleNext = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage((prev) => prev + 1);
-    }
+    if (currentPage < totalPages) setCurrentPage((prev) => prev + 1);
   };
 
   const formatDate = (isoString: string, format: "DMY" | "MDY" = "DMY") => {
     const date = new Date(isoString);
-    const day = date.getDate().toString().padStart(2, "0"); // Ensure 2 digits
-    const month = (date.getMonth() + 1).toString().padStart(2, "0"); // Months are 0-based
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
-
-    return format === "DMY"
-      ? `${day}/${month}/${year}`
-      : `${month}/${day}/${year}`;
+    return format === "DMY" ? `${day}/${month}/${year}` : `${month}/${day}/${year}`;
   };
 
   if (isLoading) return <p>Loading...</p>;
@@ -292,7 +295,8 @@ const ReportTable: React.FC = () => {
             <option value={40}>40</option>
             <option value={50}>50</option>
           </select>
-          <form className="relative">
+
+          <form className="relative" onSubmit={(e) => e.preventDefault()}>
             <input
               type="text"
               placeholder="Search issues"
@@ -305,6 +309,7 @@ const ReportTable: React.FC = () => {
               className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-gray-600"
             />
           </form>
+
           <select
             className="border px-1 py-1.5 cursor-pointer w-auto border-neutral-200 rounded-lg"
             value={filters.severity}
@@ -315,6 +320,7 @@ const ReportTable: React.FC = () => {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
           <select
             className="border px-1 py-1.5 cursor-pointer w-auto border-neutral-200 rounded-lg"
             value={filters.status}
@@ -337,6 +343,7 @@ const ReportTable: React.FC = () => {
             <option value="false">Not visible</option>
           </select>
         </div>
+
         <button
           className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
           onClick={() => setIsModalOpen(true)}
@@ -347,11 +354,10 @@ const ReportTable: React.FC = () => {
           <FontAwesomeIcon icon={faPlus} />
         </button>
       </div>
+
       <div className="bg-white p-6">
         {currentIssues.length === 0 ? (
-          <div className="text-center text-gray-500">
-            You have no current issues.
-          </div>
+          <div className="text-center text-gray-500">You have no current issues.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="table w-full min-w-max border-separate border-spacing-0 rounded-lg border border-gray-200 bordered-table sm-table mb-0">
@@ -360,10 +366,6 @@ const ReportTable: React.FC = () => {
                   <th className="bg-gray-100 text-center font-medium px-4 py-3 first:rounded-tl-lg">
                     Severity
                   </th>
-                  {/* Below code add's issue id. Uncomment if needed */}
-                  {/* <th className="bg-gray-100 text-left font-medium px-4 py-3">
-                    ID
-                  </th> */}
                   <th className="bg-gray-100 text-left font-medium px-4 py-3">
                     Summary
                   </th>
@@ -389,10 +391,7 @@ const ReportTable: React.FC = () => {
               </thead>
               <tbody>
                 {currentIssues.map((issue) => (
-                  <tr
-                    key={issue.id}
-                    className={issue.active ? "" : "bg-red-100"}
-                  >
+                  <tr key={issue.id} className={issue.active ? "" : "bg-red-100"}>
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <span
                         className={`block w-4 h-4 rounded-full mx-auto ${
@@ -402,12 +401,9 @@ const ReportTable: React.FC = () => {
                             ? "bg-yellow-500"
                             : "bg-green-500"
                         }`}
-                      ></span>
+                      />
                     </td>
-                    {/* Below code add's issue id. Uncomment if needed */}
-                    {/* <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.id}
-                    </td> */}
+
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <Link
                         to={`/listings/${listingId}/reports/${reportId}/issues/${issue.id}`}
@@ -416,90 +412,20 @@ const ReportTable: React.FC = () => {
                         {issue.summary}
                       </Link>
                     </td>
+
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       {issue.type}
                     </td>
+
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       {issue.vendor_id ? (
-                        <VendorName
-                          vendorId={issue.vendor_id}
-                          isVendorId={false}
-                        />
+                        <VendorName vendorId={issue.vendor_id} isVendorId={false} />
                       ) : (
                         "No vendor assigned"
                       )}
                     </td>
 
-                    {/* Below code changes read only status to setting status by dropdown */}
-                    {/* <td className="text-left border-b border-gray-200 px-4 py-3">
-                      <div className="relative">
-                        <button
-                          className={`px-2.5 py-1.5 rounded font-medium text-sm ${
-                            statusMapping[issue.status as IssueStatus] ===
-                            "open"
-                              ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : statusMapping[issue.status as IssueStatus] ===
-                                "in_progress"
-                              ? "bg-blue-100 text-blue-600 border border-blue-600"
-                              : statusMapping[issue.status as IssueStatus] ===
-                                "review"
-                              ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
-                              : "bg-green-100 text-green-600 border border-green-600"
-                          }`}
-                          ref={(el) => {
-                            if (el)
-                              tableDropdownButtonRefs.current.set(issue.id, el);
-                          }}
-                          onClick={() =>
-                            setDropdownOpen((prev) =>
-                              prev === issue.id ? null : issue.id
-                            )
-                          }
-                        >
-                          {statusOptions.find(
-                            (option) =>
-                              option.value ===
-                              statusMapping[issue.status as IssueStatus]
-                          )?.label || "Unknown"}
-
-                          <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="ml-1"
-                          />
-                        </button>
-                        {dropdownOpen === issue.id && (
-                          <Dropdown
-                            buttonRef={{
-                              current: tableDropdownButtonRefs.current.get(
-                                issue.id
-                              ),
-                            }}
-                            onClose={() => setDropdownOpen(null)}
-                          >
-                            <div className="dropdown-content">
-                              {statusOptions.map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${
-                                    `Status.${value.toUpperCase()}` ===
-                                    issue.status
-                                      ? "font-bold"
-                                      : ""
-                                  }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleProgressChange(issue.id, value);
-                                  }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </Dropdown>
-                        )}
-                      </div>
-                    </td> */}
-
+                    {/* Read-only badge version (dropdown variant is kept commented) */}
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <span
                         className={`inline-block px-2.5 py-1.5 rounded font-medium text-sm ${
@@ -512,9 +438,15 @@ const ReportTable: React.FC = () => {
                             : "bg-green-100 text-green-600 border border-green-600"
                         }`}
                       >
-                        {statusOptions.find(
-                          (option) =>
-                            option.value === statusMapping[issue.status as IssueStatus]
+                        {(
+                          [
+                            ...[{ value: "open", label: "Open" }],
+                            { value: "in_progress", label: "In-progress" },
+                            { value: "review", label: "Review" },
+                            { value: "completed", label: "Completed" },
+                          ] as const
+                        ).find(
+                          (o) => o.value === statusMapping[issue.status as IssueStatus]
                         )?.label || "Unknown"}
                       </span>
                     </td>
@@ -526,6 +458,7 @@ const ReportTable: React.FC = () => {
                     <td className="text-left border-b border-gray-200 px-4 py-3">
                       <CostCell issueId={issue.id} />
                     </td>
+
                     <td className="text-center border-b border-gray-200 px-4 py-3">
                       <label className="inline-flex items-center cursor-pointer">
                         <input
@@ -534,19 +467,17 @@ const ReportTable: React.FC = () => {
                           checked={issue.active}
                           onChange={() => handleActiveChange(issue.id, !issue.active)}
                         />
-                        <span className="relative w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer dark:bg-gray-500 
+                        <span
+                          className="relative w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer dark:bg-gray-500 
                           peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full 
                           peer-checked:after:border-white 
                           after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 
                           after:border after:rounded-full after:h-5 after:w-5 after:transition-all 
                           dark:border-gray-600 peer-checked:bg-green-600"
-                        ></span>
-                        <span className="line-height-1 font-medium ms-3 peer-checked:text-green-600 text-md text-gray-600 dark:text-gray-300">
-                          {/* {issue.active ? "Active" : "Inactive"} */}
-                        </span>
+                        />
+                        <span className="line-height-1 font-medium ms-3 peer-checked:text-green-600 text-md text-gray-600 dark:text-gray-300" />
                       </label>
                     </td>
-
                   </tr>
                 ))}
               </tbody>
@@ -556,9 +487,8 @@ const ReportTable: React.FC = () => {
 
         <div className="flex items-center justify-between flex-wrap gap-2 mt-6">
           <span>
-            Showing {startIndex + 1} to{" "}
-            {Math.min(endIndex, filteredIssues.length)} of{" "}
-            {filteredIssues.length} entries
+            Showing {filteredIssues.length === 0 ? 0 : startIndex + 1} to{" "}
+            {Math.min(endIndex, filteredIssues.length)} of {filteredIssues.length} entries
           </span>
           <ul className="pagination flex flex-wrap items-center gap-2 justify-center">
             <li className="page-item">
@@ -576,9 +506,7 @@ const ReportTable: React.FC = () => {
               <li key={page} className="page-item">
                 <button
                   className={`page-link font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 ${
-                    currentPage === page
-                      ? "bg-blue-400 text-white"
-                      : "bg-neutral-200"
+                    currentPage === page ? "bg-blue-400 text-white" : "bg-neutral-200"
                   }`}
                   onClick={() => setCurrentPage(page)}
                 >
@@ -589,9 +517,7 @@ const ReportTable: React.FC = () => {
             <li className="page-item">
               <button
                 className={`page-link bg-neutral-200 font-semibold rounded-lg border-0 flex items-center justify-center h-8 w-8 text-base ${
-                  currentPage === totalPages
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
+                  currentPage === totalPages ? "opacity-50 cursor-not-allowed" : ""
                 }`}
                 onClick={handleNext}
                 disabled={currentPage === totalPages}
@@ -612,7 +538,9 @@ const ReportTable: React.FC = () => {
                 &times;
               </button>
               <h6 className="text-lg font-semibold mb-4">Create New Issue</h6>
+
               <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
+                {/* Type */}
                 <div className="relative col-span-12">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Type
@@ -623,10 +551,7 @@ const ReportTable: React.FC = () => {
                     value={formData.type}
                     required
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        type: e.target.value,
-                      }))
+                      setFormData((prev) => ({ ...prev, type: e.target.value }))
                     }
                   >
                     <option value="" disabled hidden>
@@ -646,16 +571,12 @@ const ReportTable: React.FC = () => {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </div>
 
+                {/* Summary */}
                 <div className="col-span-12">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Summary
@@ -671,6 +592,7 @@ const ReportTable: React.FC = () => {
                   />
                 </div>
 
+                {/* Description */}
                 <div className="col-span-12">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Description
@@ -685,6 +607,7 @@ const ReportTable: React.FC = () => {
                   />
                 </div>
 
+                {/* Severity */}
                 <div className="relative col-span-6">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Severity
@@ -695,17 +618,14 @@ const ReportTable: React.FC = () => {
                     value={formData.severity}
                     required
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        severity: e.target.value,
-                      }))
+                      setFormData((prev) => ({ ...prev, severity: e.target.value }))
                     }
                   >
                     <option value="" disabled hidden>
                       Select a severity
                     </option>
-                    {["low", "medium", "high"].map((option, index) => (
-                      <option key={index} value={option}>
+                    {["low", "medium", "high"].map((option) => (
+                      <option key={option} value={option}>
                         {option}
                       </option>
                     ))}
@@ -718,16 +638,12 @@ const ReportTable: React.FC = () => {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </div>
 
+                {/* Status (default = open) */}
                 <div className="relative col-span-6">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Status
@@ -738,15 +654,10 @@ const ReportTable: React.FC = () => {
                     value={formData.status}
                     required
                     onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        status: e.target.value,
-                      }))
+                      setFormData((prev) => ({ ...prev, status: e.target.value }))
                     }
                   >
-                    <option value="" disabled hidden>
-                      Select a status
-                    </option>
+                    {/* No placeholder so "Open" shows immediately */}
                     {statusOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
@@ -761,16 +672,12 @@ const ReportTable: React.FC = () => {
                       viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </div>
                 </div>
 
+                {/* Active */}
                 <div className="col-span-12">
                   <label className="inline-flex items-center space-x-2 text-sm leading-5 font-semibold text-gray-600">
                     <input
@@ -786,6 +693,7 @@ const ReportTable: React.FC = () => {
                   </label>
                 </div>
 
+                {/* Image Upload (optional, preview) */}
                 <div className="col-span-12">
                   <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
                     Upload Image
@@ -809,7 +717,7 @@ const ReportTable: React.FC = () => {
                         const file = e.target.files?.[0];
                         if (file) {
                           setSelectedFileName(file.name);
-                          handleImageUpload(e); // handle storing image_url
+                          handleImageUpload(e);
                         }
                       }}
                     />

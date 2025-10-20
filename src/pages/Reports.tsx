@@ -1,23 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faArrowRight, faListCheck, faMagnifyingGlass, faPlus } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  faArrowLeft,
+  faArrowRight,
+  faListCheck,
+  faMagnifyingGlass,
+  faPlus,
+} from "@fortawesome/free-solid-svg-icons";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import {
   useGetReportsQuery,
-  useCreateReportMutation,
   useUpdateReportMutation,
 } from "../features/api/reportsApi";
 import ReportCardWithStatus from "../components/ReportCardWithStatus";
+import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
+import CreateIssueModal from "../components/CreateIssueModal";
 import type { ReportType, ReviewStatus } from "../types";
-
 
 /** Normalize backend string to our strict union; default to "not_reviewed". */
 const normalizeReviewStatus = (raw?: string | null): ReviewStatus => {
   const v = (raw ?? "").toLowerCase();
-  return v === "in_review" || v === "completed" || v === "not_reviewed" ? (v as ReviewStatus) : "not_reviewed";
+  return v === "in_review" || v === "completed" || v === "not_reviewed"
+    ? (v as ReviewStatus)
+    : "not_reviewed";
 };
 
 type ReportRow = {
@@ -28,7 +36,7 @@ type ReportRow = {
   name: string | null;
   created_at: string;
   updated_at: string;
-  review_status: ReviewStatus; // strict union here
+  review_status: ReviewStatus;
 };
 
 const toReportRow = (r: ReportType): ReportRow => ({
@@ -42,30 +50,40 @@ const toReportRow = (r: ReportType): ReportRow => ({
   review_status: normalizeReviewStatus(r.review_status),
 });
 
-/* ---------------- component ---------------- */
-
 const Reports: React.FC = () => {
   const { data: reports, error, isLoading, refetch } = useGetReportsQuery();
-  const [createReport] = useCreateReportMutation();
   const [updateReport] = useUpdateReportMutation();
 
   const user = useSelector((state: RootState) => state.auth.user);
   const navigate = useNavigate();
   const { listingId } = useParams<{ listingId: string }>();
-  const { data: listing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
+  const { data: listing } = useGetListingByIdQuery(Number(listingId), {
+    skip: !listingId,
+  });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formData, setFormData] = useState({ name: "" });
+  // New: modal controls
+  const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
+  const [isCreateIssueOpen, setIsCreateIssueOpen] = useState(false);
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if ((location.state as any)?.openCreateCollection) {
+      setIsCreateCollectionOpen(true);
+      // clear the state so it doesn't reopen on back/refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, []);
 
   // Adapt and filter reports for this listing
   const listingReports: ReportRow[] = useMemo(() => {
     const list = (reports ?? [])
-      .filter((r) => String(r.listing_id) === listingId) // predicate matches ReportType
-      .map(toReportRow); // adapt to strict local shape
+      .filter((r) => String(r.listing_id) === listingId)
+      .map(toReportRow);
     return list;
   }, [reports, listingId]);
 
@@ -87,10 +105,10 @@ const Reports: React.FC = () => {
     const updateItemsPerPage = () => {
       const width = window.innerWidth;
       let columns = 2;
-      if (width >= 640) columns = 3;   // sm
-      if (width >= 768) columns = 4;   // md
-      if (width >= 1280) columns = 5;  // xl
-      if (width >= 1536) columns = 6;  // 2xl
+      if (width >= 640) columns = 3; // sm
+      if (width >= 768) columns = 4; // md
+      if (width >= 1280) columns = 5; // xl
+      if (width >= 1536) columns = 6; // 2xl
       const rows = 3;
       setItemsPerPage(columns * rows);
     };
@@ -108,42 +126,16 @@ const Reports: React.FC = () => {
     setCurrentPage(1);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await createReport({
-        user_id: user.id,
-        listing_id: Number(listingId),
-        aws_link: "https://s3.amazonaws.com/example-bucket/dummy-report.pdf", // TODO replace with real S3 link
-        review_status: 'completed',
-        ...formData,
-      }).unwrap();
-      await refetch();
-      setFormData({ name: "" });
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error("Failed to create report:", err);
-    }
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setFormData({ name: "" });
-  };
-
-
-  const buildUpdatePayload = (r: ReportRow, review_status: "not_reviewed" | "in_review" | "completed") => ({
-    id: r.id,                
-    user_id: r.user_id,       
-    listing_id: r.listing_id, 
-    aws_link: r.aws_link ?? "", 
-    name: r.name ?? "",        
-    review_status,         
+  const buildUpdatePayload = (
+    r: ReportRow,
+    review_status: "not_reviewed" | "in_review" | "completed"
+  ) => ({
+    id: r.id,
+    user_id: r.user_id,
+    listing_id: r.listing_id,
+    aws_link: r.aws_link ?? "",
+    name: r.name ?? "",
+    review_status,
   });
 
   const handleStartOrContinueReview = async (report: ReportRow) => {
@@ -152,29 +144,37 @@ const Reports: React.FC = () => {
         await updateReport(buildUpdatePayload(report, "in_review")).unwrap();
         refetch();
       }
-      navigate(`/listings/${listingId}/reports/${report.id}/review`, { state: { report } });
+      navigate(`/listings/${listingId}/reports/${report.id}/review`, {
+        state: { report },
+      });
     } catch (e: any) {
       console.error("Failed to set review_status to in_review:", e?.data ?? e);
     }
   };
 
-
   if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Error loading reports</p>;
+  if (error) return <p>Error loading issue collections</p>;
+
+  const noCollections = listingReports.length === 0;
 
   return (
     <div className="p-6">
       <div className="flex flex-wrap items-center gap-2 mb-6 justify-between">
-        <h1 className="text-2xl font-semibold mb-0">Reports for {listing?.address}</h1>
+        <h1 className="text-2xl font-semibold mb-0">
+          Issue Collections for {listing?.address}
+        </h1>
         <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
           <li className="font-medium">
-            <a href="/listings" className="flex items-center gap-2 hover:text-blue-400">
+            <a
+              href="/listings"
+              className="flex items-center gap-2 hover:text-blue-400"
+            >
               <FontAwesomeIcon icon={faListCheck} className="size-4" />
               Listings
             </a>
           </li>
           <li>-</li>
-          <li className="font-medium">Reports</li>
+          <li className="font-medium">Issue Collections</li>
         </ul>
       </div>
 
@@ -195,21 +195,45 @@ const Reports: React.FC = () => {
               />
             </form>
           </div>
-          <button
-            className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <span className="font-semibold text-[14px] leading-[21px]">Add New Report</span>
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
+
+          {/* Right-side actions: New Issue Collection + New Issue */}
+          <div className="flex items-center gap-2">
+            <button
+              className="btn text-white flex items-center w-fit normal-case bg-blue-400 h-auto rounded-2xl gap-x-[10.5px] hover:bg-blue-500 p-[17.5px]"
+              onClick={() => setIsCreateCollectionOpen(true)}
+            >
+              <span className="font-semibold text-[14px] leading-[21px]">
+                New Issue Collection
+              </span>
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+
+            <button
+              className={`btn text-white flex items-center w-fit normal-case h-auto rounded-2xl gap-x-[10.5px] p-[17.5px] ${
+                noCollections
+                  ? "bg-emerald-500/60 cursor-not-allowed"
+                  : "bg-emerald-500 hover:bg-emerald-600"
+              }`}
+              onClick={() => !noCollections && setIsCreateIssueOpen(true)}
+              title={noCollections ? "Create a collection first" : "New Issue"}
+            >
+              <span className="font-semibold text-[14px] leading-[21px]">
+                New Issue
+              </span>
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          </div>
         </div>
 
         <div className="bg-white p-6">
           {currentReports.length === 0 ? (
             <div className="text-center text-gray-500">
-              You have no current reports.{" "}
-              <button className="underline text-blue-600 hover:text-blue-700" onClick={() => setIsModalOpen(true)}>
-                Create one
+              You have no current reports.
+              <button
+                className="underline text-blue-600 hover:text-blue-700"
+                onClick={() => setIsCreateCollectionOpen(true)}
+              >
+                Create an Issue Collection
               </button>
               .
             </div>
@@ -227,8 +251,7 @@ const Reports: React.FC = () => {
                   }
                   onReview={() => handleStartOrContinueReview(report)}
                   onRetry={() => {
-                    // Optional: trigger a retry task if we have a setup for that
-                    // createTask({ report_id: report.id, task_type: "Task_Type.EXTRACT_ISSUES" });
+                    // hook up retry task if needed
                   }}
                 />
               ))}
@@ -282,46 +305,32 @@ const Reports: React.FC = () => {
             </ul>
           </div>
         </div>
-
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
-              <button
-                onClick={handleModalClose}
-                className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
-                aria-label="Close modal"
-              >
-                &times;
-              </button>
-              <h6 className="text-lg font-semibold mb-4">Add New Report</h6>
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
-                <div className="col-span-12">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Report Name
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
-                    placeholder="Name of the report"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="col-span-12">
-                  <button
-                    type="submit"
-                    className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Modals */}
+      <CreateIssueCollectionModal
+        open={isCreateCollectionOpen}
+        onClose={() => setIsCreateCollectionOpen(false)}
+        listingId={Number(listingId)}
+        userId={user?.id}
+        onCreated={() => {
+          setIsCreateCollectionOpen(false);
+          refetch();
+        }}
+      />
+
+      <CreateIssueModal
+        open={isCreateIssueOpen}
+        onClose={() => setIsCreateIssueOpen(false)}
+        issueCollections={listingReports.map((r) => ({
+          id: r.id,
+          name: r.name ?? `Collection #${r.id}`,
+        }))}
+        onCreated={() => {
+          setIsCreateIssueOpen(false);
+          refetch();
+        }}
+      />
     </div>
   );
 };

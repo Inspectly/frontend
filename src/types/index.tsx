@@ -137,7 +137,7 @@ export interface Listing {
 }
 
 export type ReviewStatus = "not_reviewed" | "in_review" | "completed";
-export type ExtractionStatus = "PENDING" | "IN_PROGRESS" | "FAILED" | "COMPLETED" | "NOT_STARTED";
+export type ExtractionStatus = "NONE" | "IN_PROGRESS" | "FAILED" | "COMPLETED";
 export type ReportCardMode = "REVIEW" | "CONTINUE_REVIEW" | "VIEW" | "NONE";
 
 export type ReportType = {
