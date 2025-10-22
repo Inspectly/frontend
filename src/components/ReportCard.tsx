@@ -28,8 +28,6 @@ interface Props {
 
 const extractionBadge = (status: ExtractionStatus) => {
   switch (status) {
-    case "PENDING":
-      return { label: "Extraction pending", icon: faClock };
     case "IN_PROGRESS":
       return { label: "Extracting…", icon: faCircleNotch, spin: true };
     case "FAILED":

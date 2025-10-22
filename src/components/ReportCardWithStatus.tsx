@@ -6,11 +6,11 @@ import { useGetTasksByReportIdQuery } from "../features/api/taskApi";
 import { ExtractionStatus, ReportCardMode, ReviewStatus } from "../types";
 
 const normalizeTaskStatus = (raw?: string): ExtractionStatus => {
-  if (!raw) return "NOT_STARTED";
+  if (!raw) return "NONE";
   const core = raw.split(".").pop()?.toUpperCase() ?? raw.toUpperCase();
-  return (["PENDING", "IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
+  return (["IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
     ? core
-    : "NOT_STARTED") as ExtractionStatus;
+    : "NONE") as ExtractionStatus;
 };
 
 interface Props {
@@ -35,7 +35,7 @@ const ReportCardWithStatus: React.FC<Props> = ({
   });
 
   const extractionStatus: ExtractionStatus = useMemo(() => {
-    if (!tasks.length) return "PENDING"; // treat no tasks yet as pending
+    if (!tasks.length) return "NONE"; // treat no tasks yet as pending
     const latest = tasks
       .slice()
       .sort(
@@ -57,6 +57,7 @@ const ReportCardWithStatus: React.FC<Props> = ({
 
   let mode: ReportCardMode = "NONE";
   if (reviewStatus === "completed") mode = "VIEW";
+  else if (extractionStatus === "NONE") mode ="VIEW";
   else if (reviewStatus === "in_review") mode = "CONTINUE_REVIEW";
   else if (
     reviewStatus === "not_reviewed" &&

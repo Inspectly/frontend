@@ -1,12 +1,6 @@
 import React, { useRef, useState } from "react";
 
-interface AddNewListingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: ListingFormData) => Promise<void>;
-}
-
-export interface ListingFormData {
+export interface ListingByReportFormData {
   address: string;
   city: string;
   state: string;
@@ -15,14 +9,11 @@ export interface ListingFormData {
   report_file: File | null;
 }
 
-const initialFormData: ListingFormData = {
-  address: "",
-  city: "",
-  state: "",
-  country: "Canada",
-  postal_code: "",
-  report_file: null,
-};
+interface AddListingByReportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: ListingByReportFormData) => Promise<void>;
+}
 
 // Country → States/Provinces map
 const COUNTRY_STATES: Record<string, { code: string; name: string }[]> = {
@@ -41,23 +32,29 @@ const COUNTRY_STATES: Record<string, { code: string; name: string }[]> = {
     { code: "SK", name: "Saskatchewan" },
     { code: "YT", name: "Yukon" },
   ],
-  // Example for future expansion:
-  // USA: [
-  //   { code: "CA", name: "California" },
-  //   { code: "NY", name: "New York" },
-  //   ...
-  // ]
+  // Add more countries as needed
 };
 
 // Regex for Canadian postal code
 const CA_POSTAL_REGEX = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
 
-const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
+const initialListingByReportForm: ListingByReportFormData = {
+  address: "",
+  city: "",
+  state: "",
+  country: "Canada",
+  postal_code: "",
+  report_file: null,
+};
+
+const AddListingByReportModal: React.FC<AddListingByReportModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
 }) => {
-  const [formData, setFormData] = useState<ListingFormData>(initialFormData);
+  const [formData, setFormData] = useState<ListingByReportFormData>(
+    initialListingByReportForm
+  );
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -94,7 +91,10 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
       alert("Please select a state/province.");
       return false;
     }
-    if (formData.country === "Canada" && !CA_POSTAL_REGEX.test(formData.postal_code)) {
+    if (
+      formData.country === "Canada" &&
+      !CA_POSTAL_REGEX.test(formData.postal_code)
+    ) {
       alert("Please enter a valid Canadian postal code (e.g., A1A 1A1).");
       return false;
     }
@@ -108,7 +108,7 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
     setLoading(true);
     try {
       await onSubmit(formData);
-      setFormData(initialFormData);
+      setFormData(initialListingByReportForm);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onClose();
     } catch (err) {
@@ -129,10 +129,13 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
           onClick={onClose}
           className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
           type="button"
+          aria-label="Close"
         >
           &times;
         </button>
-        <h6 className="text-lg font-semibold mb-4">Add New Listing</h6>
+
+        <h6 className="text-lg font-semibold mb-4">Add Listing with Report</h6>
+
         <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
           <div className="col-span-12">
             <label className="text-sm font-semibold text-gray-600">Address</label>
@@ -160,7 +163,7 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
             />
           </div>
 
-          {/* Country Dropdown */}
+          {/* Country */}
           <div className="col-span-6">
             <label className="text-sm font-semibold text-gray-600">Country</label>
             <select
@@ -181,7 +184,7 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
             </select>
           </div>
 
-          {/* State/Province Dropdown */}
+          {/* State/Province */}
           <div className="col-span-6">
             <label className="text-sm font-semibold text-gray-600">
               State / Province
@@ -218,7 +221,7 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
             />
           </div>
 
-          {/* File Upload */}
+          {/* Report Upload */}
           <div className="col-span-12">
             <label className="text-sm font-semibold text-gray-600">
               Upload Property Report (PDF)
@@ -265,4 +268,4 @@ const AddNewListingModal: React.FC<AddNewListingModalProps> = ({
   );
 };
 
-export default AddNewListingModal;
+export default AddListingByReportModal;

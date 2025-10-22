@@ -1,4 +1,4 @@
-import { ListingFormData } from "../components/AddNewListingModal";
+import { ListingByReportFormData } from "../components/AddListingByReportModal";
 import toast from "react-hot-toast";
 
 export const handleAddListingWithReport = async ({
@@ -9,7 +9,7 @@ export const handleAddListingWithReport = async ({
   refetch,
   onClose,
 }: {
-  formData: ListingFormData;
+  formData: ListingByReportFormData;
   user_id: number;
   createListing: Function;
   uploadReportFile: Function;
