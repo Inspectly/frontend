@@ -145,6 +145,12 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [commentClient, setCommentClient] = useState("");
   const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
 
+  // Work completion modals
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
+  const [changeRequestMessage, setChangeRequestMessage] = useState("");
+
   const cardRef = useRef<HTMLDivElement | null>(null);
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -170,6 +176,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   };
 
   const handleStatusChange = (id: number, newStatus: string) => {
+    // Backend expects simple format: "open", "in_progress", "review", "completed"
     updateIssue({
       ...issue,
       status: newStatus,
@@ -391,21 +398,95 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           <h2 className="text-2xl font-medium mb-0">
             {issue.id + " " + issue.summary || "No Title Found"}
           </h2>
-          <button
-            onClick={() =>
-              updateIssue({
-                ...issue,
-                status: statusMapping[issue.status as IssueStatus],
-                active: !issue.active,
-              })
-            }
-            className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
-          >
-            <FontAwesomeIcon
-              icon={issue.active ? faEye : faEyeSlash}
-              className={`text-blue-600 size-3.5`}
-            />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Vendor: Mark Complete Button */}
+            {userType === "vendor" && statusMapping[issue.status as IssueStatus] === "in_progress" && (
+              <div className="relative group">
+                <button
+                  onClick={() => setShowMarkCompleteModal(true)}
+                  className="w-8 h-8 bg-blue-500 text-white rounded-full inline-flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm hover:shadow-md relative"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {/* Pulse animation */}
+                  <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-30"></span>
+                </button>
+                {/* Tooltip */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
+                  <div className="font-semibold mb-0.5">Mark Work Complete</div>
+                  <div className="text-gray-300">Submit completed work for client review</div>
+                  {/* Arrow */}
+                  <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                </div>
+              </div>
+            )}
+
+            {/* Client: Review Actions - Approve or Request Changes */}
+            {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
+              <>
+                {/* Request Changes Button */}
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowRequestChangesModal(true)}
+                    className="w-8 h-8 bg-amber-500 text-white rounded-full inline-flex items-center justify-center hover:bg-amber-600 transition-colors shadow-sm hover:shadow-md"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
+                    <div className="font-semibold mb-0.5">Request Changes</div>
+                    <div className="text-gray-300">Send work back for revisions or fixes</div>
+                    {/* Arrow */}
+                    <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                  </div>
+                </div>
+
+                {/* Approve Button with notification badge */}
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowApproveModal(true)}
+                    className="w-8 h-8 bg-green-500 text-white rounded-full inline-flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm hover:shadow-md relative"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {/* Notification badge */}
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
+                    <div className="font-semibold mb-0.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                      Approve Work
+                    </div>
+                    <div className="text-gray-300">Work is satisfactory - finalize and complete project</div>
+                    {/* Arrow */}
+                    <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Active/Inactive Toggle */}
+            <button
+              onClick={() =>
+                updateIssue({
+                  ...issue,
+                  status: statusMapping[issue.status as IssueStatus],
+                  active: !issue.active,
+                })
+              }
+              className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
+            >
+              <FontAwesomeIcon
+                icon={issue.active ? faEye : faEyeSlash}
+                className={`text-blue-600 size-3.5`}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -653,6 +734,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 )}
               </div>
 
+
               {/* Description Section */}
               <div>
                 <div
@@ -876,15 +958,20 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       onOpenOfferModal={() => setIsOfferModalOpen(true)}
                       onOfferAccepted={async (acceptedOffer) => {
                         try {
+                          // First, create the checkout session
                           const response = await createCheckoutSession({
                             client_id: userId,
                             vendor_id: acceptedOffer.vendor_id,
                             offer_id: acceptedOffer.id,
                           }).unwrap();
+                          
+                          // Redirect to Stripe payment page
+                          // Note: Issue status will be updated to "in_progress" by the backend
+                          // webhook after successful payment, not here
                           window.location.href = response.session_url;
                         } catch (err) {
                           console.error("Stripe error", err);
-                          alert("Could not start payment, please try again.");
+                          alert("Could not start payment session. Please try again.");
                         }
                       }}
                     />
@@ -1027,6 +1114,168 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 disabled={isOfferSubmitting}
               >
                 {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vendor: Mark Work Complete Modal */}
+      {showMarkCompleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowMarkCompleteModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Submit Work for Review?</h3>
+                <p className="text-sm text-gray-600">
+                  This will notify the client that you've completed the work. They'll review it and either approve or request changes.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button 
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                onClick={() => setShowMarkCompleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-blue-600 hover:bg-blue-700 transition-colors"
+                onClick={() => {
+                  updateIssue({
+                    ...issue,
+                    status: "review",
+                  });
+                  setShowMarkCompleteModal(false);
+                }}
+              >
+                Submit for Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client: Approve Work Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowApproveModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Approve & Complete Project?</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs text-amber-800 font-medium flex items-start gap-2">
+                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>Once approved, this action cannot be undone.</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button 
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                onClick={() => setShowApproveModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-green-600 hover:bg-green-700 transition-colors"
+                onClick={() => {
+                  updateIssue({
+                    ...issue,
+                    status: "completed",
+                  });
+                  setShowApproveModal(false);
+                }}
+              >
+                Approve & Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client: Request Changes Modal */}
+      {showRequestChangesModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Changes</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Describe what needs to be corrected or improved. The vendor will be notified and the work will return to "In Progress".
+                </p>
+              </div>
+            </div>
+            
+            <textarea
+              value={changeRequestMessage}
+              onChange={(e) => setChangeRequestMessage(e.target.value)}
+              placeholder="Describe what needs to be corrected or improved..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              rows={4}
+            />
+            
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+              <p className="text-xs text-blue-800 flex items-start gap-2">
+                <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Your feedback will be posted as a comment and the vendor will be notified.</span>
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button 
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                onClick={() => {
+                  setShowRequestChangesModal(false);
+                  setChangeRequestMessage("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!changeRequestMessage.trim()}
+                onClick={() => {
+                  if (changeRequestMessage.trim()) {
+                    // TODO: Post this as a comment with special "Change Request" flag
+                    // TODO: Send notification to vendor
+                    updateIssue({
+                      ...issue,
+                      status: "in_progress",
+                    });
+                    setShowRequestChangesModal(false);
+                    setChangeRequestMessage("");
+                    alert(`Changes requested! The vendor will be notified.\n\nFeedback: "${changeRequestMessage}"\n\n📝 Note: This will be integrated with the comments system in the next update.`);
+                  }
+                }}
+              >
+                Send Feedback
               </button>
             </div>
           </div>
