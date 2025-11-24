@@ -192,13 +192,15 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
                               }}
                               onClose={() => setOpenDropdown(null)}
                             >
-                              {["Accept", "Counter", "Reject"].map((action) => (
+                              {/* we are not doing counter offer now so i removed counter as an dropdown option, functionality still exists */}
+                              {["Accept", "Reject"].map((action) => (
                                 <button
                                   key={action}
                                   className="block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left"
                                   onClick={() => {
                                     setOpenDropdown(null);
-                                    if (action === "Counter") {
+                                    if (action === "Counter")
+                                    {
                                       handleOpenOfferModal(offer);
                                     } else {
                                       handleStatusChange(offer, action);
