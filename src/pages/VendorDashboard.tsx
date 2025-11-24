@@ -57,28 +57,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
 
-  // Get vendor specialty for filtering
+  // Get vendor specialty and location for filtering
   const vendorSpecialty = vendor?.vendor_types 
     ? vendor.vendor_types.split(',')[0].trim() 
     : undefined;
+  const vendorCity = vendor?.city;
 
-  // Fetch filtered issues from backend based on vendor specialty
-  // Backend filters by type (specialty) and vendor_assigned
-  // Showing ALL severity levels since marketplace doesn't filter by severity yet
+  // Fetch a small sample of recent issues for the dashboard card preview
+  // Filter by specialty AND city for better relevance
   const {
-    data: filteredIssuesData,
+    data: recentIssuesData,
     error: issuesError,
   } = useGetPaginatedIssuesQuery({
     offset: 0,
-    limit: 100,  // Reasonable limit for dashboard preview
-    type: vendorSpecialty,  // Filter by vendor's primary specialty (including "general")
-    vendor_assigned: false,  // Only unassigned issues
+    limit: 20,  // Just fetch recent ones for the card
+    type: vendorSpecialty, // Filter by vendor's specialty
+    city: vendorCity, // Filter by vendor's city for proximity
+    vendor_assigned: false,
   }, {
-    skip: !vendor?.id,  // Don't fetch until vendor is loaded
+    skip: !vendor?.id,
   });
 
-  // Use all issues returned (no severity filtering to match marketplace behavior)
-  const issues = filteredIssuesData?.issues || [];
+  // For the dashboard card - use total_filtered count from the paginated endpoint
+  const filteredIssuesCount = recentIssuesData?.total_filtered?.count || 0;
+  const recentIssues = recentIssuesData?.issues || [];
 
   const {
     data: listings,
@@ -207,13 +209,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   // Generate priority actions from high-value opportunities based on listings with high/medium severity issues
   useEffect(() => {
     const calculatePriorityActions = async () => {
-      if (!issues || !listings) {
+      if (!recentIssues || !listings) {
         setPriorityActions([]);
         return;
       }
 
       // Filter issues by high and medium severity
-      const highValueIssues = issues.filter(issue => 
+      const highValueIssues = recentIssues.filter(issue => 
         issue.severity === 'high' || issue.severity === 'medium'
       );
 
@@ -326,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     calculatePriorityActions();
-  }, [issues, listings, dispatch]);
+  }, [recentIssues, listings, dispatch, vendorMetrics]);
 
 
 
@@ -399,21 +401,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
            },
                      quickActionCards: [
             ...(() => {
-              // Backend filtered by specialty - show all projects in vendor's field
-              const availableProjects = issues || [];
-              
-              const recentProjects = availableProjects.filter(issue => {
+              // Filter recent projects from the sample we fetched
+              const recentProjects = recentIssues.filter(issue => {
                 if (!(issue as any).created_at) return false;
                 const hoursAgo = (Date.now() - new Date((issue as any).created_at).getTime()) / (1000 * 60 * 60);
                 return hoursAgo <= 24;
               });
 
               // Only show if there are actually projects
-              if (availableProjects.length === 0) return [];
+              if (filteredIssuesCount === 0) return [];
 
               const vendorSpecialty = vendor?.vendor_types?.split(',')[0].trim();
-              // Use total_filtered if available (filtered count), otherwise fall back to issues.length
-              const totalCount = filteredIssuesData?.total_filtered?.count ?? availableProjects.length;
 
               return [{
                 id: 'specialtyProjects',
@@ -421,10 +419,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 title: vendorSpecialty
                   ? `${vendorSpecialty.charAt(0).toUpperCase() + vendorSpecialty.slice(1)} Projects`
                   : 'Available Projects',
-                subtitle: `${totalCount} project${totalCount !== 1 ? 's' : ''} matching your specialty`,
+                subtitle: `${filteredIssuesCount} project${filteredIssuesCount !== 1 ? 's' : ''} matching your specialty`,
                 description: recentProjects.length > 0
                   ? `${recentProjects.length} new project${recentProjects.length !== 1 ? 's' : ''} posted in the last 24hrs`
-                  : `Browse ${availableProjects.length} projects in your field`,
+                  : `Browse projects in your field`,
                 ctaText: 'View Projects',
                 isLimitedTime: recentProjects.length > 0,
                 iconType: 'briefcase',
@@ -439,7 +437,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                 ],
                 stats: recentProjects.length > 0 
                   ? `${recentProjects.length} posted today` 
-                  : `${availableProjects.length} available`
+                  : `${filteredIssuesCount} available`
               }];
             })(),
              {
@@ -548,14 +546,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
         const config = transformApiResponseToConfig(mockApiResponse, {
           onUpload: () => {
-            // Navigate to marketplace with vendor specialty pre-filtered
+            // Navigate to marketplace with vendor specialty and city pre-filtered
+            const params = new URLSearchParams();
             if (vendorSpecialty) {
-              // Convert to lowercase to match marketplace filter options
-              const typeParam = vendorSpecialty.toLowerCase();
-              navigate(`/marketplace?type=${encodeURIComponent(typeParam)}`);
-            } else {
-              navigate('/marketplace');
+              params.set('type', vendorSpecialty.toLowerCase());
             }
+            if (vendorCity) {
+              params.set('city', vendorCity);
+            }
+            
+            const queryString = params.toString();
+            navigate(`/marketplace${queryString ? `?${queryString}` : ''}`);
           },
           onNavigate: (path: string) => navigate(path),
           onApiCall: (endpoint: string) => console.log('API call to:', endpoint)
@@ -569,7 +570,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     loadDashboardConfig();
-  }, [vendorOffers.length, issues?.length, assessments?.length, vendor?.id, navigate, priorityActions]);
+  }, [vendorOffers.length, recentIssues?.length, assessments?.length, vendor?.id, navigate, priorityActions, filteredIssuesCount, vendorSpecialty, vendorMetrics]);
 
   // Handling error state
   if (issuesError) {

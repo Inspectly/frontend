@@ -11,8 +11,8 @@ export const issuesApi = api.injectEndpoints({
     getPaginatedIssues: builder.query<
       { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} },
       {
-        offset: number;
-        limit: number;
+        offset?: number;
+        limit?: number;
         search?: string;
         type?: string;
         city?: string;
@@ -20,11 +20,11 @@ export const issuesApi = api.injectEndpoints({
         vendor_assigned?: boolean;
       }
     >({
-      query: ({ offset, limit, search = "", type = "", city = "", state = "", vendor_assigned }) => {
+      query: ({ offset = 0, limit = 100, search = "", type = "", city = "", state = "", vendor_assigned = false }) => {
         const params = new URLSearchParams({
           offset: offset.toString(),
           limit: limit.toString(),
-          vendor_assigned: vendor_assigned ? "true" : "false",
+          vendor_assigned: vendor_assigned.toString(),
         });
     
         if (search) params.append("search", search);
@@ -33,6 +33,43 @@ export const issuesApi = api.injectEndpoints({
         if (state) params.append("state", state);
     
         return `/issues/filter?${params.toString()}`;
+      },
+      transformResponse: (response: { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} }) => {
+        // Transform status from backend format to frontend format
+        return {
+          ...response,
+          issues: response.issues.map(issue => ({
+            ...issue,
+            status: issue.status?.startsWith('Status.') 
+              ? issue.status 
+              : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
+          }))
+        };
+      },
+    }),
+
+    getTotalFilteredIssues: builder.query<
+      { count: number },
+      {
+        search?: string;
+        type?: string;
+        city?: string;
+        state?: string;
+        vendor_assigned?: boolean;
+      }
+    >({
+      query: ({ search = "", type = "", city = "", state = "", vendor_assigned = false }) => {
+        const params = new URLSearchParams();
+    
+        if (search) params.append("search", search);
+        if (type) params.append("type", type);
+        if (city) params.append("city", city);
+        if (state) params.append("state", state);
+        
+        // Only include vendor_assigned if true (backend defaults to false)
+        if (vendor_assigned) params.append("vendor_assigned", "true");
+    
+        return `/issues/total/filter?${params.toString()}`;
       },
     }),
 
@@ -187,6 +224,7 @@ export const {
   useGetIssuesQuery,
   useGetIssueByIdQuery,
   useGetPaginatedIssuesQuery,
+  useGetTotalFilteredIssuesQuery,
   useGetIssueAddressByIdQuery,
   useGetAllIssueAddressesQuery,
   useGetAddressesByIssueIdsMutation,

@@ -25,7 +25,9 @@ const Marketplace: React.FC = () => {
   const [selectedType, setSelectedType] = useState(() => {
     return searchParams.get('type') || "";
   });
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCity, setSelectedCity] = useState(() => {
+    return searchParams.get('city') || "";
+  });
   const [selectedProvince, setSelectedProvince] = useState("");
   const [groupByAddress, setGroupByAddress] = useState(() => {
     return searchParams.get('grouped') === 'true';
@@ -34,44 +36,43 @@ const Marketplace: React.FC = () => {
   const itemsPerPage = 12;
   const maxFetchLimit = 50000; // Configurable limit for grouping - can be adjusted based on system capacity
 
-  // Update URL when groupByAddress changes
+  // Update URL when filters change
   useEffect(() => {
     const newParams = new URLSearchParams(searchParams);
+    
+    // Update type parameter
+    if (selectedType) {
+      newParams.set('type', selectedType);
+    } else {
+      newParams.delete('type');
+    }
+    
+    // Update city parameter
+    if (selectedCity) {
+      newParams.set('city', selectedCity);
+    } else {
+      newParams.delete('city');
+    }
+    
+    // Update grouped parameter
     if (groupByAddress) {
       newParams.set('grouped', 'true');
     } else {
       newParams.delete('grouped');
     }
-    setSearchParams(newParams, { replace: true });
-  }, [groupByAddress, searchParams, setSearchParams]);
-
-  // Type mapping to handle variations in issue types
-  const getTypeVariations = useCallback((selectedType: string): string[] => {
-    const typeMap: Record<string, string[]> = {
-      electrical: ['electrical', 'electrician', 'electric', 'wiring', 'outlet', 'circuit'],
-      plumbing: ['plumbing', 'plumber', 'pipe', 'pipes', 'water', 'drain', 'faucet', 'toilet'],
-      hvac: ['hvac', 'heating', 'cooling', 'furnace', 'ac', 'air conditioning', 'ventilation'],
-      roofing: ['roofing', 'roof', 'roofer', 'shingle', 'shingles', 'gutter', 'gutters'],
-      flooring: ['flooring', 'floor', 'floors', 'carpet', 'hardwood', 'tile', 'laminate'],
-      painting: ['painting', 'paint', 'painter', 'wall', 'walls', 'interior', 'exterior'],
-      landscaping: ['landscaping', 'landscape', 'landscaper', 'yard', 'garden', 'lawn', 'tree'],
-      structural: ['structural', 'structure', 'foundation', 'beam', 'support', 'framing', 'load bearing'],
-      'dry wall': ['dry wall', 'drywall', 'wall', 'sheetrock', 'gypsum', 'patching', 'texture'],
-      carpentry: ['carpentry', 'carpenter', 'wood', 'trim', 'cabinet', 'door', 'window', 'molding'],
-      other: ['other', 'misc', 'miscellaneous', 'general', 'repair', 'maintenance']
-    };
     
-    return typeMap[selectedType] || [selectedType];
-  }, []);
+    setSearchParams(newParams, { replace: true });
+  }, [groupByAddress, selectedType, selectedCity, setSearchParams]);
 
-  // Determine API parameters - fetch all available data when grouping or type filtering
+
+  // Determine API parameters - use backend filtering for type
   const apiParams = useMemo(() => {
     return {
-      offset: (groupByAddress || selectedType) ? 0 : (currentPage - 1) * itemsPerPage,
-      limit: (groupByAddress || selectedType) ? maxFetchLimit : itemsPerPage, // Use configurable limit for grouping
+      offset: groupByAddress ? 0 : (currentPage - 1) * itemsPerPage,
+      limit: groupByAddress ? maxFetchLimit : itemsPerPage,
       search: searchTerm.trim(),
-      type: "", // Don't send type to API, we'll filter client-side for better matching
-    city: selectedCity,
+      type: selectedType, // Send as-is (lowercase) to match backend
+      city: selectedCity,
       state: selectedProvince,
       vendor_assigned: false,
     };
@@ -113,30 +114,17 @@ const Marketplace: React.FC = () => {
 
 
   // Use prefetched data if available, otherwise use API data
-  const rawIssues = useMemo(() => {
+  // Backend now handles type filtering, so no need for client-side filtering
+  const filteredIssues = useMemo(() => {
     return prefetchedData?.issues || data?.issues || [];
   }, [prefetchedData?.issues, data?.issues]);
 
-  // Apply client-side type filtering for better matching
-  const filteredIssues = useMemo(() => {
-    if (!selectedType) return rawIssues;
-    
-    const typeVariations = getTypeVariations(selectedType);
-    return rawIssues.filter((issue: IssueType) => {
-      const issueType = issue.type?.toLowerCase() || '';
-      return typeVariations.some(variation => 
-        issueType.includes(variation.toLowerCase()) || 
-        variation.toLowerCase().includes(issueType)
-      );
-    });
-  }, [rawIssues, selectedType, getTypeVariations]);
-
-  // For ungrouped view, paginate the issues client-side when using prefetched data or filtering
+  // For ungrouped view, paginate the issues client-side when using prefetched data
   const issues = useMemo(() => {
     if (!groupByAddress) {
-      // Only do client-side pagination when we have prefetched data or type filtering
+      // Only do client-side pagination when we have prefetched data
       // Otherwise, the API already sent us the correct page
-      if (prefetchedData?.issues || selectedType) {
+      if (prefetchedData?.issues) {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return filteredIssues.slice(startIndex, endIndex);
@@ -145,12 +133,10 @@ const Marketplace: React.FC = () => {
       return filteredIssues;
     }
     return filteredIssues;
-  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.issues, selectedType]);
+  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.issues]);
   
-  // Calculate total items based on filtering
-  const totalItems = selectedType 
-    ? filteredIssues.length  // Use filtered count when type filtering is applied
-    : (prefetchedData?.total_filtered?.count || data?.total_filtered?.count || 0);
+  // Calculate total items - backend handles all filtering now
+  const totalItems = prefetchedData?.total_filtered?.count || data?.total_filtered?.count || 0;
 
   // Create address map for easy lookup
   const addressMap = useMemo(() => {
@@ -378,17 +364,19 @@ const Marketplace: React.FC = () => {
                   className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
                 >
                   <option value="">All Types</option>
-                  <option value="electrical">Electrical</option>
-                  <option value="plumbing">Plumbing</option>
+                  <option value="general">General</option>
+                  <option value="structural">Structural</option>
+                  <option value="electrician">Electrician</option>
+                  <option value="plumber">Plumber</option>
+                  <option value="painter">Painter</option>
+                  <option value="cleaner">Cleaner</option>
                   <option value="hvac">HVAC</option>
                   <option value="roofing">Roofing</option>
-                  <option value="flooring">Flooring</option>
-                  <option value="painting">Painting</option>
-                  <option value="landscaping">Landscaping</option>
-                  <option value="structural">Structural</option>
-                  <option value="dry wall">Dry Wall</option>
+                  <option value="insulation">Insulation</option>
+                  <option value="drywall">Drywall</option>
+                  <option value="plaster">Plaster</option>
                   <option value="carpentry">Carpentry</option>
-                  <option value="general">General</option>
+                  <option value="landscaping">Landscaping</option>
                   <option value="other">Other</option>
                 </select>
           </div>

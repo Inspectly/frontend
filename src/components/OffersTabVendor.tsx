@@ -19,6 +19,7 @@ interface OffersTabVendorProps {
   vendorId?: number | string;
   onOpenOfferModal: (editingOffer?: IssueOffer) => void;
   onOfferAccepted?: (offer: IssueOffer) => void;
+  issueVendorId?: number | null;
 }
 
 const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
@@ -26,6 +27,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
   vendorId,
   onOpenOfferModal,
   onOfferAccepted,
+  issueVendorId,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | number | null>(
     null
@@ -104,15 +106,28 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
   if (!vendorId)
     return <p className="text-gray-500">Unable to load your offer.</p>;
 
+  // Check if issue already has a vendor assigned
+  const isVendorAssigned = issueVendorId !== null && issueVendorId !== undefined;
+  const canPlaceOffer = !hasAcceptedOffer && !isVendorAssigned;
+
   return (
     <div className="bg-white">
-      <div className="card-header bg-white pb-4 flex items-center justify-end">
+      <div className="card-header bg-white pb-4 flex items-center justify-between">
+        {isVendorAssigned && (
+          <div className="flex items-center gap-2 text-amber-700 bg-amber-50 px-3 py-2 rounded-lg text-sm">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="font-medium">This issue already has a vendor assigned</span>
+          </div>
+        )}
         <button
-          disabled={hasAcceptedOffer}
+          disabled={!canPlaceOffer}
           onClick={() => onOpenOfferModal()}
           className={`bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium ${
-            hasAcceptedOffer ? "cursor-not-allowed" : "cursor-pointer"
+            !canPlaceOffer ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-blue-700"
           }`}
+          title={isVendorAssigned ? "This issue already has a vendor assigned" : hasAcceptedOffer ? "An offer has already been accepted" : "Place your offer"}
         >
           Place Offer
         </button>

@@ -895,6 +895,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     offers={offers}
                     vendorId={currentVendor?.id}
                     onOpenOfferModal={handleEditOfferModal}
+                    issueVendorId={issue.vendor_id}
                     onOfferAccepted={(acceptedOffer) => {
                       updateIssue({
                         ...issue,
