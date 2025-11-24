@@ -76,57 +76,63 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               <span>Dashboard</span>
             </a>
           </li>
-          <li>
-            <a
-              href="/listings"
-              onClick={() => handleMenuClick("/listings")}
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/listings"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faListCheck}
-                className="mr-2 size-[19px]"
-              />
-              <span>Listings</span>
-            </a>
-          </li>
-          <li>
-            <a
-              href="/dashboard/chat"
-              onClick={() => handleMenuClick("/dashboard/chat")}
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/chat"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faCommentDots}
-                className="mr-2 size-[19px]"
-              />
-              <span>Chat</span>
-            </a>
-          </li>
-          <li>
-            <a
-              href="/pricing"
-              onClick={() => handleMenuClick("/dashboard/pricing")}
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/pricing"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faMoneyBill1}
-                className="mr-2 size-[19px]"
-              />
-              <span>Pricing</span>
-            </a>
-          </li>
+          {isAuthReady && user?.user_type !== "vendor" && (
+            <li>
+              <a
+                href="/listings"
+                onClick={() => handleMenuClick("/listings")}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+                  activePage === "/listings"
+                    ? "bg-blue-500 text-white"
+                    : "text-neutral-600 hover:text-blue-400"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faListCheck}
+                  className="mr-2 size-[19px]"
+                />
+                <span>Listings</span>
+              </a>
+            </li>
+          )}
+          {false && ( // TODO: Implement chat feature Q1 2026
+            <li>
+              <a
+                href="/dashboard/chat"
+                onClick={() => handleMenuClick("/dashboard/chat")}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+                  activePage === "/dashboard/chat"
+                    ? "bg-blue-500 text-white"
+                    : "text-neutral-600 hover:text-blue-400"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faCommentDots}
+                  className="mr-2 size-[19px]"
+                />
+                <span>Chat</span>
+              </a>
+            </li>
+          )}
+          {isAuthReady && user?.user_type === "vendor" && (
+            <li>
+              <a
+                href="/pricing"
+                onClick={() => handleMenuClick("/dashboard/pricing")}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+                  activePage === "/dashboard/pricing"
+                    ? "bg-blue-500 text-white"
+                    : "text-neutral-600 hover:text-blue-400"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faMoneyBill1}
+                  className="mr-2 size-[19px]"
+                />
+                <span>Pricing</span>
+              </a>
+            </li>
+          )}
           <li>
             <a
               href="/dashboard/faqs"

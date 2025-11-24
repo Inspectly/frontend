@@ -153,6 +153,9 @@ export const transformApiResponseToConfig = (
         if (card.type === 'upload' && card.id === 'upload' && navigationCallbacks.onUpload) {
           console.log('Using onUpload callback');
           navigationCallbacks.onUpload();
+        } else if (card.id === 'specialtyProjects' && navigationCallbacks.onUpload) {
+          console.log('Navigating specialtyProjects to marketplace with filter');
+          navigationCallbacks.onUpload();
         } else if (card.id === 'hotProjects' && navigationCallbacks.onNavigate) {
           console.log('Navigating hotProjects to /marketplace');
           navigationCallbacks.onNavigate('/marketplace');
@@ -189,11 +192,11 @@ export const getSocialProofForDashboard = (
   userType: 'client' | 'vendor'
 ): string => {
   if (userType === 'vendor') {
-    // Vendor: emphasize new opportunities this week
-    return `${Math.floor(Math.random() * 12) + 8} new opportunities this week`;
+    // Vendor: emphasize new opportunities available
+    return `New opportunities available this week`;
   }
-  // Client (and default): emphasize membership/community
-  return "You're among 12,847+ smart property owners";
+  // Client (and default): emphasize value proposition
+  return "Join property owners saving on repairs";
 };
 
 // Generate sample configurations for different user types

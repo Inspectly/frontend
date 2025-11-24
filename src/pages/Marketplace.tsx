@@ -22,7 +22,9 @@ const Marketplace: React.FC = () => {
   
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedType, setSelectedType] = useState("");
+  const [selectedType, setSelectedType] = useState(() => {
+    return searchParams.get('type') || "";
+  });
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("");
   const [groupByAddress, setGroupByAddress] = useState(() => {
@@ -386,6 +388,7 @@ const Marketplace: React.FC = () => {
                   <option value="structural">Structural</option>
                   <option value="dry wall">Dry Wall</option>
                   <option value="carpentry">Carpentry</option>
+                  <option value="general">General</option>
                   <option value="other">Other</option>
                 </select>
           </div>

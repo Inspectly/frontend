@@ -346,13 +346,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           heroContent: {
             backgroundImage: "/images/gradient-bg.png",
             socialProofText: getSocialProofForDashboard("client"),
-            title: "You've Saved $2,340 This Year!",
-            subtitle:
-              "Our AI-powered platform has helped you find the best deals and avoid costly mistakes. Keep the momentum going with your next inspection report!",
+            title: filteredIssuesByUser.length > 0 
+              ? `${filteredIssuesByUser.length} Issue${filteredIssuesByUser.length !== 1 ? 's' : ''} Found - Get Competitive Offers!`
+              : "Upload Your Inspection Report Today!",
+            subtitle: filteredIssuesByUser.length > 0
+              ? "Our AI-powered platform helps you find the best deals and avoid costly mistakes. Review your issues and start receiving bids from qualified vendors."
+              : "Upload your inspection report and get competitive offers within 24 hours. Join property owners making smarter repair decisions with AI-powered analysis.",
             badges: [
               { iconType: "bolt", label: "2-min AI analysis" },
-              { iconType: "dollar-sign", label: "Average 23% savings" },
-              { iconType: "trophy", label: "98% satisfaction" },
+              { iconType: "dollar-sign", label: "Competitive bidding" },
+              { iconType: "trophy", label: "Vetted vendors" },
             ],
             userInitials: [],
           },
@@ -386,10 +389,40 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             },
           ],
           achievements: [
-            { id: "saved", label: "Total Saved", value: "$2,340", subValue: "+$340 this month", color: "green", type: "currency" },
-            { id: "rating", label: "Avg Vendor Rating", value: "4.8", subValue: "Above average", color: "blue", type: "rating" },
-            { id: "response", label: "Days Avg Response", value: "3.2", subValue: "47% faster", color: "purple", type: "number" },
-            { id: "resolved", label: "Issues Resolved", value: "12", subValue: "85% success rate", color: "orange", type: "number" },
+            { 
+              id: "issues", 
+              label: "Total Issues", 
+              value: `${filteredIssuesByUser.length}`, 
+              subValue: filteredIssuesByUser.filter(i => i.severity === 'high').length > 0 
+                ? `${filteredIssuesByUser.filter(i => i.severity === 'high').length} high priority` 
+                : "All tracked", 
+              color: "green", 
+              type: "number" 
+            },
+            { 
+              id: "offers", 
+              label: "Total Offers", 
+              value: `${Object.values(offersByIssueId).flat().length}`, 
+              subValue: "From vendors", 
+              color: "blue", 
+              type: "number" 
+            },
+            { 
+              id: "listings", 
+              label: "Properties", 
+              value: `${_listings?.length || 0}`, 
+              subValue: "Managed", 
+              color: "purple", 
+              type: "number" 
+            },
+            { 
+              id: "assessments", 
+              label: "Assessments", 
+              value: `${assessments.length}`, 
+              subValue: "Scheduled", 
+              color: "orange", 
+              type: "number" 
+            },
           ],
           progressGoal: {
             title: "Monthly Goal Progress",
@@ -397,41 +430,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             progress: 67,
             badgeText: 'Complete your goal to earn "Super Saver" badge!',
           },
-          testimonials: [
-            {
-              id: "sarah",
-              name: "Sarah M.",
-              location: "Denver, CO",
-              rating: 5,
-              text:
-                "Saved $1,200 on electrical work! The AI found issues I never would have noticed. Best platform ever!",
-              metrics: "Saved $1,200 • 3 days turnaround",
-            },
-            {
-              id: "mike",
-              name: "Mike R.",
-              location: "Austin, TX",
-              rating: 5,
-              text:
-                "The competitive bidding saved me 30% on HVAC repair. Vendors are pre-vetted and professional!",
-              metrics: "Saved $850 • 5-star vendors",
-            },
-            {
-              id: "jennifer",
-              name: "Jennifer L.",
-              location: "Miami, FL",
-              rating: 5,
-              text:
-                "Property value increased $15K after following the AI recommendations. ROI was incredible!",
-              metrics: "+$15K value • Smart recommendations",
-            },
-          ],
-          communityStats: [
-            { id: "customers", value: "12,847+", label: "Happy Customers", color: "indigo" },
-            { id: "savings", value: "$2.3M+", label: "Total Savings", color: "green" },
-            { id: "rating", value: "4.9⭐", label: "Average Rating", color: "purple" },
-            { id: "satisfaction", value: "98%", label: "Satisfaction Rate", color: "orange" },
-          ],
           quickActionCards: [
             {
               id: "upload",

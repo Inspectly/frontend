@@ -80,7 +80,8 @@ const Achievements: React.FC<AchievementsProps> = ({
 
   const formatValue = (achievement: Achievement) => {
     if (achievement.type === 'currency') {
-      return `$${achievement.value}`;
+      const numValue = typeof achievement.value === 'string' ? parseFloat(achievement.value) : achievement.value;
+      return `$${numValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     if (achievement.type === 'rating') {
       return (

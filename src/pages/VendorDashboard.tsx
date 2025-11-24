@@ -2,10 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { store } from "../store/store";
-import { User, IssueOfferStatus } from "../types";
+import { User, IssueOfferStatus, IssueAssessmentStatus } from "../types";
 import UserCalendar from "../components/UserCalendar";
 import Agenda from "../components/Agenda";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetIssuesQuery, useGetPaginatedIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 
 import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
@@ -57,10 +57,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
 
+  // Get vendor specialty for filtering
+  const vendorSpecialty = vendor?.vendor_types 
+    ? vendor.vendor_types.split(',')[0].trim() 
+    : undefined;
+
+  // Fetch filtered issues from backend based on vendor specialty
+  // Backend filters by type (specialty) and vendor_assigned
+  // Showing ALL severity levels since marketplace doesn't filter by severity yet
   const {
-    data: issues,
+    data: filteredIssuesData,
     error: issuesError,
-  } = useGetIssuesQuery();
+  } = useGetPaginatedIssuesQuery({
+    offset: 0,
+    limit: 100,  // Reasonable limit for dashboard preview
+    type: vendorSpecialty,  // Filter by vendor's primary specialty (including "general")
+    vendor_assigned: false,  // Only unassigned issues
+  }, {
+    skip: !vendor?.id,  // Don't fetch until vendor is loaded
+  });
+
+  // Use all issues returned (no severity filtering to match marketplace behavior)
+  const issues = filteredIssuesData?.issues || [];
 
   const {
     data: listings,
@@ -71,14 +89,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     const acceptedOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.ACCEPTED);
     const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
     const totalRevenue = acceptedOffers.reduce((sum, offer) => sum + (offer.price || 0), 0);
-    const completionRate = assessments && assessments.length > 0 ? Math.round((acceptedOffers.length / assessments.length) * 100) : 0;
+    
+    // Completion rate based on accepted assessments vs total assessments
+    // An assessment represents a scheduled job/appointment
+    const completedAssessments = assessments?.filter(a => a.status === IssueAssessmentStatus.ACCEPTED) || [];
+    const totalAssessments = assessments?.length || 0;
+    const completionRate = totalAssessments > 0 
+      ? Math.round((completedAssessments.length / totalAssessments) * 100) 
+      : 0;
 
     return {
       activeJobs: acceptedOffers.length,
       monthlyRevenue: totalRevenue,
       completionRate,
       pendingBids: pendingOffers.length,
-      avgRating: 4.8, // TODO: Calculate from reviews
     };
   }, [vendorOffers, assessments]);
 
@@ -235,7 +259,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             }
             
             const titleText = offers?.length > 0 ? 
-              `${issue.type} - Avg Bid: $${estimatedEarnings.toLocaleString()}` : 
+              `${issue.type} - Avg Bid: $${estimatedEarnings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 
               `${issue.type} - Be First to Bid`;
             // Determine reason candidates with weights for ordering
             const averageTicket = (vendorMetrics?.activeJobs || 0) > 0
@@ -318,35 +342,35 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             {
               id: 'revenue',
               label: 'Monthly Revenue',
-              value: `$${vendorMetrics?.monthlyRevenue?.toLocaleString() || '2,800'}`,
+              value: `$${vendorMetrics?.monthlyRevenue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '2,800.00'}`,
               iconType: 'dollar-sign',
               iconColor: 'text-green-600',
               dotColor: 'bg-green-500',
               valueColor: 'text-green-600'
             },
             {
-              id: 'potential',
-              label: 'Potential This Month',
-              value: `$${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()}`,
-              iconType: 'trending-up',
+              id: 'pending_bids',
+              label: 'Pending Bids',
+              value: `${vendorMetrics?.pendingBids || 0}`,
+              iconType: 'clock',
               iconColor: 'text-blue-600',
               dotColor: 'bg-blue-500',
               valueColor: 'text-blue-600'
             },
             {
-              id: 'ranking',
-              label: 'Network Ranking',
-              value: `Top ${Math.floor(Math.random() * 15) + 5}%`,
-              iconType: 'trophy',
+              id: 'active_jobs',
+              label: 'Active Jobs',
+              value: `${vendorMetrics?.activeJobs || 0}`,
+              iconType: 'briefcase',
               iconColor: 'text-yellow-600',
               dotColor: 'bg-yellow-500',
               valueColor: 'text-yellow-600'
             },
             {
-              id: 'responseTime',
-              label: 'Avg Response',
-              value: '2.1 hrs',
-              iconType: 'clock',
+              id: 'completion',
+              label: 'Completion Rate',
+              value: `${vendorMetrics?.completionRate || 0}%`,
+              iconType: 'check-circle',
               iconColor: 'text-purple-600',
               dotColor: 'bg-purple-500',
               valueColor: 'text-purple-600'
@@ -355,37 +379,69 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                      heroContent: {
              backgroundImage: "/images/gradient-bg.png",
             socialProofText: getSocialProofForDashboard('vendor'),
-             title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
-             subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
+             title: vendorMetrics?.pendingBids && vendorMetrics.pendingBids > 0
+               ? `${vendorMetrics.pendingBids} Active Bid${vendorMetrics.pendingBids !== 1 ? 's' : ''} - Keep Momentum Going!`
+               : vendorMetrics?.monthlyRevenue && vendorMetrics.monthlyRevenue > 0
+               ? `$${vendorMetrics.monthlyRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Earned This Month!`
+               : "Start Bidding on Projects Today!",
+             subtitle: vendorMetrics?.pendingBids && vendorMetrics.pendingBids > 0
+               ? `${vendor?.name || 'You'} have ${vendorMetrics.pendingBids} pending bid${vendorMetrics.pendingBids !== 1 ? 's' : ''}. Follow up with clients to increase your win rate and grow your business.`
+               : vendorMetrics?.monthlyRevenue && vendorMetrics.monthlyRevenue > 0
+               ? `Great work! You've earned $${vendorMetrics.monthlyRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} this month. Check the marketplace for new opportunities to keep growing.`
+               : "Browse the marketplace and submit your first bid. Build your reputation and start earning with quality projects.",
              badges: [
-               { iconType: 'fire', label: 'Specialty: Electrical' },
-               { iconType: 'trending-up', label: `+${Math.floor(Math.random() * 30) + 15}% vs last month` },
-               { iconType: 'medal', label: `Top ${Math.floor(Math.random() * 15) + 5}% performer` }
+               { iconType: 'briefcase', label: `${vendorMetrics?.activeJobs || 0} Active Jobs` },
+               { iconType: 'dollar-sign', label: `$${vendorMetrics?.monthlyRevenue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'} Revenue` },
+               { iconType: 'check-circle', label: `${vendorMetrics?.completionRate || 0}% Completion` }
              ],
             // Remove mock initials to avoid misleading UI
             userInitials: []
            },
                      quickActionCards: [
-             {
-               id: 'hotProjects',
-               type: 'upload',
-               title: 'High Priority Projects',
-               subtitle: `$${((Math.floor(Math.random() * 8) + 12) * 1000).toLocaleString()} in total project value`,
-               description: `${Math.floor(Math.random() * 8) + 5} urgent electrical jobs posted in the last 24hrs`,
-               ctaText: 'Bid Now',
-               isLimitedTime: true,
-               iconType: 'fire',
-               iconColor: 'text-red-600',
-               gradientFrom: 'from-red-50',
-               gradientTo: 'to-orange-50',
-               borderColor: 'border-red-200',
-               features: [
-                 { iconType: 'clock', text: 'Fast turnaround', color: 'text-red-500' },
-                 { iconType: 'trending-up', text: 'Premium rates', color: 'text-green-500' },
-                 { iconType: 'star', text: 'High-rating clients', color: 'text-yellow-500' }
-               ],
-               stats: `Only ${Math.floor(Math.random() * 4) + 2} vendors competing`
-             },
+            ...(() => {
+              // Backend filtered by specialty - show all projects in vendor's field
+              const availableProjects = issues || [];
+              
+              const recentProjects = availableProjects.filter(issue => {
+                if (!(issue as any).created_at) return false;
+                const hoursAgo = (Date.now() - new Date((issue as any).created_at).getTime()) / (1000 * 60 * 60);
+                return hoursAgo <= 24;
+              });
+
+              // Only show if there are actually projects
+              if (availableProjects.length === 0) return [];
+
+              const vendorSpecialty = vendor?.vendor_types?.split(',')[0].trim();
+              // Use total_filtered if available (filtered count), otherwise fall back to issues.length
+              const totalCount = filteredIssuesData?.total_filtered?.count ?? availableProjects.length;
+
+              return [{
+                id: 'specialtyProjects',
+                type: 'upload' as const,
+                title: vendorSpecialty
+                  ? `${vendorSpecialty.charAt(0).toUpperCase() + vendorSpecialty.slice(1)} Projects`
+                  : 'Available Projects',
+                subtitle: `${totalCount} project${totalCount !== 1 ? 's' : ''} matching your specialty`,
+                description: recentProjects.length > 0
+                  ? `${recentProjects.length} new project${recentProjects.length !== 1 ? 's' : ''} posted in the last 24hrs`
+                  : `Browse ${availableProjects.length} projects in your field`,
+                ctaText: 'View Projects',
+                isLimitedTime: recentProjects.length > 0,
+                iconType: 'briefcase',
+                iconColor: 'text-blue-600',
+                gradientFrom: 'from-blue-50',
+                gradientTo: 'to-indigo-50',
+                borderColor: 'border-blue-200',
+                features: [
+                  { iconType: 'wrench', text: 'Your specialty', color: 'text-blue-500' },
+                  { iconType: 'briefcase', text: 'Ready to bid', color: 'text-green-500' },
+                  { iconType: 'clock', text: recentProjects.length > 0 ? 'New today' : 'Available now', color: 'text-orange-500' }
+                ],
+                stats: recentProjects.length > 0 
+                  ? `${recentProjects.length} posted today` 
+                  : `${availableProjects.length} available`
+              }];
+            })(),
              {
                id: 'aiPricing',
                type: 'preview',
@@ -400,34 +456,36 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
             {
               id: 'revenue_goal',
               label: 'Revenue Goal Progress',
-              value: `${vendorMetrics?.monthlyRevenue || 2800}`,
-              subValue: `$${5000 - (vendorMetrics?.monthlyRevenue || 2800)} to reach $5K goal`,
+              value: `${(vendorMetrics?.monthlyRevenue || 2800).toFixed(2)}`,
+              subValue: (vendorMetrics?.monthlyRevenue || 2800) >= 5000
+                ? `$${((vendorMetrics?.monthlyRevenue || 2800) - 5000).toFixed(2)} above $5K goal!`
+                : `$${(5000 - (vendorMetrics?.monthlyRevenue || 2800)).toFixed(2)} to reach $5K goal`,
               color: 'green',
               type: 'currency'
             },
             {
-              id: 'market_share',
-              label: 'Market Position',
-              value: `Top ${Math.floor(Math.random() * 15) + 5}`,
-              subValue: `Outperforming ${Math.floor(Math.random() * 200) + 150} vendors`,
+              id: 'active_bids',
+              label: 'Active Bids',
+              value: `${vendorMetrics?.pendingBids || 0}`,
+              subValue: 'Pending responses',
               color: 'blue',
-              type: 'percentage'
-            },
-            {
-              id: 'efficiency',
-              label: 'Efficiency Score',
-              value: `${Math.floor(Math.random() * 20) + 85}`,
-              subValue: `${Math.floor(Math.random() * 15) + 5}% above network average`,
-              color: 'purple',
-              type: 'percentage'
-            },
-            {
-              id: 'streak',
-              label: 'Win Streak',
-              value: `${Math.floor(Math.random() * 8) + 3}`,
-              subValue: 'Consecutive successful projects',
-              color: 'orange',
               type: 'number'
+            },
+            {
+              id: 'accepted_jobs',
+              label: 'Accepted Jobs',
+              value: `${vendorMetrics?.activeJobs || 0}`,
+              subValue: 'In progress',
+              color: 'purple',
+              type: 'number'
+            },
+            {
+              id: 'completion_rate',
+              label: 'Completion Rate',
+              value: `${vendorMetrics?.completionRate || 0}`,
+              subValue: 'Success tracking',
+              color: 'orange',
+              type: 'percentage'
             }
           ],
                       smartInsights: [
@@ -435,7 +493,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
                id: 'market_surge',
                type: 'urgent',
                title: 'Electrical Jobs Surge +47%',
-               description: `Perfect timing for your specialty! ${Math.floor(Math.random() * 12) + 8} high-value electrical projects posted this week. Average bid: $1,850.`,
+               description: `Perfect timing for your specialty! Check the marketplace for high-value electrical projects. Average bid: $1,850.`,
                ctaText: 'View Available Projects',
                ctaEndpoint: '/marketplace?category=electrical',
                iconType: 'fire'
@@ -489,7 +547,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         };
 
         const config = transformApiResponseToConfig(mockApiResponse, {
-          onUpload: () => navigate('/marketplace'),
+          onUpload: () => {
+            // Navigate to marketplace with vendor specialty pre-filtered
+            if (vendorSpecialty) {
+              // Convert to lowercase to match marketplace filter options
+              const typeParam = vendorSpecialty.toLowerCase();
+              navigate(`/marketplace?type=${encodeURIComponent(typeParam)}`);
+            } else {
+              navigate('/marketplace');
+            }
+          },
           onNavigate: (path: string) => navigate(path),
           onApiCall: (endpoint: string) => console.log('API call to:', endpoint)
         });
