@@ -33,6 +33,7 @@ import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
 import ReportReviewPage from "./pages/ReportReviewPage";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
+import LandingPage from "./pages/LandingPage";
 
 function App() {
   const location = useLocation();
@@ -304,18 +305,21 @@ function App() {
         </>
       ) : (
         <>
-          <Header
-            scrollToSection={scrollToSection}
-            refs={refs}
-            isAuthenticated={authenticated}
-          />
+          {location.pathname !== '/landing' && (
+            <Header
+              scrollToSection={scrollToSection}
+              refs={refs}
+              isAuthenticated={authenticated}
+            />
+          )}
           <Routes>
             <Route path="/" element={<Home refs={refs} plans={plans} />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
           </Routes>
-          <Footer />
+          {location.pathname !== '/landing' && <Footer />}
         </>
       )}
     </>
