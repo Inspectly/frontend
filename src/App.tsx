@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
@@ -241,6 +243,7 @@ function App() {
 
   return (
     <>
+      <ToastContainer />
       {authenticated ? (
         <>
           <DashboardSidebar

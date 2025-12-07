@@ -1,4 +1,9 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import { useGetClientByUserIdQuery, useUpdateClientMutation } from "../features/api/clientsApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import Preloader from "./Preloader";
+import { toast } from "react-toastify";
 
 interface ClientFormData {
   first_name: string;
@@ -13,6 +18,13 @@ interface ClientFormData {
 }
 
 const ClientProfileSettings: React.FC = () => {
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { data: clientData, isLoading, refetch } = useGetClientByUserIdQuery(user?.id.toString() || "", {
+    skip: !user?.id,
+  });
+
+  const [updateClient, { isLoading: isUpdating }] = useUpdateClientMutation();
+
   const [formData, setFormData] = useState<ClientFormData>({
     first_name: "",
     last_name: "",
@@ -24,6 +36,30 @@ const ClientProfileSettings: React.FC = () => {
     country: "",
     postal_code: "",
   });
+
+  const getInitialFormData = (data: typeof clientData): ClientFormData => ({
+    first_name: data?.first_name || "",
+    last_name: data?.last_name || "",
+    email: data?.email || "",
+    phone: data?.phone || "",
+    address: data?.address || "",
+    city: data?.city || "",
+    state: data?.state || "",
+    country: data?.country || "",
+    postal_code: data?.postal_code || "",
+  });
+
+  useEffect(() => {
+    if (clientData) {
+      setFormData(getInitialFormData(clientData));
+    }
+  }, [clientData]);
+
+  const isChanged = JSON.stringify(formData) !== JSON.stringify(getInitialFormData(clientData));
+
+  const handleCancel = () => {
+    setFormData(getInitialFormData(clientData));
+  };
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -43,11 +79,25 @@ const ClientProfileSettings: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("Submitted:", formData);
-    // TODO: Connect to backend
+    if (!clientData?.id) return;
+
+    try {
+      await updateClient({
+        id: clientData.id,
+        user_id: user?.id,
+        ...formData
+      }).unwrap();
+      toast.success("Profile updated successfully");
+      refetch();
+    } catch (error) {
+      console.error("Failed to update profile", error);
+      toast.error("Failed to update profile");
+    }
   };
+
+  if (isLoading) return <Preloader />;
 
   return (
     <div className="card-body">
@@ -118,10 +168,11 @@ const ClientProfileSettings: React.FC = () => {
           <input
             type="email"
             id="email"
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
             placeholder="Enter email"
             value={formData.email}
-            onChange={handleChange}
+            readOnly
+            disabled
           />
         </div>
 
@@ -191,20 +242,24 @@ const ClientProfileSettings: React.FC = () => {
           />
         </div>
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            className="border border-red-600 bg-red-100 hover:bg-red-200 text-red-600 text-base px-8 py-2 rounded-lg"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-base px-8 py-2 rounded-lg"
-          >
-            Save Changes
-          </button>
-        </div>
+        {isChanged && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="border border-red-600 bg-red-100 hover:bg-red-200 text-red-600 text-base px-8 py-2 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-base px-8 py-2 rounded-lg disabled:opacity-50"
+            >
+              {isUpdating ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

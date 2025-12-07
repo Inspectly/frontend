@@ -23,7 +23,7 @@ const WorkPreferences = () => (
 
 
 // Render logic
-const renderSection = (section: string, userType:string | null) => {
+const renderSection = (section: string, userType: string | null) => {
   switch (section) {
     case "Profile Settings":
       if (userType === "vendor") return <VendorProfileSettings />;
@@ -31,7 +31,7 @@ const renderSection = (section: string, userType:string | null) => {
       if (userType === "realtor") return <RealtorProfileSettings />;
       return <p>Unknown user type</p>;
     case "Account & Security":
-        return <AccountAndSecuritySetting />;
+      return <AccountAndSecuritySetting />;
     case "Payment Settings":
       return <PaymentSettings />;
     case "Notification Preferences":
@@ -44,11 +44,11 @@ const renderSection = (section: string, userType:string | null) => {
 };
 
 interface SettingsPageProps {
-  userType: string | null ;
+  userType: string | null;
 }
 
 
-const SettingsPage:React.FC<SettingsPageProps> = ({userType}) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ userType }) => {
   const [selectedSection, setSelectedSection] = useState("Profile Settings");
 
   return (
@@ -56,7 +56,7 @@ const SettingsPage:React.FC<SettingsPageProps> = ({userType}) => {
       <SettingsSidebar selected={selectedSection} onSelect={setSelectedSection} />
       <main className="flex-1 p-6 overflow-y-auto bg-gray-100">
         <section className="bg-white p-6 rounded-md border border-gray-200 shadow-sm">
-          {renderSection(selectedSection, 'vendor')}
+          {renderSection(selectedSection, userType)}
         </section>
       </main>
     </div>

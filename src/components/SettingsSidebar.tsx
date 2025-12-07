@@ -7,12 +7,12 @@ interface SettingsSidebarProps {
 
 const sections = [
   "Profile Settings",
-  "Account & Security",
-  "Payment Settings",
-  "Notification Preferences",
-  "Work Preferences",
-  "Feature Preferences",
-  "Legal & Compliance",
+  // "Account & Security",
+  // "Payment Settings",
+  // "Notification Preferences",
+  // "Work Preferences",
+  // "Feature Preferences",
+  // "Legal & Compliance",
 ];
 
 const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ selected, onSelect }) => {
@@ -24,11 +24,10 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ selected, onSelect })
           <li key={section}>
             <button
               onClick={() => onSelect(section)}
-              className={`w-full flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                selected === section
+              className={`w-full flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${selected === section
                   ? "bg-blue-500 text-white"
                   : "text-neutral-600 hover:text-blue-400"
-              }`}
+                }`}
             >
               {section}
             </button>

@@ -1,6 +1,12 @@
-import React, { useState, ChangeEvent, FormEvent } from "react";
+import React, { useState, ChangeEvent, FormEvent, useEffect } from "react";
+import { useGetVendorByVendorUserIdQuery, useUpdateVendorMutation } from "../features/api/vendorsApi";
+import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import Preloader from "./Preloader";
+import { toast } from "react-toastify";
 
-interface FormData {
+interface VendorFormData {
   businessName: string;
   ownerName: string;
   email: string;
@@ -11,12 +17,18 @@ interface FormData {
   zipcode: string;
   businessType: string;
   serviceAreas: string;
-  languages: string;
+  license: string;
 }
 
 const VendorProfileSettings: React.FC = () => {
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { data: vendorData, isLoading, refetch } = useGetVendorByVendorUserIdQuery(user?.id.toString() || "", {
+    skip: !user?.id,
+  });
+  const [updateVendor, { isLoading: isUpdating }] = useUpdateVendorMutation();
+
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState<VendorFormData>({
     businessName: "",
     ownerName: "",
     email: "",
@@ -27,8 +39,34 @@ const VendorProfileSettings: React.FC = () => {
     zipcode: "",
     businessType: "",
     serviceAreas: "",
-    languages: "",
+    license: "",
   });
+
+  const getInitialFormData = (data: typeof vendorData): VendorFormData => ({
+    businessName: data?.name || "",
+    ownerName: "",
+    email: data?.email || "",
+    phone: data?.phone || "",
+    street: data?.address || "",
+    city: data?.city || "",
+    state: data?.state || "",
+    zipcode: data?.postal_code || "",
+    businessType: data?.vendor_types || "",
+    serviceAreas: "",
+    license: data?.license || "",
+  });
+
+  useEffect(() => {
+    if (vendorData) {
+      setFormData(getInitialFormData(vendorData));
+    }
+  }, [vendorData]);
+
+  const isChanged = JSON.stringify(formData) !== JSON.stringify(getInitialFormData(vendorData));
+
+  const handleCancel = () => {
+    setFormData(getInitialFormData(vendorData));
+  };
 
   const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -46,11 +84,43 @@ const VendorProfileSettings: React.FC = () => {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("Submitted:", formData);
-    // TODO: Connect to backend
+    if (!vendorData?.id) return;
+
+    try {
+      const payload = {
+        id: vendorData.id,
+        vendor_user_id: user?.id,
+        vendor_type: vendorData.vendor_type,
+        vendor_types: formData.businessType,
+        code: vendorData.code,
+        license: formData.license,
+        verified: vendorData.verified,
+        name: formData.businessName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.street,
+        city: formData.city,
+        state: formData.state,
+        country: vendorData.country,
+        postal_code: formData.zipcode,
+        rating: vendorData.rating,
+        review: vendorData.review
+      };
+
+      await updateVendor(payload).unwrap();
+      toast.success("Vendor profile updated successfully");
+      refetch();
+    } catch (error) {
+      console.error("Failed to update vendor", error);
+      toast.error("Failed to update vendor profile");
+    }
   };
+
+  const { data: vendorTypesList } = useGetVendorTypesQuery();
+
+  if (isLoading) return <Preloader />;
 
   return (
     <div className="card-body">
@@ -121,10 +191,11 @@ const VendorProfileSettings: React.FC = () => {
           <input
             type="email"
             id="email"
-            className="w-full border rounded-lg px-3 py-2"
+            className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
             placeholder="Enter email"
             value={formData.email}
-            onChange={handleChange}
+            readOnly
+            disabled
           />
         </div>
 
@@ -194,11 +265,11 @@ const VendorProfileSettings: React.FC = () => {
             onChange={handleChange}
           >
             <option value="">Select business type</option>
-            <option>Plumbing</option>
-            <option>Electrical</option>
-            <option>General Contractor</option>
-            <option>Landscaping</option>
-            <option>Cleaning Services</option>
+            {vendorTypesList?.map((type: any) => (
+              <option key={type.id || type.vendor_type} value={type.vendor_type}>
+                {type.vendor_type}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -217,33 +288,42 @@ const VendorProfileSettings: React.FC = () => {
         </div>
 
         <div className="mb-5">
-          <label htmlFor="languages" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Languages Spoken (comma-separated)
-          </label>
+          <label htmlFor="license" className="block font-semibold text-sm text-neutral-600 mb-2">License Number</label>
           <input
             type="text"
-            id="languages"
+            id="license"
             className="w-full border rounded-lg px-3 py-2"
-            placeholder="e.g. English, French, Spanish"
-            value={formData.languages}
+            placeholder="Enter license number"
+            value={formData.license}
             onChange={handleChange}
           />
         </div>
 
-        <div className="flex gap-3">
-          <button
-            type="button"
-            className="border border-red-600 bg-red-100 hover:bg-red-200 text-red-600 text-base px-8 py-2 rounded-lg"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-base px-8 py-2 rounded-lg"
-          >
-            Save Changes
-          </button>
+        <div className="mb-5">
+          <label className="block font-semibold text-sm text-neutral-600 mb-2">Verification Status</label>
+          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${vendorData?.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+            {vendorData?.verified ? 'Verified' : 'Pending Verification'}
+          </div>
         </div>
+
+        {isChanged && (
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="border border-red-600 bg-red-100 hover:bg-red-200 text-red-600 text-base px-8 py-2 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-base px-8 py-2 rounded-lg disabled:opacity-50"
+            >
+              {isUpdating ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );
