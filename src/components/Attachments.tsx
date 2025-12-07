@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { handleCreateAttachmentWithUpload } from "../utils/attachmentUtil";
+import toast from "react-hot-toast";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -8,6 +10,11 @@ import {
   faChevronDown,
   faChevronUp,
   faPlus,
+  faDownload,
+  faFilePdf,
+  faFileWord,
+  faFileImage,
+  faFile,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { Attachment } from "../types";
@@ -57,6 +64,36 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const getFileIcon = (filename: string, type?: string) => {
+    if (type?.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)) return faFileImage;
+    if (filename.toLowerCase().endsWith(".pdf") || type === "application/pdf" || type === "pdf") return faFilePdf;
+    if (
+      filename.toLowerCase().endsWith(".doc") ||
+      filename.toLowerCase().endsWith(".docx") ||
+      type === "application/msword" ||
+      type === "doc" ||
+      type === "docx" ||
+      type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+      return faFileWord;
+    return faFile;
+  };
+
+  const getFileIconColor = (filename: string, type?: string) => {
+    if (type?.startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(filename)) return "text-purple-500";
+    if (filename.toLowerCase().endsWith(".pdf") || type === "application/pdf" || type === "pdf") return "text-red-500";
+    if (
+      filename.toLowerCase().endsWith(".doc") ||
+      filename.toLowerCase().endsWith(".docx") ||
+      type === "application/msword" ||
+      type === "doc" ||
+      type === "docx" ||
+      type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+      return "text-blue-500";
+    return "text-gray-500";
+  };
+
   // Open File Selector
   const handleAddAttachment = () => {
     fileInputRef.current?.click();
@@ -68,6 +105,12 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
   ) => {
     if (!issueId) return;
 
+    // Check for userId
+    if (!userId) {
+      toast.error("You must be logged in to upload attachments.");
+      return;
+    }
+
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -75,10 +118,28 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
     setUploadStatus("loading");
 
     try {
-      await createAttachment({ issueId, file, userId: 48 }).unwrap();
+      await handleCreateAttachmentWithUpload({
+        issueId,
+        userId: userId,
+        file,
+        createAttachment,
+        refetch,
+      });
       setUploadStatus("success");
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
+      console.log("Upload Error:", error);
+
+      let message = "Upload failed";
+      if (error?.data?.detail) {
+        const detail = error.data.detail;
+        if (Array.isArray(detail)) {
+          message = detail.map((e: any) => `${e.loc?.join(".") || "Field"}: ${e.msg}`).join(", ");
+        } else {
+          message = String(detail);
+        }
+      }
+
+      toast.error(message);
       setUploadStatus("error");
     }
   };
@@ -129,10 +190,11 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
     // Step 1: Determine max number of images that can fit
     let numImages = Math.floor(containerWidth / (minImageSize + gapSize));
 
-    // Ensure at least 1 image is displayed
-    numImages = Math.max(1, Math.min(numImages, issueAttachments.length));
+    // Constraint: Max 3 items visible, Ensure at least 1 image is displayed
+    numImages = Math.max(1, Math.min(numImages, 3, issueAttachments.length));
 
     // Step 2: Adjust image size so they fit exactly
+    // If fewer than 3 items, keep size reasonable (don't expand to full width if only 1 item)
     let newImageSize = (containerWidth - (numImages - 1) * gapSize) / numImages;
     newImageSize = Math.max(minImageSize, Math.min(newImageSize, maxImageSize));
 
@@ -161,13 +223,22 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
   };
 
   // Handle document download
-  const handleDownload = (fileUrl: string, fileName: string) => {
-    const link = document.createElement("a");
-    link.href = fileUrl;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast.error("Failed to download file");
+    }
   };
 
   const formatDate = (isoString: string) => {
@@ -222,7 +293,7 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
               />
             )}
           </button>
-          <h2 className="text-lg font-semibold">Attachments</h2>
+          <h2 className="text-lg font-semibold">Attachments ({issueAttachments.length})</h2>
         </div>
         {userType !== "vendor" && (
           <button
@@ -279,7 +350,7 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
                       className="relative border rounded-md bg-gray-100 flex flex-col justify-end"
                     >
                       {/* Image Attachment */}
-                      {attachment.type === "image" ? (
+                      {((attachment.type || "").startsWith("image/") || /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment.name)) ? ( //<-- Updated check
                         <img
                           src={attachment.url}
                           alt={attachment.name}
@@ -289,15 +360,14 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
                       ) : (
                         /* Document Attachment */
                         <div
-                          className="absolute top-0 left-0 w-full h-full flex items-center justify-center cursor-pointer"
+                          className="absolute top-0 left-0 w-full h-full flex flex-col items-center justify-center cursor-pointer bg-white"
                           onClick={() =>
                             handleDownload(attachment.url, attachment.name)
                           }
                         >
-                          <img
-                            src="/images/google-docs.png"
-                            alt="Document"
-                            className="size-16 mb-8"
+                          <FontAwesomeIcon
+                            icon={getFileIcon(attachment.name, attachment.type || "")}
+                            className={`text-5xl mb-6 ${getFileIconColor(attachment.name, attachment.type || "")}`}
                           />
                         </div>
                       )}
@@ -313,15 +383,31 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
                       </div>
 
                       {/* Delete Button (Only if User Added) */}
-                      {userId === attachment.user_id && (
+                      <div className="absolute top-2 right-2 flex gap-1">
                         <button
-                          className="absolute top-2 right-2 text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm"
-                          disabled={isLoading || isDeleteLoading}
-                          onClick={() => handleDeleteAttachment(index)}
+                          className="text-gray-600 bg-gray-50 rounded-full py-1 px-2 text-sm hover:bg-gray-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(attachment.url, attachment.name);
+                          }}
+                          title="Download"
                         >
-                          <FontAwesomeIcon icon={faTrashCan} />
+                          <FontAwesomeIcon icon={faDownload} />
                         </button>
-                      )}
+                        {String(userId) === String(attachment.user_id) && (
+                          <button
+                            className="text-red-400 bg-gray-50 rounded-full py-1 px-2 text-sm hover:bg-gray-200"
+                            disabled={isLoading || isDeleteLoading}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAttachment(index);
+                            }}
+                            title="Delete"
+                          >
+                            <FontAwesomeIcon icon={faTrashCan} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (

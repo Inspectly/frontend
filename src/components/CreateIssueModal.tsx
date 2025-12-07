@@ -4,6 +4,9 @@ import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import type { IssueStatus } from "../types";
 import { toast } from "react-hot-toast";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import { handleCreateIssueWithImage } from "../utils/issueUtil";
 
 type IssueCollection = { id: number; name: string };
 
@@ -22,6 +25,7 @@ const CreateIssueModal: React.FC<Props> = ({
 }) => {
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
   const [createIssue, { isLoading }] = useCreateIssueMutation();
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   // NOTE: no default auto-select; user must choose a collection
   const [formData, setFormData] = useState<{
@@ -91,12 +95,15 @@ const CreateIssueModal: React.FC<Props> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setSelectedFileName(file.name);
+    
+    // Create preview for UI
     const reader = new FileReader();
     reader.onloadend = () => {
       if (reader.result) {
         setFormData((prev) => ({
           ...prev,
-          image_url: reader.result as string, // base64 preview only
+          image_url: reader.result as string, // Keep for preview only
         }));
       }
     };
@@ -114,40 +121,40 @@ const CreateIssueModal: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || !formData.report_id) return;
+    if (!canSubmit || !formData.report_id || !userId) return;
+
+    // Store the file from the input
+    const imageFile = fileInputRef.current?.files?.[0] || null;
 
     try {
-      await createIssue({
-        report_id: formData.report_id,
-        type: formData.type,
-        summary: formData.summary,
-        description: formData.description,
-        severity: formData.severity,
-        status: formData.status as IssueStatus,
-        active: formData.active,
-        image_url: formData.image_url,
-      }).unwrap();
+      await handleCreateIssueWithImage({
+        formData: {
+          ...formData,
+          image_file: imageFile,
+        },
+        reportId: formData.report_id,
+        userId: userId, // Pass userId
+        createIssue,
+        refetch: onCreated,
+        onClose,
+      });
 
-      toast.success("Issue created");
-      onCreated?.();
-
-      // reset form & close
+      // Reset form
       setFormData({
         report_id: undefined,
         type: "",
         description: "",
         summary: "",
         severity: "",
-        status: "open",    // ✅ keep default for next open
+        status: "open",
         active: true,
         image_url: "",
       });
       setSelectedFileName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
-      onClose();
     } catch (err) {
       console.error("Failed to create issue:", err);
-      toast.error("Failed to create issue");
+      // Error handling is done in the util function
     }
   };
 

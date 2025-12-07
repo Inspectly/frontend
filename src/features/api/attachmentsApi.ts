@@ -7,18 +7,17 @@ export const attachmentsApi = api.injectEndpoints({
       query: () => "attachments/",
       providesTags: [{ type: "Attachments", id: "LIST" }],
     }),
-    createAttachment: builder.mutation<any, { issueId: number; file: File; userId: number }>({
-      query: ({ issueId, file, userId }) => ({
+    createAttachment: builder.mutation<any, { issueId: number; file: File; userId: number; url: string }>({
+      query: ({ issueId, file, userId, url }) => ({
         url: "attachments/",
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        body: {
           issue_id: issueId,
           user_id: userId,
           name: file.name,
-          attachment_type: file.type,
-          url: URL.createObjectURL(file),
-        }),
+          type: file.name.split('.').pop()?.toLowerCase() || "file",
+          url: url,
+        },
       }),
       invalidatesTags: ["Attachments"],
     }),

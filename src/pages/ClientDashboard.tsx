@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
-import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
+import { useUploadReportFileMutation, useGetReportsByUserIdQuery, useCreateReportMutation } from "../features/api/reportsApi";
 import {
   faBolt,
   faBroom,
@@ -40,7 +40,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
 import  AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
-import { handleAddListingWithReport } from "../utils/reportUtil";
+import { handleAddListingWithReport, handleAddListingWithReportCloudinary } from "../utils/reportUtil";
 
 // dashboard pieces
 import MetricsOverview from "../components/MetricsOverview";
@@ -53,6 +53,8 @@ import SocialProof from "../components/SocialProof";
 
 import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
 import { transformApiResponseToConfig, shouldShowComponent, getSocialProofForDashboard } from "../utils/dashboardUtils";
+import TestImageUpload from "../components/TestImageUpload";
+import TestPdfUpload from "../components/TestPdfUpload";
 
 interface DashboardProps {
   user: User;
@@ -75,7 +77,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const [createListing] = useCreateListingMutation();
   const [uploadReportFile] = useUploadReportFileMutation();
-
+  const [createReport] = useCreateReportMutation();
   // Parse accepted assessments and extract vendor_id
   const acceptedAssessments = useMemo(() => {
     return assessments
@@ -612,7 +614,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       {shouldShowComponent(dashboardConfig.smartInsights) && (
         <SmartInsights insights={dashboardConfig.smartInsights!} userType={dashboardConfig.userType} />
       )}
-
+      <TestImageUpload />
+      <TestPdfUpload />
       {/* Assessment Calendar + Vendor Map (Create Listing section removed) */}
       <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
         <div className="col-span-12 2xl:col-span-8">
@@ -689,11 +692,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         onClose={() => setIsAddListingModalOpen(false)}
         onSubmit={async (formData: ListingByReportFormData) => {
           try {
-            await handleAddListingWithReport({
+            await handleAddListingWithReportCloudinary({
               formData,
               user_id: user.id,
               createListing,
-              uploadReportFile,
+              createReport,
               refetch: refetchReports,
               onClose: () => setIsAddListingModalOpen(false),
             });
