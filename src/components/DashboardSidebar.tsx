@@ -10,6 +10,7 @@ import {
   faInfo,
   faListCheck,
   faShop,
+  faBriefcase,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useState } from "react";
@@ -76,6 +77,25 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               <span>Dashboard</span>
             </a>
           </li>
+          {isAuthReady && user?.user_type === "vendor" && (
+            <li>
+              <a
+                href="/vendor/jobs"
+                onClick={() => handleMenuClick("/vendor/jobs")}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+                  activePage === "/vendor/jobs"
+                    ? "bg-blue-500 text-white"
+                    : "text-neutral-600 hover:text-blue-400"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faBriefcase}
+                  className="mr-2 size-[19px]"
+                />
+                <span>Jobs</span>
+              </a>
+            </li>
+          )}
           <li>
             <a
               href="/listings"

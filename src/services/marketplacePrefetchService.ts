@@ -52,6 +52,9 @@ class MarketplacePrefetchService {
     this.abortController = new AbortController();
 
     try {
+      // Clear old cache before fetching new data to prevent quota issues
+      this.clearPrefetchCache();
+      
       // Fetch all issues with pagination
       const { issues, expectedTotal } = await this.fetchAllIssues();
       
@@ -178,7 +181,16 @@ class MarketplacePrefetchService {
     try {
       sessionStorage.setItem(key, JSON.stringify(entry));
     } catch (error) {
-      console.warn('Failed to cache prefetch data:', error);
+      // QuotaExceededError - try to clear old cache and retry once
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        try {
+          this.clearPrefetchCache();
+          sessionStorage.setItem(key, JSON.stringify(entry));
+        } catch (retryError) {
+          // Silently fail if still can't cache - not critical for app functionality
+          console.debug('Prefetch cache skipped due to storage quota');
+        }
+      }
     }
   }
 
