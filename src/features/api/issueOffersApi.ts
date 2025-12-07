@@ -16,6 +16,19 @@ export const issueOffersApi = api.injectEndpoints({
               ]
             : [{ type: "Offers", id: "LIST" }],
       }),
+      getOffersByVendorId: builder.query<IssueOffer[], number>({
+        query: (vendorId) => `/issue_offers/vendor/${vendorId}`,
+        providesTags: (result) =>
+          result
+            ? [
+                ...result.map((offer) => ({
+                  type: "Offers" as const,
+                  id: offer.id,
+                })),
+                { type: "Offers", id: "LIST" },
+              ]
+            : [{ type: "Offers", id: "LIST" }],
+      }),
       createOffer: builder.mutation({
         query: (body) => ({
           url: "issue_offers/",
@@ -42,5 +55,5 @@ export const issueOffersApi = api.injectEndpoints({
   }),
 });
 
-export const { useGetOffersByIssueIdQuery, useCreateOfferMutation, useUpdateOfferMutation, useDeleteOfferMutation } = issueOffersApi;
+export const { useGetOffersByIssueIdQuery, useGetOffersByVendorIdQuery, useCreateOfferMutation, useUpdateOfferMutation, useDeleteOfferMutation } = issueOffersApi;
 export const { getOffersByIssueId } = issueOffersApi.endpoints;

@@ -24,16 +24,26 @@ const Comments: React.FC<CommentsProps> = ({ issueId, userId }) => {
   }, [comments, issueId]);
 
   const addComment = async () => {
-    if (newComment.trim() && issueId) {
-      try {
-        await createAttachment({
-          issueId,
-          comment: newComment,
-          userId: userId || -1,
-        }).unwrap();
-        setNewComment("");
-      } catch (error) {
-        console.log(error);
+    const trimmed = newComment.trim();
+    if (!trimmed || !issueId) return;
+
+    try {
+      await createAttachment({
+        issueId,
+        comment: trimmed,
+        userId: userId || -1,
+      }).unwrap();
+      setNewComment("");
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (newComment.trim()) {
+        addComment();
       }
     }
   };
@@ -79,49 +89,50 @@ const Comments: React.FC<CommentsProps> = ({ issueId, userId }) => {
       </div>
 
       {commentsOpen && (
-        <div className="mt-4">
-          {/* Comments List */}
-          {issueComments.length ? (
-            <ul className="space-y-4">
-              {issueComments.map((comment) => (
-                <li
-                  key={comment.id}
-                  className="border border-gray-300 rounded p-4 bg-gray-50"
-                >
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-700">
-                      <UserName userId={Number(comment.user_id)} />
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {formatDate(comment.created_at)}
-                    </span>
-                  </div>
-                  <p className="text-gray-600">{comment.comment}</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500">No comments yet.</p>
-          )}
-
-          {/* Add New Comment */}
-          <div className="mt-4">
-            <input
-              type="text"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Add a comment"
-              className="border border-gray-300 px-3 py-2 rounded-lg mb-2 w-full"
-            />
-            <div className="flex justify-end">
+        <div className="mt-4 space-y-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Add a comment"
+                className="border border-gray-300 px-3 py-2 rounded-lg w-full"
+              />
               <button
                 onClick={addComment}
-                className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg"
+                className="bg-blue-400 hover:bg-blue-500 text-white px-4 py-2 rounded-lg whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
                 disabled={!newComment.trim()}
               >
                 Comment
               </button>
             </div>
+          </div>
+
+          <div>
+            {issueComments.length ? (
+              <ul className="space-y-4">
+                {issueComments.map((comment) => (
+                  <li
+                    key={comment.id}
+                    className="border border-gray-300 rounded p-4 bg-gray-50"
+                  >
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        <UserName userId={Number(comment.user_id)} />
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {formatDate(comment.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-gray-600">{comment.comment}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500">No comments yet.</p>
+            )}
           </div>
         </div>
       )}

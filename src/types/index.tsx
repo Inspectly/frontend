@@ -136,6 +136,10 @@ export interface Listing {
   updated_at: string;
 }
 
+export type ReviewStatus = "not_reviewed" | "in_review" | "completed";
+export type ExtractionStatus = "NONE" | "IN_PROGRESS" | "FAILED" | "COMPLETED";
+export type ReportCardMode = "REVIEW" | "CONTINUE_REVIEW" | "VIEW" | "NONE";
+
 export type ReportType = {
   id: number;
   user_id: number;
@@ -144,7 +148,18 @@ export type ReportType = {
   name: string;
   created_at: string;
   updated_at: string;
+  review_status: string;
 };
+
+export type UpdateReportPutPayload = {
+  id: number;
+  user_id: number;
+  listing_id: number;
+  aws_link: string;
+  name: string;
+  review_status: string;
+};
+
 
 export type IssueStatus =
   | "Status.OPEN"
@@ -167,6 +182,7 @@ export const statusOptions = [
 ];
 
 export type IssueAddress = {
+  issue_id: number;
   address: string;
   city: string;
   state: string;
@@ -188,6 +204,7 @@ export type IssueType = {
   active: boolean;
   created_at: string;
   updated_at: string;
+  review_status: string;
 };
 
 export type IssueOffer = {

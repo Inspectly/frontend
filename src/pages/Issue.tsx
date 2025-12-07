@@ -12,7 +12,7 @@ import {
   faWrench,
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { IssueStatus, statusMapping, statusOptions } from "../types";
 
 import VendorName from "../components/VendorName";
@@ -21,10 +21,13 @@ import {
   useGetIssuesQuery,
 } from "../features/api/issuesApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import IssueDetials from "../components/IssueDetails";
+import IssueDetails from "../components/IssueDetails";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
+const [searchParams] = useSearchParams();
+const paymentStatus = searchParams.get("payment");
+const sessionId = searchParams.get("session_id");
 
   const { listingId, reportId, issueId } = useParams<{
     listingId: string;
@@ -281,8 +284,52 @@ const Issue: React.FC = () => {
           </div>
         </div>
         <div className="col-span-12 md:col-span-8">
-          <IssueDetials issue={issue} listing={listing} />
+          <IssueDetails issue={issue} listing={listing} />
+
+          {paymentStatus === "success" && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-white rounded shadow p-6 max-w-md w-full">
+                <h2 className="text-xl font-bold mb-2">Payment Successful 🎉</h2>
+                {searchParams.get("session_id") && (
+                  <p className="text-gray-600 text-xs mb-2">
+                    Session ID:{" "}
+                    <span className="font-mono break-all">
+                      {searchParams.get("session_id")}
+                    </span>
+                  </p>
+                )}
+                <p className="text-gray-600 mb-4">Your payment has been confirmed.</p>
+                <button
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                  onClick={() =>
+                    navigate(window.location.pathname + "?tab=offers", { replace: true })
+                  }
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {paymentStatus === "failed" && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+              <div className="bg-white rounded shadow p-6 max-w-md w-full">
+                <h2 className="text-xl font-bold mb-2">Payment Failed ❌</h2>
+                <p className="text-gray-600 mb-4">We could not complete the payment process.</p>
+                <p className="text-gray-600 mb-4">Please try again!</p>
+                <button
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                  onClick={() =>
+                    navigate(window.location.pathname + "?tab=offers", { replace: true })
+                  }
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ import {
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
 import OffersTabVendor from "./OffersTabVendor";
-
+import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 export interface IssueDetailsProps {
   issue: IssueType;
   listing?: Listing;
@@ -149,6 +149,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const progressDropdownButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const uniqueVendors = new Set(offers.map((offer) => offer.vendor_id)).size;
+
+  const [createCheckoutSession] = useCreateCheckoutSessionMutation();
 
   const handleOpenOfferModal = (counterOffer?: IssueOffer) => {
     setCounterTarget(counterOffer || null);
@@ -261,7 +263,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       setCounterTarget(null);
       setOfferAmount("");
       setCommentVendor("");
-      // setCommentClient("");
       setOfferError("");
       setEditingOffer(null);
       setIsOfferModalOpen(false);
@@ -282,12 +283,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         updateAssessmentStatus({
           ...accepted,
           interaction_id: accepted.users_interaction_id,
+          user_last_viewed: new Date().toISOString(),
           status: "accepted",
         }),
         ...rejected
           .map((a) => ({
             ...a,
             interaction_id: accepted.users_interaction_id,
+            user_last_viewed: new Date().toISOString(),
             status: "rejected",
           }))
           .map(updateAssessmentStatus),
@@ -362,6 +365,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   useEffect(() => {
     setActiveTab(getTabFromURL());
   }, [location.search]);
+
 
   useEffect(() => {
     if (editingOffer) {
@@ -574,8 +578,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 "review"
                               ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
                               : "bg-green-100 text-green-600 border border-green-600"
-                          }  ${
-                            userType === "vendor" ? "pointer-events-none" : ""
                           }`}
                           ref={progressDropdownButtonRef}
                           onClick={() =>
@@ -866,21 +868,27 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <p>Error loading offers</p>
             ) : (
               <>
-                {userType === "client" && (
-                  <OffersTabClient
-                    offers={offers}
-                    uniqueVendors={uniqueVendors}
-                    handleOpenOfferModal={handleOpenOfferModal}
-                    onOpenOfferModal={() => setIsOfferModalOpen(true)}
-                    onOfferAccepted={(acceptedOffer) => {
-                      updateIssue({
-                        ...issue,
-                        status: statusMapping[issue.status as IssueStatus],
-                        vendor_id: acceptedOffer.vendor_id,
-                      });
-                    }}
-                  />
-                )}
+                  {userType === "client" && (
+                    <OffersTabClient
+                      offers={offers}
+                      uniqueVendors={uniqueVendors}
+                      handleOpenOfferModal={handleOpenOfferModal}
+                      onOpenOfferModal={() => setIsOfferModalOpen(true)}
+                      onOfferAccepted={async (acceptedOffer) => {
+                        try {
+                          const response = await createCheckoutSession({
+                            client_id: userId,
+                            vendor_id: acceptedOffer.vendor_id,
+                            offer_id: acceptedOffer.id,
+                          }).unwrap();
+                          window.location.href = response.session_url;
+                        } catch (err) {
+                          console.error("Stripe error", err);
+                          alert("Could not start payment, please try again.");
+                        }
+                      }}
+                    />
+                  )}
 
                 {userType === "vendor" && (
                   <OffersTabVendor

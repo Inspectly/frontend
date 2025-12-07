@@ -46,29 +46,26 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
   });
 
   const handleStatusChange = async (offer: IssueOffer, action: string) => {
-    const status =
-      action === "Accept"
-        ? "accepted"
-        : action === "Reject"
-        ? "rejected"
-        : "received";
-
-    try {
-      await updateOffer({
-        id: offer.id,
-        issue_id: offer.issue_id,
-        vendor_id: offer.vendor_id,
-        price: offer.price,
-        status,
-        comment_vendor: offer.comment_vendor || "",
-        comment_client: offer.comment_client || "",
-      }).unwrap();
-    } catch (err) {
-      console.error("Failed to update offer", err);
-    }
 
     if (action === "Accept") {
       if (onOfferAccepted) onOfferAccepted(offer);
+    }
+    else if (action==="Reject") {
+      const updated_status = "rejected"
+      try {
+            await updateOffer({
+              id: offer.id,
+              issue_id: offer.issue_id,
+              vendor_id: offer.vendor_id,
+              price: offer.price,
+              status: updated_status,
+              user_last_viewed: new Date().toISOString(),
+              comment_vendor: offer.comment_vendor || "",
+              comment_client: offer.comment_client || "",
+            }).unwrap();
+          } catch (err) {
+            console.error("Failed to update offer", err);
+          }
     }
   };
 
@@ -153,7 +150,7 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
                             {ISSUE_OFFER_STATUS_LABELS[offer.status]}
                           </span>
                         </td>
-                        <td className="text-left border-b border-gray-200 px-4 py-3 capitalize">
+                        <td className="text-left border-b border-gray-200 px-4 py-3 capitalize max-w-72">
                           {offer.comment_vendor || "No comment"}
                         </td>
                         <td className="text-left border-b border-gray-200 px-4 py-3">
@@ -195,13 +192,15 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
                               }}
                               onClose={() => setOpenDropdown(null)}
                             >
-                              {["Accept", "Counter", "Reject"].map((action) => (
+                              {/* we are not doing counter offer now so i removed counter as an dropdown option, functionality still exists */}
+                              {["Accept", "Reject"].map((action) => (
                                 <button
                                   key={action}
                                   className="block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left"
                                   onClick={() => {
                                     setOpenDropdown(null);
-                                    if (action === "Counter") {
+                                    if (action === "Counter")
+                                    {
                                       handleOpenOfferModal(offer);
                                     } else {
                                       handleStatusChange(offer, action);
