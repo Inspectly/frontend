@@ -6,6 +6,15 @@ export const issuesApi = api.injectEndpoints({
     getIssues: builder.query<IssueType[], void>({
       query: () => "issues/",
       providesTags: ["Issues"],
+      transformResponse: (response: IssueType[]) => {
+        // Transform status from backend format to frontend format
+        return response.map(issue => ({
+          ...issue,
+          status: issue.status?.startsWith('Status.') 
+            ? issue.status 
+            : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
+        }));
+      },
     }),
 
     getPaginatedIssues: builder.query<
@@ -34,10 +43,31 @@ export const issuesApi = api.injectEndpoints({
     
         return `/issues/filter?${params.toString()}`;
       },
+      transformResponse: (response: { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} }) => {
+        // Transform status from backend format to frontend format
+        return {
+          ...response,
+          issues: response.issues.map(issue => ({
+            ...issue,
+            status: issue.status?.startsWith('Status.') 
+              ? issue.status 
+              : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
+          }))
+        };
+      },
     }),
 
     getIssueById: builder.query<IssueType, string>({
       query: (id) => `issues/${id}`,
+      transformResponse: (response: IssueType) => {
+        // Transform status from backend format to frontend format
+        return {
+          ...response,
+          status: response.status?.startsWith('Status.') 
+            ? response.status 
+            : `Status.${(response.status || 'OPEN').toUpperCase()}` as IssueStatus
+        };
+      },
     }),
 
     getIssueAddressById: builder.query<IssueAddress, number>({
@@ -66,10 +96,15 @@ export const issuesApi = api.injectEndpoints({
         };
       },
       async onQueryStarted(updatedIssue, { dispatch, queryFulfilled }) {
+        // Transform status for optimistic update: backend expects "in_progress" but returns "Status.IN_PROGRESS"
+        const optimisticIssue = { ...updatedIssue };
+        if (optimisticIssue.status && !optimisticIssue.status.startsWith('Status.')) {
+          optimisticIssue.status = `Status.${optimisticIssue.status.toUpperCase()}` as IssueStatus;
+        }
         
         const patchResult = dispatch(
           issuesApi.util.updateQueryData("getIssueById", updatedIssue.id.toString(), (draft) => {
-            Object.assign(draft, updatedIssue);
+            Object.assign(draft, optimisticIssue);
           })
         );
 
@@ -77,7 +112,7 @@ export const issuesApi = api.injectEndpoints({
           issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
             const index = draft.findIndex((issue) => issue.id === updatedIssue.id);
             if (index !== -1) {
-              Object.assign(draft[index], updatedIssue);
+              Object.assign(draft[index], optimisticIssue);
             }
           })
         );
@@ -86,7 +121,7 @@ export const issuesApi = api.injectEndpoints({
           issuesApi.util.updateQueryData("getPaginatedIssues", {} as any, (draft) => {
             const index = draft.issues.findIndex((issue) => issue.id === updatedIssue.id);
             if (index !== -1) {
-              Object.assign(draft.issues[index], updatedIssue);
+              Object.assign(draft.issues[index], optimisticIssue);
             }
           })
         );

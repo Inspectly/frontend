@@ -28,6 +28,7 @@ import PriceSection from "./components/PriceSection";
 import AdminDashboard from "./pages/AdminDashboard";
 import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
+import VendorJobsPage from "./pages/VendorJobsPage";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
@@ -47,6 +48,7 @@ function App() {
       '/reports': 'Reports',
       '/issues': 'Issues',
       '/pricing': 'Pricing',
+      '/vendor/jobs': 'Jobs',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -278,6 +280,10 @@ function App() {
               <Route
                 path="/marketplace/:issueId"
                 element={<PrivateRoute element={<MarketplaceIssue />} />}
+              />
+              <Route
+                path="/vendor/jobs"
+                element={<PrivateRoute element={<VendorJobsPage />} />}
               />
               <Route
                 path="/listings/:listingId"
