@@ -7,8 +7,7 @@ import Preloader from "./Preloader";
 import { toast } from "react-toastify";
 
 interface VendorFormData {
-  businessName: string;
-  ownerName: string;
+  name: string;
   email: string;
   phone: string;
   street: string;
@@ -29,8 +28,7 @@ const VendorProfileSettings: React.FC = () => {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<VendorFormData>({
-    businessName: "",
-    ownerName: "",
+    name: "",
     email: "",
     phone: "",
     street: "",
@@ -43,8 +41,7 @@ const VendorProfileSettings: React.FC = () => {
   });
 
   const getInitialFormData = (data: typeof vendorData): VendorFormData => ({
-    businessName: data?.name || "",
-    ownerName: "",
+    name: data?.name || "",
     email: data?.email || "",
     phone: data?.phone || "",
     street: data?.address || "",
@@ -92,12 +89,12 @@ const VendorProfileSettings: React.FC = () => {
       const payload = {
         id: vendorData.id,
         vendor_user_id: user?.id,
-        vendor_type: vendorData.vendor_type,
+        vendor_type: { vendor_type: formData.businessType },
         vendor_types: formData.businessType,
         code: vendorData.code,
         license: formData.license,
         verified: vendorData.verified,
-        name: formData.businessName,
+        name: formData.name,
         email: formData.email,
         phone: formData.phone,
         address: formData.street,
@@ -158,28 +155,14 @@ const VendorProfileSettings: React.FC = () => {
       <form onSubmit={handleSubmit}>
         <div className="mb-5">
           <label htmlFor="businessName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Name <span className="text-red-600">*</span>
+            Name <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
             id="businessName"
             className="w-full border rounded-lg px-3 py-2"
             placeholder="Enter business name"
-            value={formData.businessName}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="mb-5">
-          <label htmlFor="ownerName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Owner Name <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="text"
-            id="ownerName"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter owner name"
-            value={formData.ownerName}
+            value={formData.name}
             onChange={handleChange}
           />
         </div>

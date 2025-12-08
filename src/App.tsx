@@ -9,7 +9,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { SectionRefs, User } from "./types";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import Signup from "./pages/signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ClientDashboard from "./pages/ClientDashboard";
 import Dashboard from "./pages/Dashboard";
