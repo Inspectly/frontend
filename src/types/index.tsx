@@ -100,6 +100,8 @@ export type Vendor = {
   vendor_type: Vendor_Type;
   vendor_types: string;
   code: string;
+  license: string;
+  verified: boolean;
   name: string;
   email: string;
   phone: string;
