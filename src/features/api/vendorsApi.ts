@@ -16,15 +16,23 @@ export const vendorsApi = api.injectEndpoints({
       providesTags: ["Vendors"],
     }),
     createVendor: builder.mutation({
-        query: (body) => ({
-          url: "vendors/",
-          method: "POST",
-          body,
-        }),
-        invalidatesTags: ["Vendors"],
+      query: (body) => ({
+        url: "vendors/",
+        method: "POST",
+        body,
       }),
+      invalidatesTags: ["Vendors"],
+    }),
+    updateVendor: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `vendors/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["Vendors"],
+    }),
   }),
 });
 
-export const { useGetVendorsQuery, useGetVendorByIdQuery, useGetVendorByVendorUserIdQuery, useCreateVendorMutation } = vendorsApi;
+export const { useGetVendorsQuery, useGetVendorByIdQuery, useGetVendorByVendorUserIdQuery, useCreateVendorMutation, useUpdateVendorMutation } = vendorsApi;
 export const { getVendorById } = vendorsApi.endpoints;

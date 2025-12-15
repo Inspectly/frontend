@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
@@ -7,7 +9,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { SectionRefs, User } from "./types";
 import Login from "./pages/Login";
-import Signup from "./pages/Signup";
+import Signup from "./pages/signup";
 import VerifyEmail from "./pages/VerifyEmail";
 import ClientDashboard from "./pages/ClientDashboard";
 import Dashboard from "./pages/Dashboard";
@@ -28,15 +30,17 @@ import PriceSection from "./components/PriceSection";
 import AdminDashboard from "./pages/AdminDashboard";
 import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
+import VendorJobsPage from "./pages/VendorJobsPage";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
+import Settings from "./pages/Settings";
 import ReportReviewPage from "./pages/ReportReviewPage";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 
 function App() {
   const location = useLocation();
-  
+
   // Get page title based on current route
   const getPageTitle = (pathname: string): string => {
     const pathMap: Record<string, string> = {
@@ -47,6 +51,7 @@ function App() {
       '/reports': 'Reports',
       '/issues': 'Issues',
       '/pricing': 'Pricing',
+      '/vendor/jobs': 'Jobs',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -240,6 +245,7 @@ function App() {
 
   return (
     <>
+      <ToastContainer />
       {authenticated ? (
         <>
           <DashboardSidebar
@@ -280,6 +286,10 @@ function App() {
                 element={<PrivateRoute element={<MarketplaceIssue />} />}
               />
               <Route
+                path="/vendor/jobs"
+                element={<PrivateRoute element={<VendorJobsPage />} />}
+              />
+              <Route
                 path="/listings/:listingId"
                 element={<PrivateRoute element={<Reports />} />}
               />
@@ -290,6 +300,12 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/issues/:issueId"
                 element={<PrivateRoute element={<Issue />} />}
+              />
+              <Route
+                path="/dashboard/settings"
+                element={
+                  userType ? (<PrivateRoute element={<Settings userType={userType} />} />) : (<Preloader />)
+                }
               />
               <Route
                 path="/listings/:listingId/reports/:reportId/review"

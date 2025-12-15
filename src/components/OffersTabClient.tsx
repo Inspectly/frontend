@@ -48,6 +48,9 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
   const handleStatusChange = async (offer: IssueOffer, action: string) => {
 
     if (action === "Accept") {
+      // Note: Offer status should be updated to "accepted" by the backend webhook
+      // after successful payment. We don't update it here to avoid issues if payment fails.
+      // The onOfferAccepted callback will redirect to Stripe for payment.
       if (onOfferAccepted) onOfferAccepted(offer);
     }
     else if (action==="Reject") {

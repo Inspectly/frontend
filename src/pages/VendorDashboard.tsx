@@ -19,6 +19,7 @@ import SmartInsights from "../components/SmartInsights";
 import QuickActions from "../components/QuickActions";
 import PriorityActions from "../components/PriorityActions";
 import Achievements from "../components/Achievements";
+import MyJobsWidget from "../components/MyJobsWidget";
 
 
 // Import types and utilities
@@ -47,12 +48,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
     skip: !vendor?.id, // Only run this query after vendor is loaded
   });
 
-
-
+  // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const {
     data: vendorOffers = [],
-  } = useGetOffersByVendorIdQuery(Number(vendor?.id), {
-    skip: !vendor?.id,
+  } = useGetOffersByVendorIdQuery(Number(user.id), {
+    skip: !user.id,
   });
 
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
@@ -65,6 +65,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const {
     data: listings,
   } = useGetListingsQuery();
+
+  // Create issues map for quick lookups
+  const issuesMap = useMemo(() => {
+    if (!issues) return {};
+    return issues.reduce((acc, issue) => {
+      acc[issue.id] = issue;
+      return acc;
+    }, {} as Record<number, any>);
+  }, [issues]);
 
   // Calculate vendor metrics and performance data
   const vendorMetrics = useMemo(() => {
@@ -594,6 +603,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
         {/* Sidebar */}
       <div className="col-span-12 2xl:col-span-4">
           <div className="gap-6 grid grid-cols-1">
+            {/* My Jobs Widget */}
+            <div className="mb-6">
+              <MyJobsWidget 
+                vendorOffers={vendorOffers}
+                issuesMap={issuesMap}
+              />
+            </div>
+
             {/* Priority Actions */}
             {dashboardConfig && shouldShowComponent(dashboardConfig.priorityActions) && (
               <div className="mb-6">

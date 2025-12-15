@@ -100,6 +100,8 @@ export type Vendor = {
   vendor_type: Vendor_Type;
   vendor_types: string;
   code: string;
+  license: string;
+  verified: boolean;
   name: string;
   email: string;
   phone: string;
@@ -162,6 +164,13 @@ export type UpdateReportPutPayload = {
 };
 
 
+/**
+ * Issue Status Flow:
+ * 1. OPEN: Issue posted on platform, awaiting offers
+ * 2. IN_PROGRESS: Client accepts offer, vendor begins work
+ * 3. REVIEW: Vendor marks work as complete, awaiting client approval
+ * 4. COMPLETED: Client approves and marks issue as done
+ */
 export type IssueStatus =
   | "Status.OPEN"
   | "Status.IN_PROGRESS"
