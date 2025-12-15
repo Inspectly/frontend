@@ -31,6 +31,8 @@ import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import AssessmentReviewTab from "./AssessmentReviewTab";
+import VendorReviewModal from "./VendorReviewModal";
+import { useCreateVendorReviewMutation } from "../features/api/vendorReviewsApi";
 
 export interface HomeownerIssueCardProps {
   issue: IssueType;
@@ -85,7 +87,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [activeTab, setActiveTab] = useState<
     "details" | "offers" | "assessments"
   >("details");
-  const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(issue.active);
 
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -95,7 +96,60 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [isOfferSubmitting, setIsOfferSubmitting] = useState(false);
   const [commentClient, setCommentClient] = useState("");
 
+  // Vendor Review State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+  const [reviewSubmitStatus, setReviewSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+  const [createVendorReview] = useCreateVendorReviewMutation();
+
   useEffect(() => setIsActive(issue.active), [issue.active]);
+
+  const handleStatusChange = async (newStatus: string) => {
+    // If status is moving to completed, trigger review modal
+    const isCompleted = newStatus === "completed" || newStatus === "Status.COMPLETED";
+
+    if (isCompleted && issue.vendor_id && issue.review_status !== "completed") {
+      setPendingStatusChange(newStatus);
+      setIsReviewModalOpen(true);
+      return;
+    }
+
+    try {
+      await updateIssue({
+        ...issue,
+        status: newStatus,
+      }).unwrap();
+    } catch (error) {
+      console.error("Failed to update status", error);
+    }
+  };
+
+  const handleReviewSubmit = async (rating: number, review: string) => {
+    if (!issue.vendor_id || !userId) return;
+
+    try {
+      await createVendorReview({
+        vendor_user_id: issue.vendor_id,
+        user_id: userId,
+        rating,
+        review,
+      }).unwrap();
+
+      // Complete the status change and mark review as completed
+      await updateIssue({
+        ...issue,
+        status: pendingStatusChange || "Status.COMPLETED",
+        review_status: "completed",
+      }).unwrap();
+
+      setReviewSubmitStatus("success");
+      setIsReviewModalOpen(false);
+      setPendingStatusChange(null);
+    } catch (err) {
+      console.error("Failed to submit review", err);
+      setReviewSubmitStatus("error");
+    }
+  };
 
 
   useEffect(() => {
@@ -110,14 +164,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     });
     return map;
   }, [allVendors]);
-
-  const normalizedProgress = (() => {
-    const mapped = statusMapping[issue.status as IssueStatus];
-    if (mapped) return mapped;
-    const direct = statusOptions.find((o) => o.value === issue.status);
-    if (direct) return direct.value;
-    return "unknown";
-  })();
 
   const formatDate = (iso: string) =>
     new Date(iso + "Z").toLocaleString("en-US", {
@@ -162,40 +208,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     }
   };
 
-  const handlePostProposal = async () => {
-    setIsSubmittingProposal(true);
-    try {
-      await refetchAssessments().unwrap();
-    } catch (err) {
-      console.error("Failed to refresh proposals after submission", err);
-    } finally {
-      setIsSubmittingProposal(false);
-    }
-  };
 
-  const handleRejectAll = async (vendorId: number) => {
-    const toReject = assessments.filter(
-      (a) => Number(a.users_interaction_id.split("_")[1]) === vendorId
-    );
-
-    setIsSubmittingProposal(true);
-    try {
-      await Promise.all(
-        toReject.map((a) =>
-          updateAssessmentStatus({
-            ...a,
-            interaction_id: a.users_interaction_id,
-            status: "rejected",
-          })
-        )
-      );
-      await refetchAssessments();
-    } catch (err) {
-      console.error("Failed to reject all", err);
-    } finally {
-      setIsSubmittingProposal(false);
-    }
-  };
 
   const handleToggleVisibility = async () => {
     if (isUpdatingVisibility) return;
@@ -224,75 +237,75 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   };
 
   const handleOfferSubmit = async () => {
-  const offerValue = parseFloat(offerAmount);
+    const offerValue = parseFloat(offerAmount);
 
-  if (isNaN(offerValue)) {
-    setOfferError("Please enter a valid offer amount.");
-    return;
-  }
-
-  if (offerValue <= 0) {
-    setOfferError("Offer amount must be greater than zero.");
-    return;
-  }
-
-  if (!userId) {
-    setOfferError("User ID is missing. Please log in.");
-    return;
-  }
-
-  setIsOfferSubmitting(true);
-
-  try {
-    if (counterTarget) {
-      // 1) Mark the original offer as rejected
-      await updateOffer({
-        id: counterTarget.id,
-        issue_id: counterTarget.issue_id,
-        vendor_id: counterTarget.vendor_id,
-        price: counterTarget.price,
-        status: "rejected",
-        user_last_viewed: new Date().toISOString(), // ⬅️ important
-        comment_vendor: counterTarget.comment_vendor || "",
-        comment_client: counterTarget.comment_client || "",
-      }).unwrap();
-
-      // 2) Create a new offer as the client's counter
-      await createOffer({
-        issue_id: issue.id,
-        vendor_id: counterTarget.vendor_id,
-        price: offerValue,
-        status: "received",
-        comment_vendor: counterTarget.comment_vendor || "",
-        comment_client: "Client countered the offer",
-      }).unwrap();
-    } else {
-      // Fallback: simple new offer (if ever used without counterTarget)
-      await createOffer({
-        issue_id: issue.id,
-        vendor_id: userId,
-        price: offerValue,
-        status: "received",
-        comment_vendor: "",
-        comment_client: commentClient,
-      }).unwrap();
+    if (isNaN(offerValue)) {
+      setOfferError("Please enter a valid offer amount.");
+      return;
     }
 
-    await refetchOffers();
+    if (offerValue <= 0) {
+      setOfferError("Offer amount must be greater than zero.");
+      return;
+    }
 
-    // reset state
-    setCounterTarget(null);
-    setOfferAmount("");
-    setCommentClient("");
-    setOfferError("");
-    setIsOfferModalOpen(false);
-  } catch (err) {
-    console.error("Failed to submit offer:", err);
-    setOfferError("Failed to submit offer. Please try again.");
-  } finally {
-    setIsOfferSubmitting(false);
-  }
-};
+    if (!userId) {
+      setOfferError("User ID is missing. Please log in.");
+      return;
+    }
+
+    setIsOfferSubmitting(true);
+
+    try {
+      if (counterTarget) {
+        // 1) Mark the original offer as rejected
+        await updateOffer({
+          id: counterTarget.id,
+          issue_id: counterTarget.issue_id,
+          vendor_id: counterTarget.vendor_id,
+          price: counterTarget.price,
+          status: "rejected",
+          user_last_viewed: new Date().toISOString(), // ⬅️ important
+          comment_vendor: counterTarget.comment_vendor || "",
+          comment_client: counterTarget.comment_client || "",
+        }).unwrap();
+
+        // 2) Create a new offer as the client's counter
+        await createOffer({
+          issue_id: issue.id,
+          vendor_id: counterTarget.vendor_id,
+          price: offerValue,
+          status: "received",
+          comment_vendor: counterTarget.comment_vendor || "",
+          comment_client: "Client countered the offer",
+        }).unwrap();
+      } else {
+        // Fallback: simple new offer (if ever used without counterTarget)
+        await createOffer({
+          issue_id: issue.id,
+          vendor_id: userId,
+          price: offerValue,
+          status: "received",
+          comment_vendor: "",
+          comment_client: commentClient,
+        }).unwrap();
+      }
+
+      await refetchOffers();
+
+      // reset state
+      setCounterTarget(null);
+      setOfferAmount("");
+      setCommentClient("");
+      setOfferError("");
+      setIsOfferModalOpen(false);
+    } catch (err) {
+      console.error("Failed to submit offer:", err);
+      setOfferError("Failed to submit offer. Please try again.");
+    } finally {
+      setIsOfferSubmitting(false);
+    }
+  };
 
   return (
     <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -330,11 +343,10 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             onClick={() =>
               handleTabChange(tab as "details" | "offers" | "assessments")
             }
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg relative ${
-              activeTab === tab
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg relative ${activeTab === tab
+              ? "text-blue-600 border-b-2 border-blue-600"
+              : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
             {tab === "offers" && offers.length > 0 && (
@@ -416,13 +428,12 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       Severity
                     </p>
                     <p
-                      className={`text-sm font-semibold ${
-                        issue.severity === "High"
-                          ? "text-red-600"
-                          : issue.severity === "Medium"
+                      className={`text-sm font-semibold ${issue.severity === "High"
+                        ? "text-red-600"
+                        : issue.severity === "Medium"
                           ? "text-yellow-600"
                           : "text-green-600"
-                      }`}
+                        }`}
                     >
                       {issue.severity}
                     </p>
@@ -443,47 +454,43 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       type="button"
                       onClick={handleToggleVisibility}
                       disabled={isUpdatingVisibility}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        isActive ? "bg-blue-500" : "bg-gray-300"
-                      } ${
-                        isUpdatingVisibility
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isActive ? "bg-blue-500" : "bg-gray-300"
+                        } ${isUpdatingVisibility
                           ? "opacity-60 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                          isActive ? "translate-x-4" : "translate-x-1"
-                        }`}
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"
+                          }`}
                       />
                     </button>
                   </div>
 
-                  <div className="flex justify-between gap-4 items-center">
+                  <div className="flex justify-between items-center gap-4">
                     <p className="text-xs font-bold uppercase text-gray-800">
                       Progress
                     </p>
-                    <span
-                      className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium ${
-                        normalizedProgress === "open"
-                          ? "bg-gray-100 text-gray-700 border border-gray-300"
-                          : normalizedProgress === "in_progress"
-                          ? "bg-blue-100 text-blue-700 border border-blue-400"
-                          : normalizedProgress === "review"
-                          ? "bg-yellow-100 text-yellow-700 border border-yellow-400"
-                          : normalizedProgress === "closed"
-                          ? "bg-green-100 text-green-700 border border-green-400"
-                          : "bg-gray-100 text-gray-700 border border-gray-300"
-                      }`}
+                    <select
+                      value={issue.status}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium border-0 focus:ring-0 cursor-pointer ${statusMapping[issue.status as IssueStatus] === "open"
+                        ? "bg-gray-100 text-gray-700"
+                        : statusMapping[issue.status as IssueStatus] === "in_progress"
+                          ? "bg-blue-100 text-blue-700"
+                          : statusMapping[issue.status as IssueStatus] === "review"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : statusMapping[issue.status as IssueStatus] === "closed"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                        }`}
                     >
-                      {
-                        (
-                          statusOptions.find(
-                            (o) => o.value === normalizedProgress
-                          ) || { label: "Unknown" }
-                        ).label
-                      }
-                    </span>
+                      {statusOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="h-px bg-gray-100 my-2" />
@@ -503,7 +510,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     <p className="text-xs font-bold uppercase text-gray-800">
                       Vendor
                     </p>
-                    <p className="text-sm font-semibold text-gray-500 text-right">
+                    <p className="text-sm font-semibold text-gray-500">
                       {issue.vendor_id ? (
                         <VendorName
                           vendorId={issue.vendor_id}
@@ -581,8 +588,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
         {activeTab === "assessments" && (
           <div className="space-y-3">
             {assessments.length === 0 &&
-            !assessmentsLoading &&
-            !assessmentsFetching ? (
+              !assessmentsLoading &&
+              !assessmentsFetching ? (
               <p className="text-gray-600">No assessment requested yet.</p>
             ) : (
               <AssessmentReviewTab
@@ -687,6 +694,49 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vendor Review Modal */}
+      <VendorReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => {
+          setIsReviewModalOpen(false);
+          setPendingStatusChange(null);
+        }}
+        onSubmit={handleReviewSubmit}
+        vendorName={allVendors.find(v => v.id === issue.vendor_id)?.name || "The Vendor"}
+      />
+
+      {/* Success/Error Feedback Modal */}
+      {reviewSubmitStatus !== "idle" && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm text-center">
+            {reviewSubmitStatus === "success" ? (
+              <>
+                <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-green-600 text-2xl">✓</span>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Review Submitted!</h3>
+                <p className="text-gray-600 mb-6">Thank you for your feedback. The issue has been marked as completed.</p>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-red-600 text-2xl">✕</span>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Submission Failed</h3>
+                <p className="text-gray-600 mb-6">Something went wrong while submitting your review. Please try again.</p>
+              </>
+            )}
+            <button
+              onClick={() => setReviewSubmitStatus("idle")}
+              className={`w-full py-2 px-4 rounded font-medium text-white transition-colors ${reviewSubmitStatus === "success" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
+                }`}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

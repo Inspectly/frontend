@@ -2,11 +2,11 @@ import React, { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faStar as faStarOutline } from "@fortawesome/free-regular-svg-icons";
 import { faStar, faXmark } from "@fortawesome/free-solid-svg-icons";
-import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
-import { Vendor, Vendor_Review } from "../types";
-import UserName from "./UserName";
+import { Vendor } from "../types";
 import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
 import MapComponent from "./MapComponent";
+import VendorReviewsSection from "./VendorReviewsSection";
+import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
 
 interface VendorModalProps {
   vendor: Vendor;
@@ -17,20 +17,19 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
   const [activeTab, setActiveTab] = useState("info");
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState(false);
-  const [filteredStar, setFilteredStar] = useState<number | null>(null);
 
-  const { data: reviews = [], isLoading: loadingReviews } =
-    useGetVendorReviewsByVendorUserIdQuery(vendor?.vendor_user_id, {
-      skip: !vendor?.vendor_user_id,
-    });
+  const { data: reviews = [] } = useGetVendorReviewsByVendorUserIdQuery(
+    vendor?.vendor_user_id,
+    {
+      skip: !vendor,
+    }
+  );
 
-  const filteredReviews = filteredStar
-    ? reviews.filter((r) => r.rating === filteredStar)
-    : reviews;
 
-  const handleStarFilter = (star: number) => {
-    setFilteredStar((prev) => (prev === star ? null : star));
-  };
+
+
+
+
 
   const renderStars = (rating: number) => {
     return (
@@ -38,9 +37,8 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
         {[1, 2, 3, 4, 5].map((i) => (
           <li
             key={i}
-            className={`text-warning-600 text-lg ${
-              i <= rating ? "" : "text-gray-300"
-            }`}
+            className={`text-warning-600 text-lg ${i <= rating ? "" : "text-gray-300"
+              }`}
           >
             <FontAwesomeIcon
               icon={i <= rating ? faStar : faStarOutline}
@@ -98,11 +96,10 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                 <li>
                   <button
                     onClick={() => setActiveTab("info")}
-                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
-                      activeTab === "info"
-                        ? "text-blue-600 border-blue-600"
-                        : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                    }`}
+                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${activeTab === "info"
+                      ? "text-blue-600 border-blue-600"
+                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
+                      }`}
                   >
                     Info
                   </button>
@@ -110,11 +107,10 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                 <li>
                   <button
                     onClick={() => setActiveTab("reviews")}
-                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${
-                      activeTab === "reviews"
-                        ? "text-blue-600 border-blue-600"
-                        : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
-                    }`}
+                    className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${activeTab === "reviews"
+                      ? "text-blue-600 border-blue-600"
+                      : "text-gray-500 border-transparent hover:text-gray-600 hover:border-gray-300"
+                      }`}
                   >
                     User Reviews
                   </button>
@@ -196,139 +192,11 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
                     ))}
                   </div>
                 </div>
-
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 mb-1">
-                    Review Summary
-                  </h4>
-                  {reviews.length > 0 ? (
-                    <>
-                      <div className="flex items-center gap-2 mb-1">
-                        {renderStars(parseFloat(vendor.rating))}
-                        <span className="text-sm text-gray-500">
-                          ({vendor.rating})
-                        </span>
-                      </div>
-                      <p className="text-gray-600">{vendor.review}</p>
-                    </>
-                  ) : (
-                    <p className="text-gray-500 italic">No reviews yet.</p>
-                  )}
-                </div>
               </div>
             )}
 
             {activeTab === "reviews" && (
-              <div className="mb-6">
-                {/* Top review breakdown UI */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-6 p-4 border rounded-lg bg-gray-50 mb-6">
-                  <div className="text-center md:text-left">
-                    <h3 className="text-xl font-semibold text-gray-800 mb-1">
-                      Reviews
-                    </h3>
-                    {reviews.length > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-4xl font-bold text-gray-800">
-                          {vendor.rating}
-                        </span>
-                        {renderStars(Math.round(parseFloat(vendor.rating)))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 italic">
-                        No reviews yet
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-600">
-                      {reviews.length} reviews
-                    </p>
-                    {/* <button
-                      disabled
-                      className="mt-3 px-4 py-2 bg-blue-800 text-white text-sm rounded-lg opacity-50 cursor-not-allowed"
-                    >
-                      <FontAwesomeIcon icon={faPen} className="mr-1" /> Write a
-                      Review
-                    </button> */}
-                  </div>
-
-                  <div className="w-full md:w-2/3 space-y-1">
-                    {[5, 4, 3, 2, 1].map((star) => {
-                      const count = reviews.filter(
-                        (r) => r.rating === star
-                      ).length;
-                      const percent = reviews.length
-                        ? (count / reviews.length) * 100
-                        : 0;
-                      const isActive = filteredStar === star;
-
-                      return (
-                        <div
-                          key={star}
-                          onClick={() => handleStarFilter(star)}
-                          className={`flex items-center gap-2 px-2 group transform transition-all duration-150 ${
-                            isActive
-                              ? "bg-gray-200 scale-[1.02] rounded-md"
-                              : "hover:scale-[1.01]"
-                          }
-                          ${
-                            count === 0
-                              ? "opacity-50 pointer-events-none"
-                              : "cursor-pointer"
-                          }`}
-                        >
-                          <span className="text-sm font-medium w-6 text-yellow-500">
-                            {star}★
-                          </span>
-                          <div className="w-full h-3 bg-gray-200 rounded">
-                            <div
-                              className="h-3 bg-yellow-500 rounded transition-all duration-300"
-                              style={{ width: `${percent}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-gray-600 w-12 text-right">
-                            {count}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    <div className="h-6">
-                      <p
-                        onClick={() => setFilteredStar(null)}
-                        className="text-xs text-blue-500 hover:underline cursor-pointer"
-                      >
-                        {filteredStar ? "Clear Filter" : ""}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {loadingReviews ? (
-                  <p>Loading reviews...</p>
-                ) : filteredReviews.length > 0 ? (
-                  <div className="space-y-4">
-                    {filteredReviews.map((review: Vendor_Review) => (
-                      <div
-                        key={review.id}
-                        className="border rounded-lg p-4 bg-gray-50"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-sm font-semibold text-gray-900">
-                            Reviewer: <UserName userId={review.user_id} />
-                          </h4>
-                          {renderStars(review.rating)}
-                        </div>
-                        <p className="text-sm font-medium text-gray-700 mb-1">
-                          {review.review}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(review.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No reviews found.</p>
-                )}
-              </div>
+              <VendorReviewsSection vendorUserId={vendor.vendor_user_id} />
             )}
           </div>
         </div>

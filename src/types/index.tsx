@@ -120,6 +120,7 @@ export type Vendor_Review = {
   id: number;
   vendor_user_id: number;
   user_id: number;
+  status?: string;
   rating: number;
   review: string;
   created_at: string;
