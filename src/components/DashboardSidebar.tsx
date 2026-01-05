@@ -13,9 +13,10 @@ import {
   faBriefcase,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
 interface DashboardSidebarProps {
   isSidebarOpen: boolean; // Prop to check if sidebar is open
@@ -33,6 +34,22 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     (state: RootState) => state.auth.authenticated
   );
 
+  // Fetch vendor data if user is a vendor
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(
+    String(user?.id),
+    { skip: !user?.id || user?.user_type !== "vendor" }
+  );
+
+  // Construct marketplace link with vendor's specialty and city
+  const marketplaceLink = useMemo(() => {
+    if (user?.user_type === "vendor" && vendor) {
+      const type = vendor.vendor_types?.split(',')[0]?.trim() || '';
+      const city = vendor.city || '';
+      return `/marketplace?type=${encodeURIComponent(type)}&city=${encodeURIComponent(city)}`;
+    }
+    return "/marketplace";
+  }, [user, vendor]);
+
   const handleMenuClick = (page: string) => {
     setActivePage(page); // Update the active page
   };
@@ -45,20 +62,20 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     >
       <button
         type="button"
-        className="absolute top-[22px] right-4 inline-flex items-center justify-center h-7 w-7 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors z-10"
+        className="absolute top-[14px] right-3 inline-flex items-center justify-center h-6 w-6 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors z-10"
         onClick={toggleSidebar}
       >
-        <FontAwesomeIcon icon={faClose} />
+        <FontAwesomeIcon icon={faClose} className="text-sm" />
       </button>
       <div>
         <a
           href="/dashboard"
-          className="flex h-[72px] items-center ml-3 border-r border-b text-3xl font-semibold border-gray-200 px-4 py-[14px]"
+          className="flex h-[48px] items-center ml-3 border-r border-b text-xl font-semibold border-gray-200 px-3 py-2"
         >
           Inspectly
         </a>
       </div>
-      <div className="h-[calc(100vh-72px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white border-r border-gray-200 px-4 py-3">
+      <div className="h-[calc(100vh-48px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white border-r border-gray-200 px-3 py-2">
         <ul className="sidebar-menu flex flex-col h-full">
           <li>
             <a
@@ -199,7 +216,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           {isAuthReady && user?.user_type === "vendor" && (
             <li className="mt-auto mb-2">
               <a
-                href="/marketplace"
+                href={marketplaceLink}
                 onClick={() => handleMenuClick("/marketplace")}
                 className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                   activePage === "/marketplace"

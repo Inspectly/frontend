@@ -184,16 +184,15 @@ export const transformApiResponseToConfig = (
   return config;
 };
 
-// Centralized social proof messaging for dashboards
-export const getSocialProofForDashboard = (
-  userType: 'client' | 'vendor'
+// Helper to generate contextual messaging (no fake numbers)
+export const getWelcomeMessage = (
+  userType: 'client' | 'vendor',
+  userName: string
 ): string => {
   if (userType === 'vendor') {
-    // Vendor: emphasize new opportunities this week
-    return `${Math.floor(Math.random() * 12) + 8} new opportunities this week`;
+    return `Welcome back, ${userName}!`;
   }
-  // Client (and default): emphasize membership/community
-  return "You're among 12,847+ smart property owners";
+  return `Welcome back, ${userName}!`;
 };
 
 // Generate sample configurations for different user types
