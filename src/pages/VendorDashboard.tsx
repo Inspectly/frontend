@@ -1,652 +1,701 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
-import { store } from "../store/store";
-import { User, IssueOfferStatus } from "../types";
+import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faArrowRight,
+  faExternalLinkAlt,
+  faBolt,
+  faBriefcase,
+  faBuilding,
+  faBroom,
+  faCalendarAlt,
+  faCheckCircle,
+  faChevronRight,
+  faClock,
+  faDollarSign,
+  faFire,
+  faGripLines,
+  faHammer,
+  faHouse,
+  faLayerGroup,
+  faLeaf,
+  faPaintRoller,
+  faQuestionCircle,
+  faRocket,
+  faSearch,
+  faSnowflake,
+  faStar,
+  faTint,
+  faTools,
+  faTrophy,
+  faWind,
+  faWrench,
+} from "@fortawesome/free-solid-svg-icons";
+import { User, IssueOfferStatus, IssueType } from "../types";
 import UserCalendar from "../components/UserCalendar";
-import Agenda from "../components/Agenda";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
-import { useGetListingsQuery } from "../features/api/listingsApi";
-
 import { useGetAssessmentsByUserIdQuery } from "../features/api/issueAssessmentsApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
+import { store } from "../store/store";
 
-// Import new reusable components
-import MetricsOverview from "../components/MetricsOverview";
-import HeroBanner from "../components/HeroBanner";
-import SmartInsights from "../components/SmartInsights";
-import QuickActions from "../components/QuickActions";
-import PriorityActions from "../components/PriorityActions";
-import Achievements from "../components/Achievements";
-import MyJobsWidget from "../components/MyJobsWidget";
+// Issue type icons mapping
+const issueIcons: Record<string, any> = {
+  general: faWrench,
+  structural: faBuilding,
+  electrician: faBolt,
+  plumber: faTint,
+  painter: faPaintRoller,
+  cleaner: faBroom,
+  hvac: faWind,
+  roofing: faHouse,
+  insulation: faSnowflake,
+  drywall: faGripLines,
+  plaster: faLayerGroup,
+  carpentry: faHammer,
+  landscaping: faLeaf,
+  other: faQuestionCircle,
+};
 
-
-// Import types and utilities
-import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
-import { transformApiResponseToConfig, shouldShowComponent, getSocialProofForDashboard } from "../utils/dashboardUtils";
-
+function pickIcon(type?: string) {
+  const key = String(type || "").toLowerCase();
+  return issueIcons[key] || faWrench;
+}
 
 interface DashboardProps {
   user: User;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const {
-    data: vendor,
-    isLoading: isVendorLoading,
-    error: vendorError,
-  } = useGetVendorByVendorUserIdQuery(String(user.id));
+  // Real data queries
+  const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
+  const { data: assessments = [] } = useGetAssessmentsByUserIdQuery(Number(vendor?.id), { skip: !vendor?.id });
+  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
+  const { data: issues, error: issuesError } = useGetIssuesQuery();
 
-  const {
-    data: assessments,
-  } = useGetAssessmentsByUserIdQuery(Number(vendor?.id), {
-    skip: !vendor?.id, // Only run this query after vendor is loaded
-  });
-
-  // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
-  const {
-    data: vendorOffers = [],
-  } = useGetOffersByVendorIdQuery(Number(user.id), {
-    skip: !user.id,
-  });
-
-  const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
-
-  const {
-    data: issues,
-    error: issuesError,
-  } = useGetIssuesQuery();
-
-  const {
-    data: listings,
-  } = useGetListingsQuery();
-
-  // Create issues map for quick lookups
+  // Issues map for lookups
   const issuesMap = useMemo(() => {
     if (!issues) return {};
     return issues.reduce((acc, issue) => {
       acc[issue.id] = issue;
       return acc;
-    }, {} as Record<number, any>);
+    }, {} as Record<number, IssueType>);
   }, [issues]);
 
-  // Calculate vendor metrics and performance data
+  // Real vendor metrics
   const vendorMetrics = useMemo(() => {
-    const acceptedOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.ACCEPTED);
-    const pendingOffers = vendorOffers.filter(offer => offer.status === IssueOfferStatus.RECEIVED);
-    const totalRevenue = acceptedOffers.reduce((sum, offer) => sum + (offer.price || 0), 0);
-    const completionRate = assessments && assessments.length > 0 ? Math.round((acceptedOffers.length / assessments.length) * 100) : 0;
+    const acceptedOffers = vendorOffers.filter((o) => o.status === IssueOfferStatus.ACCEPTED);
+    const pendingOffers = vendorOffers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
+    const totalEarnings = acceptedOffers.reduce((sum, o) => sum + (o.price || 0), 0);
+
+    const completedJobs = acceptedOffers.filter((o) => {
+      const issue = issuesMap[o.issue_id];
+      return issue?.status === "Status.COMPLETED";
+    }).length;
+
+    const activeJobs = acceptedOffers.filter((o) => {
+      const issue = issuesMap[o.issue_id];
+      return issue && issue.status !== "Status.COMPLETED";
+    }).length;
 
     return {
-      activeJobs: acceptedOffers.length,
-      monthlyRevenue: totalRevenue,
-      completionRate,
+      activeJobs,
+      completedJobs,
+      totalEarnings,
       pendingBids: pendingOffers.length,
-      avgRating: 4.8, // TODO: Calculate from reviews
+      totalBids: vendorOffers.length,
+      acceptedCount: acceptedOffers.length,
     };
-  }, [vendorOffers, assessments]);
+  }, [vendorOffers, issuesMap]);
 
-  // Transform assessments into calendar events
+  // Calendar events from real assessments
   const calendarEvents = useMemo(() => {
-    if (!assessments || assessments.length === 0) {
-      // Generate mock upcoming events if no real assessments
-      const today = new Date();
-      return [
-                 {
-           id: 'mock_1',
-           title: 'Electrical Assessment - Issue #247',
-           start: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
-           end: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000), // 2 hours duration
-           user_id: user.id
-         },
-         {
-           id: 'mock_2', 
-           title: 'HVAC System Inspection - Issue #251',
-           start: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000), // 4 days from now
-           end: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000), // 3 hours duration
-           user_id: user.id
-         },
-         {
-           id: 'mock_3',
-           title: 'Plumbing Emergency Assessment - Issue #253',
-           start: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days from now  
-           end: new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000 + 1.5 * 60 * 60 * 1000), // 1.5 hours duration
-           user_id: user.id
-         }
-      ];
-    }
-    
     return assessments
-      .filter((assessment) => {
-        const startTime = new Date(assessment.start_time);
-        return startTime > new Date();
-      })
-      .map((assessment) => ({
-        id: String(assessment.id),
-        title: `Assessment - Issue #${assessment.issue_id}`,
-        start: new Date(assessment.start_time),
-        end: new Date(assessment.end_time),
-        user_id: assessment.user_id
+      .filter((a) => new Date(a.start_time) > new Date())
+      .map((a) => ({
+        id: String(a.id),
+        title: `Assessment - Issue #${a.issue_id}`,
+        start: new Date(a.start_time),
+        end: new Date(a.end_time),
+        user_id: a.user_id,
       }));
-  }, [assessments, user.id]);
+  }, [assessments]);
 
-  // Map issue types to icons (same as client dashboard)
-  const getIssueIcon = (type: string) => {
-    const typeMap: Record<string, string> = {
-      'electrical': 'bolt',
-      'plumbing': 'tint',
-      'plumber': 'tint',
-      'hvac': 'wind',
-      'roofing': 'house',
-      'structural': 'hammer',
-      'painting': 'paint-roller',
-      'painter': 'paint-roller',
-      'flooring': 'broom',
-      'windows': 'building',
-      'doors': 'building',
-      'insulation': 'snowflake',
-      'landscaping': 'leaf'
-    };
-    return typeMap[type.toLowerCase()] || 'wrench';
-  };
+  // Available opportunities from marketplace
+  const [marketplaceOpportunities, setMarketplaceOpportunities] = useState<
+    Array<{
+      id: number;
+      type: string;
+      summary: string;
+      severity: string;
+      bidCount: number;
+    }>
+  >([]);
 
-  // Get earning multiplier based on issue type
-  const getTypeMultiplier = (type: string): number => {
-    const multipliers: Record<string, number> = {
-      'electrical': 1.2,     // Higher skill, higher pay
-      'plumbing': 1.1,
-      'hvac': 1.3,          // Specialized equipment
-      'structural': 1.4,     // High complexity
-      'roofing': 1.2,
-      'painting': 0.8,       // Lower skill barrier
-      'flooring': 1.0,
-      'windows': 1.1,
-      'doors': 0.9,
-      'insulation': 1.0,
-      'landscaping': 0.9
-    };
-    return multipliers[type?.toLowerCase()] || 1.0;
-  };
+  // Get vendor specialties for filtering
+  const vendorSpecialties = useMemo(() => {
+    if (!vendor?.vendor_types) return [];
+    // Parse comma-separated vendor types (e.g., "plumber, electrician")
+    return vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+  }, [vendor?.vendor_types]);
 
-  // State for priority actions with async calculation (API format before transformation)
-  const [priorityActions, setPriorityActions] = useState<Array<{
-    id: string;
-    title: string;
-    description: string;
-    urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW';
-    savings?: number;
-    offersCount?: number;
-    iconType: string;
-    iconColor: string;
-    ctaText: string;
-    ctaLink: string;
-    metadata?: string;
-    reasons?: string[];
-  }>>([]);
-
-  // Generate priority actions from high-value opportunities based on listings with high/medium severity issues
+  // Filter and fetch marketplace opportunities matching vendor specialty
   useEffect(() => {
-    const calculatePriorityActions = async () => {
-      if (!issues || !listings) {
-        setPriorityActions([]);
-        return;
-      }
+    const fetchOpportunities = async () => {
+      if (!issues) return;
 
-      // Filter issues by high and medium severity
-      const highValueIssues = issues.filter(issue => 
-        issue.severity === 'high' || issue.severity === 'medium'
-      );
-
-      // Prioritize high severity first, then medium
-      const sortedIssues = highValueIssues.sort((a, b) => {
-        if (a.severity === 'high' && b.severity !== 'high') return -1;
-        if (b.severity === 'high' && a.severity !== 'high') return 1;
-        return 0;
+      const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
+      
+      // Filter by vendor specialty if they have specialties defined
+      const filtered = vendorSpecialties.length > 0
+        ? available.filter((i) => {
+            const issueType = (i.type || '').toLowerCase();
+            // Match if issue type contains any of vendor's specialties
+            return vendorSpecialties.some(specialty => 
+              issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
+            );
+          })
+        : available;
+      
+      const sorted = [...filtered].sort((a, b) => {
+        const severityOrder = { high: 0, medium: 1, low: 2 };
+        return (severityOrder[a.severity as keyof typeof severityOrder] || 2) -
+               (severityOrder[b.severity as keyof typeof severityOrder] || 2);
       });
 
-      try {
-        // Take top 3 opportunities and calculate earnings based on actual bids
-        const opportunities = await Promise.all(
-          sortedIssues.slice(0, 3).map(async (issue) => {
-            const urgencyLevel: 'HIGH' | 'MEDIUM' | 'LOW' = 
-              issue.severity === 'high' ? 'HIGH' : 
-              issue.severity === 'medium' ? 'MEDIUM' : 'LOW';
-            
-            // Fetch actual bids for this issue to calculate realistic earning potential
-            let estimatedEarnings = 0;
-            let competitorCount = 0;
-            let offers: any[] = [];
-            
-            try {
-              const offersResult = await store.dispatch(getOffersByIssueId.initiate(issue.id));
-              offers = offersResult.data || [];
-              competitorCount = offers.length;
-              
-              if (offers.length > 0) {
-                // Calculate average of existing bids as earning potential
-                const totalBids = offers.reduce((sum, offer) => sum + (offer.price || 0), 0);
-                estimatedEarnings = Math.round(totalBids / offers.length);
-              } else {
-                // Fallback: estimate based on severity and issue type if no bids yet
-                const baseEarnings = issue.severity === 'high' ? 3000 : 2000;
-                const typeMultiplier = getTypeMultiplier(issue.type);
-                estimatedEarnings = Math.round(baseEarnings * typeMultiplier);
-              }
-            } catch (error) {
-              console.error('Error fetching offers for issue:', issue.id, error);
-              // Fallback calculation
-              estimatedEarnings = issue.severity === 'high' ? 3000 : 2000;
-            }
-            
-            const titleText = offers?.length > 0 ? 
-              `${issue.type} - Avg Bid: $${estimatedEarnings.toLocaleString()}` : 
-              `${issue.type} - Be First to Bid`;
-            // Determine reason candidates with weights for ordering
-            const averageTicket = (vendorMetrics?.activeJobs || 0) > 0
-              ? (vendorMetrics?.monthlyRevenue || 0) / Math.max(1, vendorMetrics.activeJobs)
-              : 0;
-            const isHighEarnings = estimatedEarnings > Math.max(1500, (averageTicket || 1000) * 1.2);
-            const createdAt = (issue as any).created_at ? new Date((issue as any).created_at) : null;
-            const hoursSinceCreated = createdAt ? (Date.now() - createdAt.getTime()) / (1000 * 60 * 60) : Infinity;
-            const isNewlyPosted = hoursSinceCreated <= 72; // 3 days
+      const top5 = await Promise.all(
+        sorted.slice(0, 5).map(async (issue) => {
+          let bidCount = 0;
+          try {
+            const result = await store.dispatch(getOffersByIssueId.initiate(issue.id));
+            bidCount = result.data?.length || 0;
+          } catch {}
+          return {
+            id: issue.id,
+            type: issue.type || "General",
+            summary: issue.summary || "View details",
+            severity: issue.severity,
+            bidCount,
+          };
+        })
+      );
 
-            const reasonCandidates: Array<{ label: string; ok: boolean; weight: number }> = [
-              { label: 'High urgency', ok: issue.severity === 'high', weight: 100 },
-              { label: 'High earnings potential', ok: isHighEarnings, weight: 90 },
-              { label: 'Low competition', ok: competitorCount <= 1, weight: 80 },
-              { label: 'Newly posted', ok: isNewlyPosted, weight: 70 },
-              { label: 'High vendor rating', ok: (vendorMetrics?.avgRating || 0) >= 4.5, weight: 60 },
-              { label: 'Bandwidth available', ok: (vendorMetrics?.pendingBids || 0) < 5, weight: 50 },
-            ];
-            const reasons = reasonCandidates
-              .filter(r => r.ok)
-              .sort((a, b) => b.weight - a.weight)
-              .map(r => r.label)
-              .slice(0, 3);
-            
-            return {
-              id: `opportunity_${issue.id}`,
-              title: titleText,
-              description: `${issue.summary} • ${issue.severity} severity${competitorCount > 0 ? ` • ${competitorCount} existing bids` : ' • No bids yet'}`,
-              urgencyLevel,
-              savings: offers?.length > 0 ? estimatedEarnings : undefined, // Only show savings if there are actual bids
-              iconType: getIssueIcon(issue.type || 'electrical'),
-              iconColor: urgencyLevel === 'HIGH' ? 'bg-red-500' : 'bg-orange-500',
-              ctaText: competitorCount > 0 ? 'Submit Bid' : 'Be First to Bid',
-              ctaLink: `/marketplace/${issue.id}`,
-              metadata: competitorCount > 0 ? `${competitorCount} competing bids` : 'No competition yet',
-              reasons
-            };
-          })
-        );
-
-        // If no high/medium severity issues, show fallback
-        if (opportunities.length === 0) {
-          setPriorityActions([
-            {
-              id: 'no_opportunities',
-              title: 'New Opportunities Coming Soon',
-              description: 'Check back regularly for high-value projects matching your expertise.',
-              urgencyLevel: 'LOW' as const,
-              savings: undefined, // No savings amount for this fallback
-              iconType: 'toolbox',
-              iconColor: 'bg-gray-500',
-              ctaText: 'Browse All',
-              ctaLink: '/marketplace',
-              metadata: 'Stay updated'
-            }
-          ]);
-        } else {
-          setPriorityActions(opportunities);
-        }
-      } catch (error) {
-        console.error('Error calculating priority actions:', error);
-        setPriorityActions([]);
-      }
+      setMarketplaceOpportunities(top5);
     };
 
-    calculatePriorityActions();
-  }, [issues, listings, dispatch]);
+    fetchOpportunities();
+  }, [issues, vendorSpecialties]);
 
+  // Active jobs (accepted offers) - limit to 3 for dashboard
+  const activeJobs = useMemo(() => {
+    return vendorOffers
+      .filter((o) => o.status === IssueOfferStatus.ACCEPTED)
+      .map((o) => {
+        const issue = issuesMap[o.issue_id];
+        return { offer: o, issue };
+      })
+      .filter((j) => j.issue && j.issue.status !== "Status.COMPLETED")
+      .slice(0, 3);
+  }, [vendorOffers, issuesMap]);
 
+  // Pending bids
+  const pendingBids = useMemo(() => {
+    return vendorOffers
+      .filter((o) => o.status === IssueOfferStatus.RECEIVED)
+      .map((o) => {
+        const issue = issuesMap[o.issue_id];
+        return { offer: o, issue };
+      })
+      .filter((b) => b.issue)
+      .slice(0, 3);
+  }, [vendorOffers, issuesMap]);
 
-  // Load vendor dashboard configuration
-  useEffect(() => {
-    const loadDashboardConfig = async () => {
-
-      try {
-
-        const mockApiResponse: DashboardApiResponse = {
-          userType: 'vendor',
-          metrics: [
-            {
-              id: 'revenue',
-              label: 'Monthly Revenue',
-              value: `$${vendorMetrics?.monthlyRevenue?.toLocaleString() || '2,800'}`,
-              iconType: 'dollar-sign',
-              iconColor: 'text-green-600',
-              dotColor: 'bg-green-500',
-              valueColor: 'text-green-600'
-            },
-            {
-              id: 'potential',
-              label: 'Potential This Month',
-              value: `$${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()}`,
-              iconType: 'trending-up',
-              iconColor: 'text-blue-600',
-              dotColor: 'bg-blue-500',
-              valueColor: 'text-blue-600'
-            },
-            {
-              id: 'ranking',
-              label: 'Network Ranking',
-              value: `Top ${Math.floor(Math.random() * 15) + 5}%`,
-              iconType: 'trophy',
-              iconColor: 'text-yellow-600',
-              dotColor: 'bg-yellow-500',
-              valueColor: 'text-yellow-600'
-            },
-            {
-              id: 'responseTime',
-              label: 'Avg Response',
-              value: '2.1 hrs',
-              iconType: 'clock',
-              iconColor: 'text-purple-600',
-              dotColor: 'bg-purple-500',
-              valueColor: 'text-purple-600'
-            }
-          ],
-                     heroContent: {
-             backgroundImage: "/images/gradient-bg.png",
-            socialProofText: getSocialProofForDashboard('vendor'),
-             title: `$${((vendorMetrics?.pendingBids || 3) * 1200 + (vendorMetrics?.monthlyRevenue || 2800)).toLocaleString()} Available This Month!`,
-             subtitle: `${vendor?.name || 'You'} could earn up to $${((vendorMetrics?.pendingBids || 3) * 1200).toLocaleString()} more by bidding on ${vendorMetrics?.pendingBids || 3} active projects. Your response time is 67% faster than average - leverage this advantage!`,
-             badges: [
-               { iconType: 'fire', label: 'Specialty: Electrical' },
-               { iconType: 'trending-up', label: `+${Math.floor(Math.random() * 30) + 15}% vs last month` },
-               { iconType: 'medal', label: `Top ${Math.floor(Math.random() * 15) + 5}% performer` }
-             ],
-            // Remove mock initials to avoid misleading UI
-            userInitials: []
-           },
-                     quickActionCards: [
-             {
-               id: 'hotProjects',
-               type: 'upload',
-               title: 'High Priority Projects',
-               subtitle: `$${((Math.floor(Math.random() * 8) + 12) * 1000).toLocaleString()} in total project value`,
-               description: `${Math.floor(Math.random() * 8) + 5} urgent electrical jobs posted in the last 24hrs`,
-               ctaText: 'Bid Now',
-               isLimitedTime: true,
-               iconType: 'fire',
-               iconColor: 'text-red-600',
-               gradientFrom: 'from-red-50',
-               gradientTo: 'to-orange-50',
-               borderColor: 'border-red-200',
-               features: [
-                 { iconType: 'clock', text: 'Fast turnaround', color: 'text-red-500' },
-                 { iconType: 'trending-up', text: 'Premium rates', color: 'text-green-500' },
-                 { iconType: 'star', text: 'High-rating clients', color: 'text-yellow-500' }
-               ],
-               stats: `Only ${Math.floor(Math.random() * 4) + 2} vendors competing`
-             },
-             {
-               id: 'aiPricing',
-               type: 'preview',
-               title: 'AI Pricing Assistant',
-               description: 'Get competitive pricing recommendations based on your win rate and market data',
-               ctaText: 'Optimize Bids',
-               image: '/images/ai_image.webp'
-             }
-           ],
-          priorityActions: priorityActions,
-          achievements: [
-            {
-              id: 'revenue_goal',
-              label: 'Revenue Goal Progress',
-              value: `${vendorMetrics?.monthlyRevenue || 2800}`,
-              subValue: `$${5000 - (vendorMetrics?.monthlyRevenue || 2800)} to reach $5K goal`,
-              color: 'green',
-              type: 'currency'
-            },
-            {
-              id: 'market_share',
-              label: 'Market Position',
-              value: `Top ${Math.floor(Math.random() * 15) + 5}`,
-              subValue: `Outperforming ${Math.floor(Math.random() * 200) + 150} vendors`,
-              color: 'blue',
-              type: 'percentage'
-            },
-            {
-              id: 'efficiency',
-              label: 'Efficiency Score',
-              value: `${Math.floor(Math.random() * 20) + 85}`,
-              subValue: `${Math.floor(Math.random() * 15) + 5}% above network average`,
-              color: 'purple',
-              type: 'percentage'
-            },
-            {
-              id: 'streak',
-              label: 'Win Streak',
-              value: `${Math.floor(Math.random() * 8) + 3}`,
-              subValue: 'Consecutive successful projects',
-              color: 'orange',
-              type: 'number'
-            }
-          ],
-                      smartInsights: [
-            {
-               id: 'market_surge',
-               type: 'urgent',
-               title: 'Electrical Jobs Surge +47%',
-               description: `Perfect timing for your specialty! ${Math.floor(Math.random() * 12) + 8} high-value electrical projects posted this week. Average bid: $1,850.`,
-               ctaText: 'View Available Projects',
-               ctaEndpoint: '/marketplace?category=electrical',
-               iconType: 'fire'
-             },
-            // Follow up stale bids insight (bids older than 48h that are still RECEIVED)
-            ...(() => {
-              try {
-                const now = Date.now();
-                const staleBids = (vendorOffers || []).filter(b => b.status === IssueOfferStatus.RECEIVED && (now - new Date(b.created_at).getTime()) / (1000 * 60 * 60) > 48);
-                if (staleBids.length > 0) {
-                  return [{
-                    id: 'follow_up_bids',
-                    type: 'opportunity' as const,
-                    title: 'Follow Up On Pending Bids',
-                    description: `${staleBids.length} bid${staleBids.length > 1 ? 's' : ''} pending for over 48h. A quick follow-up can increase win rate by 18%.`,
-                    ctaText: 'Review Pending Bids',
-                    ctaEndpoint: '/marketplace?tab=my-bids',
-                    iconType: 'clock'
-                  }];
-                }
-                return [];
-              } catch {
-                return [];
-              }
-            })(),
-            {
-               id: 'competitive_advantage',
-               type: 'opportunity',
-               title: 'Response Time Advantage',
-               description: 'Your 2.1hr response time beats 89% of vendors. Clients pay 12% more for fast responders. Leverage this in your next bid!',
-               ctaText: 'Optimize Pricing',
-               ctaEndpoint: '/api/pricing-optimizer',
-               iconType: 'rocket'
-             },
-             {
-               id: 'weekend_premium',
-               type: 'savings',
-               title: 'Weekend Premium Opportunity',
-               description: 'Weekend assessments are paying 28% more this month. Consider expanding your availability for emergency calls.',
-               ctaText: 'Update Availability',
-               ctaEndpoint: '/api/schedule-weekend',
-               iconType: 'calendar-plus'
-             }
-           ],
-          emptyStateConfig: {
-            title: 'Ready to Grow Your Business?',
-            description: 'Start bidding on projects and build your reputation in our vendor network!',
-            ctaText: 'Browse Opportunities',
-            ctaEndpoint: '/marketplace'
-          }
-        };
-
-        const config = transformApiResponseToConfig(mockApiResponse, {
-          onUpload: () => navigate('/marketplace'),
-          onNavigate: (path: string) => navigate(path),
-          onApiCall: (endpoint: string) => console.log('API call to:', endpoint)
-        });
-
-
-        setDashboardConfig(config);
-      } catch (error) {
-        console.error('Failed to load dashboard config:', error);
-      }
-    };
-
-    loadDashboardConfig();
-  }, [vendorOffers.length, issues?.length, assessments?.length, vendor?.id, navigate, priorityActions]);
-
-  // Handling error state
-  if (issuesError) {
-    return <p>Error loading dashboard data</p>;
-  }
-
-  if (isVendorLoading) {
-    return <p>Loading vendor data...</p>;
-  }
+  // User state
+  const isNewVendor = vendorMetrics.totalBids === 0;
+  const hasPendingBids = vendorMetrics.pendingBids > 0;
+  const hasUpcomingAssessments = calendarEvents.length > 0;
   
-  if (vendorError) {
-    return <p>Failed to load vendor data.</p>;
-  }
+  // Count available jobs matching vendor specialty
+  const availableCount = useMemo(() => {
+    if (!issues) return 0;
+    const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
+    if (vendorSpecialties.length === 0) return available.length;
+    
+    return available.filter((i) => {
+      const issueType = (i.type || '').toLowerCase();
+      return vendorSpecialties.some(specialty => 
+        issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
+      );
+    }).length;
+  }, [issues, vendorSpecialties]);
+  
+  const winRate = vendorMetrics.totalBids > 0 ? Math.round((vendorMetrics.acceptedCount / vendorMetrics.totalBids) * 100) : 0;
 
-  if (!vendor) {
-    return <p>Vendor not found.</p>;
-  }
+  // Greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
-  if (!dashboardConfig) {
-    return <div className="p-6">Loading dashboard...</div>;
+  // Loading/Error states
+  if (issuesError) return <p>Error loading dashboard data</p>;
+  if (isVendorLoading) {
+    return (
+      <div className="min-h-screen w-full bg-gray-50 p-8">
+        <div className="w-full max-w-[1800px] mx-auto">
+          <div className="animate-pulse space-y-6">
+            <div className="h-10 bg-gray-200 rounded-xl w-1/3"></div>
+            <div className="h-48 bg-gray-200 rounded-2xl"></div>
+            <div className="grid grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-gray-200 rounded-2xl"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
+  if (vendorError) return <p>Failed to load vendor data.</p>;
+  if (!vendor) return <p>Vendor not found.</p>;
 
   return (
-    <div className="p-6">
-
-      {/* Metrics Overview */}
-      {dashboardConfig && shouldShowComponent(dashboardConfig.metrics) && (
-        <div className="mb-6">
-          <MetricsOverview 
-            metrics={dashboardConfig.metrics!} 
-            userType="vendor"
-            userName={vendor?.name || 'Vendor'}
-          />
-        </div>
-      )}
-
-      {/* Hero Banner */}
-      {dashboardConfig && shouldShowComponent(dashboardConfig.heroData) && (
-        <div className="mb-6">
-          <HeroBanner
-            heroData={dashboardConfig.heroData!}
-            userType="vendor"
-          />
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      {dashboardConfig && shouldShowComponent(dashboardConfig.quickActionCards) && (
-        <div className="mb-6">
-          <QuickActions 
-            actions={dashboardConfig.quickActionCards!}
-            userType="vendor"
-            fileInputRef={fileInputRef}
-          />
-      </div>
-      )}
-
-      <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
-        <div className="col-span-12 2xl:col-span-8">
-          <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
-            {/* Smart Insights */}
-            {dashboardConfig && shouldShowComponent(dashboardConfig.smartInsights) && (
-              <div className="col-span-12 mb-6">
-                <SmartInsights 
-                  insights={dashboardConfig.smartInsights!}
-                  userType="vendor"
-                    />
-                  </div>
-            )}
-
-            {/* Assessment Calendar */}
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Assessment Schedule</h3>
-                <UserCalendar events={calendarEvents as any} />
-                  </div>
-                </div>
-
-            {/* Upcoming Events */}
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Upcoming Events</h3>
-                <Agenda events={calendarEvents as any} />
+    <div className="min-h-screen w-full bg-gray-50">
+      <div className="w-full max-w-[1800px] mx-auto px-4 py-3 lg:px-8 lg:py-4">
+        
+        {/* Hero Section - Compact */}
+        <div className="relative mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+          
+          <div className="relative px-5 py-4 lg:px-6 lg:py-5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-xl lg:text-2xl font-bold mb-1">
+                  {getGreeting()}, {vendor.name?.split(' ')[0] || "there"}!
+                </h1>
+                <p className="text-blue-100 text-sm max-w-xl">
+                  {isNewVendor
+                    ? "Welcome aboard! Your journey to finding great projects starts here."
+                    : vendorMetrics.activeJobs > 0
+                    ? `You're crushing it with ${vendorMetrics.activeJobs} active ${vendorMetrics.activeJobs === 1 ? 'job' : 'jobs'}.`
+                    : "Ready to find your next project?"}
+                </p>
+              </div>
+              
+              <Link
+                to={`/marketplace?type=${encodeURIComponent(vendor?.vendor_types?.split(',')[0]?.trim() || '')}&city=${encodeURIComponent(vendor?.city || '')}`}
+                className="group inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-xl font-semibold text-sm hover:bg-blue-50 transition-all shadow-lg shadow-blue-900/10 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <FontAwesomeIcon icon={faSearch} />
+                <span>Find Work</span>
+                <FontAwesomeIcon icon={faArrowRight} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+            
+            {/* Quick Stats Row - Clean Pills */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">{vendorMetrics.activeJobs}</span>
+                <span className="text-blue-100 text-xs">Active</span>
+              </div>
+              
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
+                hasPendingBids ? 'bg-orange-500/25 border-orange-400/40' : 'bg-white/15 border-white/20'
+              }`}>
+                <span className={`stat-value text-base ${hasPendingBids ? 'text-orange-200' : 'text-white'}`}>{vendorMetrics.pendingBids}</span>
+                <span className={`text-xs ${hasPendingBids ? 'text-orange-200' : 'text-blue-100'}`}>Pending</span>
+              </div>
+              
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/25 backdrop-blur-sm rounded-full border border-emerald-400/40">
+                <span className="stat-value text-base text-emerald-200">${(vendorMetrics.totalEarnings / 1000).toFixed(1)}k</span>
+                <span className="text-emerald-200 text-xs">Earned</span>
+              </div>
+              
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">{vendorMetrics.completedJobs}</span>
+                <span className="text-blue-100 text-xs">Completed</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Sidebar */}
-      <div className="col-span-12 2xl:col-span-4">
-          <div className="gap-6 grid grid-cols-1">
-            {/* My Jobs Widget */}
-            <div className="mb-6">
-              <MyJobsWidget 
-                vendorOffers={vendorOffers}
-                issuesMap={issuesMap}
-              />
-            </div>
-
-            {/* Priority Actions */}
-            {dashboardConfig && shouldShowComponent(dashboardConfig.priorityActions) && (
-              <div className="mb-6">
-                <PriorityActions 
-                  actions={dashboardConfig.priorityActions!}
-                  title="High-Value Opportunities"
-                  subtitle="Projects worth your immediate attention"
-                  userType="vendor"
-                  isLoading={isVendorLoading}
-                />
+        {/* NEW VENDOR: Welcome CTA */}
+        {isNewVendor && (
+          <div className="mb-8 p-8 rounded-3xl bg-white border border-gray-200 shadow-sm">
+            <div className="flex flex-col lg:flex-row items-center gap-8">
+              <div className="flex-1 text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium mb-4">
+                  <FontAwesomeIcon icon={faBolt} />
+                  Get Started
+                </div>
+                <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-3">
+                  Find Your First Project
+                </h2>
+                <p className="text-gray-600 text-lg mb-6 max-w-lg">
+                  Browse {availableCount} available jobs, submit competitive bids, and start building your reputation.
+                </p>
+                <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-6">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-yellow-500" />
+                    Verified homeowners
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-yellow-500" />
+                    Set your own rates
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-yellow-500" />
+                    Get paid securely
+                  </div>
+                </div>
+                <Link
+                  to="/marketplace"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 transition shadow-lg"
+                >
+                  <FontAwesomeIcon icon={faRocket} />
+                  Explore Marketplace
+                  <FontAwesomeIcon icon={faArrowRight} />
+                </Link>
               </div>
-            )}
+              <div className="hidden lg:flex items-center justify-center">
+                <div className="relative">
+                  <div className="w-48 h-48 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-3xl rotate-6 opacity-20"></div>
+                  <div className="absolute inset-0 w-48 h-48 bg-white rounded-3xl shadow-xl border border-gray-200 flex items-center justify-center">
+                    <FontAwesomeIcon icon={faBriefcase} className="text-6xl text-yellow-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-            {/* Achievements */}
-            {dashboardConfig && shouldShowComponent(dashboardConfig.achievements) && (
-              <div className="mb-6">
-                <Achievements 
-                  achievements={dashboardConfig.achievements!}
-                  userType="vendor"
-                />
+        {/* EXISTING VENDOR: Bento Grid Layout */}
+        {!isNewVendor && (
+          <div className="grid grid-cols-12 gap-4">
+            
+            {/* LEFT COLUMN - Active Jobs + Awaiting Response */}
+            <div className="col-span-12 lg:col-span-7 space-y-4">
+              {/* Active Jobs Card */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faBriefcase} className="text-white text-sm" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-gray-900">Active Jobs</h3>
+                        <p className="text-xs text-gray-600">{activeJobs.length} in progress</p>
+                      </div>
+                    </div>
+                    {activeJobs.length > 0 && (
+                      <Link to="/vendor/jobs" className="text-gray-600 hover:text-gray-900 text-xs font-medium flex items-center gap-1">
+                        View All <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                      </Link>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="p-2">
+                  {activeJobs.length > 0 ? (
+                    <div className="grid gap-1.5">
+                      {activeJobs.map(({ offer, issue }) => (
+                        <div
+                          key={offer.id}
+                          onClick={() => navigate(`/marketplace/${issue?.id}`)}
+                          className="group flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-300 cursor-pointer transition-all hover:shadow-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 bg-blue-100 rounded-md flex items-center justify-center">
+                              <FontAwesomeIcon icon={pickIcon(issue?.type)} className="text-blue-600 text-xs" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-xs text-gray-900 group-hover:text-gray-700 transition-colors capitalize">
+                                {issue?.type || "Job"} #{issue?.id}
+                              </div>
+                              <div className="text-xs text-gray-600 max-w-xs truncate">{issue?.summary}</div>
+                            </div>
                           </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right">
+                              <div className="font-mono font-semibold text-xs text-gray-900">${offer.price?.toLocaleString()}</div>
+                              <div className="text-xs text-emerald-600 font-medium">Accepted</div>
+                            </div>
+                            <FontAwesomeIcon icon={faArrowRight} className="text-gray-300 group-hover:text-gray-600 group-hover:translate-x-1 transition-all text-xs" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <FontAwesomeIcon icon={faBriefcase} className="text-gray-400 text-lg" />
+                      </div>
+                      <p className="text-gray-600 mb-1 font-medium text-xs">No active jobs yet</p>
+                      <p className="text-xs text-gray-600 mb-2">Win a bid to start your first project</p>
+                      <Link
+                        to="/marketplace"
+                        className="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium text-xs"
+                      >
+                        Browse marketplace <FontAwesomeIcon icon={faArrowRight} />
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Pending Bids - Awaiting Response - Inside left column */}
+              {hasPendingBids && (
+                <div className="dashboard-card">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faClock} className="text-white text-sm" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-gray-900">Awaiting Response</h3>
+                        <p className="text-xs text-gray-600">{pendingBids.length} bids under review</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-2 space-y-1.5">
+                    {pendingBids.map(({ offer, issue }) => (
+                      <div
+                        key={offer.id}
+                        onClick={() => navigate(`/marketplace/${issue?.id}`)}
+                        className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 bg-yellow-100 rounded-md flex items-center justify-center">
+                            <FontAwesomeIcon icon={pickIcon(issue?.type)} className="text-yellow-600 text-xs" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-xs text-gray-900 capitalize">{issue?.type}</div>
+                            <div className="text-xs text-gray-600 truncate max-w-xs">{issue?.summary}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono font-semibold text-xs text-gray-900">${offer.price?.toLocaleString()}</div>
+                          <div className="text-xs text-yellow-600 font-medium">Pending</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Schedule Card - Inside left column */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <FontAwesomeIcon icon={faCalendarAlt} className="text-white text-sm" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm text-gray-900">Schedule</h3>
+                      <p className="text-xs text-gray-600">
+                        {hasUpcomingAssessments ? `${calendarEvents.length} upcoming` : 'No scheduled assessments'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3">
+                  {hasUpcomingAssessments ? (
+                    <div className="min-h-[200px]">
+                      <UserCalendar events={calendarEvents as any} />
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-lg" />
+                      </div>
+                      <p className="text-gray-600 mb-1 font-medium text-xs">No assessments scheduled</p>
+                      <p className="text-xs text-gray-600">Win bids to schedule on-site visits</p>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
 
-      {/* Hidden file input for uploads */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        hidden
-        accept="image/*,.pdf"
-        multiple
-      />
+            {/* RIGHT COLUMN - Side Cards - Hot Opportunities first, then Performance */}
+            <div className="col-span-12 lg:col-span-5 space-y-4">
+              {/* Available Jobs Preview - FIRST */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faFire} className="text-white text-sm" />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900">Hot Opportunities</h3>
+                    </div>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                      {availableCount} jobs
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {marketplaceOpportunities.slice(0, 3).map((opp) => (
+                    <div
+                      key={opp.id}
+                      onClick={() => navigate(`/marketplace/${opp.id}`)}
+                      className="group p-2.5 rounded-lg bg-gray-50 hover:bg-white border border-gray-100 hover:border-gray-300 cursor-pointer transition-all hover:shadow-sm"
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-medium text-xs text-gray-900 group-hover:text-gray-700 capitalize">
+                          {opp.type}
+                        </span>
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                          opp.severity === "high" ? "bg-red-100 text-red-700" :
+                          opp.severity === "medium" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {opp.severity}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 truncate">{opp.summary}</p>
+                      <div className="flex items-center justify-between mt-1.5 text-xs">
+                        <span className="text-gray-400">
+                          {opp.bidCount === 0 ? "Be first to bid!" : `${opp.bidCount} bid${opp.bidCount !== 1 ? 's' : ''}`}
+                        </span>
+                        <span className="text-gray-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          View <FontAwesomeIcon icon={faExternalLinkAlt} />
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <Link
+                    to="/marketplace"
+                    className="block text-center py-2 text-xs font-medium text-gray-900 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
+                  >
+                    See All Jobs →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Win Rate Card - SECOND */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faTrophy} className="text-white text-sm" />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900">Performance</h3>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <FontAwesomeIcon 
+                          key={star} 
+                          icon={faStar} 
+                          className={`text-xs ${star <= 4 ? "text-amber-400" : "text-gray-200"}`} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="text-center py-2">
+                    <div className="relative inline-flex">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="42" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle 
+                          cx="48" cy="48" r="42" 
+                          stroke="url(#gradientBlue)" 
+                          strokeWidth="8" 
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeDasharray={`${winRate * 2.64} 264`}
+                        />
+                        <defs>
+                          <linearGradient id="gradientBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="100%" stopColor="#6366f1" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div>
+                          <div className="stat-value text-2xl text-gray-900">{winRate}%</div>
+                          <div className="text-xs text-gray-600">Win Rate</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                
+                  <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-gray-900">{vendorMetrics.totalBids}</div>
+                      <div className="text-xs text-gray-600">Total Bids</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-emerald-600">{vendorMetrics.acceptedCount}</div>
+                      <div className="text-xs text-gray-600">Won</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-blue-600">{vendorMetrics.completedJobs}</div>
+                      <div className="text-xs text-gray-600">Done</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions - if no pending bids */}
+            {!hasPendingBids && (
+              <div className="col-span-12 lg:col-span-5">
+                <div className="dashboard-card h-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-0">
+                  <div className="p-6 h-full flex flex-col">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                        <FontAwesomeIcon icon={faFire} className="text-white" />
+                      </div>
+                      <h3 className="font-semibold">Grow Your Business</h3>
+                    </div>
+                    
+                    <div className="flex-1 space-y-4">
+                      <Link
+                        to="/marketplace"
+                        className="block p-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 rounded-xl transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FontAwesomeIcon icon={faRocket} className="text-white" />
+                          <div className="flex-1">
+                            <div className="font-medium">Find New Jobs</div>
+                            <div className="text-sm text-blue-200">{availableCount} opportunities</div>
+                          </div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-blue-200" />
+                        </div>
+                      </Link>
+                      
+                      <Link
+                        to="/vendor/jobs"
+                        className="block p-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 rounded-xl transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FontAwesomeIcon icon={faBriefcase} className="text-white" />
+                          <div className="flex-1">
+                            <div className="font-medium">Manage Jobs</div>
+                            <div className="text-sm text-blue-200">View all your work</div>
+                          </div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-blue-200" />
+                        </div>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default VendorDashboard;

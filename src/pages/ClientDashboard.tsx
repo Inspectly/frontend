@@ -1,35 +1,38 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faArrowRight,
+  faExternalLinkAlt,
   faBolt,
-  faBroom,
   faBuilding,
-  faGripLines,
-  faHammer,
-  faHouse,
-  faLayerGroup,
-  faLeaf,
-  faPaintRoller,
-  faQuestionCircle,
-  faSnowflake,
-  faTint,
-  faToolbox,
-  faWind,
-  faWrench,
-  IconDefinition,
+  faCalendarAlt,
+  faCheckCircle,
+  faChevronRight,
+  faClipboardList,
+  faClock,
+  faExclamationTriangle,
+  faFileAlt,
+  faHome,
+  faMapMarkerAlt,
+  faPlus,
+  faRocket,
+  faMagic,
+  faTrophy,
+  faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   CalendarReadyAssessment,
   IssueAssessmentStatus,
   IssueOffer,
+  IssueOfferStatus,
   IssueType,
   User,
   Vendor,
 } from "../types";
 import VendorMap from "../components/VendorMap";
-import Realtors from "../components/Realtors";
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
@@ -39,20 +42,9 @@ import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
-import  AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
+import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
-
-// dashboard pieces
-import MetricsOverview from "../components/MetricsOverview";
-import HeroBanner from "../components/HeroBanner";
-import SmartInsights from "../components/SmartInsights";
-import QuickActions from "../components/QuickActions";
-import PriorityActions from "../components/PriorityActions";
-import Achievements from "../components/Achievements";
-import SocialProof from "../components/SocialProof";
-
-import { DashboardConfig, DashboardApiResponse } from "../types/dashboard";
-import { transformApiResponseToConfig, shouldShowComponent, getSocialProofForDashboard } from "../utils/dashboardUtils";
+import CreateIssueModal from "../components/CreateIssueModal";
 
 interface DashboardProps {
   user: User;
@@ -63,7 +55,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Queries
+  // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: issues } = useGetIssuesQuery();
@@ -76,7 +68,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const [createListing] = useCreateListingMutation();
   const [uploadReportFile] = useUploadReportFileMutation();
 
-  // Parse accepted assessments and extract vendor_id
+  // Parse accepted assessments
   const acceptedAssessments = useMemo(() => {
     return assessments
       .filter((a) => a.status === IssueAssessmentStatus.ACCEPTED)
@@ -88,40 +80,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .filter((a) => a.vendor_id !== null) as Array<(typeof assessments)[number] & { vendor_id: number }>;
   }, [assessments]);
 
-  // Unique IDs (memoized)
-  const issueIds = useMemo(
-    () => [...new Set(acceptedAssessments.map((a) => a.issue_id))],
-    [acceptedAssessments]
-  );
-  const vendorIds = useMemo(
-    () => [...new Set(acceptedAssessments.map((a) => a.vendor_id))],
-    [acceptedAssessments]
-  );
+  const issueIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.issue_id))], [acceptedAssessments]);
+  const vendorIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.vendor_id))], [acceptedAssessments]);
 
-  // Lookups/state
   const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
   const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
   const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
-  const [dashboardConfig, setDashboardConfig] = useState<DashboardConfig | null>(null);
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
-
-  // Optional: icons if needed later
-  const issueIcons: Record<string, IconDefinition> = {
-    general: faToolbox,
-    structural: faBuilding,
-    electrician: faBolt,
-    plumber: faTint,
-    painter: faPaintRoller,
-    cleaner: faBroom,
-    hvac: faWind,
-    roofing: faHouse,
-    insulation: faSnowflake,
-    drywall: faGripLines,
-    plaster: faLayerGroup,
-    carpentry: faHammer,
-    landscaping: faLeaf,
-    other: faQuestionCircle,
-  };
+  const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
 
   // Issues for this user
   const filteredIssuesByUser = useMemo(() => {
@@ -130,7 +96,35 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return issues.filter((issue) => userReportIds.includes(issue.report_id));
   }, [issues, reports, user.id]);
 
-  // Calendar events (future only)
+  // Real metrics
+  const realMetrics = useMemo(() => {
+    const totalIssues = filteredIssuesByUser.length;
+    const openIssues = filteredIssuesByUser.filter(
+      (i) => i.status === "Status.OPEN" || i.status === "Status.IN_PROGRESS"
+    ).length;
+    const completedIssues = filteredIssuesByUser.filter((i) => i.status === "Status.COMPLETED").length;
+    const inProgressIssues = filteredIssuesByUser.filter((i) => i.status === "Status.IN_PROGRESS").length;
+    const totalReports = reports?.length || 0;
+    const totalListings = _listings?.length || 0;
+    const totalOffersReceived = Object.values(offersByIssueId).flat().length;
+    const pendingOffers = Object.values(offersByIssueId)
+      .flat()
+      .filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+
+    return { totalIssues, openIssues, completedIssues, inProgressIssues, totalReports, totalListings, totalOffersReceived, pendingOffers };
+  }, [filteredIssuesByUser, reports, _listings, offersByIssueId]);
+
+  // Issues with pending offers (for action items)
+  const issuesWithPendingOffers = useMemo(() => {
+    return filteredIssuesByUser
+      .filter((issue) => {
+        const offers = offersByIssueId[issue.id] ?? [];
+        return offers.some((o) => o.status === IssueOfferStatus.RECEIVED);
+      })
+      .slice(0, 5);
+  }, [filteredIssuesByUser, offersByIssueId]);
+
+  // Calendar events
   const calendarEvents = useMemo(() => {
     return assessments
       .filter((a) => new Date(a.start_time) > new Date())
@@ -143,58 +137,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       })) as CalendarReadyAssessment[];
   }, [assessments]);
 
-  // Realtors
-  const realtorTeamMembers = [
-    {
-      image: "/images/Manzur.jpeg",
-      name: "Manzur Mulk",
-      company: "Senior Real Estate Advisor",
-      quote:
-        "Helping families find their dream homes with expert market knowledge and personalized service.",
-    },
-    {
-      image: "/images/Sharhad.jpg",
-      name: "Sharhad Bashar",
-      company: "Property Investment Specialist",
-      quote:
-        "Maximizing property investment returns through strategic analysis and market insights.",
-    },
-    {
-      image: "/images/Yousef.png",
-      name: "Yousef Ouda",
-      company: "Residential Sales Expert",
-      quote: "Dedicated to making your home buying journey smooth and stress-free.",
-    },
-    {
-      image: "/images/Mohammed_Hussein.jpg",
-      name: "Mohammed Hussein",
-      company: "Commercial Real Estate Broker",
-      quote:
-        "Connecting businesses with prime commercial properties for growth and success.",
-    },
-  ];
-
-  // (kept; QuickActions still accepts these handlers even if modal is used)
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-    files.forEach((file) => {
-      if (file.type === "application/pdf") {
-        console.log("Processing PDF file:", file.name);
-      }
-    });
-  };
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files).filter(
-      (f) => f.type === "application/pdf"
-    );
-    files.forEach((file) => {
-      console.log("Processing dropped PDF:", file.name);
-    });
-  };
-
-  // Fetch issues/vendors and offers
+  // Fetch offers for user's issues
   useEffect(() => {
     const run = async () => {
       try {
@@ -205,485 +148,514 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           vendorIds.map((id) => dispatch(getVendorById.initiate(String(id))))
         );
 
-        const nextIssueMap = Object.fromEntries(
-          issueResults.map((res, i) => [issueIds[i], res.data as IssueType])
-        );
-        const nextVendorMap = Object.fromEntries(
-          vendorResults.map((res, i) => [vendorIds[i], res.data as Vendor])
-        );
+        setIssueMap(Object.fromEntries(issueResults.map((res, i) => [issueIds[i], res.data as IssueType])));
+        setVendorMap(Object.fromEntries(vendorResults.map((res, i) => [vendorIds[i], res.data as Vendor])));
 
-        setIssueMap(nextIssueMap);
-        setVendorMap(nextVendorMap);
-
+        const allIssueIds = filteredIssuesByUser.map((i) => i.id);
         const offerResults = await Promise.all(
-          issueIds.map((id) => dispatch(getOffersByIssueId.initiate(id)))
+          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id)))
         );
-        const nextOffers = Object.fromEntries(
-          offerResults.map((res, i) => [issueIds[i], (res.data as IssueOffer[]) || []])
-        );
-        setOffersByIssueId(nextOffers);
+        setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
       } catch (err) {
-        console.error("Error fetching issue/vendor/offer data:", err);
+        console.error("Error fetching data:", err);
       }
     };
 
-    if (issueIds.length || vendorIds.length) run();
-  }, [dispatch, issueIds, vendorIds]);
+    if (issueIds.length || vendorIds.length || filteredIssuesByUser.length) run();
+  }, [dispatch, issueIds, vendorIds, filteredIssuesByUser]);
 
-  // Build dashboard config (mock + real data) — onUpload now opens the modal
-  useEffect(() => {
-    const generatePriorityActions = () => {
-      if (!filteredIssuesByUser.length || !Object.keys(offersByIssueId).length || !reports) {
-        return [];
-      }
+  // Issue collections for CreateIssueModal (reports the user can add issues to)
+  const issueCollections = useMemo(() => {
+    if (!reports || !_listings) return [];
+    return reports.map((report) => {
+      const listing = _listings.find((l) => l.id === report.listing_id);
+      return {
+        id: report.id,
+        name: `${listing?.address || 'Unknown Property'} - ${report.report_type || 'Report'}`
+      };
+    });
+  }, [reports, _listings]);
 
-      return filteredIssuesByUser
-        .filter((issue) => (offersByIssueId[issue.id] ?? []).length > 0)
-        .slice(0, 3)
-        .map((issue) => {
-          const offers = offersByIssueId[issue.id] ?? [];
-          const savings = offers.length ? Math.max(...offers.map((o) => o.price || 0)) : 0;
-          const urgencyLevel: "HIGH" | "MEDIUM" | "LOW" =
-            issue.severity === "high" ? "HIGH" : issue.severity === "medium" ? "MEDIUM" : "LOW";
+  // Determine user state
+  const isNewUser = realMetrics.totalListings === 0;
+  const hasPendingOffers = realMetrics.pendingOffers > 0;
+  const hasUpcomingAssessments = calendarEvents.length > 0;
+  const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
 
-          const report = reports.find((r) => r.id === issue.report_id);
-          const listingId = report?.listing_id ?? 1;
-
-          const createdAt = (issue as any).created_at ? new Date((issue as any).created_at) : null;
-          const hoursSinceCreated = createdAt ? (Date.now() - createdAt.getTime()) / 36e5 : Infinity;
-          const isNewlyPosted = hoursSinceCreated <= 72;
-
-          const savingsThreshold = Math.max(500, savings * 0.2);
-          const reasonCandidates = [
-            { label: "High urgency", ok: issue.severity === "high", weight: 100 },
-            { label: "High savings potential", ok: savings > savingsThreshold, weight: 90 },
-            { label: "Multiple offers", ok: offers.length >= 3, weight: 80 },
-            { label: "Newly posted", ok: isNewlyPosted, weight: 70 },
-          ];
-          const reasons = reasonCandidates
-            .filter((r) => r.ok)
-            .sort((a, b) => b.weight - a.weight)
-            .map((r) => r.label)
-            .slice(0, 3);
-
-          const iconMap: Record<string, string> = {
-            electrical: "bolt",
-            plumbing: "tint",
-            plumber: "tint",
-            hvac: "wind",
-            roofing: "house",
-            structural: "hammer",
-            painting: "paint-roller",
-            painter: "paint-roller",
-            flooring: "broom",
-            windows: "building",
-            doors: "building",
-            insulation: "snowflake",
-            landscaping: "leaf",
-          };
-          const iconKey = iconMap[issue.type?.toLowerCase?.() || ""] || "wrench";
-
-          return {
-            id: `issue_${issue.id}`,
-            title: `${issue.type?.[0]?.toUpperCase?.() || ""}${issue.type?.slice?.(1) || "Issue"} #${issue.id}`,
-            description: issue.summary,
-            urgencyLevel,
-            savings,
-            iconType: iconKey,
-            iconColor: urgencyLevel === "HIGH" ? "bg-red-500" : urgencyLevel === "MEDIUM" ? "bg-orange-500" : "bg-green-500",
-            ctaText: urgencyLevel === "HIGH" ? "Review Now" : "View Offers",
-            ctaLink: `/listings/${listingId}/reports/${issue.report_id}/issues/${issue.id}?tab=offers`,
-            metadata: `${offers.length} competitive offers`,
-            reasons,
-          };
-        });
-    };
-
-    const loadDashboardConfig = async () => {
-      try {
-        const realPriorityActions = generatePriorityActions();
-        const recentListings = [...(_listings || [])]
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-          .slice(0, 3);
-
-        const mockApiResponse: DashboardApiResponse = {
-          userType: "client",
-          metrics: [
-            {
-              id: "health",
-              label: "Property Health Score",
-              value: "8.7/10",
-              iconType: "check-circle",
-              iconColor: "text-green-600",
-              dotColor: "bg-green-500",
-              valueColor: "text-green-600",
-            },
-            {
-              id: "savings",
-              label: "Potential Savings",
-              value: `$${Object.values(offersByIssueId).flat().length * 150}`,
-              iconType: "dollar-sign",
-              iconColor: "text-green-600",
-              dotColor: "bg-blue-500",
-            },
-            {
-              id: "urgent",
-              label: "Urgent Items",
-              value: filteredIssuesByUser.filter((i) => i.severity === "high").length || 0,
-              iconType: "exclamation-triangle",
-              iconColor: "text-orange-500",
-              dotColor: "bg-orange-500",
-            },
-            {
-              id: "completion",
-              label: "Completion Rate",
-              value: "85%",
-              iconType: "bullseye",
-              iconColor: "text-blue-600",
-              dotColor: "bg-purple-500",
-            },
-          ],
-          heroContent: {
-            backgroundImage: "/images/gradient-bg.png",
-            socialProofText: getSocialProofForDashboard("client"),
-            title: "You've Saved $2,340 This Year!",
-            subtitle:
-              "Our AI-powered platform has helped you find the best deals and avoid costly mistakes. Keep the momentum going with your next inspection report!",
-            badges: [
-              { iconType: "bolt", label: "2-min AI analysis" },
-              { iconType: "dollar-sign", label: "Average 23% savings" },
-              { iconType: "trophy", label: "98% satisfaction" },
-            ],
-            userInitials: [],
-          },
-          smartInsights: [
-            {
-              id: "electrical",
-              type: "urgent",
-              title: "Electrical Safety Check",
-              description: "Properties built before 1980 need updated wiring. Schedule before winter.",
-              ctaText: "Get Quotes Now",
-              ctaEndpoint: "/api/electrical-quotes",
-              iconType: "exclamation-triangle",
-            },
-            {
-              id: "hvac",
-              type: "savings",
-              title: "Winter Prep Discount",
-              description: "HVAC maintenance 30% off through October. Book now, save $340.",
-              ctaText: "Claim Discount",
-              ctaEndpoint: "/api/hvac-discount",
-              iconType: "dollar-sign",
-            },
-            {
-              id: "kitchen",
-              type: "opportunity",
-              title: "Property Value Boost",
-              description: "Kitchen updates could increase your home value by $8,500.",
-              ctaText: "Learn More",
-              ctaEndpoint: "/api/kitchen-updates",
-              iconType: "chart-line",
-            },
-          ],
-          achievements: [
-            { id: "saved", label: "Total Saved", value: "$2,340", subValue: "+$340 this month", color: "green", type: "currency" },
-            { id: "rating", label: "Avg Vendor Rating", value: "4.8", subValue: "Above average", color: "blue", type: "rating" },
-            { id: "response", label: "Days Avg Response", value: "3.2", subValue: "47% faster", color: "purple", type: "number" },
-            { id: "resolved", label: "Issues Resolved", value: "12", subValue: "85% success rate", color: "orange", type: "number" },
-          ],
-          progressGoal: {
-            title: "Monthly Goal Progress",
-            description: "Complete 3 more repairs",
-            progress: 67,
-            badgeText: 'Complete your goal to earn "Super Saver" badge!',
-          },
-          testimonials: [
-            {
-              id: "sarah",
-              name: "Sarah M.",
-              location: "Denver, CO",
-              rating: 5,
-              text:
-                "Saved $1,200 on electrical work! The AI found issues I never would have noticed. Best platform ever!",
-              metrics: "Saved $1,200 • 3 days turnaround",
-            },
-            {
-              id: "mike",
-              name: "Mike R.",
-              location: "Austin, TX",
-              rating: 5,
-              text:
-                "The competitive bidding saved me 30% on HVAC repair. Vendors are pre-vetted and professional!",
-              metrics: "Saved $850 • 5-star vendors",
-            },
-            {
-              id: "jennifer",
-              name: "Jennifer L.",
-              location: "Miami, FL",
-              rating: 5,
-              text:
-                "Property value increased $15K after following the AI recommendations. ROI was incredible!",
-              metrics: "+$15K value • Smart recommendations",
-            },
-          ],
-          communityStats: [
-            { id: "customers", value: "12,847+", label: "Happy Customers", color: "indigo" },
-            { id: "savings", value: "$2.3M+", label: "Total Savings", color: "green" },
-            { id: "rating", value: "4.9⭐", label: "Average Rating", color: "purple" },
-            { id: "satisfaction", value: "98%", label: "Satisfaction Rate", color: "orange" },
-          ],
-          quickActionCards: [
-            {
-              id: "upload",
-              type: "upload",
-              title: "Upload Inspection Report",
-              subtitle: "This month only: Free priority analysis + $50 bonus for new uploads",
-              description: "Upload Your Inspection Report & Get Competitive Offers",
-              ctaText: "Upload Report Now",
-              isLimitedTime: true,
-              iconType: "toolbox",
-              iconColor: "text-green-600",
-              gradientFrom: "from-green-50",
-              gradientTo: "to-blue-50",
-              borderColor: "border-green-200",
-              features: [
-                { iconType: "bolt", text: "2-min AI analysis", color: "text-orange-500" },
-                { iconType: "dollar-sign", text: "Instant estimates", color: "text-green-500" },
-                { iconType: "check-circle", text: "PDF upload only", color: "text-blue-500" },
-              ],
-              stats: "Join 847 property owners who uploaded inspection reports this week",
-            },
-            ...(recentListings.length
-              ? []
-              : [
-                  {
-                    id: "recent",
-                    type: "preview" as const,
-                    title: "Recent Listings",
-                    description: "No listings yet. Create your first listing to get started.",
-                    ctaText: "Create Listing",
-                    image: "/images/property_card_holder.jpg",
-                  },
-                ]),
-          ],
-          priorityActions: realPriorityActions,
-          emptyStateConfig: {
-            title: "Ready to Save Money?",
-            description: "Upload your first inspection report and get competitive offers within 24 hours!",
-            ctaText: "Upload Report Now",
-            ctaEndpoint: "/api/upload",
-          },
-        };
-
-        // <<< HERE: change onUpload to open the modal >>>
-        const config = transformApiResponseToConfig(mockApiResponse, {
-          onUpload: () => setIsAddListingModalOpen(true),
-          onNavigate: (path: string) => navigate(path),
-          onApiCall: (endpoint: string) => console.log("API call to:", endpoint),
-        });
-
-        setDashboardConfig(config);
-      } catch (err) {
-        console.error("Failed to load dashboard config:", err);
-      }
-    };
-
-    loadDashboardConfig();
-  }, [
-    _listings?.length,
-    filteredIssuesByUser.length,
-    JSON.stringify(offersByIssueId),
-    reports?.length,
-    assessments?.length,
-    navigate,
-  ]);
-
-  if (!dashboardConfig) {
-    return (
-      <div className="p-6">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-32 bg-gray-200 rounded mb-4"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="h-48 bg-gray-200 rounded"></div>
-            <div className="h-48 bg-gray-100 rounded"></div>
-          </div>
-          <div className="grid grid-cols-1 2xl:grid-cols-12 gap-6">
-            <div className="col-span-12 2xl:col-span-8 space-y-6">
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-              <div className="h-64 bg-gray-200 rounded"></div>
-            </div>
-            <div className="col-span-12 2xl:col-span-4 space-y-6">
-              <div className="h-60 bg-gray-100 rounded"></div>
-              <div className="h-60 bg-gray-100 rounded"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
   return (
-    <div className="p-6">
-      {/* Metrics Overview */}
-      <div className="mb-6">
-        <MetricsOverview
-          userName={client?.first_name || "User"}
-          userType={dashboardConfig.userType}
-          metrics={dashboardConfig.metrics}
-          quickActions={dashboardConfig.quickActions}
-        />
-      </div>
-
-      {/* Hero Banner */}
-      {shouldShowComponent(dashboardConfig.heroData) && (
-        <div className="mb-6">
-          <HeroBanner heroData={dashboardConfig.heroData!} userType={dashboardConfig.userType} />
-        </div>
-      )}
-
-      {/* Quick Actions + Recent Listings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {shouldShowComponent(dashboardConfig.quickActionCards) && (
-          <div className="[&>div]:!grid-cols-1 [&>div]:!mb-0">
-            <QuickActions
-              actions={dashboardConfig.quickActionCards!}
-              userType={dashboardConfig.userType}
-              fileInputRef={fileInputRef}
-              onFileChange={handleFileChange}
-              onDrop={handleDrop}
-            />
+    <div className="min-h-screen w-full bg-gray-50">
+      <div className="w-full max-w-[1800px] mx-auto px-4 py-3 lg:px-8 lg:py-4">
+        
+        {/* Hero Section - Compact */}
+        <div className="relative mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+          
+          <div className="relative px-5 py-4 lg:px-6 lg:py-5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1">
+                <h1 className="text-xl lg:text-2xl font-bold mb-1">
+                  {getGreeting()}, {client?.first_name || "there"}!
+                </h1>
+                <p className="text-blue-100 text-sm max-w-xl">
+                  {isNewUser
+                    ? "Ready to take control of your home maintenance journey."
+                    : hasPendingOffers
+                    ? `You have ${realMetrics.pendingOffers} vendor offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your review!`
+                    : `Managing ${realMetrics.totalListings} ${realMetrics.totalListings === 1 ? 'property' : 'properties'} like a pro.`}
+                </p>
+              </div>
+              
+              <button
+                onClick={() => setIsCreateIssueModalOpen(true)}
+                className="group inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-xl font-semibold text-sm hover:bg-blue-50 transition-all shadow-lg shadow-blue-900/10 hover:shadow-xl hover:scale-[1.02]"
+              >
+                <FontAwesomeIcon icon={faPlus} />
+                <span>Post a Job</span>
+                <FontAwesomeIcon icon={faArrowRight} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+            
+            {/* Quick Stats Row - Clean Pills */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <div 
+                onClick={() => navigate("/listings")}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20 cursor-pointer hover:bg-white/25 transition-colors"
+              >
+                <span className="stat-value text-base text-white">{realMetrics.totalListings}</span>
+                <span className="text-blue-100 text-xs">Properties</span>
+              </div>
+              
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">{realMetrics.totalReports}</span>
+                <span className="text-blue-100 text-xs">Reports</span>
+              </div>
+              
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
+                realMetrics.openIssues > 0 ? 'bg-orange-500/25 border-orange-400/40' : 'bg-white/15 border-white/20'
+              }`}>
+                <span className={`stat-value text-base ${realMetrics.openIssues > 0 ? 'text-orange-200' : 'text-white'}`}>{realMetrics.openIssues}</span>
+                <span className={`text-xs ${realMetrics.openIssues > 0 ? 'text-orange-200' : 'text-blue-100'}`}>Open Issues</span>
+              </div>
+              
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
+                hasPendingOffers ? 'bg-emerald-500/25 border-emerald-400/40' : 'bg-white/15 border-white/20'
+              }`}>
+                <span className={`stat-value text-base ${hasPendingOffers ? 'text-emerald-200' : 'text-white'}`}>{realMetrics.pendingOffers}</span>
+                <span className={`text-xs ${hasPendingOffers ? 'text-emerald-200' : 'text-blue-100'}`}>New Offers</span>
+              </div>
+            </div>
           </div>
-        )}
+        </div>
 
-        {_listings && _listings.length > 0 && (
-          <div>
-            <div className="bg-white rounded-xl border border-gray-200 p-6 h-full">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-semibold">Recent Listings</h3>
+        {/* NEW USER: Welcome CTA */}
+        {isNewUser && (
+          <div className="mb-4 p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
+            <div className="flex flex-col lg:flex-row items-center gap-5">
+              <div className="flex-1 text-center lg:text-left">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium mb-3">
+                  <FontAwesomeIcon icon={faRocket} />
+                  Get Started
+                </div>
+                <h2 className="text-lg lg:text-xl font-bold text-gray-900 mb-2">
+                  Upload Your First Inspection Report
+                </h2>
+                <p className="text-gray-600 text-sm mb-4 max-w-lg">
+                  Our AI analyzes your report instantly and connects you with verified contractors who can help.
+                </p>
+                <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-4">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <FontAwesomeIcon icon={faBolt} className="text-blue-500" />
+                    AI-powered analysis
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <FontAwesomeIcon icon={faCheckCircle} className="text-blue-500" />
+                    Verified contractors
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <FontAwesomeIcon icon={faClipboardList} className="text-blue-500" />
+                    Competitive quotes
+                  </div>
+                </div>
                 <button
-                  onClick={() => navigate("/listings")}
-                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                  onClick={() => setIsAddListingModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition shadow-md"
                 >
-                  View All
+                  <FontAwesomeIcon icon={faUpload} />
+                  Upload Report
+                  <FontAwesomeIcon icon={faArrowRight} />
                 </button>
               </div>
-              <div className="space-y-3">
-                {[..._listings]
-                  .sort(
-                    (a, b) =>
-                      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                  )
-                  .slice(0, 3)
-                  .map((listing) => (
-                    <div
-                      key={listing.id}
-                      onClick={() => navigate(`/listings/${listing.id}`)}
-                      className="bg-gray-50 rounded-lg p-3 cursor-pointer hover:bg-gray-100 transition-colors border border-gray-200 hover:border-blue-300 flex gap-3"
-                    >
-                      <div className="w-20 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                        <ImageComponent
-                          src={listing.image_url}
-                          fallback="/images/property_card_holder.jpg"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 mb-1 truncate text-sm">
-                          {listing.address}
-                        </h4>
-                        <p className="text-xs text-gray-600 mb-1">
-                          {listing.city}, {listing.state}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Added {new Date(listing.created_at).toLocaleDateString()}
-                        </p>
+              <div className="hidden lg:flex items-center justify-center">
+                <div className="relative">
+                  <div className="w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl rotate-6 opacity-20"></div>
+                  <div className="absolute inset-0 w-32 h-32 bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-center">
+                    <FontAwesomeIcon icon={faHome} className="text-4xl text-blue-500" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EXISTING USER: Bento Grid Layout */}
+        {!isNewUser && (
+          <div className="grid grid-cols-12 gap-4 w-full min-w-0 overflow-hidden">
+            
+            {/* Action Row: Pending Offers + Upload CTA */}
+            {hasPendingOffers && (
+              <>
+                <div className="col-span-12 lg:col-span-7 min-w-0">
+                  <div className="dashboard-card h-full overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                            <FontAwesomeIcon icon={faClipboardList} className="text-white text-sm" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm text-gray-900">Action Required: Vendor Offers</h3>
+                            <p className="text-xs text-gray-600">{realMetrics.pendingOffers} {realMetrics.pendingOffers === 1 ? 'offer' : 'offers'} waiting for your decision</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                    <div className="p-2">
+                      <div className="space-y-1.5">
+                        {issuesWithPendingOffers.slice(0, 3).map((issue) => {
+                          const offers = offersByIssueId[issue.id] ?? [];
+                          const pendingCount = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+                          const report = reports?.find((r) => r.id === issue.report_id);
+                          const listing = _listings?.find((l) => l.id === report?.listing_id);
+
+                          return (
+                            <div
+                              key={issue.id}
+                              onClick={() => navigate(`/listings/${report?.listing_id}/reports/${issue.report_id}/issues/${issue.id}?tab=offers`)}
+                              className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                  issue.severity === "high" ? "bg-red-500" : 
+                                  issue.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
+                                }`}></div>
+                                <div className="min-w-0">
+                                  <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                                    {issue.summary || `${issue.type} Issue`}
+                                  </div>
+                                  <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
+                                </div>
+                              </div>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                {pendingCount} offer{pendingCount !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Upload CTA - paired with offers */}
+                <div className="col-span-12 lg:col-span-5 min-w-0">
+                  <div className="dashboard-card h-full overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                          <FontAwesomeIcon icon={faUpload} className="text-white text-sm" />
+                        </div>
+                        <h3 className="font-semibold text-sm text-gray-900">Upload New Report</h3>
+                      </div>
+                    </div>
+                    <div className="p-3 flex flex-col justify-between h-[calc(100%-52px)]">
+                      <p className="text-xs text-gray-600 mb-3">
+                        Get AI analysis and vendor quotes instantly
+                      </p>
+                      <button
+                        onClick={() => setIsAddListingModalOpen(true)}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                      >
+                        Upload Now <FontAwesomeIcon icon={faArrowRight} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Properties Grid - Main Card */}
+            <div className="col-span-12 lg:col-span-7 min-w-0">
+              <div className="dashboard-card overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faHome} className="text-white text-sm" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-gray-900">Your Properties</h3>
+                        <p className="text-xs text-gray-600">{realMetrics.totalListings} total</p>
+                      </div>
+                    </div>
+                    <Link to="/listings" className="text-gray-600 hover:text-gray-900 text-xs font-medium flex items-center gap-1">
+                      View All <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                    </Link>
+                  </div>
+                </div>
+                
+                <div className="p-3">
+                  {_listings && _listings.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {[..._listings]
+                        .map((listing) => {
+                          const listingReports = reports?.filter((r) => r.listing_id === listing.id) || [];
+                          const listingIssues = filteredIssuesByUser.filter((i) =>
+                            listingReports.some((r) => r.id === i.report_id)
+                          );
+                          const openCount = listingIssues.filter(
+                            (i) => i.status === "Status.OPEN" || i.status === "Status.IN_PROGRESS"
+                          ).length;
+                          return { listing, listingReports, listingIssues, openCount };
+                        })
+                        .sort((a, b) => {
+                          // Properties with open issues first, then by created date
+                          if (a.openCount > 0 && b.openCount === 0) return -1;
+                          if (a.openCount === 0 && b.openCount > 0) return 1;
+                          // If both have or don't have open issues, sort by open count (desc), then created date
+                          if (a.openCount !== b.openCount) return b.openCount - a.openCount;
+                          return new Date(b.listing.created_at).getTime() - new Date(a.listing.created_at).getTime();
+                        })
+                        .slice(0, 4)
+                        .map(({ listing, listingReports, listingIssues, openCount }) => (
+                            <div
+                              key={listing.id}
+                              onClick={() => navigate(`/listings/${listing.id}`)}
+                              className="group rounded-xl overflow-hidden cursor-pointer bg-gray-50 hover:bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md transition-all"
+                            >
+                              <div className="h-28 bg-gray-200 relative overflow-hidden">
+                                <ImageComponent
+                                  src={listing.image_url}
+                                  fallback="/images/property_card_holder.jpg"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                                {openCount > 0 && (
+                                  <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
+                                    {openCount} open
+                                  </div>
+                                )}
+                                <div className="absolute bottom-2 left-2 right-2">
+                                  <h4 className="font-semibold text-white truncate text-sm drop-shadow-lg">
+                                    {listing.address}
+                                  </h4>
+                                </div>
+                              </div>
+                              <div className="p-2.5">
+                                <p className="text-xs text-gray-600 flex items-center gap-1 mb-1.5">
+                                  <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 text-xs" />
+                                  {listing.city}, {listing.state}
+                                </p>
+                                <div className="flex items-center gap-3 text-xs text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <FontAwesomeIcon icon={faFileAlt} className="text-gray-400 text-xs" />
+                                    {listingReports.length} report{listingReports.length !== 1 ? "s" : ""}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-gray-400 text-xs" />
+                                    {listingIssues.length} issue{listingIssues.length !== 1 ? "s" : ""}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                        <FontAwesomeIcon icon={faBuilding} className="text-gray-400 text-xl" />
+                      </div>
+                      <p className="text-gray-600 mb-1 font-medium text-sm">No properties yet</p>
+                      <p className="text-xs text-gray-600 mb-3">Add your first property to get started</p>
+                      <button
+                        onClick={() => setIsAddListingModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium text-sm"
+                      >
+                        Add property <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Side Column */}
+            <div className="col-span-12 lg:col-span-5 space-y-4 min-w-0">
+              {/* Upload CTA Card - Only show when not in action row */}
+              {!hasPendingOffers && (
+                <div className="dashboard-card">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faUpload} className="text-white text-sm" />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900">Upload New Report</h3>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    <p className="text-xs text-gray-600 mb-3">
+                      Get AI analysis and vendor quotes instantly
+                    </p>
+                    <button
+                      onClick={() => setIsAddListingModalOpen(true)}
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                    >
+                      Upload Now <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress Card */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faTrophy} className="text-white text-sm" />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900">Resolution Progress</h3>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="text-center py-2">
+                    <div className="relative inline-flex">
+                      <svg className="w-24 h-24 transform -rotate-90">
+                        <circle cx="48" cy="48" r="42" stroke="#e5e7eb" strokeWidth="8" fill="none" />
+                        <circle 
+                          cx="48" cy="48" r="42" 
+                          stroke="url(#gradientBlueClient)" 
+                          strokeWidth="8" 
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeDasharray={`${resolutionRate * 2.64} 264`}
+                        />
+                        <defs>
+                          <linearGradient id="gradientBlueClient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="100%" stopColor="#6366f1" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div>
+                          <div className="stat-value text-2xl text-gray-900">{resolutionRate}%</div>
+                          <div className="text-xs text-gray-600">Resolved</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-gray-900">{realMetrics.totalIssues}</div>
+                      <div className="text-xs text-gray-600">Total</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-yellow-600">{realMetrics.openIssues}</div>
+                      <div className="text-xs text-gray-600">Open</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="stat-value text-lg text-emerald-600">{realMetrics.completedIssues}</div>
+                      <div className="text-xs text-gray-600">Done</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Assessments */}
+              <div className="dashboard-card">
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <FontAwesomeIcon icon={faCalendarAlt} className="text-white text-sm" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm text-gray-900">Schedule</h3>
+                      <p className="text-xs text-gray-600">
+                        {hasUpcomingAssessments ? `${calendarEvents.length} upcoming` : 'No appointments'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-3">
+                  {hasUpcomingAssessments ? (
+                    <div className="space-y-2">
+                      {calendarEvents.slice(0, 3).map((event) => (
+                        <div key={event.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                          <div className="w-10 h-12 bg-white rounded-md shadow-sm flex flex-col items-center justify-center flex-shrink-0 border border-gray-100">
+                            <span className="text-xs font-medium text-gray-600">
+                              {event.start.toLocaleDateString("en-US", { month: "short" })}
+                            </span>
+                            <span className="text-sm font-bold text-gray-900">{event.start.getDate()}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-xs text-gray-900 truncate">{event.title}</div>
+                            <div className="text-xs text-gray-600 flex items-center gap-1">
+                              <FontAwesomeIcon icon={faClock} className="text-xs" />
+                              {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-lg" />
+                      </div>
+                      <p className="text-xs text-gray-600">No scheduled assessments</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Vendor Map - Smaller, less prominent */}
+            <div className="col-span-12 lg:col-span-7">
+              <div className="dashboard-card">
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faMapMarkerAlt} className="text-white text-xs" />
+                      </div>
+                      <h3 className="font-semibold text-sm text-gray-900">Vendor Network</h3>
+                    </div>
+                    <span className="text-xs text-gray-600">Verified professionals near you</span>
+                  </div>
+                </div>
+                <div className="p-2">
+                  <div className="rounded-lg overflow-hidden h-[180px]">
+                    <VendorMap />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Smart Insights */}
-      {shouldShowComponent(dashboardConfig.smartInsights) && (
-        <SmartInsights insights={dashboardConfig.smartInsights!} userType={dashboardConfig.userType} />
-      )}
-
-      {/* Assessment Calendar + Vendor Map (Create Listing section removed) */}
-      <div className="gap-6 grid grid-cols-1 2xl:grid-cols-12">
-        <div className="col-span-12 2xl:col-span-8">
-          <div className="gap-6 grid grid-cols-1 sm:grid-cols-12">
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Assessment Calendar</h3>
-                <UserCalendar events={calendarEvents as any} />
-              </div>
-            </div>
-
-            {/* Removed the "Add a new listing" dashed card here */}
-
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-xl font-semibold mb-4">Vendor Network</h3>
-                <VendorMap />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-span-12 2xl:col-span-4">
-          <div className="gap-6 grid grid-cols-1">
-            {shouldShowComponent(dashboardConfig.priorityActions) && (
-              <PriorityActions
-                actions={dashboardConfig.priorityActions!}
-                userType={dashboardConfig.userType}
-                emptyStateConfig={dashboardConfig.emptyStateConfig}
-              />
-            )}
-
-            {shouldShowComponent(dashboardConfig.achievements) && (
-              <Achievements
-                achievements={dashboardConfig.achievements!}
-                progressGoal={dashboardConfig.progressGoal}
-                userType={dashboardConfig.userType}
-                statusBadge={{ text: "ON FIRE", color: "green" }}
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Social Proof */}
-      {shouldShowComponent(dashboardConfig.testimonials) &&
-        shouldShowComponent(dashboardConfig.communityStats) && (
-          <SocialProof
-            testimonials={dashboardConfig.testimonials!}
-            communityStats={dashboardConfig.communityStats!}
-            userType={dashboardConfig.userType}
-            ctaText="Upload Your Next Report"
-            ctaAction={() => setIsAddListingModalOpen(true)}
-          />
-        )}
-
-      {/* Partner Realtors */}
-      <div className="mt-6">
-        <div className="bg-white rounded-xl border border-gray-200">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h3 className="text-xl font-semibold">Trusted Partner Network</h3>
-            <p className="text-gray-600 text-sm">
-              Professional realtors and service providers in our ecosystem
-            </p>
-          </div>
-          <div className="p-6">
-            <Realtors team={realtorTeamMembers} />
-          </div>
-        </div>
-      </div>
-
+      {/* Add Listing Modal */}
       <AddListingByReportModal
         isOpen={isAddListingModalOpen}
         onClose={() => setIsAddListingModalOpen(false)}
@@ -701,6 +673,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             console.error("Failed to create listing:", err);
           }
         }}
+      />
+
+      {/* Create Issue Modal (Post a Job) */}
+      <CreateIssueModal
+        open={isCreateIssueModalOpen}
+        onClose={() => setIsCreateIssueModalOpen(false)}
+        onCreated={() => {
+          // Optionally refetch issues or show success
+        }}
+        issueCollections={issueCollections}
       />
     </div>
   );

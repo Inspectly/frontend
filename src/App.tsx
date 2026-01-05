@@ -247,7 +247,7 @@ function App() {
     <>
       <ToastContainer />
       {authenticated ? (
-        <>
+        <div className="flex min-h-screen w-screen overflow-x-hidden">
           <DashboardSidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
@@ -317,7 +317,7 @@ function App() {
               />
             </Routes>
           </DashboardHeader>
-        </>
+        </div>
       ) : (
         <>
           <Header

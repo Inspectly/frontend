@@ -152,20 +152,22 @@ const CreateIssueModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
-          aria-label="Close"
-          type="button"
-        >
-          &times;
-        </button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white w-full max-w-xl max-h-[calc(100vh-2rem)] rounded-xl shadow-lg flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <h6 className="text-lg font-semibold">Create New Issue</h6>
+          <button
+            onClick={onClose}
+            className="text-2xl font-light text-gray-600 hover:text-gray-800 leading-none"
+            aria-label="Close"
+            type="button"
+          >
+            &times;
+          </button>
+        </div>
 
-        <h6 className="text-lg font-semibold mb-4">Create New Issue</h6>
-
-        <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4">
+          <div className="grid grid-cols-12 gap-4">
           {/* Issue Collection (no auto-select) */}
           <div className="relative col-span-12">
             <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
@@ -367,18 +369,21 @@ const CreateIssueModal: React.FC<Props> = ({
               />
             </div>
           </div>
-
-          {/* Submit */}
-          <div className="col-span-12">
-            <button
-              type="submit"
-              className="btn bg-emerald-500 text-white py-2 px-6 rounded-lg hover:bg-emerald-600 disabled:opacity-60"
-              disabled={!canSubmit}
-            >
-              {isLoading ? "Submitting..." : "Submit"}
-            </button>
           </div>
-        </form>
+        </div>
+
+        {/* Submit - Fixed footer */}
+        <div className="p-4 border-t border-gray-100 flex-shrink-0">
+          <button
+            type="submit"
+            form="create-issue-form"
+            className="btn bg-emerald-500 text-white py-2 px-6 rounded-lg hover:bg-emerald-600 disabled:opacity-60"
+            disabled={!canSubmit}
+            onClick={handleSubmit}
+          >
+            {isLoading ? "Submitting..." : "Submit"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -22,8 +22,12 @@ const Marketplace: React.FC = () => {
   
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedType, setSelectedType] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedType, setSelectedType] = useState(() => {
+    return searchParams.get('type') || "";
+  });
+  const [selectedCity, setSelectedCity] = useState(() => {
+    return searchParams.get('city') || "";
+  });
   const [selectedProvince, setSelectedProvince] = useState("");
   const [groupByAddress, setGroupByAddress] = useState(() => {
     return searchParams.get('grouped') === 'true';
@@ -31,6 +35,14 @@ const Marketplace: React.FC = () => {
 
   const itemsPerPage = 12;
   const maxFetchLimit = 50000; // Configurable limit for grouping - can be adjusted based on system capacity
+
+  // Initialize filters from URL params on mount
+  useEffect(() => {
+    const type = searchParams.get('type');
+    const city = searchParams.get('city');
+    if (type) setSelectedType(type);
+    if (city) setSelectedCity(city);
+  }, []); // Only run on mount
 
   // Update URL when groupByAddress changes
   useEffect(() => {

@@ -62,17 +62,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   return (
     <main
       className={`${
-        isSidebarOpen ? "lg:ml-[15.5rem]" : "lg:ml-0"
-      } flex flex-col flex-wrap min-h-screen transition-all duration-300 ease-in-out ml-0 bg-neutral-100 text-neutral-900`}
+        isSidebarOpen ? "lg:ml-[250px]" : "lg:ml-0"
+      } flex-1 min-w-0 flex flex-col min-h-screen transition-all duration-300 ease-in-out bg-neutral-100 text-neutral-900`}
     >
-      <header className="sticky top-0 z-20 h-18 bg-white border-0 px-6 py-4 border-b border-neutral-200">
+      <header className="sticky top-0 z-20 bg-white border-0 px-4 py-2 border-b border-neutral-200">
         <div className="relative flex items-center justify-between">
-          <div className="col-auto flex items-center gap-4">
+          <div className="col-auto flex items-center gap-3">
             {!isSidebarOpen && (
               <button className="sidebar-toggle" onClick={toggleSidebar}>
                 <FontAwesomeIcon
                   icon={faBars}
-                  className="size-5"
+                  className="size-4"
                 />
               </button>
             )}
@@ -80,12 +80,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           
           {pageTitle && (
             <div className="absolute left-1/2 transform -translate-x-1/2">
-              <h1 className="text-2xl font-bold text-gray-800">{pageTitle}</h1>
+              <h1 className="text-lg font-semibold text-gray-800">{pageTitle}</h1>
             </div>
           )}
-          <div className="col-auto flex items-center gap-3">
+          <div className="col-auto flex items-center gap-2">
             <button
-              className="w-10 h-10 bg-neutral-200 rounded-full flex items-center justify-center"
+              className="w-8 h-8 bg-neutral-200 rounded-full flex items-center justify-center"
               onClick={() => setIsProfileDropdownOpen((prev) => !prev)}
             >
               <img src="/images/user.png" alt="User" className="rounded-full" />
