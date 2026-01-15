@@ -187,7 +187,7 @@ const Login: React.FC = () => {
   }, [firebaseUser, backendUser, backendLoading, backendError]);
 
   return (
-    <section className="relative container pb-12 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
+    <section className="mt-10 relative container pb-12 mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
       <div className="hidden lg:block absolute inset-0 w-1/2 ml-auto">
         <div className="flex items-center h-full">
           <img

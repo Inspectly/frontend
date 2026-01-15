@@ -6,7 +6,6 @@ import "./App.css";
 import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
 import Header from "./components/Header";
-import Footer from "./components/Footer";
 import { SectionRefs, User } from "./types";
 import Login from "./pages/Login";
 import Signup from "./pages/signup";
@@ -37,6 +36,9 @@ import MarketplaceIssue from "./pages/MarketplaceIssue";
 import Settings from "./pages/Settings";
 import ReportReviewPage from "./pages/ReportReviewPage";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
+import LandingPage from "./pages/LandingPage";
+import Footer from "./components/Footer";
+import LandingNavbar from "./components/landing/LandingNavbar";
 
 function App() {
   const location = useLocation();
@@ -320,13 +322,9 @@ function App() {
         </div>
       ) : (
         <>
-          <Header
-            scrollToSection={scrollToSection}
-            refs={refs}
-            isAuthenticated={authenticated}
-          />
+          <LandingNavbar />
           <Routes>
-            <Route path="/" element={<Home refs={refs} plans={plans} />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
