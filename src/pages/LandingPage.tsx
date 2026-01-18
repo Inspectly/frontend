@@ -30,7 +30,6 @@ const LandingPage = () => {
     }, [location.hash]);
     return (
         <main className="min-h-screen bg-white">
-            <LandingNavbar />
             <Hero />
             <ServiceCategories />
             <HowItWorks />
