@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import LandingNavbar from "@/components/landing/LandingNavbar";
 import Hero from "@/components/landing/Hero";
 import ServiceCategories from "@/components/landing/ServiceCategories";
 import HowItWorks from "@/components/landing/HowItWorks";
