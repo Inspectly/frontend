@@ -2,18 +2,35 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Menu, X } from "lucide-react";
 import logo from "@/assets/logo.png";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const LandingNavbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navLinks = [
-    { label: "Home", href: "#hero" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "Features", href: "#features" },
-    { label: "Testimonials", href: "#testimonials" },
+    { label: "Home", href: "/#hero" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Features", href: "/#features" },
+    { label: "Testimonials", href: "/#testimonials" },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    // Only handle internal hash links when on the landing page
+    if (location.pathname === "/" && href.startsWith("/#")) {
+      e.preventDefault();
+      const targetId = href.replace("/#", "");
+      const element = document.getElementById(targetId);
+      if (element) {
+        element.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+      setIsOpen(false);
+    }
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-lg">
@@ -31,6 +48,7 @@ const LandingNavbar = () => {
                 key={link.label}
                 href={link.href}
                 className="text-foreground/70 hover:text-foreground text-sm font-medium transition-colors duration-200"
+                onClick={(e) => handleNavClick(e, link.href)}
               >
                 {link.label}
               </a>
@@ -69,7 +87,7 @@ const LandingNavbar = () => {
                   key={link.label}
                   href={link.href}
                   className="text-foreground/70 hover:text-foreground text-sm font-medium py-2 transition-colors"
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => handleNavClick(e, link.href)}
                 >
                   {link.label}
                 </a>
