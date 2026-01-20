@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://inspectlyai-backend.vercel.app",
+        target: "https://inspectlyai.up.railway.app",
         changeOrigin: true,
         secure: false, // Disable SSL verification if needed
         rewrite: (path) => path.replace(/^\/api/, "/api/v0"),
