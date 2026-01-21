@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const BASE_URL = "/api/"; // Backend API
+const BASE_URL = "https://inspectlyai.up.railway.app/api/v0/";
 
 export const api = createApi({
   reducerPath: "api",
