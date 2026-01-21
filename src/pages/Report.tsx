@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -44,7 +44,7 @@ const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
 };
 
 const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
-  const { listingId, reportId } = useParams<{
+  const { reportId } = useParams<{
     listingId: string;
     reportId: string;
   }>();

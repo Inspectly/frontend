@@ -3,12 +3,12 @@ import { Calendar, momentLocalizer, View, Views } from "react-big-calendar";
 import moment from "moment";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "../styles/Calendar.css"; // Tailwind styles
-import { CalendarEvent } from "../types";
+import { EventSlot } from "../types";
 
 const localizer = momentLocalizer(moment);
 
 interface UserCalendarProps {
-  events: CalendarEvent[];
+  events: EventSlot[];
 }
 
 const UserCalendar: React.FC<UserCalendarProps> = ({ events }) => {

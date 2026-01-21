@@ -175,7 +175,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     setter((prev) => !prev);
   };
 
-  const handleStatusChange = (id: number, newStatus: string) => {
+  const handleStatusChange = (newStatus: string) => {
     // Backend expects simple format: "open", "in_progress", "review", "completed"
     updateIssue({
       ...issue,
@@ -689,7 +689,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                     }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleStatusChange(issue.id, value);
+                                    handleStatusChange(value);
                                   }}
                                 >
                                   {label}

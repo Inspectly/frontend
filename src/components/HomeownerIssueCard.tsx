@@ -27,7 +27,6 @@ import {
   useUpdateAssessmentMutation,
 } from "../features/api/issueAssessmentsApi";
 import { useGetVendorsQuery } from "../features/api/vendorsApi";
-import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import AssessmentReviewTab from "./AssessmentReviewTab";
@@ -63,11 +62,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
   const { data: allVendors = [] } = useGetVendorsQuery();
-
-
-  const { data: report } = useGetReportByIdQuery(issue.report_id, {
-    skip: !issue.report_id,
-  });
 
   const [updateIssue, { isLoading: isUpdatingVisibility }] =
     useUpdateIssueMutation();

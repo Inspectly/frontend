@@ -5,7 +5,7 @@ export const usersApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getUserByFirebaseId: builder.query<User, string>({
       query: (firebase_id) => `users/firebase/${firebase_id}`,
-      transformResponse: (response: any, meta, arg) => {
+      transformResponse: (response: any, meta) => {
         if (meta?.response?.status === 404) {
           console.warn("User not found, handling gracefully...");
           return null; // Don't return an error, just return null

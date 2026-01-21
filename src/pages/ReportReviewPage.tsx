@@ -5,23 +5,9 @@ import {
 } from "../features/api/reportsApi";
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faWrench,
-  faBolt,
-  faBuilding,
-  faTint,
-  faPaintRoller,
-  faBroom,
-  faWind,
-  faHouse,
-  faSnowflake,
-  faGripLines,
-  faLayerGroup,
-  faHammer,
-  faLeaf,
-  faQuestionCircle,
   faListCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -33,30 +19,13 @@ import {
 } from "../features/api/issuesApi";
 
 import { IssueStatus, IssueType, statusMapping } from "../types";
-import { IssueImage, ReportImage } from "../components/IssueImageManager";
+import { ReportImage } from "../components/IssueImageManager";
 import ReviewIssueEditor from "../components/ReviewIssueEditor";
 import ReviewSidebar from "../components/ReviewSidebar";
 
 /* ---------------- helpers & constants ---------------- */
 
 type RouteParams = { listingId?: string; reportId?: string };
-
-const issueIcons: Record<string, any> = {
-  general: faWrench,
-  structural: faBuilding,
-  electrician: faBolt,
-  plumber: faTint,
-  painter: faPaintRoller,
-  cleaner: faBroom,
-  hvac: faWind,
-  roofing: faHouse,
-  insulation: faSnowflake,
-  drywall: faGripLines,
-  plaster: faLayerGroup,
-  carpentry: faHammer,
-  landscaping: faLeaf,
-  other: faQuestionCircle,
-};
 
 const VENDOR_TYPE_OPTIONS = [
   "GENERAL",

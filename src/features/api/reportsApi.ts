@@ -13,7 +13,7 @@ export const reportsApi = api.injectEndpoints({
     }),
     getReportsByUserId: builder.query<ReportType[], number>({
       query: (userId) => `reports/user/${userId}`,
-      providesTags: (result, error, userId) => [
+      providesTags: (result, _, userId) => [
         { type: "Reports", id: `USER_${userId}` },
         ...(result || []).map((report) => ({ type: "Reports" as const, id: report.id }))
       ],

@@ -13,7 +13,6 @@ import {
 import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useCreateOfferMutation } from "../features/api/issueOffersApi";
-import { useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { formatRelativeTime } from "../utils/dateUtils";
@@ -39,13 +38,9 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
   const [offerAmount, setOfferAmount] = useState("");
   const [offerComment, setOfferComment] = useState("");
   const [offerError, setOfferError] = useState("");
-  
-  // Assessment modal state
-  const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
-  
+
   // API hooks
   const [createOffer] = useCreateOfferMutation();
-  const [createAssessment] = useCreateAssessmentMutation();
   
   // User info
   const userId = useSelector((state: RootState) => state.auth.user?.id);

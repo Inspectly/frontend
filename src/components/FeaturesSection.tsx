@@ -15,7 +15,7 @@ interface FeaturesProps {
 const FeaturesSection: React.FC<FeaturesProps> = ({ features }) => {
   const [isFeatureTitleInView, setIsFeatureTitleInView] = useState(false);
   const [visibleFeatureCards, setVisibleFeatureCards] = useState<number[]>([]);
-  const [hasAnimated, setHasAnimated] = useState(false); // Track if animation has already occurred
+  const [hasAnimated] = useState(false); // Track if animation has already occurred
 
   const featuresRef = useRef<HTMLDivElement | null>(null);
   const featureCardsRef = useRef<(HTMLDivElement | null)[]>([]);
