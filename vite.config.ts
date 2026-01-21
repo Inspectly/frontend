@@ -19,7 +19,7 @@ export default defineConfig({
         target: "https://inspectlyai.up.railway.app",
         changeOrigin: true,
         secure: false, // Disable SSL verification if needed
-        rewrite: (path) => path.replace(/^\/api/, "/api/v0"),
+        // rewrite: (path) => path.replace(/^\/api/, "/api/v0"),
       },
     },
   },
