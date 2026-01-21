@@ -1,100 +1,116 @@
-import React from "react";
-import {
-  faFacebookF,
-  faTwitter,
-  faInstagram,
-} from "@fortawesome/free-brands-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Linkedin, Twitter, Instagram } from "lucide-react";
+import logo from "@/assets/logo.png";
 import { useNavigate } from "react-router-dom";
 
-const Footer: React.FC = () => {
+const Footer = () => {
   const navigate = useNavigate();
+  const mainLinks = [
+    { label: "About Us", action: () => navigate("/signup") },
+    { label: "FAQ", action: () => navigate("/signup") },
+    { label: "Contact", action: () => navigate("/signup") },
+  ];
 
-  const handleSignUp = () => {
-    navigate("/signup");
-  };
+  const authLinks = [
+    { label: "Log In", action: () => navigate("/login") },
+    { label: "Sign Up", action: () => navigate("/signup") },
+  ];
+
+  const legalLinks = [
+    { label: "Privacy Policy", action: () => navigate("/signup") },
+    { label: "Terms of Service", action: () => navigate("/signup") },
+  ];
+
+  const socialLinks = [
+    { icon: Linkedin, href: "#", label: "LinkedIn" },
+    { icon: Twitter, href: "#", label: "Twitter" },
+    { icon: Instagram, href: "#", label: "Instagram" },
+  ];
 
   return (
-    <footer className="py-20">
-      <div className="container mx-auto px-4 md:px-8 xl:px-16 2xl:px-32">
-        <div className="flex flex-wrap mb-12 lg:mb-20 -mx-3 text-center lg:text-left">
-          {/* Logo Section */}
-          <div className="w-full lg:w-1/5 px-3 mb-6 lg:mb-0">
-            <a
-              className="inline-block mx-auto lg:mx-0 text-3xl font-semibold leading-none"
-              href="index.html"
-            >
-              Inspectly
-            </a>
+    <footer className="bg-muted/30 border-t border-border">
+      <div className="container mx-auto px-4 lg:px-8 py-10 max-w-5xl">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
+          {/* Logo and description */}
+          <div className="max-w-xs">
+            <img src={logo} alt="InspectlyAI" className="h-12 w-auto mb-4" />
+            <p className="text-muted-foreground text-sm mb-4">
+              Connecting homeowners with trusted contractors.
+            </p>
+            {/* Social links */}
+            <div className="flex items-center gap-2">
+              {socialLinks.map((social, index) => (
+                <a
+                  key={index}
+                  href={social.href}
+                  aria-label={social.label}
+                  className="w-8 h-8 rounded-full bg-muted hover:bg-foreground flex items-center justify-center text-foreground hover:text-background transition-all duration-300"
+                >
+                  <social.icon className="w-4 h-4" />
+                </a>
+              ))}
+            </div>
           </div>
-          {/* Description Section */}
-          <div className="w-full lg:w-2/5 px-3 mb-8 lg:mb-0">
-            <p className="max-w-md mx-auto lg:max-w-full lg:mx-0 lg:pr-32 lg:text-lg text-gray-400 leading-relaxed">
-              Empowering <strong>smarter</strong> home-buying decisions with
-              cutting-edge insights.
-            </p>
-          </div>
-          {/* Get Started Info */}
-          <div className="w-full lg:w-1/5 px-3 mb-8 lg:mb-0">
-            <p className="mb-2 lg:mb-4 lg:text-lg font-bold font-heading text-gray-800">
-              Get Started
-            </p>
-            <p className="lg:text-lg text-gray-400">
-              {" "}
-              Ready to dive in?{" "}
-              <a
-                onClick={handleSignUp}
-                className="text-blue-400 hover:underline cursor-pointer"
-              >
-                <br />
-                Sign up now
-              </a>
-              .
-            </p>
-          </div>
-          {/* Contact Info */}
-          <div className="w-full lg:w-1/5 px-3">
-            <p className="mb-2 lg:mb-4 lg:text-lg font-bold font-heading text-gray-800">
-              Contacts
-            </p>
-            <p className="lg:text-lg text-gray-400">inspectlyai@gmail.com</p>
+
+          {/* Links */}
+          <div className="flex flex-wrap gap-x-12 gap-y-6">
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-3">Company</h4>
+              <ul className="space-y-2">
+                {mainLinks.map((link) => (
+                  <li key={link.label}>
+                    <button
+                      onClick={link.action}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                    >
+                      {link.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-3">Account</h4>
+              <ul className="space-y-2">
+                {authLinks.map((link) => (
+                  <li key={link.label}>
+                    <button
+                      onClick={link.action}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                    >
+                      {link.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-3">Legal</h4>
+              <ul className="space-y-2">
+                {legalLinks.map((link) => (
+                  <li key={link.label}>
+                    <button
+                      onClick={link.action}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
+                    >
+                      {link.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row items-center lg:justify-between">
-          {/* Copyright */}
-          <p className="text-sm text-gray-400">
-            © 2025. All rights reserved. Designed by{" "}
-            <a
-              className="text-blue-400"
-              href="https://www.inspectlyai.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              InspectlyAI.com
-            </a>
+        {/* Bottom bar */}
+        <div className="border-t border-border mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} InspectlyAI. All rights reserved.
           </p>
-          {/* Social Media Links */}
-          <div className="order-first lg:order-last -mx-2 mb-4 lg:mb-0">
-            <a
-              href="#"
-              className="inline-block px-3 text-blue-400 hover:text-blue-500"
-            >
-              <FontAwesomeIcon icon={faFacebookF} className="fa-lg " />
-            </a>
-            <a
-              href="#"
-              className="inline-block px-3 text-blue-400 hover:text-blue-500"
-            >
-              <FontAwesomeIcon icon={faTwitter} className="fa-lg" />
-            </a>
-            <a
-              href="#"
-              className="inline-block px-3 text-blue-400 hover:text-blue-500"
-            >
-              <FontAwesomeIcon icon={faInstagram} className="fa-lg" />
-            </a>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Made with ❤️ in Canada
+          </p>
         </div>
       </div>
     </footer>

@@ -441,7 +441,7 @@ const Signup: React.FC = () => {
   }, [formData.userType, thirdPartyOption, fetchedVendorTypes]);
 
   return (
-    <section className="pb-12 bg-gray-50">
+    <section className="mt-10 pb-12 bg-gray-50">
       <div className="container mx-auto">
         <div className="flex max-w-md mx-auto flex-col text-center">
           <div className="mt-12 mb-8 p-8 bg-white rounded shadow">
