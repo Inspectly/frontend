@@ -8,6 +8,7 @@ import {
 statusMapping,
   statusOptions,
 } from "../types";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -636,67 +637,92 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                           Type
                         </h4>
                         <p className="text-base font-semibold text-gray-700">
-                          {issue.type}
+                          {normalizeAndCapitalize(issue.type)}
                         </p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">
-                          Progress
+                          Status
                         </h4>
-                        <button
-                          className={`px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
-                              "open"
-                              ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : statusMapping[issue.status as IssueStatus] ===
-                                "in_progress"
-                                ? "bg-blue-100 text-blue-600 border border-blue-600"
-                                : statusMapping[issue.status as IssueStatus] ===
-                                  "review"
-                                  ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
-                                  : "bg-green-100 text-green-600 border border-green-600"
-                            }`}
-                          ref={progressDropdownButtonRef}
-                          onClick={() =>
-                            setProgressDropdownOpen((prev) =>
-                              prev === issue.id ? null : issue.id
-                            )
-                          }
-                        >
-                          {statusOptions.find(
-                            (option) =>
-                              option.value ===
-                              statusMapping[issue.status as IssueStatus]
-                          )?.label || "Unknown"}
+                        {/* Show dropdown only for client or assigned vendor */}
+                        {(userType === "client" || (userType === "vendor" && issue.vendor_id === currentVendor?.id)) ? (
+                          <>
+                            <button
+                              className={`px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
+                                  "open"
+                                  ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                                  : statusMapping[issue.status as IssueStatus] ===
+                                    "in_progress"
+                                    ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                    : statusMapping[issue.status as IssueStatus] ===
+                                      "review"
+                                      ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
+                                      : "bg-green-100 text-green-600 border border-green-600"
+                                }`}
+                              ref={progressDropdownButtonRef}
+                              onClick={() =>
+                                setProgressDropdownOpen((prev) =>
+                                  prev === issue.id ? null : issue.id
+                                )
+                              }
+                            >
+                              {statusOptions.find(
+                                (option) =>
+                                  option.value ===
+                                  statusMapping[issue.status as IssueStatus]
+                              )?.label || "Unknown"}
 
-                          <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="ml-1"
-                          />
-                        </button>
-                        {Number(progressDropdownOpen) === issue.id && (
-                          <Dropdown
-                            buttonRef={progressDropdownButtonRef}
-                            onClose={() => setProgressDropdownOpen(null)}
+                              <FontAwesomeIcon
+                                icon={faChevronDown}
+                                className="ml-1"
+                              />
+                            </button>
+                            {Number(progressDropdownOpen) === issue.id && (
+                              <Dropdown
+                                buttonRef={progressDropdownButtonRef}
+                                onClose={() => setProgressDropdownOpen(null)}
+                              >
+                                <div className="dropdown-content">
+                                  {statusOptions.map(({ value, label }) => (
+                                    <button
+                                      key={value}
+                                      className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` ===
+                                          issue.status
+                                          ? "font-bold"
+                                          : ""
+                                        }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(issue.id, value);
+                                      }}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </Dropdown>
+                            )}
+                          </>
+                        ) : (
+                          <span
+                            className={`inline-block px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
+                                "open"
+                                ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                                : statusMapping[issue.status as IssueStatus] ===
+                                  "in_progress"
+                                  ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                  : statusMapping[issue.status as IssueStatus] ===
+                                    "review"
+                                    ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
+                                    : "bg-green-100 text-green-600 border border-green-600"
+                              }`}
                           >
-                            <div className="dropdown-content">
-                              {statusOptions.map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` ===
-                                      issue.status
-                                      ? "font-bold"
-                                      : ""
-                                    }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(issue.id, value);
-                                  }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </Dropdown>
+                            {statusOptions.find(
+                              (option) =>
+                                option.value ===
+                                statusMapping[issue.status as IssueStatus]
+                            )?.label || "Unknown"}
+                          </span>
                         )}
                       </div>
                       <div>
