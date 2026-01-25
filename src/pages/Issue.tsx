@@ -13,6 +13,7 @@ import {
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { IssueStatus, statusMapping, statusOptions } from "../types";
 
 import VendorName from "../components/VendorName";
@@ -180,9 +181,9 @@ const sessionId = searchParams.get("session_id");
                   </div>
                 </div>
 
-                {/* Progress */}
+                {/* Status */}
                 <p className="mt-4 text-sm flex flex-wrap justify-between items-center gap-2">
-                  Progress:{" "}
+                  Status:{" "}
                   <span
                     className={`px-2.5 py-1.5 rounded font-medium text-md ${
                       statusMapping[filteredIssue.status as IssueStatus] ===
@@ -266,7 +267,7 @@ const sessionId = searchParams.get("session_id");
                       : "bg-gray-200 text-gray-600"
                   }`}
                 >
-                  {filteredIssue.type}
+                  {normalizeAndCapitalize(filteredIssue.type)}
                 </span>
 
                 {/* Dropdown Action Button */}

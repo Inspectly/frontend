@@ -114,14 +114,17 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const calendarEvents = useMemo(() => {
     return assessments
       .filter((a) => new Date(a.start_time) > new Date())
-      .map((a) => ({
-        id: String(a.id),
-        title: `Assessment - Issue #${a.issue_id}`,
-        start: new Date(a.start_time),
-        end: new Date(a.end_time),
-        user_id: a.user_id,
-      }));
-  }, [assessments]);
+      .map((a) => {
+        const issue = issuesMap[a.issue_id];
+        return {
+          id: String(a.id),
+          title: `Assessment - ${issue?.summary || normalizeAndCapitalize(issue?.type || "") + " Issue"}`,
+          start: new Date(a.start_time),
+          end: new Date(a.end_time),
+          user_id: a.user_id,
+        };
+      });
+  }, [assessments, issuesMap]);
 
   // Available opportunities from marketplace
   const [marketplaceOpportunities, setMarketplaceOpportunities] = useState<
@@ -304,16 +307,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <span className="text-blue-100 text-xs">Active</span>
               </div>
               
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
-                hasPendingBids ? 'bg-orange-500/25 border-orange-400/40' : 'bg-white/15 border-white/20'
-              }`}>
-                <span className={`stat-value text-base ${hasPendingBids ? 'text-orange-200' : 'text-white'}`}>{vendorMetrics.pendingBids}</span>
-                <span className={`text-xs ${hasPendingBids ? 'text-orange-200' : 'text-blue-100'}`}>Pending</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">{vendorMetrics.pendingBids}</span>
+                <span className="text-blue-100 text-xs">Pending</span>
               </div>
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/25 backdrop-blur-sm rounded-full border border-emerald-400/40">
-                <span className="stat-value text-base text-emerald-200">${(vendorMetrics.totalEarnings / 1000).toFixed(1)}k</span>
-                <span className="text-emerald-200 text-xs">Earned</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">${(vendorMetrics.totalEarnings / 1000).toFixed(1)}k</span>
+                <span className="text-blue-100 text-xs">Earned</span>
               </div>
               
               <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
@@ -415,10 +416,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                               <FontAwesomeIcon icon={pickIcon(issue?.type)} className="text-blue-600 text-xs" />
                             </div>
                             <div>
-                              <div className="font-medium text-xs text-gray-900 group-hover:text-gray-700 transition-colors capitalize">
-                                {issue?.type || "Job"} #{issue?.id}
+                              <div className="font-medium text-xs text-gray-900 group-hover:text-gray-700 transition-colors">
+                                {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
                               </div>
-                              <div className="text-xs text-gray-600 max-w-xs truncate">{issue?.summary}</div>
+                              <div className="text-xs text-gray-600 max-w-xs truncate capitalize">{issue?.type || "Job"}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
