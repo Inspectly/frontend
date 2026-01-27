@@ -176,7 +176,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     setter((prev) => !prev);
   };
 
-  const handleStatusChange = (id: number, newStatus: string) => {
+  const handleStatusChange = (newStatus: string) => {
     // Backend expects simple format: "open", "in_progress", "review", "completed"
     updateIssue({
       ...issue,

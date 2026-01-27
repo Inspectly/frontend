@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -24,7 +24,6 @@ import {
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing } from "../types";
-import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
@@ -43,29 +42,14 @@ const isIssueCompleted = (issueStatus?: string): boolean => {
   return normalizedStatus === "COMPLETED" || normalizedStatus === "STATUS.COMPLETED";
 };
 
-// Helper function to check if issue is active (in progress or under review)
-const isIssueActive = (issueStatus?: string): boolean => {
-  if (!issueStatus) return false;
-  const normalizedStatus = issueStatus.toUpperCase();
-  return normalizedStatus === "IN_PROGRESS" || 
-         normalizedStatus === "STATUS.IN_PROGRESS" ||
-         normalizedStatus === "REVIEW" || 
-         normalizedStatus === "STATUS.REVIEW";
-};
-
 const VendorJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
-  
+
   // State
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Queries
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(String(user?.id), {
-    skip: !user?.id,
-  });
   
   // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const { data: vendorOffers = [], isLoading } = useGetOffersByVendorIdQuery(

@@ -133,7 +133,7 @@ const TeamSection: React.FC<TeamProps> = ({ team }) => {
         return;
       }
 
-      const results = team.map((member, index) => {
+      const results = team.map((_, index) => {
         const el = document.getElementById(`quote-${index}`);
         if (el) {
           const lineHeight = parseFloat(

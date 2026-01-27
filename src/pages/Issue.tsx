@@ -28,7 +28,6 @@ const Issue: React.FC = () => {
   const navigate = useNavigate();
 const [searchParams] = useSearchParams();
 const paymentStatus = searchParams.get("payment");
-const sessionId = searchParams.get("session_id");
 
   const { listingId, reportId, issueId } = useParams<{
     listingId: string;

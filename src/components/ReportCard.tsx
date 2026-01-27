@@ -5,7 +5,6 @@ import {
   faRotateRight,
   faCircleNotch,
   faTriangleExclamation,
-  faClock,
   faCheckCircle,
   faFileLines,
 } from "@fortawesome/free-solid-svg-icons";

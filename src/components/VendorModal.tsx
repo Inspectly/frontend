@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar as faStarOutline } from "@fortawesome/free-regular-svg-icons";
-import { faStar, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { Vendor } from "../types";
 import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
 import MapComponent from "./MapComponent";
 import VendorReviewsSection from "./VendorReviewsSection";
-import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
 
 interface VendorModalProps {
   vendor: Vendor;
@@ -17,38 +15,6 @@ const VendorModal: React.FC<VendorModalProps> = ({ vendor, onClose }) => {
   const [activeTab, setActiveTab] = useState("info");
   const [coords, setCoords] = useState<Coordinates | null>(null);
   const [locationError, setLocationError] = useState(false);
-
-  const { data: reviews = [] } = useGetVendorReviewsByVendorUserIdQuery(
-    vendor?.vendor_user_id,
-    {
-      skip: !vendor,
-    }
-  );
-
-
-
-
-
-
-
-  const renderStars = (rating: number) => {
-    return (
-      <ul className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <li
-            key={i}
-            className={`text-warning-600 text-lg ${i <= rating ? "" : "text-gray-300"
-              }`}
-          >
-            <FontAwesomeIcon
-              icon={i <= rating ? faStar : faStarOutline}
-              className="text-yellow-500"
-            />
-          </li>
-        ))}
-      </ul>
-    );
-  };
 
   useEffect(() => {
     if (!vendor) return;

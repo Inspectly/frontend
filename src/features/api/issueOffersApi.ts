@@ -42,7 +42,7 @@ export const issueOffersApi = api.injectEndpoints({
           method: "PUT",
           body,
         }),
-        invalidatesTags: (result, error, body) => [{ type: "Offers", id: body.id }],
+        invalidatesTags: (_, __, body) => [{ type: "Offers", id: body.id }],
       }),
       deleteOffer: builder.mutation({
         query: ({ id, issue_id }) => ({
@@ -50,7 +50,7 @@ export const issueOffersApi = api.injectEndpoints({
           method: "DELETE",
           body: { issue_id },
         }),
-        invalidatesTags: (result, error, { id }) => [{ type: "Offers", id }],
+        invalidatesTags: (_, __, { id }) => [{ type: "Offers", id }],
       }),
   }),
 });

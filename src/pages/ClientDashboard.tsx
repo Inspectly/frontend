@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
@@ -6,7 +6,6 @@ import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../feat
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
-  faExternalLinkAlt,
   faBolt,
   faBuilding,
   faCalendarAlt,
@@ -20,7 +19,6 @@ import {
   faMapMarkerAlt,
   faPlus,
   faRocket,
-  faMagic,
   faTrophy,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
@@ -29,20 +27,17 @@ import {
   IssueAssessmentStatus,
   IssueOffer,
   IssueOfferStatus,
-  IssueType,
   User,
-  Vendor,
 } from "../types";
 import VendorMap from "../components/VendorMap";
 import ImageComponent from "../components/ImageComponent";
-import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
-import { getVendorById } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
 import CreateIssueModal from "../components/CreateIssueModal";
@@ -54,7 +49,6 @@ interface DashboardProps {
 const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
@@ -84,8 +78,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const issueIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.issue_id))], [acceptedAssessments]);
   const vendorIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.vendor_id))], [acceptedAssessments]);
 
-  const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
-  const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
   const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
   const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
@@ -167,16 +159,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   useEffect(() => {
     const run = async () => {
       try {
-        const issueResults = await Promise.all(
-          issueIds.map((id) => dispatch(getIssueById.initiate(String(id))))
-        );
-        const vendorResults = await Promise.all(
-          vendorIds.map((id) => dispatch(getVendorById.initiate(String(id))))
-        );
-
-        setIssueMap(Object.fromEntries(issueResults.map((res, i) => [issueIds[i], res.data as IssueType])));
-        setVendorMap(Object.fromEntries(vendorResults.map((res, i) => [vendorIds[i], res.data as Vendor])));
-
         const allIssueIds = filteredIssuesByUser.map((i) => i.id);
         const offerResults = await Promise.all(
           allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id)))
@@ -197,7 +179,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       const listing = _listings.find((l) => l.id === report.listing_id);
       return {
         id: report.id,
-        name: `${listing?.address || 'Unknown Property'} - ${report.report_type || 'Report'}`
+        name: `${listing?.address || 'Unknown Property'} - Report`
       };
     });
   }, [reports, _listings]);

@@ -1,15 +1,13 @@
 // src/components/ReportTable.tsx
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
-  faChevronDown,
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
-import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 
 import VendorName from "./VendorName";
 import { IssueStatus, IssueOfferStatus } from "../types";
@@ -67,7 +65,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -107,7 +104,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   }, [isModalOpen]);
 
   const [selectedFileName, setSelectedFileName] = useState("");
-  const tableDropdownButtonRefs = useRef(new Map());
 
   const statusMapping: Record<IssueStatus, string> = {
     "Status.OPEN": "open",
@@ -128,26 +124,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
       ...prev,
       [field]: value === "all" ? "" : value,
     }));
-  };
-
-  const handleProgressChange = async (id: number, newProgress: string) => {
-    try {
-      const issueToUpdate = issues?.find((issue) => issue.id === id);
-      if (!issueToUpdate) {
-        console.error("Issue not found:", id);
-        return;
-      }
-      console.log("Issue before update:", issueToUpdate);
-      await updateIssue({
-        ...issueToUpdate,
-        status: newProgress,
-      }).unwrap();
-
-      refetch();
-      setDropdownOpen(null);
-    } catch (error) {
-      console.error("Error updating issue:", error);
-    }
   };
 
   const handleActiveChange = async (id: number, newActive: boolean) => {
