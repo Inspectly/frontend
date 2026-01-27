@@ -18,6 +18,7 @@ import {
   faHammer,
   faLeaf,
   faQuestionCircle,
+  faCircleNotch,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueType } from "../types";
 
@@ -146,8 +147,8 @@ export default function ReviewSidebar({
                             reviewed
                               ? "text-green-600"
                               : (issue as any).review_status === "in_review"
-                              ? "text-amber-500"
-                              : "text-neutral-300"
+                                ? "text-amber-500"
+                                : "text-neutral-300"
                           }
                         />
                       </span>
@@ -201,9 +202,18 @@ export default function ReviewSidebar({
           ].join(" ")}
           title={allReviewed ? "Complete" : "Accept All"}
           onClick={allReviewed ? onCompleteClick : onAcceptAllClick}
-          disabled={issues.length === 0}
+          disabled={issues.length === 0 || isCompletingAll}
         >
-          {allReviewed ? "Complete" : "Accept All"}
+          {isCompletingAll ? (
+            <>
+              <FontAwesomeIcon icon={faCircleNotch} spin />
+              Accepting...
+            </>
+          ) : allReviewed ? (
+            "Complete"
+          ) : (
+            "Accept All"
+          )}
         </button>
       </div>
 
