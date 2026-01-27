@@ -4,6 +4,7 @@ import {
   useCreateReportMutation,
   useUploadReportFileMutation,
 } from "../features/api/reportsApi";
+import toast from "react-hot-toast";
 
 type Mode = "CHOOSE" | "UPLOAD_AI" | "MANUAL";
 
@@ -73,6 +74,7 @@ const CreateIssueCollectionModal: React.FC<Props> = ({
     if (!manualName.trim()) return;
 
     try {
+      const toastId = toast.loading("Creating collection...");
       const created = await createReport({
         user_id: Number(userId),
         listing_id: Number(listingId),
@@ -80,6 +82,7 @@ const CreateIssueCollectionModal: React.FC<Props> = ({
       }).unwrap();
 
       const newId = created?.id ?? null;
+      toast.success("Collection created successfully!", { id: toastId });
       onCreated?.(); // refresh grid in parent
       resetAll();
 
@@ -94,6 +97,7 @@ const CreateIssueCollectionModal: React.FC<Props> = ({
       }
     } catch (err) {
       console.error("Manual create failed:", err);
+      toast.error("Failed to create collection.");
     }
   };
 
@@ -104,44 +108,29 @@ const CreateIssueCollectionModal: React.FC<Props> = ({
     if (!file) return;
 
     try {
-      // Build FormData like we did in the Listings page flow
-      const fd = new FormData();
-      fd.append("file", file);
-      // if your backend expects more fields on upload, append them here:
-      // fd.append("listing_id", String(listingId));
-      // fd.append("user_id", String(userId));
-
-      const uploaded = await uploadReportFile(fd).unwrap();
-
-      const aws_link =
-        uploaded?.aws_link ??
-        uploaded?.url ??
-        uploaded?.data?.aws_link ??
-        uploaded?.data?.url;
-
-      if (!aws_link) {
-        console.error(
-          "Upload succeeded but no URL found in response:",
-          uploaded
-        );
-        return;
-      }
-
+      const toastId = toast.loading("Sending report for extraction...");
       const inferredName = autoName
         ? humanReadableFromFile(file) || "AI Issue Collection"
         : customName.trim() || "Inspection Report";
 
-      await createReport({
-        user_id: Number(userId),
-        listing_id: Number(listingId),
-        aws_link,
-        name: inferredName,
-      }).unwrap();
+      // Build FormData to match reportUtil.ts (which is working)
+      const fd = new FormData();
+      fd.append("user_id", String(userId));
+      fd.append("listing_id", String(listingId));
+      fd.append("name", inferredName);
+      fd.append("property_report", file);
+
+      await uploadReportFile(fd).unwrap();
+
+      toast.success("Report received. Our AI model has started extracting issues.", {
+        id: toastId,
+      });
 
       onCreated?.(); // refresh list
       handleClose(); // stay on the same page, just close modal
     } catch (err) {
       console.error("Upload create failed:", err);
+      toast.error("Failed to upload report for extraction.");
     }
   };
 
