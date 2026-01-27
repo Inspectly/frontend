@@ -9,6 +9,7 @@ import {
 import { useParams } from "react-router-dom";
 
 import { IssueStatus, IssueOfferStatus} from "../types";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
@@ -403,7 +404,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
                       </td>
 
                       <td className="text-left border-b border-gray-200 px-4 py-3">
-                        {issue.type}
+                        {normalizeAndCapitalize(issue.type)}
                       </td>
 
                       <td className="text-left border-b border-gray-200 px-4 py-3">

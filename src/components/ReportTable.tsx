@@ -11,6 +11,8 @@ import { Link, useParams } from "react-router-dom";
 
 import VendorName from "./VendorName";
 import { IssueStatus, IssueOfferStatus } from "../types";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
@@ -389,7 +391,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
                     </td>
 
                     <td className="text-left border-b border-gray-200 px-4 py-3">
-                      {issue.type}
+                      {normalizeAndCapitalize(issue.type)}
                     </td>
 
                     <td className="text-left border-b border-gray-200 px-4 py-3">

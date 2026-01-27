@@ -8,7 +8,7 @@ import { ExtractionStatus, ReportCardMode, ReviewStatus } from "../types";
 const normalizeTaskStatus = (raw?: string): ExtractionStatus => {
   if (!raw) return "NONE";
   const core = raw.split(".").pop()?.toUpperCase() ?? raw.toUpperCase();
-  return (["IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
+  return (["PENDING", "IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
     ? core
     : "NONE") as ExtractionStatus;
 };
@@ -16,7 +16,7 @@ const normalizeTaskStatus = (raw?: string): ExtractionStatus => {
 interface Props {
   report: ReportLite & { review_status?: ReviewStatus | null };
   onOpen: () => void;
-  onReview: () => void; 
+  onReview: () => void;
   onRetry?: () => void;
 }
 
@@ -56,14 +56,30 @@ const ReportCardWithStatus: React.FC<Props> = ({
     "not_reviewed") as ReviewStatus;
 
   let mode: ReportCardMode = "NONE";
-  if (reviewStatus === "completed") mode = "VIEW";
-  else if (extractionStatus === "NONE") mode ="VIEW";
-  else if (reviewStatus === "in_review") mode = "CONTINUE_REVIEW";
-  else if (
-    reviewStatus === "not_reviewed" &&
-    extractionStatus === "COMPLETED"
-  )
-    mode = "REVIEW";
+
+  // Priority 1: Review finished
+  if (reviewStatus === "completed") {
+    mode = "VIEW";
+  }
+  // Priority 2: Review in progress (always prioritize picking up work)
+  else if (reviewStatus === "in_review") {
+    mode = "CONTINUE_REVIEW";
+  }
+  // Priority 3: Review not started -> Check AI status
+  else {
+    if (extractionStatus === "COMPLETED") {
+      mode = "REVIEW";
+    } else if (extractionStatus === "PENDING") {
+      mode = "PENDING";
+    } else if (extractionStatus === "FAILED") {
+      mode = "FAILED";
+    } else if (extractionStatus === "IN_PROGRESS") {
+      mode = "EXTRACTING";
+    } else if (extractionStatus === "NONE") {
+      // No AI task was found, likely a manual report
+      mode = "VIEW";
+    }
+  }
 
   return (
     <ReportCard

@@ -29,6 +29,7 @@ import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
 import ImageComponent from "../components/ImageComponent";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 type TabType = "all" | "active" | "completed" | "pending" | "rejected";
 type SortBy = "date" | "price" | "status";
@@ -480,7 +481,7 @@ const VendorJobsPage: React.FC = () => {
                           className="w-5 h-5 text-gray-600"
                         />
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {issue?.type || "Issue"} #{offer.issue_id}
+                          {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
                         </h3>
                         {getSeverityBadge(issue?.severity)}
                         {issue?.status && getIssueStatusBadge(issue.status)}

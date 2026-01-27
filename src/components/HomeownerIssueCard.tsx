@@ -10,6 +10,7 @@ import {
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
@@ -316,7 +317,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       <div className="flex items-start justify-between gap-4 px-6 py-4 border-b bg-white">
         <div className="pr-10">
           <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            Issue #{issue.id}
+            {normalizeAndCapitalize(issue.type)} Issue
           </p>
           <h2 className="text-xl font-semibold text-gray-800 leading-snug">
             {issue.summary || "No Title Found"}
@@ -413,7 +414,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       Type
                     </p>
                     <p className="text-sm font-semibold text-gray-500">
-                      {issue.type}
+                      {normalizeAndCapitalize(issue.type)}
                     </p>
                   </div>
 
@@ -463,7 +464,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
                   <div className="flex justify-between items-center gap-4">
                     <p className="text-xs font-bold uppercase text-gray-800">
-                      Progress
+                      Status
                     </p>
                     <select
                       value={issue.status}

@@ -4,6 +4,7 @@ import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import type { IssueStatus } from "../types";
 import { toast } from "react-hot-toast";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 type IssueCollection = { id: number; name: string };
 
@@ -44,28 +45,9 @@ const CreateIssueModal: React.FC<Props> = ({
     image_url: "",
   });
 
-  // Ensure status defaults to "open" whenever the modal opens (in case it was cleared previously)
-  useEffect(() => {
-    if (open) {
-      setFormData((prev) => ({
-        ...prev,
-        status: prev.status || "open",
-      }));
-    }
-  }, [open]);
 
   const [selectedFileName, setSelectedFileName] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const statusOptions = useMemo(
-    () => [
-      { value: "open", label: "Open" },
-      { value: "in_progress", label: "In-progress" },
-      { value: "review", label: "Review" },
-      { value: "completed", label: "Completed" },
-    ],
-    []
-  );
 
   if (!open) return null;
 
@@ -109,7 +91,6 @@ const CreateIssueModal: React.FC<Props> = ({
     !!formData.summary &&
     !!formData.description &&
     !!formData.severity &&
-    !!formData.status &&
     !isLoading;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -123,7 +104,7 @@ const CreateIssueModal: React.FC<Props> = ({
         summary: formData.summary,
         description: formData.description,
         severity: formData.severity,
-        status: formData.status as IssueStatus,
+        status: "open" as IssueStatus,
         active: formData.active,
         image_url: formData.image_url,
       }).unwrap();
@@ -219,7 +200,7 @@ const CreateIssueModal: React.FC<Props> = ({
               </option>
               {fetchedVendorTypes?.map((option) => (
                 <option key={option.id} value={option.vendor_type}>
-                  {option.vendor_type}
+                  {normalizeAndCapitalize(option.vendor_type)}
                 </option>
               ))}
             </select>
@@ -265,7 +246,7 @@ const CreateIssueModal: React.FC<Props> = ({
           </div>
 
           {/* Severity */}
-          <div className="relative col-span-6">
+          <div className="relative col-span-12">
             <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
               Severity
             </label>
@@ -283,34 +264,6 @@ const CreateIssueModal: React.FC<Props> = ({
               {["low", "medium", "high"].map((option) => (
                 <option key={option} value={option}>
                   {option}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
-              <svg className="w-5 h-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
-              </svg>
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="relative col-span-6">
-            <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-              Status
-            </label>
-            <select
-              name="status"
-              className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
-              value={formData.status}
-              onChange={handleFieldChange}
-              required
-              disabled={isLoading}
-            >
-              {/* No placeholder; "open" is already selected by default */}
-              {statusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
                 </option>
               ))}
             </select>
