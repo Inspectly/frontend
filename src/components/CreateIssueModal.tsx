@@ -1,5 +1,5 @@
 // src/components/CreateIssueModal.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import type { IssueStatus } from "../types";

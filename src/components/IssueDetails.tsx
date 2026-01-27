@@ -693,7 +693,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                         }`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleStatusChange(issue.id, value);
+                                        handleStatusChange(value);
                                       }}
                                     >
                                       {label}

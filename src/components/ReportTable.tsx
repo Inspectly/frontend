@@ -12,7 +12,6 @@ import { Link, useParams } from "react-router-dom";
 import VendorName from "./VendorName";
 import { IssueStatus, IssueOfferStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
-import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,

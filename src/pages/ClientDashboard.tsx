@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import UserCalendar from "../components/UserCalendar";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -186,7 +185,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
-  const hasPendingOffers = realMetrics.pendingOffers > 0;
   const hasActionRequired = realMetrics.pendingOffers > 0 || realMetrics.reviewIssues > 0;
   const hasUpcomingAssessments = calendarEvents.length > 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;

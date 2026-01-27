@@ -7,6 +7,7 @@ import {
   faTriangleExclamation,
   faCheckCircle,
   faFileLines,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
 import { ExtractionStatus, ReportCardMode, ReviewStatus } from "../types";
 
