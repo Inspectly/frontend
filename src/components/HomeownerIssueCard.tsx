@@ -372,10 +372,10 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             <div className="lg:col-span-2 space-y-6">
               <div>
                 <img
-                  src={issue.image_url || "/images/no-image.webp"}
+                  src={issue.image_urls || "/images/no-image.webp"}
                   alt="Issue"
                   className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
-                  onClick={() => setSelectedImage(issue.image_url)}
+                  onClick={() => setSelectedImage(issue.image_urls)}
                 />
               </div>
 

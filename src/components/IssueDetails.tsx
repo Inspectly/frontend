@@ -580,10 +580,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 {imageOpen && (
                   <div className="mt-4 w-full">
                     <img
-                      src={issue.image_url || "/images/no-image.webp"}
+                      src={issue.image_urls || "/images/no-image.webp"}
                       alt="Issue"
                       className="rounded-lg w-full h-[300px] object-cover cursor-pointer"
-                      onClick={() => setSelectedImage(issue.image_url)}
+                      onClick={() => setSelectedImage(issue.image_urls)}
                     />
                   </div>
                 )}

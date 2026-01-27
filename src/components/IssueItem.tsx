@@ -51,7 +51,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
       {/* Image Section - Top 3/4 */}
       <div className="h-3/4 overflow-hidden relative">
         <ImageComponent
-          src={issue.image_url || "/images/property_card_holder.jpg"}
+          src={issue.image_urls || "/images/property_card_holder.jpg"}
           fallback="/images/property_card_holder.jpg"
           className="w-full h-full object-cover"
         />
