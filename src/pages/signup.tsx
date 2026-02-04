@@ -34,7 +34,6 @@ import {
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import Select from "react-select";
 import "../styles/Select.css"; // Tailwind styles
-import { useGetUserTypesQuery } from "../features/api/userTypesApi";
 import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { useCreateUserSessionMutation } from "../features/api/userSessionsApi";
 import { useDispatch } from "react-redux";
@@ -45,6 +44,8 @@ import {
   setLoading as setPageLoading,
 } from "../features/authSlice";
 import { nanoid } from "nanoid";
+
+type VendorStep = 0 | 1 | 2;
 
 const Signup: React.FC = () => {
   const navigate = useNavigate();
@@ -60,9 +61,6 @@ const Signup: React.FC = () => {
 
   // Fetch vendor types when "Vendor" is selected
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
-
-  const { data: userTypes } = useGetUserTypesQuery();
-
   const { data: vendors } = useGetVendorsQuery();
 
   const [formData, setFormData] = useState({
@@ -75,25 +73,45 @@ const Signup: React.FC = () => {
     state: "",
     country: "",
     postalCode: "",
-    userType: "",
+    userType: "client", // ✅ default: homeowner
     password: "",
     confirmPassword: "",
   });
 
-  const [thirdPartyOption, setThirdPartyOption] = useState<string | null>(null);
+  const isVendor = formData.userType === "vendor";
+
+  const roleUI = isVendor
+  ? {
+      kicker: "For Pros",
+      title: "Inspectly Vendor",
+      subtitle:
+        "Join the pro network — get discovered by homeowners and win more jobs.",
+      icon: faBuilding,
+      bullets: ["Get customer leads", "Manage requests faster", "Grow your reviews"],
+    }
+  : {
+      kicker: "For Homeowners",
+      title: "Inspectly Homeowner",
+      subtitle:
+        "Start with a basic account — complete your profile after signup.",
+      icon: faUser,
+      bullets: ["Track inspections", "Find trusted vendors", "Keep everything organized"],
+    };
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
     useState(false);
 
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const [vendorStep, setVendorStep] = useState<VendorStep>(0);
+
   const [vendorTypeOptions, setVendorTypeOptions] = useState<
     { value: string; label: string }[]
   >([]);
   const [selectedVendorTypes, setSelectedVendorTypes] = useState<
-    { value: string; label: string }[]
-  >([]);
-  const [thirdPartyVendorTypes, setThirdPartyVendorTypes] = useState<
     { value: string; label: string }[]
   >([]);
 
@@ -106,12 +124,7 @@ const Signup: React.FC = () => {
 
   // Handle Multi-Select Change
   const handleVendorTypeChange = (selectedOptions: any) => {
-    setSelectedVendorTypes(selectedOptions);
-  };
-
-  // Handle vendor type selection for third-party signup
-  const handleThirdPartyVendorTypeChange = (selectedOptions: any) => {
-    setThirdPartyVendorTypes(selectedOptions);
+    setSelectedVendorTypes(selectedOptions || []);
   };
 
   const togglePasswordVisibility = () => {
@@ -122,26 +135,100 @@ const Signup: React.FC = () => {
     setIsConfirmPasswordVisible((prev) => !prev);
   };
 
+  const handleSelectRole = (role: "client" | "vendor") => {
+    setError(null);
+    setFormData((prev) => ({
+      ...prev,
+      userType: role,
+    }));
+
+    if (role === "client") {
+      setVendorStep(0);
+      setSelectedVendorTypes([]);
+      // Optional: clear vendor-only fields (keeps things tidy)
+      setFormData((prev) => ({
+        ...prev,
+        phone: "",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+      }));
+    } else {
+      setVendorStep(0);
+    }
+  };
+
+  const validateVendorStep = (step: VendorStep) => {
+    if (step === 0) {
+      if (!selectedVendorTypes || selectedVendorTypes.length === 0) {
+        setError("Please select at least one Vendor Type.");
+        return false;
+      }
+      if (!formData.email) {
+        setError("Please enter your email.");
+        return false;
+      }
+      if (!formData.password) {
+        setError("Please enter a password.");
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match!");
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 1) {
+      if (!formData.address || !formData.city || !formData.state || !formData.country || !formData.postalCode) {
+        setError("Please complete your location details.");
+        return false;
+      }
+      return true;
+    }
+
+    if (step === 2) {
+      if (!formData.firstName || !formData.lastName || !formData.phone) {
+        setError("Please complete your contact details.");
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  };
+
+  const goNextVendorStep = () => {
+    setError(null);
+    if (!validateVendorStep(vendorStep)) return;
+    setVendorStep((s) => (Math.min(2, s + 1) as VendorStep));
+  };
+
+  const goBackVendorStep = () => {
+    setError(null);
+    setVendorStep((s) => (Math.max(0, s - 1) as VendorStep));
+  };
+
   const generateUniqueVendorCode = async (vendorName: string) => {
-    // Extract first two letters of each word in the name
+    // Extract first letter of each word in the name
     const nameInitials = vendorName
       .split(" ")
-      .map((word) => word.substring(0, 1).toUpperCase()) // First 2 letters of each word
+      .map((word) => word.substring(0, 1).toUpperCase())
       .join("");
 
     // Generate a short unique ID
-    let uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`; // Example: "JO-AB12"
+    let uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`;
 
     // Check for uniqueness in the backend
     let isUnique = false;
     while (!isUnique) {
-      // Check if the generated code already exists
       const codeExists = vendors?.some((vendor) => vendor.code === uniqueCode);
 
       if (!codeExists) {
         isUnique = true;
       } else {
-        // If code already exists, generate a new one
         uniqueCode = `${nameInitials}${nanoid(3).toUpperCase()}`;
       }
     }
@@ -170,11 +257,9 @@ const Signup: React.FC = () => {
         ...userData,
       }).unwrap();
     } else if (userType === "vendor") {
-      // Remove first_name and last_name before spreading userData
       const { first_name, last_name, ...vendorData } = userData;
       const vendorName = `${userData.first_name} ${userData.last_name}`;
 
-      // Generate a unique vendor code before creating the vendor
       const uniqueCode = await generateUniqueVendorCode(vendorName);
 
       return createVendor({
@@ -205,6 +290,12 @@ const Signup: React.FC = () => {
     e.preventDefault();
     setError(null);
 
+    // ✅ Terms required for email signup too
+    if (!acceptedTerms) {
+      setError("Please accept the Privacy Policy and Terms of Use.");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match!");
       return;
@@ -215,9 +306,23 @@ const Signup: React.FC = () => {
       return;
     }
 
-    if (formData.userType === "vendor" && selectedVendorTypes.length === 0) {
-      setError("Please select at least one Vendor Type.");
-      return;
+    // ✅ Vendor requirements (full vendor flow for email signup)
+    if (formData.userType === "vendor") {
+      if (selectedVendorTypes.length === 0) {
+        setError("Please select at least one Vendor Type.");
+        setVendorStep(0);
+        return;
+      }
+
+      // Ensure vendor completed steps 1 & 2 before submitting email signup
+      if (!validateVendorStep(1)) {
+        setVendorStep(1);
+        return;
+      }
+      if (!validateVendorStep(2)) {
+        setVendorStep(2);
+        return;
+      }
     }
 
     try {
@@ -267,15 +372,25 @@ const Signup: React.FC = () => {
     }
   };
 
+  // ✅ Keep production edge-case logic, but remove redundant role/vendor-type selects.
   const handleSignUpWithThirdParty = async () => {
     try {
-      if (!thirdPartyOption) {
-        setError("Please select a user type.");
+      // 1) Role must exist (default is client anyway)
+      if (!formData.userType) {
+        setError("Please select a role.");
         return;
       }
 
-      if (thirdPartyOption === "vendor" && thirdPartyVendorTypes.length === 0) {
+      // 2) If vendor, require vendor type first (as requested)
+      if (formData.userType === "vendor" && selectedVendorTypes.length === 0) {
         setError("Please select at least one Vendor Type.");
+        setVendorStep(0);
+        return;
+      }
+
+      // 3) Then require terms (as requested)
+      if (!acceptedTerms) {
+        setError("Please accept the Privacy Policy and Terms of Use.");
         return;
       }
 
@@ -324,14 +439,15 @@ const Signup: React.FC = () => {
       // User doesn't exist in backend — continue with account creation
       backendUser = await createUser({
         firebase_id: firebaseUser.uid,
-        user_type: { user_type: thirdPartyOption },
+        user_type: { user_type: formData.userType },
       }).unwrap();
 
       // Extract user info from Firebase
       const updatedUserData = {
         email: firebaseUser.email || "",
         first_name: firebaseUser.displayName?.split(" ")[0] || "",
-        last_name: firebaseUser.displayName?.split(" ")[1] || "",
+        last_name:
+          firebaseUser.displayName?.split(" ").slice(1).join(" ") || "",
         phone: firebaseUser.phoneNumber || "",
         address: "",
         city: "",
@@ -344,9 +460,9 @@ const Signup: React.FC = () => {
         // Create the specific user type
         await createUserType(
           backendUser,
-          thirdPartyOption,
+          formData.userType,
           updatedUserData,
-          thirdPartyVendorTypes
+          formData.userType === "vendor" ? selectedVendorTypes : undefined
         );
       } catch (error: any) {
         console.error("Creating user type failed:", error);
@@ -411,7 +527,6 @@ const Signup: React.FC = () => {
       ).unwrap();
 
       dispatch(login(refreshedUser));
-
       navigate("/dashboard");
     } catch (err: any) {
       console.error("Third-party sign-up failed:", err);
@@ -427,10 +542,7 @@ const Signup: React.FC = () => {
   }, [location.state]);
 
   useEffect(() => {
-    if (
-      (formData.userType === "vendor" || thirdPartyOption === "vendor") &&
-      fetchedVendorTypes
-    ) {
+    if (formData.userType === "vendor" && fetchedVendorTypes) {
       setVendorTypeOptions(
         fetchedVendorTypes.map((type) => ({
           value: type.vendor_type,
@@ -438,269 +550,403 @@ const Signup: React.FC = () => {
         }))
       );
     }
-  }, [formData.userType, thirdPartyOption, fetchedVendorTypes]);
+  }, [formData.userType, fetchedVendorTypes]);
+
+  const FieldShell = ({
+    icon,
+    children,
+  }: {
+    icon: any;
+    children: React.ReactNode;
+  }) => (
+    <div className="flex px-4 bg-white rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-[#D4A017] focus-within:border-[#D4A017] transition">
+      {children}
+      <FontAwesomeIcon icon={icon} className="h-6 w-6 ml-4 my-auto text-gray-300" />
+    </div>
+  );
+
+  const StepPill = ({
+    idx,
+    label,
+    active,
+    done,
+  }: {
+    idx: number;
+    label: string;
+    active: boolean;
+    done: boolean;
+  }) => (
+    <div className="flex items-center gap-2">
+      <div
+        className={[
+          "h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold",
+          done
+            ? "bg-[#D4A017] text-white"
+            : active
+            ? "border-2 border-[#D4A017] text-[#D4A017]"
+            : "border border-gray-300 text-gray-400",
+        ].join(" ")}
+      >
+        {idx}
+      </div>
+      <div className={active ? "text-sm font-semibold text-gray-900" : "text-sm text-gray-500"}>
+        {label}
+      </div>
+    </div>
+  );
 
   return (
-    <section className="mt-10 pb-12 bg-gray-50">
-      <div className="container mx-auto">
-        <div className="flex max-w-md mx-auto flex-col text-center">
-          <div className="mt-12 mb-8 p-8 bg-white rounded shadow">
-            <h4 className="mb-6 text-3xl">Create an Account</h4>
-            <form onSubmit={handleFormSubmit}>
-              {/* First Name */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  placeholder="First Name"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faUser}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white">
+      {/* LEFT BRANDING */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#D4A017] text-white sticky top-0 h-screen items-center">
+        <div className="px-16 w-full">
+          <div className="slide-in">
+            <div className="inline-flex items-center gap-2 rounded-full bg-black/15 px-4 py-2 mb-6">
+              <FontAwesomeIcon icon={roleUI.icon} className="text-white" />
+              <span className="text-sm font-semibold text-white">{roleUI.kicker}</span>
+            </div>
 
-              {/* Last Name */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  placeholder="Last Name"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faUser}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
+            <h1 className="text-6xl font-extrabold tracking-tight mb-4">
+              {roleUI.title}
+            </h1>
 
-              {/* Email */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Email"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faAt}
-                  className="h-5 w-5 ml-4 my-auto text-gray-300"
-                />
-              </div>
+            <p className="text-xl font-light leading-relaxed max-w-md">
+              {roleUI.subtitle}
+            </p>
 
-              {/* Phone Number */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="Phone Number"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faMobileScreen}
-                  className="h-5 w-5 ml-4 my-auto text-gray-300"
-                />
-              </div>
+            <ul className="mt-8 space-y-3 text-white/90">
+              {roleUI.bullets.map((b) => (
+                <li key={b} className="flex items-center gap-3">
+                  <span className="h-2 w-2 rounded-full bg-white/70" />
+                  <span className="text-base">{b}</span>
+                </li>
+              ))}
+            </ul>
 
-              {/* Address */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  placeholder="Address"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faCompass}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
+            <div className="mt-10 h-1 w-24 bg-black/20 rounded-full" />
+          </div>
+        </div>
+      </div>
 
-              {/* City */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  placeholder="City"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faBuilding}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
+      {/* RIGHT FORM */}
+      <div className="w-full lg:w-1/2 flex items-start lg:items-center justify-center px-6 py-10 lg:px-16 lg:py-16 overflow-y-auto">
+        <div className="w-full max-w-md">
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold text-gray-900">Create an Account</h2>
+            <p className="text-gray-500 mt-1">
+              {isVendor ? "Create your vendor profile in a few steps." : "Create your account in seconds."}
+            </p>
+          </div>
 
-              {/* State */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleInputChange}
-                  placeholder="State"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faMap}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
-
-              {/* Country */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="country"
-                  value={formData.country}
-                  onChange={handleInputChange}
-                  placeholder="Country"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faFlag}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
-
-              {/* Postal Code */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type="text"
-                  name="postalCode"
-                  value={formData.postalCode}
-                  onChange={handleInputChange}
-                  placeholder="Postal Code"
-                  required
-                />
-                <FontAwesomeIcon
-                  icon={faEnvelope}
-                  className="h-6 w-6 ml-4 my-auto text-gray-300"
-                />
-              </div>
-
-              {/* User Type */}
-              <div className="relative mb-4">
-                <select
-                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-4 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  name="userType"
-                  value={formData.userType}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="" disabled>
-                    Select User Type
-                  </option>
-                  {userTypes
-                    ?.filter((type) => type.user_type.toLowerCase() !== "admin") // Exclude admin
-                    .map((type) => (
-                      <option key={type.id} value={type.user_type}>
-                        {type.user_type}
-                      </option>
-                    ))}
-                </select>
-                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+          {/* ROLE CARDS */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <button
+              type="button"
+              onClick={() => handleSelectRole("client")}
+              className={[
+                "rounded-xl border p-4 text-left transition-all",
+                !isVendor
+                  ? "border-[#D4A017] ring-2 ring-[#D4A017]/20 bg-white"
+                  : "border-gray-200 hover:border-gray-300 bg-white",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faUser} className="text-gray-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-gray-900">Homeowner</div>
+                  <div className="text-xs text-gray-500">Create a basic account</div>
                 </div>
               </div>
+            </button>
 
-              {formData.userType === "vendor" && (
-                <div className="relative mb-4">
-                  <Select
-                    options={vendorTypeOptions}
-                    isMulti
-                    value={selectedVendorTypes}
-                    onChange={handleVendorTypeChange}
-                    className="basic-multi-select"
-                    classNamePrefix="select"
-                    placeholder="Select Vendor Type"
-                  />
+            <button
+              type="button"
+              onClick={() => handleSelectRole("vendor")}
+              className={[
+                "rounded-xl border p-4 text-left transition-all",
+                isVendor
+                  ? "border-[#D4A017] ring-2 ring-[#D4A017]/20 bg-white"
+                  : "border-gray-200 hover:border-gray-300 bg-white",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <FontAwesomeIcon icon={faBuilding} className="text-gray-700" />
+                </div>
+                <div>
+                  <div className="font-bold text-gray-900">Vendor</div>
+                  <div className="text-xs text-gray-500">Join the pro network</div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <form onSubmit={handleFormSubmit}>
+              {/* VENDOR: STEP TRACKER */}
+              {isVendor && (
+                <div className="flex items-center justify-between mb-6">
+                  <StepPill idx={1} label="Account" active={vendorStep === 0} done={vendorStep > 0} />
+                  <div className="h-px flex-1 mx-3 bg-gray-200" />
+                  <StepPill idx={2} label="Location" active={vendorStep === 1} done={vendorStep > 1} />
+                  <div className="h-px flex-1 mx-3 bg-gray-200" />
+                  <StepPill idx={3} label="Contact" active={vendorStep === 2} done={false} />
                 </div>
               )}
 
-              {/* Password */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type={isPasswordVisible ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={togglePasswordVisibility}
-                  className="ml-4"
-                >
-                  <FontAwesomeIcon
-                    icon={faEye}
-                    className="h-6 w-6 ml-4 my-auto text-gray-300 stroke-[0.5]"
-                  />
-                </button>
+              {/* CONTENT AREA */}
+              <div key={isVendor ? `vendor-${vendorStep}` : "client"} className="step-animate space-y-4">
+                {/* HOMEOWNER (CLIENT): only first/last/email/password */}
+                {!isVendor && (
+                  <>
+                    <FieldShell icon={faUser}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        placeholder="First Name"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faUser}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        placeholder="Last Name"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faAt}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="Email"
+                        required
+                      />
+                    </FieldShell>
+
+                    <div className="flex px-4 bg-white rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-[#D4A017] focus-within:border-[#D4A017] transition">
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type={isPasswordVisible ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Password"
+                        required
+                      />
+                      <button type="button" onClick={togglePasswordVisibility} className="ml-4">
+                        <FontAwesomeIcon icon={faEye} className="h-6 w-6 ml-4 my-auto text-gray-300" />
+                      </button>
+                    </div>
+
+                    <div className="flex px-4 bg-white rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-[#D4A017] focus-within:border-[#D4A017] transition">
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type={isConfirmPasswordVisible ? "text" : "password"}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirm Password"
+                        required
+                      />
+                      <button type="button" onClick={toggleConfirmPasswordVisibility} className="ml-4">
+                        <FontAwesomeIcon icon={faEye} className="h-6 w-6 ml-4 my-auto text-gray-300" />
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* VENDOR FLOW */}
+                {isVendor && vendorStep === 0 && (
+                  <>
+                    <div className="relative">
+                      <Select
+                        options={vendorTypeOptions}
+                        isMulti
+                        value={selectedVendorTypes}
+                        onChange={handleVendorTypeChange}
+                        className="basic-multi-select"
+                        classNamePrefix="select"
+                        placeholder="Select Vendor Type"
+                      />
+                    </div>
+
+                    <FieldShell icon={faAt}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="Email"
+                        required
+                      />
+                    </FieldShell>
+
+                    <div className="flex px-4 bg-white rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-[#D4A017] focus-within:border-[#D4A017] transition">
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type={isPasswordVisible ? "text" : "password"}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Password"
+                        required
+                      />
+                      <button type="button" onClick={togglePasswordVisibility} className="ml-4">
+                        <FontAwesomeIcon icon={faEye} className="h-6 w-6 ml-4 my-auto text-gray-300" />
+                      </button>
+                    </div>
+
+                    <div className="flex px-4 bg-white rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-[#D4A017] focus-within:border-[#D4A017] transition">
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type={isConfirmPasswordVisible ? "text" : "password"}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Confirm Password"
+                        required
+                      />
+                      <button type="button" onClick={toggleConfirmPasswordVisibility} className="ml-4">
+                        <FontAwesomeIcon icon={faEye} className="h-6 w-6 ml-4 my-auto text-gray-300" />
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {isVendor && vendorStep === 1 && (
+                  <>
+                    <FieldShell icon={faCompass}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="address"
+                        autoComplete="street-address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        placeholder="Address"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faBuilding}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="city"
+                        autoComplete="address-level2"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        placeholder="City"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faMap}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="state"
+                        autoComplete="address-level1"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        placeholder="State / Province"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faFlag}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="country"
+                        autoComplete="country"
+                        value={formData.country}
+                        onChange={handleInputChange}
+                        placeholder="Country"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faEnvelope}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="postalCode"
+                        autoComplete="postal-code"
+                        value={formData.postalCode}
+                        onChange={handleInputChange}
+                        placeholder="Postal Code"
+                        required
+                      />
+                    </FieldShell>
+                  </>
+                )}
+
+                {isVendor && vendorStep === 2 && (
+                  <>
+                    <FieldShell icon={faUser}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        placeholder="First Name"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faUser}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="text"
+                        name="lastName"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        placeholder="Last Name"
+                        required
+                      />
+                    </FieldShell>
+
+                    <FieldShell icon={faMobileScreen}>
+                      <input
+                        className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-white outline-none"
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        placeholder="Phone Number"
+                        required
+                      />
+                    </FieldShell>
+                  </>
+                )}
               </div>
 
-              {/* Confirm Password */}
-              <div className="flex mb-4 px-4 bg-gray-50 rounded border border-gray-200">
-                <input
-                  className="w-full py-4 text-sm placeholder-gray-400 font-semibold leading-none bg-gray-50 outline-none"
-                  type={isConfirmPasswordVisible ? "text" : "password"}
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Confirm Password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={toggleConfirmPasswordVisibility}
-                  className="ml-4"
-                >
-                  <FontAwesomeIcon
-                    icon={faEye}
-                    className="h-6 w-6 ml-4 my-auto text-gray-300 stroke-[0.5]"
-                  />
-                </button>
-              </div>
-
-              <div className="mb-6 text-left">
+              {/* TERMS - ALWAYS VISIBLE (NOT IN FLOW) */}
+              <div className="mt-6 text-left">
                 <label className="inline-flex items-center text-sm">
-                  <input type="checkbox" className="form-checkbox" required />
+                  <input
+                    type="checkbox"
+                    className="form-checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  />
                   <span className="ml-2">
                     I agree to the{" "}
                     <a className="underline hover:text-gray-500" href="#">
@@ -714,87 +960,72 @@ const Signup: React.FC = () => {
                 </label>
               </div>
 
-              {/* Submit */}
-              <button
-                type="submit"
-                className="transition duration-300 ease-in-out transform hover:-translate-y-1 block w-full p-4 text-center text-sm text-white font-semibold leading-none bg-blue-500 hover:bg-blue-700 rounded"
-              >
-                {loading ? "Signing Up..." : "Sign Up"}
-              </button>
-            </form>
+              {/* ACTIONS */}
+              <div className="mt-6 space-y-3">
+                {/* Vendor step controls */}
+                {isVendor && (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={goBackVendorStep}
+                      disabled={vendorStep === 0}
+                      className={[
+                        "w-1/2 py-3 rounded-lg font-semibold border transition",
+                        vendorStep === 0
+                          ? "border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50"
+                          : "border-gray-200 text-gray-700 hover:bg-gray-50",
+                      ].join(" ")}
+                    >
+                      Back
+                    </button>
 
-            {error && <p className="text-red-500 my-4">{error}</p>}
+                    {vendorStep < 2 ? (
+                      <button
+                        type="button"
+                        onClick={goNextVendorStep}
+                        className="w-1/2 py-3 rounded-lg font-semibold text-white bg-[#D4A017] shadow-sm hover:bg-black transition"
+                      >
+                        Next
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-1/2 py-3 rounded-lg font-semibold text-white bg-[#D4A017] shadow-sm hover:bg-black transition"
+                      >
+                        {loading ? "Signing Up..." : "Create Account"}
+                      </button>
+                    )}
+                  </div>
+                )}
 
-            <p className="my-6 text-sm text-gray-400 text-center font-semibold">
-              or continue with
-            </p>
-
-            {/* Third-Party Authentication */}
-            <div className="mb-4">
-              <div className="relative mb-2">
-                <select
-                  className="block w-full text-sm font-semibold cursor-pointer bg-gray-50 border border-gray-300 text-gray-700 py-3.5 px-3 pr-8 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={thirdPartyOption || ""}
-                  onChange={(e) => setThirdPartyOption(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>
-                    Select User Type
-                  </option>
-                  {userTypes
-                    ?.filter((type) => type.user_type.toLowerCase() !== "admin") // Exclude admin
-                    .map((type) => (
-                      <option key={type.id} value={type.user_type}>
-                        {type.user_type}
-                      </option>
-                    ))}
-                </select>
-                <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                  <svg
-                    className="w-5 h-5 text-gray-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+                {/* Homeowner submit */}
+                {!isVendor && (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3 rounded-lg font-semibold text-white bg-[#D4A017] shadow-sm hover:bg-black transition"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
+                    {loading ? "Signing Up..." : "Create Account"}
+                  </button>
+                )}
+
+                {/* Google signup - universal (no extra dropdown) */}
+                <button
+                  type="button"
+                  onClick={() => handleSignUpWithThirdParty()}
+                  className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center justify-center w-full px-4 py-3 text-sm text-gray-700 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded-lg"
+                >
+                  <img className="h-5 pr-3" src="images/google.png" alt="Google" />
+                  <span>Sign Up with Google</span>
+                </button>
+
+                {error && <p className="text-red-500 text-center font-semibold">{error}</p>}
               </div>
-
-              {thirdPartyOption === "vendor" && (
-                <div className="relative mb-4">
-                  <Select
-                    options={vendorTypeOptions}
-                    isMulti
-                    value={thirdPartyVendorTypes}
-                    onChange={handleThirdPartyVendorTypeChange}
-                    className="basic-multi-select"
-                    classNamePrefix="select"
-                    placeholder="Select Vendor Type"
-                  />
-                </div>
-              )}
-
-              <button
-                onClick={() => handleSignUpWithThirdParty()}
-                className="transition duration-300 ease-in-out transform hover:-translate-y-0.5 flex items-center w-full px-4 py-3 mb-2 text-sm text-gray-500 font-semibold leading-none border border-gray-200 hover:bg-gray-50 rounded"
-              >
-                <img
-                  className="h-6 pr-10"
-                  src="images/google.png"
-                  alt="Google"
-                />
-                <span>Sign Up with Google</span>
-              </button>
-            </div>
+            </form>
           </div>
-          <div>
+
+          <div className="mt-6">
             <p className="text-sm text-gray-400 text-center">
               <a className="underline hover:text-gray-500" href="#">
                 Privacy Policy
@@ -807,8 +1038,26 @@ const Signup: React.FC = () => {
           </div>
         </div>
       </div>
-    </section>
+
+      <style>{`
+        .slide-in {
+          animation: slideIn 420ms ease-out both;
+        }
+        .step-animate {
+          animation: stepIn 260ms ease-out both;
+        }
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0px); }
+        }
+        @keyframes stepIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0px); }
+        }
+      `}</style>
+    </div>
   );
 };
 
 export default Signup;
+
