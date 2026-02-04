@@ -35,6 +35,7 @@ import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
 import Settings from "./pages/Settings";
 import ReportReviewPage from "./pages/ReportReviewPage";
+import Offers from "./pages/Offers";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
 import Footer from "./components/Footer";
@@ -50,6 +51,7 @@ function App() {
       '/dashboard': 'Dashboard',
       '/marketplace': 'Marketplace',
       '/listings': 'Listings',
+      '/offers': 'Offers',
       '/reports': 'Reports',
       '/issues': 'Issues',
       '/pricing': 'Pricing',
@@ -278,6 +280,10 @@ function App() {
               <Route
                 path="/listings"
                 element={<PrivateRoute element={<Listings />} />}
+              />
+              <Route
+                path="/offers"
+                element={<PrivateRoute element={<Offers />} />}
               />
               <Route
                 path="/marketplace"

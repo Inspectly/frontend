@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 
 const ImageComponent: React.FC<{
-  src: string;
+  src: string | undefined | null;
   fallback: string;
   className?: string;
 }> = ({ src, fallback, className = "" }) => {
-  const [imgSrc, setImgSrc] = useState(src);
+  // Use fallback if src is undefined, null, or empty
+  const [imgSrc, setImgSrc] = useState(src || fallback);
 
   // Reset image source when src prop changes
   useEffect(() => {
-    setImgSrc(src);
-  }, [src]);
+    setImgSrc(src || fallback);
+  }, [src, fallback]);
 
   return (
     <img

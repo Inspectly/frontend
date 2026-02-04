@@ -13,6 +13,7 @@ import {
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { IssueStatus, statusMapping, statusOptions } from "../types";
 
 import VendorName from "../components/VendorName";
@@ -180,9 +181,9 @@ const sessionId = searchParams.get("session_id");
                   </div>
                 </div>
 
-                {/* Progress */}
+                {/* Status */}
                 <p className="mt-4 text-sm flex flex-wrap justify-between items-center gap-2">
-                  Progress:{" "}
+                  Status:{" "}
                   <span
                     className={`px-2.5 py-1.5 rounded font-medium text-md ${
                       statusMapping[filteredIssue.status as IssueStatus] ===
@@ -206,8 +207,8 @@ const sessionId = searchParams.get("session_id");
                 </p>
 
                 {/* Severity & Vendor */}
-                <p className="mt-12 text-sm flex flex-wrap justify-between gap-2">
-                  Severity:{" "}
+                <div className="mt-12 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Severity:</span>
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${
@@ -236,9 +237,9 @@ const sessionId = searchParams.get("session_id");
                       {filteredIssue.severity}
                     </span>
                   </div>
-                </p>
-                <p className="mt-1 text-sm flex flex-wrap justify-between gap-2">
-                  Vendor:{" "}
+                </div>
+                <div className="mt-1 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Vendor:</span>
                   <span
                     className={`text-md font-semibold ${
                       filteredIssue.id === issue.id
@@ -256,7 +257,7 @@ const sessionId = searchParams.get("session_id");
                       "N/A"
                     )}
                   </span>
-                </p>
+                </div>
 
                 {/* Category Badge */}
                 <span
@@ -266,7 +267,7 @@ const sessionId = searchParams.get("session_id");
                       : "bg-gray-200 text-gray-600"
                   }`}
                 >
-                  {filteredIssue.type}
+                  {normalizeAndCapitalize(filteredIssue.type)}
                 </span>
 
                 {/* Dropdown Action Button */}

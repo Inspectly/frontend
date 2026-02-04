@@ -12,6 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { useCreateOfferMutation } from "../features/api/issueOffersApi";
 import { useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { useSelector } from "react-redux";
@@ -251,7 +252,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded">
-                              {issue.type}
+                              {normalizeAndCapitalize(issue.type)}
                             </span>
                             <div className="flex items-center gap-1">
                               <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
@@ -441,7 +442,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                   const issue = issues.find(i => i.id === issueId);
                   return (
                     <li key={issueId} className="truncate">
-                      {issue?.summary || `Issue #${issueId}`}
+                      {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
                     </li>
                   );
                 })}

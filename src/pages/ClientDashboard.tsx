@@ -1,6 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+
+// Use a unique key to avoid any conflicts
+const SUBS_KEY = '__INSPECTLY_OFFER_SUBS__';
+
+// Helper to get/create the global subscriptions map (survives HMR)
+const getGlobalSubscriptions = (): Map<number, any> => {
+  const w = window as any;
+  if (!w[SUBS_KEY]) {
+    w[SUBS_KEY] = new Map<number, any>();
+  }
+  return w[SUBS_KEY];
+};
 import { useNavigate, Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -38,7 +51,7 @@ import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
-import { getOffersByIssueId } from "../features/api/issueOffersApi";
+import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
@@ -96,6 +109,39 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return issues.filter((issue) => userReportIds.includes(issue.report_id));
   }, [issues, reports, user.id]);
 
+  // Create stable key for dashboard prefetch
+  const issueIdsForPrefetch = useMemo(
+    () => filteredIssuesByUser.map(i => i.id).sort().join(','),
+    [filteredIssuesByUser]
+  );
+
+  // Prefetch offers for all user issues (improves Offers page load time)
+  // Uses window-level storage so subscriptions persist across navigations
+  useEffect(() => {
+    if (filteredIssuesByUser.length === 0) return;
+    
+    const subs = getGlobalSubscriptions();
+    
+    // Check which issues already have subscriptions
+    const issuesNeedingSubscription = filteredIssuesByUser.filter(
+      issue => !subs.has(issue.id)
+    );
+    
+    if (issuesNeedingSubscription.length === 0) return;
+    
+    // Initiate fetches WITH subscriptions to ensure data stays in cache
+    issuesNeedingSubscription.forEach((issue) => {
+      const subscription = dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(issue.id, {
+        forceRefetch: false,
+        subscribe: true,
+      }));
+      subs.set(issue.id, subscription);
+    });
+    
+    // NO cleanup! Subscriptions persist at module level
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueIdsForPrefetch, dispatch]);
+
   // Real metrics
   const realMetrics = useMemo(() => {
     const totalIssues = filteredIssuesByUser.length;
@@ -104,6 +150,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     ).length;
     const completedIssues = filteredIssuesByUser.filter((i) => i.status === "Status.COMPLETED").length;
     const inProgressIssues = filteredIssuesByUser.filter((i) => i.status === "Status.IN_PROGRESS").length;
+    const reviewIssues = filteredIssuesByUser.filter((i) => i.status === "Status.REVIEW").length;
     const totalReports = reports?.length || 0;
     const totalListings = _listings?.length || 0;
     const totalOffersReceived = Object.values(offersByIssueId).flat().length;
@@ -111,7 +158,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .flat()
       .filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
 
-    return { totalIssues, openIssues, completedIssues, inProgressIssues, totalReports, totalListings, totalOffersReceived, pendingOffers };
+    return { totalIssues, openIssues, completedIssues, inProgressIssues, reviewIssues, totalReports, totalListings, totalOffersReceived, pendingOffers };
   }, [filteredIssuesByUser, reports, _listings, offersByIssueId]);
 
   // Issues with pending offers (for action items)
@@ -124,18 +171,42 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .slice(0, 5);
   }, [filteredIssuesByUser, offersByIssueId]);
 
+  // Issues requiring review (vendor completed work)
+  const issuesAwaitingReview = useMemo(() => {
+    return filteredIssuesByUser
+      .filter((issue) => issue.status === "Status.REVIEW")
+      .slice(0, 5);
+  }, [filteredIssuesByUser]);
+
+  // Combined action items
+  const actionRequiredItems = useMemo(() => {
+    const items = [
+      ...issuesAwaitingReview.map(issue => ({ ...issue, actionType: 'review' as const })),
+      ...issuesWithPendingOffers.map(issue => ({ ...issue, actionType: 'offers' as const }))
+    ];
+    return items.slice(0, 5);
+  }, [issuesAwaitingReview, issuesWithPendingOffers]);
+
   // Calendar events
   const calendarEvents = useMemo(() => {
+    const issuesMap = filteredIssuesByUser.reduce((acc, issue) => {
+      acc[issue.id] = issue;
+      return acc;
+    }, {} as Record<number, typeof filteredIssuesByUser[0]>);
+    
     return assessments
       .filter((a) => new Date(a.start_time) > new Date())
-      .map((a) => ({
-        id: a.id,
-        title: `Assessment - Issue #${a.issue_id}`,
-        start: new Date(a.start_time),
-        end: new Date(a.end_time),
-        user_id: a.user_id,
-      })) as CalendarReadyAssessment[];
-  }, [assessments]);
+      .map((a) => {
+        const issue = issuesMap[a.issue_id];
+        return {
+          id: a.id,
+          title: `Assessment - ${issue?.summary || normalizeAndCapitalize(issue?.type || "") + " Issue"}`,
+          start: new Date(a.start_time),
+          end: new Date(a.end_time),
+          user_id: a.user_id,
+        };
+      }) as CalendarReadyAssessment[];
+  }, [assessments, filteredIssuesByUser]);
 
   // Fetch offers for user's issues
   useEffect(() => {
@@ -179,6 +250,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
   const hasPendingOffers = realMetrics.pendingOffers > 0;
+  const hasActionRequired = realMetrics.pendingOffers > 0 || realMetrics.reviewIssues > 0;
   const hasUpcomingAssessments = calendarEvents.length > 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
 
@@ -208,8 +280,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <p className="text-blue-100 text-sm max-w-xl">
                   {isNewUser
                     ? "Ready to take control of your home maintenance journey."
-                    : hasPendingOffers
-                    ? `You have ${realMetrics.pendingOffers} vendor offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your review!`
+                    : hasActionRequired
+                    ? realMetrics.reviewIssues > 0 && realMetrics.pendingOffers > 0
+                      ? `You have ${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} and ${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your attention!`
+                      : realMetrics.reviewIssues > 0
+                      ? `You have ${realMetrics.reviewIssues} completed job${realMetrics.reviewIssues !== 1 ? 's' : ''} waiting for your review!`
+                      : `You have ${realMetrics.pendingOffers} vendor offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your review!`
                     : `Managing ${realMetrics.totalListings} ${realMetrics.totalListings === 1 ? 'property' : 'properties'} like a pro.`}
                 </p>
               </div>
@@ -239,18 +315,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <span className="text-blue-100 text-xs">Reports</span>
               </div>
               
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
-                realMetrics.openIssues > 0 ? 'bg-orange-500/25 border-orange-400/40' : 'bg-white/15 border-white/20'
-              }`}>
-                <span className={`stat-value text-base ${realMetrics.openIssues > 0 ? 'text-orange-200' : 'text-white'}`}>{realMetrics.openIssues}</span>
-                <span className={`text-xs ${realMetrics.openIssues > 0 ? 'text-orange-200' : 'text-blue-100'}`}>Open Issues</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">{realMetrics.openIssues}</span>
+                <span className="text-blue-100 text-xs">Open Issues</span>
               </div>
               
-              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
-                hasPendingOffers ? 'bg-emerald-500/25 border-emerald-400/40' : 'bg-white/15 border-white/20'
-              }`}>
-                <span className={`stat-value text-base ${hasPendingOffers ? 'text-emerald-200' : 'text-white'}`}>{realMetrics.pendingOffers}</span>
-                <span className={`text-xs ${hasPendingOffers ? 'text-emerald-200' : 'text-blue-100'}`}>New Offers</span>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+                <span className="stat-value text-base text-white">
+                  {realMetrics.pendingOffers + realMetrics.reviewIssues}
+                </span>
+                <span className="text-blue-100 text-xs">Action Required</span>
               </div>
             </div>
           </div>
@@ -310,8 +384,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         {!isNewUser && (
           <div className="grid grid-cols-12 gap-4 w-full min-w-0 overflow-hidden">
             
-            {/* Action Row: Pending Offers + Upload CTA */}
-            {hasPendingOffers && (
+            {/* Action Row: Action Required + Upload CTA */}
+            {hasActionRequired && (
               <>
                 <div className="col-span-12 lg:col-span-7 min-w-0">
                   <div className="dashboard-card h-full overflow-hidden">
@@ -322,44 +396,93 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             <FontAwesomeIcon icon={faClipboardList} className="text-white text-sm" />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-sm text-gray-900">Action Required: Vendor Offers</h3>
-                            <p className="text-xs text-gray-600">{realMetrics.pendingOffers} {realMetrics.pendingOffers === 1 ? 'offer' : 'offers'} waiting for your decision</p>
+                            <h3 className="font-semibold text-sm text-gray-900">Action Required</h3>
+                            <p className="text-xs text-gray-600">
+                              {realMetrics.reviewIssues > 0 && realMetrics.pendingOffers > 0 
+                                ? `${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} & ${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting`
+                                : realMetrics.reviewIssues > 0
+                                ? `${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} waiting for approval`
+                                : `${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for decision`}
+                            </p>
                           </div>
                         </div>
+                        {realMetrics.pendingOffers > 0 && (
+                          <button
+                            onClick={() => navigate("/offers")}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            View All
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="p-2">
                       <div className="space-y-1.5">
-                        {issuesWithPendingOffers.slice(0, 3).map((issue) => {
-                          const offers = offersByIssueId[issue.id] ?? [];
-                          const pendingCount = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
-                          const report = reports?.find((r) => r.id === issue.report_id);
+                        {actionRequiredItems.slice(0, 3).map((item) => {
+                          const report = reports?.find((r) => r.id === item.report_id);
                           const listing = _listings?.find((l) => l.id === report?.listing_id);
 
-                          return (
-                            <div
-                              key={issue.id}
-                              onClick={() => navigate(`/listings/${report?.listing_id}/reports/${issue.report_id}/issues/${issue.id}?tab=offers`)}
-                              className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                  issue.severity === "high" ? "bg-red-500" : 
-                                  issue.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
-                                }`}></div>
-                                <div className="min-w-0">
-                                  <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
-                                    {issue.summary || `${issue.type} Issue`}
+                          if (item.actionType === 'review') {
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => navigate(`/listings/${report?.listing_id}/reports/${item.report_id}/issues/${item.id}`)}
+                                className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                    item.severity === "high" ? "bg-red-500" : 
+                                    item.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
+                                  }`}></div>
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                                      {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                                    </div>
+                                    <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
                                   </div>
-                                  <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
                                 </div>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                  Review Work
+                                </span>
                               </div>
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                {pendingCount} offer{pendingCount !== 1 ? "s" : ""}
-                              </span>
-                            </div>
-                          );
+                            );
+                          } else {
+                            const offers = offersByIssueId[item.id] ?? [];
+                            const pendingCount = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+                            
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => navigate(`/listings/${report?.listing_id}/reports/${item.report_id}/issues/${item.id}?tab=offers`)}
+                                className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                    item.severity === "high" ? "bg-red-500" : 
+                                    item.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
+                                  }`}></div>
+                                  <div className="min-w-0">
+                                    <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                                      {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                                    </div>
+                                    <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
+                                  </div>
+                                </div>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                  {pendingCount} offer{pendingCount !== 1 ? "s" : ""}
+                                </span>
+                              </div>
+                            );
+                          }
                         })}
+                        {realMetrics.pendingOffers > 3 && (
+                          <button
+                            onClick={() => navigate("/offers")}
+                            className="w-full text-center px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            View {realMetrics.pendingOffers - 3} more offer{realMetrics.pendingOffers - 3 !== 1 ? 's' : ''}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -500,7 +623,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             {/* Side Column */}
             <div className="col-span-12 lg:col-span-5 space-y-4 min-w-0">
               {/* Upload CTA Card - Only show when not in action row */}
-              {!hasPendingOffers && (
+              {!hasActionRequired && (
                 <div className="dashboard-card">
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center gap-2">

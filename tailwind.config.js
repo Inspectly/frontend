@@ -120,8 +120,9 @@ export default {
 				}
 			},
 			fontFamily: {
-				display: ['"Playfair Display"', 'serif'],
-				sans: ['Inter', 'sans-serif'],
+				display: ['"Outfit"', 'system-ui', 'sans-serif'],
+				sans: ['"Outfit"', 'system-ui', 'sans-serif'],
+				mono: ['"JetBrains Mono"', 'monospace'],
 			},
 		}
 	},

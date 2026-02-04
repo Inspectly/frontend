@@ -11,6 +11,7 @@ import {
   faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { formatRelativeTime } from "../utils/dateUtils";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 interface IssueItemProps {
   issue: IssueType;
@@ -58,7 +59,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
         {/* Issue Type Label - Bottom Left Corner of Image */}
         <div className="absolute bottom-3 left-3">
           <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
-            {issue.type}
+            {normalizeAndCapitalize(issue.type)}
           </span>
         </div>
       </div>
