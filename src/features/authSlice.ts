@@ -17,11 +17,20 @@ const initialState: AuthState = {
   loading: true,
 };
 
+// Track if auth listener is already set up to prevent duplicates
+let authListenerInitialized = false;
+
 // Use async thunk to check authentication state without hooks
 export const checkAuthState = createAsyncThunk(
   "auth/checkAuthState",
   async (_, { dispatch }) => {
+    // Only set up listener once
+    if (authListenerInitialized) {
+      return;
+    }
+
     dispatch(setLoading(true)); // Start loading
+    authListenerInitialized = true;
 
     return new Promise<void>((resolve) => {
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -67,7 +76,10 @@ export const checkAuthState = createAsyncThunk(
         }
       });
 
-      return () => unsubscribe(); // Cleanup on unmount
+      return () => {
+        unsubscribe();
+        authListenerInitialized = false;
+      };
     });
   }
 );
@@ -78,7 +90,6 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     login: (state, action: PayloadAction<any>) => {
-      console.log("Dispatching login with user:", action.payload);
       state.authenticated = true;
       state.user = action.payload;
       state.loading = false;

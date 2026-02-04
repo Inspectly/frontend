@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   IssueAssessment,
   IssueOffer,
+  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
-statusMapping,
+  statusMapping,
   statusOptions,
 } from "../types";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -421,10 +423,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               </div>
             )}
 
-            {/* Client: Review Actions - Approve or Request Changes */}
+            {/* Client: Review Actions - Approve or Revise */}
             {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
               <>
-                {/* Request Changes Button */}
+                {/* Revise Button */}
                 <div className="relative group">
                   <button
                     onClick={() => setShowRequestChangesModal(true)}
@@ -436,7 +438,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   </button>
                   {/* Tooltip */}
                   <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                    <div className="font-semibold mb-0.5">Request Changes</div>
+                    <div className="font-semibold mb-0.5">Revise</div>
                     <div className="text-gray-300">Send work back for revisions or fixes</div>
                     {/* Arrow */}
                     <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
@@ -459,7 +461,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
                     <div className="font-semibold mb-0.5 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                      Approve Work
+                      Approve
                     </div>
                     <div className="text-gray-300">Work is satisfactory - finalize and complete project</div>
                     {/* Arrow */}
@@ -469,22 +471,42 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               </>
             )}
 
-            {/* Active/Inactive Toggle */}
-            <button
-              onClick={() =>
-                updateIssue({
-                  ...issue,
-                  status: statusMapping[issue.status as IssueStatus],
-                  active: !issue.active,
-                })
-              }
-              className="w-8 h-8 bg-blue-100 text-primary-600 rounded-full inline-flex items-center justify-center"
-            >
-              <FontAwesomeIcon
-                icon={issue.active ? faEye : faEyeSlash}
-                className={`text-blue-600 size-3.5`}
-              />
-            </button>
+            {/* Active/Inactive Toggle - disabled once an offer is accepted */}
+            {(() => {
+              const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
+              return (
+                <div className="relative group">
+                  <button
+                    onClick={() => {
+                      if (!hasAcceptedOffer) {
+                        updateIssue({
+                          ...issue,
+                          status: statusMapping[issue.status as IssueStatus],
+                          active: !issue.active,
+                        });
+                      }
+                    }}
+                    disabled={hasAcceptedOffer}
+                    className={`w-8 h-8 rounded-full inline-flex items-center justify-center ${
+                      hasAcceptedOffer 
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
+                        : "bg-blue-100 text-primary-600"
+                    }`}
+                  >
+                    <FontAwesomeIcon
+                      icon={issue.active ? faEye : faEyeSlash}
+                      className={hasAcceptedOffer ? "text-gray-400 size-3.5" : "text-blue-600 size-3.5"}
+                    />
+                  </button>
+                  {hasAcceptedOffer && (
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
+                      <div className="text-gray-300">Cannot hide issue after an offer has been accepted</div>
+                      <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -636,67 +658,93 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                           Type
                         </h4>
                         <p className="text-base font-semibold text-gray-700">
-                          {issue.type}
+                          {normalizeAndCapitalize(issue.type)}
                         </p>
                       </div>
                       <div>
                         <h4 className="text-sm font-medium text-gray-500">
-                          Progress
+                          Status
                         </h4>
-                        <button
-                          className={`px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
-                              "open"
-                              ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                              : statusMapping[issue.status as IssueStatus] ===
-                                "in_progress"
-                                ? "bg-blue-100 text-blue-600 border border-blue-600"
-                                : statusMapping[issue.status as IssueStatus] ===
-                                  "review"
-                                  ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
-                                  : "bg-green-100 text-green-600 border border-green-600"
-                            }`}
-                          ref={progressDropdownButtonRef}
-                          onClick={() =>
-                            setProgressDropdownOpen((prev) =>
-                              prev === issue.id ? null : issue.id
-                            )
-                          }
-                        >
-                          {statusOptions.find(
-                            (option) =>
-                              option.value ===
-                              statusMapping[issue.status as IssueStatus]
-                          )?.label || "Unknown"}
+                        {/* Show dropdown only for assigned vendor to update progress.
+                            Clients always see read-only badge and use Approve/Revise buttons when in review. */}
+                        {(userType === "vendor" && issue.vendor_id === currentVendor?.id) ? (
+                          <>
+                            <button
+                              className={`px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
+                                  "open"
+                                  ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                                  : statusMapping[issue.status as IssueStatus] ===
+                                    "in_progress"
+                                    ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                    : statusMapping[issue.status as IssueStatus] ===
+                                      "review"
+                                      ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
+                                      : "bg-green-100 text-green-600 border border-green-600"
+                                }`}
+                              ref={progressDropdownButtonRef}
+                              onClick={() =>
+                                setProgressDropdownOpen((prev) =>
+                                  prev === issue.id ? null : issue.id
+                                )
+                              }
+                            >
+                              {statusOptions.find(
+                                (option) =>
+                                  option.value ===
+                                  statusMapping[issue.status as IssueStatus]
+                              )?.label || "Unknown"}
 
-                          <FontAwesomeIcon
-                            icon={faChevronDown}
-                            className="ml-1"
-                          />
-                        </button>
-                        {Number(progressDropdownOpen) === issue.id && (
-                          <Dropdown
-                            buttonRef={progressDropdownButtonRef}
-                            onClose={() => setProgressDropdownOpen(null)}
+                              <FontAwesomeIcon
+                                icon={faChevronDown}
+                                className="ml-1"
+                              />
+                            </button>
+                            {Number(progressDropdownOpen) === issue.id && (
+                              <Dropdown
+                                buttonRef={progressDropdownButtonRef}
+                                onClose={() => setProgressDropdownOpen(null)}
+                              >
+                                <div className="dropdown-content">
+                                  {statusOptions.map(({ value, label }) => (
+                                    <button
+                                      key={value}
+                                      className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` ===
+                                          issue.status
+                                          ? "font-bold"
+                                          : ""
+                                        }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleStatusChange(issue.id, value);
+                                      }}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </Dropdown>
+                            )}
+                          </>
+                        ) : (
+                          <span
+                            className={`inline-block px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
+                                "open"
+                                ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
+                                : statusMapping[issue.status as IssueStatus] ===
+                                  "in_progress"
+                                  ? "bg-blue-100 text-blue-600 border border-blue-600"
+                                  : statusMapping[issue.status as IssueStatus] ===
+                                    "review"
+                                    ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
+                                    : "bg-green-100 text-green-600 border border-green-600"
+                              }`}
                           >
-                            <div className="dropdown-content">
-                              {statusOptions.map(({ value, label }) => (
-                                <button
-                                  key={value}
-                                  className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` ===
-                                      issue.status
-                                      ? "font-bold"
-                                      : ""
-                                    }`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusChange(issue.id, value);
-                                  }}
-                                >
-                                  {label}
-                                </button>
-                              ))}
-                            </div>
-                          </Dropdown>
+                            {statusOptions.find(
+                              (option) =>
+                                option.value ===
+                                statusMapping[issue.status as IssueStatus]
+                            )?.label || "Unknown"}
+                          </span>
                         )}
                       </div>
                       <div>
@@ -1155,7 +1203,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
         </div>
       )}
 
-      {/* Client: Approve Work Modal */}
+      {/* Client: Approve Modal */}
       {showApproveModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowApproveModal(false)} />
@@ -1167,7 +1215,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Approve & Complete Project?</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Approve Work?</h3>
                 <p className="text-sm text-gray-600 mb-3">
                   This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
                 </p>
@@ -1198,14 +1246,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   setShowApproveModal(false);
                 }}
               >
-                Approve & Complete
+                Approve
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Client: Request Changes Modal */}
+      {/* Client: Revise Modal */}
       {showRequestChangesModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
@@ -1217,7 +1265,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Changes</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Revise</h3>
                 <p className="text-sm text-gray-600 mb-3">
                   Describe what needs to be corrected or improved. The vendor will be notified and the work will return to "In Progress".
                 </p>
@@ -1268,7 +1316,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   }
                 }}
               >
-                Send Feedback
+                Submit
               </button>
             </div>
           </div>

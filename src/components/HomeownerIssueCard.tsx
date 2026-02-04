@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   IssueAssessment,
   IssueOffer,
+  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -10,6 +11,7 @@ import {
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
@@ -101,6 +103,11 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   const [reviewSubmitStatus, setReviewSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [createVendorReview] = useCreateVendorReviewMutation();
+
+  // Client action modals for issues in Review status
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
+  const [changeRequestMessage, setChangeRequestMessage] = useState("");
 
   useEffect(() => setIsActive(issue.active), [issue.active]);
 
@@ -322,7 +329,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       <div className="flex items-start justify-between gap-4 px-6 py-4 border-b bg-white">
         <div className="pr-10">
           <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            Issue #{issue.id}
+            {normalizeAndCapitalize(issue.type)} Issue
           </p>
           <h2 className="text-xl font-semibold text-gray-800 leading-snug">
             {issue.summary || "No Title Found"}
@@ -362,6 +369,45 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           </button>
         ))}
       </div>
+
+      {/* Action bar for issues in Review status - client needs to approve or request changes */}
+      {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
+        <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900">Work Ready for Review</p>
+                <p className="text-sm text-amber-700">The vendor has completed work and is awaiting your approval</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowRequestChangesModal(true)}
+                className="px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Revise
+              </button>
+              <button
+                onClick={() => setShowApproveModal(true)}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* content */}
       <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
@@ -419,7 +465,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       Type
                     </p>
                     <p className="text-sm font-semibold text-gray-500">
-                      {issue.type}
+                      {normalizeAndCapitalize(issue.type)}
                     </p>
                   </div>
 
@@ -439,58 +485,72 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     </p>
                   </div>
 
-                  <div className="flex justify-between items-center gap-4">
-                    <div>
-                      <p className="text-xs font-bold uppercase text-gray-800">
-                        Marketplace
-                      </p>
-                      <p className="text-[0.65rem] text-gray-500">
-                        {isActive
-                          ? "Visible in marketplace"
-                          : "Hidden from marketplace"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleToggleVisibility}
-                      disabled={isUpdatingVisibility}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${isActive ? "bg-blue-500" : "bg-gray-300"
-                        } ${isUpdatingVisibility
-                          ? "opacity-60 cursor-not-allowed"
-                          : ""
-                        }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"
-                          }`}
-                      />
-                    </button>
-                  </div>
+                  {/* Marketplace Visibility Toggle - disabled once an offer is accepted */}
+                  {(() => {
+                    const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
+                    return (
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase text-gray-800">
+                            Marketplace
+                          </p>
+                          <p className="text-[0.65rem] text-gray-500">
+                            {isActive
+                              ? "Visible in marketplace"
+                              : "Hidden from marketplace"}
+                          </p>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!hasAcceptedOffer) {
+                                handleToggleVisibility();
+                              }
+                            }}
+                            disabled={isUpdatingVisibility || hasAcceptedOffer}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                              hasAcceptedOffer
+                                ? "bg-gray-200 cursor-not-allowed"
+                                : isActive ? "bg-blue-500" : "bg-gray-300"
+                            } ${isUpdatingVisibility ? "opacity-60 cursor-not-allowed" : ""}`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"}`}
+                            />
+                          </button>
+                          {hasAcceptedOffer && (
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
+                              <div className="text-gray-300">Cannot hide issue after an offer has been accepted</div>
+                              <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="flex justify-between items-center gap-4">
                     <p className="text-xs font-bold uppercase text-gray-800">
-                      Progress
+                      Status
                     </p>
-                    <select
-                      value={issue.status}
-                      onChange={(e) => handleStatusChange(e.target.value)}
-                      className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium border-0 focus:ring-0 cursor-pointer ${statusMapping[issue.status as IssueStatus] === "open"
+                    <span
+                      className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium ${statusMapping[issue.status as IssueStatus] === "open"
                         ? "bg-gray-100 text-gray-700"
                         : statusMapping[issue.status as IssueStatus] === "in_progress"
                           ? "bg-blue-100 text-blue-700"
                           : statusMapping[issue.status as IssueStatus] === "review"
                             ? "bg-yellow-100 text-yellow-700"
-                            : statusMapping[issue.status as IssueStatus] === "closed"
+                            : statusMapping[issue.status as IssueStatus] === "completed"
                               ? "bg-green-100 text-green-700"
                               : "bg-gray-100 text-gray-700"
                         }`}
                     >
-                      {statusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      {statusOptions.find(
+                        (option) =>
+                          option.value === statusMapping[issue.status as IssueStatus]
+                      )?.label || "Unknown"}
+                    </span>
                   </div>
 
                   <div className="h-px bg-gray-100 my-2" />
@@ -737,6 +797,120 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Client: Approve Work Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowApproveModal(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6 mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Approve Work?</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
+                </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs text-amber-800 font-medium flex items-start gap-2">
+                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    This action cannot be undone. Payment will be released to the vendor.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button 
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                onClick={() => setShowApproveModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-green-600 hover:bg-green-700 transition-colors"
+                onClick={async () => {
+                  try {
+                    await updateIssue({
+                      ...issue,
+                      status: "completed",
+                    }).unwrap();
+                    setShowApproveModal(false);
+                  } catch (err) {
+                    console.error("Failed to approve work", err);
+                  }
+                }}
+              >
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Client: Revise Modal */}
+      {showRequestChangesModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { setShowRequestChangesModal(false); setChangeRequestMessage(""); }} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6 mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Revise</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Describe what needs to be corrected or improved. The vendor will be notified and the work will return to "In Progress".
+                </p>
+              </div>
+            </div>
+            
+            <textarea
+              value={changeRequestMessage}
+              onChange={(e) => setChangeRequestMessage(e.target.value)}
+              placeholder="Describe what changes are needed..."
+              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+            />
+            
+            <div className="flex justify-end gap-2 mt-4">
+              <button 
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                onClick={() => {
+                  setShowRequestChangesModal(false);
+                  setChangeRequestMessage("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!changeRequestMessage.trim()}
+                onClick={async () => {
+                  try {
+                    await updateIssue({
+                      ...issue,
+                      status: "in_progress",
+                      // TODO: Add change request message to issue or create a comment
+                    }).unwrap();
+                    setShowRequestChangesModal(false);
+                    setChangeRequestMessage("");
+                  } catch (err) {
+                    console.error("Failed to request changes", err);
+                  }
+                }}
+              >
+                Submit
+              </button>
+            </div>
           </div>
         </div>
       )}

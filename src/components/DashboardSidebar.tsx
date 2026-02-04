@@ -11,10 +11,12 @@ import {
   faListCheck,
   faShop,
   faBriefcase,
+  faFileInvoiceDollar,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
+import { Link, useLocation } from "react-router-dom";
 import { RootState } from "../store/store";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 
@@ -27,7 +29,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
   toggleSidebar,
 }) => {
-  const [activePage, setActivePage] = useState(window.location.pathname);
+  const location = useLocation();
+  const activePage = location.pathname;
 
   const user = useSelector((state: RootState) => state.auth.user);
   const isAuthReady = useSelector(
@@ -50,10 +53,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     return "/marketplace";
   }, [user, vendor]);
 
-  const handleMenuClick = (page: string) => {
-    setActivePage(page); // Update the active page
-  };
-
   return (
     <aside
       className={`fixed top-0 ${
@@ -68,19 +67,18 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         <FontAwesomeIcon icon={faClose} className="text-sm" />
       </button>
       <div>
-        <a
-          href="/dashboard"
+        <Link
+          to="/dashboard"
           className="flex h-[48px] items-center ml-3 border-r border-b text-xl font-semibold border-gray-200 px-3 py-2"
         >
           Inspectly
-        </a>
+        </Link>
       </div>
       <div className="h-[calc(100vh-48px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white border-r border-gray-200 px-3 py-2">
         <ul className="sidebar-menu flex flex-col h-full">
           <li>
-            <a
-              href="/dashboard"
-              onClick={() => handleMenuClick("/dashboard")}
+            <Link
+              to="/dashboard"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                 activePage === "/dashboard"
                   ? "bg-blue-500 text-white"
@@ -92,13 +90,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[19px]"
               />
               <span>Dashboard</span>
-            </a>
+            </Link>
           </li>
           {isAuthReady && user?.user_type === "vendor" && (
             <li>
-              <a
-                href="/vendor/jobs"
-                onClick={() => handleMenuClick("/vendor/jobs")}
+              <Link
+                to="/vendor/jobs"
                 className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                   activePage === "/vendor/jobs"
                     ? "bg-blue-500 text-white"
@@ -110,13 +107,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   className="mr-2 size-[19px]"
                 />
                 <span>Jobs</span>
-              </a>
+              </Link>
             </li>
           )}
           <li>
-            <a
-              href="/listings"
-              onClick={() => handleMenuClick("/listings")}
+            <Link
+              to="/listings"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                 activePage === "/listings"
                   ? "bg-blue-500 text-white"
@@ -128,12 +124,29 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[19px]"
               />
               <span>Listings</span>
-            </a>
+            </Link>
           </li>
+          {user?.user_type === "client" && (
+            <li>
+              <Link
+                to="/offers"
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+                  activePage === "/offers"
+                    ? "bg-blue-500 text-white"
+                    : "text-neutral-600 hover:text-blue-400"
+                }`}
+              >
+                <FontAwesomeIcon
+                  icon={faFileInvoiceDollar}
+                  className="mr-2 size-[19px]"
+                />
+                <span>Offers</span>
+              </Link>
+            </li>
+          )}
           <li>
-            <a
-              href="/dashboard/chat"
-              onClick={() => handleMenuClick("/dashboard/chat")}
+            <Link
+              to="/dashboard/chat"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                 activePage === "/dashboard/chat"
                   ? "bg-blue-500 text-white"
@@ -145,14 +158,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[19px]"
               />
               <span>Chat</span>
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/pricing"
-              onClick={() => handleMenuClick("/dashboard/pricing")}
+            <Link
+              to="/pricing"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/pricing"
+                activePage === "/pricing"
                   ? "bg-blue-500 text-white"
                   : "text-neutral-600 hover:text-blue-400"
               }`}
@@ -162,12 +174,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[19px]"
               />
               <span>Pricing</span>
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/dashboard/faqs"
-              onClick={() => handleMenuClick("/dashboard/faqs")}
+            <Link
+              to="/dashboard/faqs"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                 activePage === "/dashboard/faqs"
                   ? "bg-blue-500 text-white"
@@ -179,12 +190,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 size-[19px]"
               />
               <span>FAQs.</span>
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/dashboard/termsandconditions"
-              onClick={() => handleMenuClick("/dashboard/termsandconditions")}
+            <Link
+              to="/dashboard/termsandconditions"
               className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium ${
                 activePage === "/dashboard/termsandconditions"
                   ? "bg-blue-500 text-white"
@@ -196,12 +206,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className="mr-2 text-[10px] rounded-full border-2 py-[3px] px-1.5 border-neutral-600 group-hover:border-blue-400"
               />
               <span>Terms & Conditions</span>
-            </a>
+            </Link>
           </li>
           <li>
-            <a
-              href="/dashboard/settings"
-              onClick={() => handleMenuClick("/dashboard/settings")}
+            <Link
+              to="/dashboard/settings"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
                 activePage === "/dashboard/settings"
                   ? "bg-blue-500 text-white"
@@ -210,16 +219,15 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             >
               <FontAwesomeIcon icon={faGear} className="mr-2 size-[19px]" />
               <span>Settings</span>
-            </a>
+            </Link>
           </li>
 
           {isAuthReady && user?.user_type === "vendor" && (
             <li className="mt-auto mb-2">
-              <a
-                href={marketplaceLink}
-                onClick={() => handleMenuClick("/marketplace")}
+              <Link
+                to={marketplaceLink}
                 className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                  activePage === "/marketplace"
+                  activePage.startsWith("/marketplace")
                     ? "bg-blue-500 text-white"
                     : "text-white bg-blue-400 hover:bg-blue-500"
                 }`}
@@ -229,7 +237,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                   className="mr-2 size-[19px] text-white"
                 />
                 <span>Marketplace</span>
-              </a>
+              </Link>
             </li>
           )}
         </ul>

@@ -9,6 +9,7 @@ import {
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueOffer, IssueOfferStatus, IssueType } from "../types";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 // Note: The backend's vendor_id field stores vendor_user_id (user.id), not vendor table id
 interface MyJobsWidgetProps {
@@ -143,14 +144,14 @@ const MyJobsWidget: React.FC<MyJobsWidgetProps> = ({ vendorOffers, issuesMap = {
                       className="w-4 h-4 text-gray-600 flex-shrink-0"
                     />
                     <span className="font-medium text-sm text-gray-900 truncate">
-                      {issue?.type || "Issue"} #{offer.issue_id}
+                      {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
                     </span>
                   </div>
                   {getStatusBadge(offer.status)}
                 </div>
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-600 truncate flex-1 mr-2">
-                    {issue?.summary || "View details"}
+                  <p className="text-xs text-gray-600 truncate flex-1 mr-2 capitalize">
+                    {issue?.type || "View details"}
                   </p>
                   <span className="text-sm font-bold text-gray-900 whitespace-nowrap">
                     ${offer.price?.toLocaleString() || 0}

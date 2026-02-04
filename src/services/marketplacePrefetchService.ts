@@ -132,7 +132,8 @@ class MarketplacePrefetchService {
       throw new Error('Failed to fetch first page');
     }
 
-    allIssues = firstPageResult.data.issues || [];
+    // Create a mutable copy - RTK Query returns frozen/immutable data
+    allIssues = [...(firstPageResult.data.issues || [])];
     expectedTotal = firstPageResult.data.total_filtered?.count || firstPageResult.data.total?.count || 0;
 
     // Fetch remaining pages if needed
