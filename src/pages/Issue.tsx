@@ -207,8 +207,8 @@ const sessionId = searchParams.get("session_id");
                 </p>
 
                 {/* Severity & Vendor */}
-                <p className="mt-12 text-sm flex flex-wrap justify-between gap-2">
-                  Severity:{" "}
+                <div className="mt-12 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Severity:</span>
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${
@@ -237,9 +237,9 @@ const sessionId = searchParams.get("session_id");
                       {filteredIssue.severity}
                     </span>
                   </div>
-                </p>
-                <p className="mt-1 text-sm flex flex-wrap justify-between gap-2">
-                  Vendor:{" "}
+                </div>
+                <div className="mt-1 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Vendor:</span>
                   <span
                     className={`text-md font-semibold ${
                       filteredIssue.id === issue.id
@@ -257,7 +257,7 @@ const sessionId = searchParams.get("session_id");
                       "N/A"
                     )}
                   </span>
-                </p>
+                </div>
 
                 {/* Category Badge */}
                 <span

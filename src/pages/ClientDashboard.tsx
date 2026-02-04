@@ -1,4 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+
+// Use a unique key to avoid any conflicts
+const SUBS_KEY = '__INSPECTLY_OFFER_SUBS__';
+
+// Helper to get/create the global subscriptions map (survives HMR)
+const getGlobalSubscriptions = (): Map<number, any> => {
+  const w = window as any;
+  if (!w[SUBS_KEY]) {
+    w[SUBS_KEY] = new Map<number, any>();
+  }
+  return w[SUBS_KEY];
+};
 import { useNavigate, Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
@@ -39,7 +51,7 @@ import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
-import { getOffersByIssueId } from "../features/api/issueOffersApi";
+import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
 import { getVendorById } from "../features/api/vendorsApi";
@@ -96,6 +108,39 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     const userReportIds = reports.filter((r) => r.user_id === user.id).map((r) => r.id);
     return issues.filter((issue) => userReportIds.includes(issue.report_id));
   }, [issues, reports, user.id]);
+
+  // Create stable key for dashboard prefetch
+  const issueIdsForPrefetch = useMemo(
+    () => filteredIssuesByUser.map(i => i.id).sort().join(','),
+    [filteredIssuesByUser]
+  );
+
+  // Prefetch offers for all user issues (improves Offers page load time)
+  // Uses window-level storage so subscriptions persist across navigations
+  useEffect(() => {
+    if (filteredIssuesByUser.length === 0) return;
+    
+    const subs = getGlobalSubscriptions();
+    
+    // Check which issues already have subscriptions
+    const issuesNeedingSubscription = filteredIssuesByUser.filter(
+      issue => !subs.has(issue.id)
+    );
+    
+    if (issuesNeedingSubscription.length === 0) return;
+    
+    // Initiate fetches WITH subscriptions to ensure data stays in cache
+    issuesNeedingSubscription.forEach((issue) => {
+      const subscription = dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(issue.id, {
+        forceRefetch: false,
+        subscribe: true,
+      }));
+      subs.set(issue.id, subscription);
+    });
+    
+    // NO cleanup! Subscriptions persist at module level
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueIdsForPrefetch, dispatch]);
 
   // Real metrics
   const realMetrics = useMemo(() => {
@@ -361,6 +406,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             </p>
                           </div>
                         </div>
+                        {realMetrics.pendingOffers > 0 && (
+                          <button
+                            onClick={() => navigate("/offers")}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            View All
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="p-2">
@@ -422,6 +475,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             );
                           }
                         })}
+                        {realMetrics.pendingOffers > 3 && (
+                          <button
+                            onClick={() => navigate("/offers")}
+                            className="w-full text-center px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            View {realMetrics.pendingOffers - 3} more offer{realMetrics.pendingOffers - 3 !== 1 ? 's' : ''}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

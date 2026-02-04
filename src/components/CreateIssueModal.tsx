@@ -1,5 +1,6 @@
 // src/components/CreateIssueModal.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import type { IssueStatus } from "../types";
@@ -131,6 +132,53 @@ const CreateIssueModal: React.FC<Props> = ({
       toast.error("Failed to create issue");
     }
   };
+
+  // Empty state - no listings/collections available
+  if (issueCollections.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+        <div className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h6 className="text-lg font-semibold">Create New Issue</h6>
+            <button
+              onClick={onClose}
+              className="text-2xl font-light text-gray-600 hover:text-gray-800 leading-none"
+              aria-label="Close"
+              type="button"
+            >
+              &times;
+            </button>
+          </div>
+          <div className="p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Add a Property First</h3>
+            <p className="text-gray-600 mb-6">
+              Before you can post a job, you need to add a property listing. This helps vendors understand where the work needs to be done.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <Link
+                to="/listings?action=add"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Property
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">

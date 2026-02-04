@@ -6,7 +6,7 @@ import {
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ImageComponent from "../components/ImageComponent";
 import { useGetListingsQuery, useCreateListingMutation } from "../features/api/listingsApi";
 import { useSelector } from "react-redux";
@@ -19,11 +19,22 @@ const Listings: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState(false);
+
+  // Auto-open modal if action=add is in URL
+  useEffect(() => {
+    if (searchParams.get("action") === "add") {
+      setIsAddListingModalOpen(true);
+      // Clear the query param so it doesn't re-trigger
+      searchParams.delete("action");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Filter listings by user and search
   const filteredListings =
