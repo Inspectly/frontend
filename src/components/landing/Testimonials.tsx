@@ -32,35 +32,33 @@ const Testimonials = () => {
     <section
       id="testimonials"
       ref={ref as React.RefObject<HTMLElement>}
-      className={`py-20 lg:py-28 bg-gray-50 section-animate ${isVisible ? 'visible' : ''}`}
+      className={`py-14 lg:py-20 bg-white section-animate ${isVisible ? 'visible' : ''}`}
     >
-      <div className="container mx-auto px-4 lg:px-8 max-w-6xl">
+
+      <div className="container mx-auto px-4 lg:px-8 max-w-5xl">
         {/* Section header */}
         <div
-          className="text-center mb-16"
+          className="text-center mb-12"
           style={{
             opacity: isVisible ? 1 : 0,
             transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
             transition: 'all 0.6s ease-out'
           }}
         >
-          <span className="text-xs font-medium tracking-[0.2em] uppercase text-amber-600 mb-4 block">
-            Testimonials
-          </span>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-medium text-gray-900 mb-4">
-            What Homeowners <span className="font-serif italic">Say</span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-3">
+            What Homeowners Say
           </h2>
-          <p className="text-gray-600 text-lg">
+          <p className="text-base text-muted-foreground">
             Join satisfied homeowners who found their perfect contractor.
           </p>
         </div>
 
         {/* Testimonials grid */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-5">
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="bg-white rounded-2xl p-6 border border-gray-200 hover:border-gray-300 transition-all duration-300 shadow-sm hover:shadow-lg"
+              className="bg-card shadow-2xl rounded-2xl p-6 border border-border hover:shadow-lg hover:border-primary/20 transition-all duration-500 hover:-translate-y-1"
               style={{
                 opacity: isVisible ? 1 : 0,
                 transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
@@ -72,28 +70,28 @@ const Testimonials = () => {
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star
                     key={i}
-                    className="w-4 h-4 fill-amber-400 text-amber-400"
+                    className="w-4 h-4 fill-primary text-primary"
                   />
                 ))}
               </div>
 
               {/* Content */}
-              <p className="text-base text-gray-700 leading-relaxed mb-6">
+              <p className="text-base text-foreground/80 leading-relaxed mb-5 italic">
                 "{testimonial.content}"
               </p>
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-white">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <span className="text-base font-semibold text-primary">
                     {testimonial.name.charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-foreground">
                     {testimonial.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {testimonial.role}
                   </p>
                 </div>
