@@ -13,7 +13,7 @@ const getGlobalSubscriptions = (): Map<number, any> => {
 };
 import { useNavigate, Link } from "react-router-dom";
 import UserCalendar from "../components/UserCalendar";
-import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -26,7 +26,6 @@ import {
   faChevronRight,
   faClipboardList,
   faClock,
-  faExclamationTriangle,
   faFileAlt,
   faHome,
   faMapMarkerAlt,
@@ -58,6 +57,7 @@ import { getVendorById } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
 import CreateIssueModal from "../components/CreateIssueModal";
+import HomeownerIssueCard from "../components/HomeownerIssueCard";
 
 interface DashboardProps {
   user: User;
@@ -101,6 +101,19 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
   const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
+  const [isCreateDropdownOpen, setIsCreateDropdownOpen] = useState<boolean>(false);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (createDropdownRef.current && !createDropdownRef.current.contains(event.target as Node)) {
+        setIsCreateDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Issues for this user
   const filteredIssuesByUser = useMemo(() => {
@@ -235,6 +248,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     if (issueIds.length || vendorIds.length || filteredIssuesByUser.length) run();
   }, [dispatch, issueIds, vendorIds, filteredIssuesByUser]);
 
+  // Auto-rotate properties slideshow (cycles through pages of 2)
+  useEffect(() => {
+    if (!_listings || _listings.length <= 2) return;
+    const totalPages = Math.ceil(_listings.length / 2);
+    const interval = setInterval(() => {
+      setActivePropertyIndex((prev) => (prev + 1) % totalPages);
+    }, 5000); // Rotate every 5 seconds
+    return () => clearInterval(interval);
+  }, [_listings]);
+
   // Issue collections for CreateIssueModal (reports the user can add issues to)
   const issueCollections = useMemo(() => {
     if (!reports || !_listings) return [];
@@ -262,117 +285,244 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return "Good evening";
   };
 
+  // Tab state for Priority Inbox
+  const [activeInboxTab, setActiveInboxTab] = useState<'approvals' | 'quotes'>('approvals');
+  const [activePropertyIndex, setActivePropertyIndex] = useState(0);
+
+  // Get items needing approval (issues in review status)
+  const approvalItems = useMemo(() => {
+    return filteredIssuesByUser.filter(i => i.status === "Status.REVIEW");
+  }, [filteredIssuesByUser]);
+
+  // Get items with pending quotes
+  const quoteItems = useMemo(() => {
+    return filteredIssuesByUser.filter(i => {
+      const offers = offersByIssueId[i.id] || [];
+      return offers.some(o => o.status === IssueOfferStatus.RECEIVED);
+    });
+  }, [filteredIssuesByUser, offersByIssueId]);
+
+  // Get open issues
+  const openIssueItems = useMemo(() => {
+    return filteredIssuesByUser.filter(i => 
+      i.status === "Status.OPEN" || i.status === "Status.IN_PROGRESS"
+    );
+  }, [filteredIssuesByUser]);
+
+  // State for issue detail modal
+  const [selectedIssueForModal, setSelectedIssueForModal] = useState<IssueType | null>(null);
+  const [selectedListingForModal, setSelectedListingForModal] = useState<any>(null);
+  const [modalDefaultTab, setModalDefaultTab] = useState<"details" | "offers" | "assessments">("details");
+
+  // Helper to open issue in modal
+  const openIssueModal = (issue: IssueType, defaultTab: "details" | "offers" | "assessments" = "details") => {
+    const report = reports?.find((r) => r.id === issue.report_id);
+    const listing = _listings?.find((l) => l.id === report?.listing_id);
+    setSelectedIssueForModal(issue);
+    setSelectedListingForModal(listing || null);
+    setModalDefaultTab(defaultTab);
+  };
+
   return (
-    <div className="min-h-screen w-full bg-gray-50">
-      <div className="w-full max-w-[1800px] mx-auto px-4 py-3 lg:px-8 lg:py-4">
+    <div className="min-h-screen w-full bg-gray-100">
+      <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
         
-        {/* Hero Section - Compact */}
-        <div className="relative mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-          
-          <div className="relative px-5 py-4 lg:px-6 lg:py-5">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex-1">
-                <h1 className="text-xl lg:text-2xl font-bold mb-1">
-                  {getGreeting()}, {client?.first_name || "there"}!
-                </h1>
-                <p className="text-blue-100 text-sm max-w-xl">
-                  {isNewUser
-                    ? "Ready to take control of your home maintenance journey."
-                    : hasActionRequired
-                    ? realMetrics.reviewIssues > 0 && realMetrics.pendingOffers > 0
-                      ? `You have ${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} and ${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your attention!`
-                      : realMetrics.reviewIssues > 0
-                      ? `You have ${realMetrics.reviewIssues} completed job${realMetrics.reviewIssues !== 1 ? 's' : ''} waiting for your review!`
-                      : `You have ${realMetrics.pendingOffers} vendor offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for your review!`
-                    : `Managing ${realMetrics.totalListings} ${realMetrics.totalListings === 1 ? 'property' : 'properties'} like a pro.`}
-                </p>
-              </div>
-              
+        {/* TODAY AT A GLANCE - Header Section */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              Today at a glance
+            </h1>
+            
+            {/* Create Dropdown */}
+            <div className="relative" ref={createDropdownRef}>
               <button
-                onClick={() => setIsCreateIssueModalOpen(true)}
-                className="group inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-xl font-semibold text-sm hover:bg-blue-50 transition-all shadow-lg shadow-blue-900/10 hover:shadow-xl hover:scale-[1.02]"
+                onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+                className="group inline-flex items-center gap-2 px-5 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-sm hover:bg-amber-400 transition-all shadow-sm"
               >
                 <FontAwesomeIcon icon={faPlus} />
-                <span>Post a Job</span>
-                <FontAwesomeIcon icon={faArrowRight} className="group-hover:translate-x-1 transition-transform" />
+                <span>Create</span>
+                <FontAwesomeIcon icon={faChevronRight} className={`text-xs transition-transform ${isCreateDropdownOpen ? 'rotate-90' : ''}`} />
               </button>
-            </div>
-            
-            {/* Quick Stats Row - Clean Pills */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              <div 
-                onClick={() => navigate("/listings")}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20 cursor-pointer hover:bg-white/25 transition-colors"
-              >
-                <span className="stat-value text-base text-white">{realMetrics.totalListings}</span>
-                <span className="text-blue-100 text-xs">Properties</span>
-              </div>
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
-                <span className="stat-value text-base text-white">{realMetrics.totalReports}</span>
-                <span className="text-blue-100 text-xs">Reports</span>
-              </div>
-              
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
-                <span className="stat-value text-base text-white">{realMetrics.openIssues}</span>
-                <span className="text-blue-100 text-xs">Open Issues</span>
-              </div>
-              
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
-                <span className="stat-value text-base text-white">
-                  {realMetrics.pendingOffers + realMetrics.reviewIssues}
-                </span>
-                <span className="text-blue-100 text-xs">Action Required</span>
-              </div>
+              {isCreateDropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                  <button
+                    onClick={() => { setIsCreateIssueModalOpen(true); setIsCreateDropdownOpen(false); }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                  >
+                    <FontAwesomeIcon icon={faClipboardList} className="text-gray-400 w-4" />
+                    Post a Job
+                  </button>
+                  <button
+                    onClick={() => { setIsAddListingModalOpen(true); setIsCreateDropdownOpen(false); }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                  >
+                    <FontAwesomeIcon icon={faUpload} className="text-gray-400 w-4" />
+                    Upload Report
+                  </button>
+                  <button
+                    onClick={() => { navigate('/listings?action=add'); setIsCreateDropdownOpen(false); }}
+                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                  >
+                    <FontAwesomeIcon icon={faHome} className="text-gray-400 w-4" />
+                    Add Property
+                  </button>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* Stat Cards Row - Only show for existing users */}
+          {!isNewUser && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {/* Approvals Needed */}
+              <div 
+                onClick={() => navigate("/offers")}
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length + quoteItems.length}</div>
+                <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
+                {(approvalItems.length + quoteItems.length) > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-red-600">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                    {approvalItems.length > 0 ? `${approvalItems.length} overdue` : 'Review pending'}
+                  </div>
+                )}
+              </div>
+
+              {/* Quotes to Compare */}
+              <div 
+                onClick={() => navigate("/offers")}
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{quoteItems.length}</div>
+                <div className="text-sm font-semibold text-gray-900">Quotes to Compare</div>
+                <div className="text-xs text-gray-500 mt-2">
+                  Avg. response time: 6h
+                </div>
+              </div>
+
+              {/* Visit Scheduled */}
+              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                <div className="text-3xl font-bold text-gray-900 mb-1">{calendarEvents.length}</div>
+                <div className="text-sm font-semibold text-gray-900">Visit Scheduled</div>
+                {calendarEvents.length > 0 && (
+                  <div className="text-xs text-gray-500 mt-2">
+                    {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })} →
+                  </div>
+                )}
+              </div>
+
+              {/* Budget / Spend */}
+              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <span className="text-amber-600 font-bold">$</span>
+                  </span>
+                  <div>
+                    <div className="text-xl font-bold text-gray-900">
+                      ${Object.values(offersByIssueId).flat().filter(o => o.status === IssueOfferStatus.ACCEPTED).reduce((sum, o) => sum + (o.price || 0), 0).toLocaleString()}
+                    </div>
+                    <div className="text-xs text-gray-500">Spent on repairs</div>
+                  </div>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full" style={{ width: '45%' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* NEW USER: Welcome CTA */}
         {isNewUser && (
-          <div className="mb-4 p-5 rounded-2xl bg-white border border-gray-200 shadow-sm">
-            <div className="flex flex-col lg:flex-row items-center gap-5">
-              <div className="flex-1 text-center lg:text-left">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium mb-3">
-                  <FontAwesomeIcon icon={faRocket} />
-                  Get Started
+          <div className="mb-6">
+            {/* Hero Welcome Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+              <div className="absolute top-10 right-10 w-20 h-20 border border-amber-500/20 rounded-xl rotate-12"></div>
+              <div className="absolute bottom-10 right-32 w-12 h-12 border border-white/10 rounded-lg -rotate-6"></div>
+              
+              <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+                <div className="flex-1 text-center lg:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium mb-4">
+                    <FontAwesomeIcon icon={faMagic} className="text-amber-400" />
+                    Welcome to Inspectly
+                  </div>
+                  <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">
+                    Let's get your home project started
+                  </h2>
+                  <p className="text-gray-400 text-base mb-6 max-w-lg">
+                    Upload your inspection report and our AI will analyze it instantly, then connect you with verified contractors who can help.
+                  </p>
+                  
+                  <button
+                    onClick={() => setIsAddListingModalOpen(true)}
+                    className="inline-flex items-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
+                  >
+                    <FontAwesomeIcon icon={faUpload} />
+                    Upload Your Report
+                    <FontAwesomeIcon icon={faArrowRight} />
+                  </button>
                 </div>
-                <h2 className="text-lg lg:text-xl font-bold text-gray-900 mb-2">
-                  Upload Your First Inspection Report
-                </h2>
-                <p className="text-gray-600 text-sm mb-4 max-w-lg">
-                  Our AI analyzes your report instantly and connects you with verified contractors who can help.
-                </p>
-                <div className="flex flex-wrap gap-3 justify-center lg:justify-start mb-4">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <FontAwesomeIcon icon={faBolt} className="text-blue-500" />
-                    AI-powered analysis
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <FontAwesomeIcon icon={faCheckCircle} className="text-blue-500" />
-                    Verified contractors
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                    <FontAwesomeIcon icon={faClipboardList} className="text-blue-500" />
-                    Competitive quotes
+                
+                {/* Visual illustration */}
+                <div className="hidden lg:flex items-center justify-center">
+                  <div className="relative">
+                    {/* Stacked cards effect */}
+                    <div className="absolute -top-3 -left-3 w-40 h-48 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
+                    <div className="absolute -top-1 -left-1 w-40 h-48 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
+                    <div className="relative w-40 h-48 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
+                      <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
+                        <FontAwesomeIcon icon={faHome} className="text-2xl text-amber-600" />
+                      </div>
+                      <div className="h-2 w-24 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-2 w-20 bg-gray-100 rounded mb-2"></div>
+                      <div className="h-2 w-16 bg-gray-100 rounded"></div>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => setIsAddListingModalOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium text-sm hover:bg-blue-700 transition shadow-md"
-                >
-                  <FontAwesomeIcon icon={faUpload} />
-                  Upload Report
-                  <FontAwesomeIcon icon={faArrowRight} />
-                </button>
               </div>
-              <div className="hidden lg:flex items-center justify-center">
-                <div className="relative">
-                  <div className="w-32 h-32 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl rotate-6 opacity-20"></div>
-                  <div className="absolute inset-0 w-32 h-32 bg-white rounded-2xl shadow-lg border border-gray-200 flex items-center justify-center">
-                    <FontAwesomeIcon icon={faHome} className="text-4xl text-blue-500" />
+            </div>
+            
+            {/* Quick Start Steps */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
+                   onClick={() => setIsAddListingModalOpen(true)}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 transition-colors">
+                    <span className="text-amber-600 font-bold group-hover:text-white transition-colors">1</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Upload Report</h3>
+                    <p className="text-sm text-gray-500">Add your property and upload an inspection report</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-xl p-5 border border-gray-200 opacity-60">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-gray-400 font-bold">2</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Review Issues</h3>
+                    <p className="text-sm text-gray-500">AI extracts and prioritizes repair items</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white rounded-xl p-5 border border-gray-200 opacity-60">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-gray-400 font-bold">3</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
+                    <p className="text-sm text-gray-500">Receive competitive quotes from verified pros</p>
                   </div>
                 </div>
               </div>
@@ -380,166 +530,307 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         )}
 
-        {/* EXISTING USER: Bento Grid Layout */}
+        {/* MAIN GRID LAYOUT */}
         {!isNewUser && (
-          <div className="grid grid-cols-12 gap-4 w-full min-w-0 overflow-hidden">
+          <div className="grid grid-cols-12 gap-5 w-full min-w-0 overflow-hidden">
             
-            {/* Action Row: Action Required + Upload CTA */}
-            {hasActionRequired && (
-              <>
-                <div className="col-span-12 lg:col-span-7 min-w-0">
-                  <div className="dashboard-card h-full overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-                            <FontAwesomeIcon icon={faClipboardList} className="text-white text-sm" />
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-sm text-gray-900">Action Required</h3>
-                            <p className="text-xs text-gray-600">
-                              {realMetrics.reviewIssues > 0 && realMetrics.pendingOffers > 0 
-                                ? `${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} & ${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting`
-                                : realMetrics.reviewIssues > 0
-                                ? `${realMetrics.reviewIssues} review${realMetrics.reviewIssues !== 1 ? 's' : ''} waiting for approval`
-                                : `${realMetrics.pendingOffers} offer${realMetrics.pendingOffers !== 1 ? 's' : ''} waiting for decision`}
-                            </p>
-                          </div>
-                        </div>
-                        {realMetrics.pendingOffers > 0 && (
-                          <button
-                            onClick={() => navigate("/offers")}
-                            className="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 hover:bg-blue-50 rounded transition-colors"
-                          >
-                            View All
-                          </button>
-                        )}
+            {/* PRIORITY INBOX - Main Card */}
+            <div className="col-span-12 lg:col-span-8 min-w-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                {/* Header with icon and tabs */}
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faClipboardList} className="text-gray-600 text-lg" />
                       </div>
+                      <h2 className="text-lg font-bold text-gray-900">Priority Inbox</h2>
+                      <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 text-sm" />
                     </div>
-                    <div className="p-2">
-                      <div className="space-y-1.5">
-                        {actionRequiredItems.slice(0, 3).map((item) => {
-                          const report = reports?.find((r) => r.id === item.report_id);
-                          const listing = _listings?.find((l) => l.id === report?.listing_id);
+                  </div>
+                  
+                  {/* Tabs */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setActiveInboxTab('approvals')}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                        activeInboxTab === 'approvals' 
+                          ? 'bg-gray-900 text-white' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Approvals
+                      {approvalItems.length > 0 && (
+                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                          activeInboxTab === 'approvals' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {approvalItems.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveInboxTab('quotes')}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                        activeInboxTab === 'quotes' 
+                          ? 'bg-gray-900 text-white' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      Quotes
+                      {quoteItems.length > 0 && (
+                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                          activeInboxTab === 'quotes' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {quoteItems.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-                          if (item.actionType === 'review') {
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => navigate(`/listings/${report?.listing_id}/reports/${item.report_id}/issues/${item.id}`)}
-                                className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                    item.severity === "high" ? "bg-red-500" : 
-                                    item.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
-                                  }`}></div>
-                                  <div className="min-w-0">
-                                    <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
-                                      {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
-                                    </div>
-                                    <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
-                                  </div>
-                                </div>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                  Review Work
-                                </span>
-                              </div>
-                            );
-                          } else {
-                            const offers = offersByIssueId[item.id] ?? [];
-                            const pendingCount = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+                {/* Tab Content */}
+                <div className="p-4">
+                  {/* Approvals Tab */}
+                  {activeInboxTab === 'approvals' && (
+                    <div className="space-y-3">
+                      {approvalItems.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <FontAwesomeIcon icon={faCheckCircle} className="text-3xl text-gray-300 mb-2" />
+                          <p>No approvals pending</p>
+                        </div>
+                      ) : (
+                        <>
+                          {approvalItems.slice(0, 2).map((item) => {
+                            const report = reports?.find((r) => r.id === item.report_id);
+                            const listing = _listings?.find((l) => l.id === report?.listing_id);
+                            const offers = offersByIssueId[item.id] || [];
+                            const acceptedOffer = offers.find(o => o.status === IssueOfferStatus.ACCEPTED);
                             
                             return (
                               <div
                                 key={item.id}
-                                onClick={() => navigate(`/listings/${report?.listing_id}/reports/${item.report_id}/issues/${item.id}?tab=offers`)}
-                                className="group flex items-center justify-between px-3 py-2 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition-all"
+                                onClick={() => openIssueModal(item)}
+                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                               >
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                                    item.severity === "high" ? "bg-red-500" : 
-                                    item.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
-                                  }`}></div>
-                                  <div className="min-w-0">
-                                    <div className="font-medium text-xs text-gray-900 truncate group-hover:text-gray-700 transition-colors">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-amber-50">
+                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900">
                                       {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
                                     </div>
-                                    <div className="text-xs text-gray-600 truncate">{listing?.address || "Property"}</div>
+                                    <div className="text-sm text-gray-500 flex items-center gap-1">
+                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                      {listing?.address || "Property"}
+                                    </div>
                                   </div>
                                 </div>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                                  {pendingCount} offer{pendingCount !== 1 ? "s" : ""}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                  {acceptedOffer && (
+                                    <span className="text-lg font-bold text-gray-900">${acceptedOffer.price?.toLocaleString()}</span>
+                                  )}
+                                  <button className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg hover:bg-amber-400 transition-colors flex items-center gap-2">
+                                    Approve <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                                  </button>
+                                </div>
                               </div>
                             );
-                          }
-                        })}
-                        {realMetrics.pendingOffers > 3 && (
-                          <button
-                            onClick={() => navigate("/offers")}
-                            className="w-full text-center px-3 py-2 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            View {realMetrics.pendingOffers - 3} more offer{realMetrics.pendingOffers - 3 !== 1 ? 's' : ''}
-                          </button>
-                        )}
-                      </div>
+                          })}
+                          {approvalItems.length > 2 && (
+                            <button
+                              onClick={() => navigate("/offers?filter=review")}
+                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                              View all {approvalItems.length} approvals →
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
-                </div>
-                
-                {/* Upload CTA - paired with offers */}
-                <div className="col-span-12 lg:col-span-5 min-w-0">
-                  <div className="dashboard-card h-full overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                          <FontAwesomeIcon icon={faUpload} className="text-white text-sm" />
-                        </div>
-                        <h3 className="font-semibold text-sm text-gray-900">Upload New Report</h3>
-                      </div>
-                    </div>
-                    <div className="p-3 flex flex-col justify-between h-[calc(100%-52px)]">
-                      <p className="text-xs text-gray-600 mb-3">
-                        Get AI analysis and vendor quotes instantly
-                      </p>
-                      <button
-                        onClick={() => setIsAddListingModalOpen(true)}
-                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                      >
-                        Upload Now <FontAwesomeIcon icon={faArrowRight} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
+                  )}
 
-            {/* Properties Grid - Main Card */}
-            <div className="col-span-12 lg:col-span-7 min-w-0">
-              <div className="dashboard-card overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faHome} className="text-white text-sm" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm text-gray-900">Your Properties</h3>
-                        <p className="text-xs text-gray-600">{realMetrics.totalListings} total</p>
-                      </div>
+                  {/* Quotes Tab */}
+                  {activeInboxTab === 'quotes' && (
+                    <div className="space-y-3">
+                      {quoteItems.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <FontAwesomeIcon icon={faFileAlt} className="text-3xl text-gray-300 mb-2" />
+                          <p>No quotes to review</p>
+                        </div>
+                      ) : (
+                        <>
+                          {quoteItems.slice(0, 2).map((item) => {
+                            const report = reports?.find((r) => r.id === item.report_id);
+                            const listing = _listings?.find((l) => l.id === report?.listing_id);
+                            const offers = offersByIssueId[item.id] || [];
+                            const pendingOffers = offers.filter(o => o.status === IssueOfferStatus.RECEIVED);
+                            const lowestOffer = pendingOffers.length > 0 
+                              ? pendingOffers.reduce((min, o) => (o.price || 0) < (min.price || 0) ? o : min, pendingOffers[0])
+                              : null;
+                            
+                            return (
+                              <div
+                                key={item.id}
+                                onClick={() => openIssueModal(item, "offers")}
+                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-amber-50">
+                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-amber-600" />
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold text-gray-900">
+                                      {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                                    </div>
+                                    <div className="text-sm text-gray-500 flex items-center gap-1">
+                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                      {listing?.address || "Property"}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  {lowestOffer && (
+                                    <div className="text-right">
+                                      <span className="text-lg font-bold text-gray-900">${lowestOffer.price?.toLocaleString()}</span>
+                                      {pendingOffers.length > 1 && (
+                                        <div className="text-xs text-gray-500">{pendingOffers.length} quotes</div>
+                                      )}
+                                    </div>
+                                  )}
+                                  {pendingOffers.length === 1 ? (
+                                    <button className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg hover:bg-amber-400 transition-colors flex items-center gap-2">
+                                      Accept <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                                    </button>
+                                  ) : (
+                                    <button className="px-4 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2">
+                                      Compare <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {quoteItems.length > 2 && (
+                            <button
+                              onClick={() => navigate("/offers?filter=pending")}
+                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                              View all {quoteItems.length} quotes →
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
-                    <Link to="/listings" className="text-gray-600 hover:text-gray-900 text-xs font-medium flex items-center gap-1">
-                      View All <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                    </Link>
+                  )}
+
+                </div>
+              </div>
+            </div>
+
+            {/* PROJECT HEALTH - Sidebar Card */}
+            <div className="col-span-12 lg:col-span-4 min-w-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <FontAwesomeIcon icon={faTrophy} className="text-gray-600" />
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-900">Project Health</h2>
+                  </div>
+                  <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
+                </div>
+                
+                <div className="p-5 space-y-5">
+                  {/* Resolution Progress */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Resolution Rate</span>
+                      <span className="text-sm font-bold text-gray-900">{resolutionRate}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500" 
+                        style={{ width: `${resolutionRate}%` }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Next Visit */}
+                  {calendarEvents.length > 0 && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Next Visit</div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className="text-xs text-gray-500">{calendarEvents[0]?.title}</div>
+                    </div>
+                  )}
+
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xl font-bold text-gray-900">{realMetrics.totalIssues}</div>
+                      <div className="text-xs text-gray-500">Total</div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xl font-bold text-gray-900">{realMetrics.openIssues}</div>
+                      <div className="text-xs text-gray-500">Open</div>
+                    </div>
+                    <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                      <div className="text-xl font-bold text-emerald-600">{realMetrics.completedIssues}</div>
+                      <div className="text-xs text-gray-500">Done</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            {/* ACTIVE PROPERTIES - Like "Active Renovations" in mockup */}
+            <div className="col-span-12">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faHome} className="text-gray-600" />
+                      </div>
+                      <h2 className="text-lg font-bold text-gray-900">Active Properties</h2>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {_listings && _listings.length > 2 && (
+                        <div className="flex gap-1">
+                          {Array.from({ length: Math.ceil(_listings.length / 2) }).map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setActivePropertyIndex(idx)}
+                              className={`w-2 h-2 rounded-full transition-colors ${
+                                idx === activePropertyIndex ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <Link to="/listings" className="ml-2 text-gray-400 hover:text-gray-600">
+                        <FontAwesomeIcon icon={faChevronRight} />
+                      </Link>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="p-3">
+                <div className="p-5">
                   {_listings && _listings.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {[..._listings]
-                        .map((listing) => {
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      {(() => {
+                        // Show 2 properties at a time, starting from activePropertyIndex
+                        const startIdx = (activePropertyIndex * 2) % _listings.length;
+                        const visibleListings = [];
+                        for (let i = 0; i < Math.min(2, _listings.length); i++) {
+                          visibleListings.push(_listings[(startIdx + i) % _listings.length]);
+                        }
+                        
+                        return visibleListings.map((listing) => {
                           const listingReports = reports?.filter((r) => r.listing_id === listing.id) || [];
                           const listingIssues = filteredIssuesByUser.filter((i) =>
                             listingReports.some((r) => r.id === i.report_id)
@@ -547,70 +838,86 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           const openCount = listingIssues.filter(
                             (i) => i.status === "Status.OPEN" || i.status === "Status.IN_PROGRESS"
                           ).length;
-                          return { listing, listingReports, listingIssues, openCount };
-                        })
-                        .sort((a, b) => {
-                          // Properties with open issues first, then by created date
-                          if (a.openCount > 0 && b.openCount === 0) return -1;
-                          if (a.openCount === 0 && b.openCount > 0) return 1;
-                          // If both have or don't have open issues, sort by open count (desc), then created date
-                          if (a.openCount !== b.openCount) return b.openCount - a.openCount;
-                          return new Date(b.listing.created_at).getTime() - new Date(a.listing.created_at).getTime();
-                        })
-                        .slice(0, 4)
-                        .map(({ listing, listingReports, listingIssues, openCount }) => (
+                          const completedCount = listingIssues.filter(
+                            (i) => i.status === "Status.COMPLETED"
+                          ).length;
+                          const progressPercent = listingIssues.length > 0 
+                            ? Math.round((completedCount / listingIssues.length) * 100) 
+                            : 0;
+                          
+                          return (
                             <div
                               key={listing.id}
                               onClick={() => navigate(`/listings/${listing.id}`)}
-                              className="group rounded-xl overflow-hidden cursor-pointer bg-gray-50 hover:bg-white border border-gray-100 hover:border-gray-300 hover:shadow-md transition-all"
+                              className="group rounded-xl overflow-hidden cursor-pointer bg-white border border-gray-200 hover:shadow-xl transition-all duration-300"
                             >
-                              <div className="h-28 bg-gray-200 relative overflow-hidden">
+                              {/* Large Image */}
+                              <div className="h-44 bg-gray-200 relative overflow-hidden">
                                 <ImageComponent
                                   src={listing.image_url}
                                   fallback="/images/property_card_holder.jpg"
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                                {openCount > 0 && (
-                                  <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-md">
-                                    {openCount} open
-                                  </div>
-                                )}
-                                <div className="absolute bottom-2 left-2 right-2">
-                                  <h4 className="font-semibold text-white truncate text-sm drop-shadow-lg">
-                                    {listing.address}
-                                  </h4>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
+                                
+                                {/* Title overlay */}
+                                <div className="absolute bottom-4 left-4 right-4">
+                                  <h3 className="font-bold text-white text-xl mb-1 drop-shadow-lg">
+                                    {listing.address?.split(',')[0] || listing.address}
+                                  </h3>
+                                  <p className="text-white/80 text-sm">
+                                    {listing.city}, {listing.state}
+                                  </p>
                                 </div>
                               </div>
-                              <div className="p-2.5">
-                                <p className="text-xs text-gray-600 flex items-center gap-1 mb-1.5">
-                                  <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400 text-xs" />
-                                  {listing.city}, {listing.state}
-                                </p>
-                                <div className="flex items-center gap-3 text-xs text-gray-600">
-                                  <div className="flex items-center gap-1">
-                                    <FontAwesomeIcon icon={faFileAlt} className="text-gray-400 text-xs" />
-                                    {listingReports.length} report{listingReports.length !== 1 ? "s" : ""}
+                              
+                              {/* Footer with progress */}
+                              <div className="p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    {openCount > 0 ? (
+                                      <span className="text-sm text-amber-600 font-medium">
+                                        {openCount} open issue{openCount !== 1 ? 's' : ''}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm text-gray-500">
+                                        {listingIssues.length} issue{listingIssues.length !== 1 ? 's' : ''} tracked
+                                      </span>
+                                    )}
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <FontAwesomeIcon icon={faExclamationTriangle} className="text-gray-400 text-xs" />
-                                    {listingIssues.length} issue{listingIssues.length !== 1 ? "s" : ""}
-                                  </div>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/listings/${listing.id}`); }}
+                                    className="text-sm font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                                  >
+                                    View Property <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                                  </button>
+                                </div>
+                                
+                                {/* Progress bar */}
+                                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                      openCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'
+                                    }`}
+                                    style={{ width: `${progressPercent}%` }}
+                                  ></div>
                                 </div>
                               </div>
                             </div>
-                        ))}
+                          );
+                        });
+                      })()}
                     </div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="w-14 h-14 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                        <FontAwesomeIcon icon={faBuilding} className="text-gray-400 text-xl" />
+                    <div className="text-center py-12">
+                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <FontAwesomeIcon icon={faBuilding} className="text-gray-400 text-2xl" />
                       </div>
-                      <p className="text-gray-600 mb-1 font-medium text-sm">No properties yet</p>
-                      <p className="text-xs text-gray-600 mb-3">Add your first property to get started</p>
+                      <p className="text-gray-900 mb-1 font-semibold">No properties yet</p>
+                      <p className="text-sm text-gray-500 mb-4">Add your first property to get started</p>
                       <button
                         onClick={() => setIsAddListingModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium text-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium text-sm hover:bg-gray-800 transition"
                       >
                         Add property <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
                       </button>
@@ -620,160 +927,42 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
             </div>
 
-            {/* Side Column */}
-            <div className="col-span-12 lg:col-span-5 space-y-4 min-w-0">
-              {/* Upload CTA Card - Only show when not in action row */}
-              {!hasActionRequired && (
-                <div className="dashboard-card">
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faUpload} className="text-white text-sm" />
+            {/* SCHEDULE CARD - Only shown if there are upcoming events */}
+            {hasUpcomingAssessments && (
+              <div className="col-span-12 lg:col-span-4">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-600" />
                       </div>
-                      <h3 className="font-semibold text-sm text-gray-900">Upload New Report</h3>
+                      <h2 className="text-lg font-bold text-gray-900">Schedule</h2>
                     </div>
                   </div>
-                  <div className="p-3">
-                    <p className="text-xs text-gray-600 mb-3">
-                      Get AI analysis and vendor quotes instantly
-                    </p>
-                    <button
-                      onClick={() => setIsAddListingModalOpen(true)}
-                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                    >
-                      Upload Now <FontAwesomeIcon icon={faArrowRight} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Progress Card */}
-              <div className="dashboard-card">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faTrophy} className="text-white text-sm" />
-                      </div>
-                      <h3 className="font-semibold text-sm text-gray-900">Resolution Progress</h3>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-center py-2">
-                    <div className="relative inline-flex">
-                      <svg className="w-24 h-24 transform -rotate-90">
-                        <circle cx="48" cy="48" r="42" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                        <circle 
-                          cx="48" cy="48" r="42" 
-                          stroke="url(#gradientBlueClient)" 
-                          strokeWidth="8" 
-                          fill="none"
-                          strokeLinecap="round"
-                          strokeDasharray={`${resolutionRate * 2.64} 264`}
-                        />
-                        <defs>
-                          <linearGradient id="gradientBlueClient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="#3b82f6" />
-                            <stop offset="100%" stopColor="#6366f1" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div>
-                          <div className="stat-value text-2xl text-gray-900">{resolutionRate}%</div>
-                          <div className="text-xs text-gray-600">Resolved</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-100">
-                    <div className="text-center">
-                      <div className="stat-value text-lg text-gray-900">{realMetrics.totalIssues}</div>
-                      <div className="text-xs text-gray-600">Total</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="stat-value text-lg text-yellow-600">{realMetrics.openIssues}</div>
-                      <div className="text-xs text-gray-600">Open</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="stat-value text-lg text-emerald-600">{realMetrics.completedIssues}</div>
-                      <div className="text-xs text-gray-600">Done</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upcoming Assessments */}
-              <div className="dashboard-card">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faCalendarAlt} className="text-white text-sm" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-gray-900">Schedule</h3>
-                      <p className="text-xs text-gray-600">
-                        {hasUpcomingAssessments ? `${calendarEvents.length} upcoming` : 'No appointments'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3">
-                  {hasUpcomingAssessments ? (
-                    <div className="space-y-2">
-                      {calendarEvents.slice(0, 3).map((event) => (
-                        <div key={event.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                          <div className="w-10 h-12 bg-white rounded-md shadow-sm flex flex-col items-center justify-center flex-shrink-0 border border-gray-100">
-                            <span className="text-xs font-medium text-gray-600">
+                  <div className="p-4">
+                    <div className="space-y-3">
+                      {calendarEvents.slice(0, 2).map((event) => (
+                        <div key={event.id} className="group flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                          <div className="w-12 h-14 bg-white rounded-lg shadow-sm flex flex-col items-center justify-center flex-shrink-0 border border-gray-200">
+                            <span className="text-xs font-semibold text-gray-500 uppercase">
                               {event.start.toLocaleDateString("en-US", { month: "short" })}
                             </span>
-                            <span className="text-sm font-bold text-gray-900">{event.start.getDate()}</span>
+                            <span className="text-lg font-bold text-gray-900">{event.start.getDate()}</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-xs text-gray-900 truncate">{event.title}</div>
-                            <div className="text-xs text-gray-600 flex items-center gap-1">
-                              <FontAwesomeIcon icon={faClock} className="text-xs" />
+                            <div className="font-semibold text-sm text-gray-900 truncate">{event.title}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1.5">
+                              <FontAwesomeIcon icon={faClock} />
                               {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-2">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-lg" />
-                      </div>
-                      <p className="text-xs text-gray-600">No scheduled assessments</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Vendor Map - Smaller, less prominent */}
-            <div className="col-span-12 lg:col-span-7">
-              <div className="dashboard-card">
-                <div className="px-4 py-2 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="text-white text-xs" />
-                      </div>
-                      <h3 className="font-semibold text-sm text-gray-900">Vendor Network</h3>
-                    </div>
-                    <span className="text-xs text-gray-600">Verified professionals near you</span>
-                  </div>
-                </div>
-                <div className="p-2">
-                  <div className="rounded-lg overflow-hidden h-[180px]">
-                    <VendorMap />
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -807,6 +996,27 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         }}
         issueCollections={issueCollections}
       />
+
+      {/* Issue Detail Modal */}
+      {selectedIssueForModal && (
+        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
+          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+            <button
+              onClick={() => setSelectedIssueForModal(null)}
+              className="absolute -top-10 right-0 text-white text-3xl leading-none px-2 hover:text-gray-300 transition-colors"
+            >
+              &times;
+            </button>
+            <HomeownerIssueCard
+              key={`${selectedIssueForModal.id}-${modalDefaultTab}`}
+              issue={selectedIssueForModal}
+              listing={selectedListingForModal}
+              onClose={() => setSelectedIssueForModal(null)}
+              defaultTab={modalDefaultTab}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -19,10 +19,11 @@ import { useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { RootState } from "../store/store";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import logo from "@/assets/logo.png";
 
 interface DashboardSidebarProps {
-  isSidebarOpen: boolean; // Prop to check if sidebar is open
-  toggleSidebar: () => void; // Prop to toggle sidebar
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
 }
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
@@ -37,13 +38,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     (state: RootState) => state.auth.authenticated
   );
 
-  // Fetch vendor data if user is a vendor
   const { data: vendor } = useGetVendorByVendorUserIdQuery(
     String(user?.id),
     { skip: !user?.id || user?.user_type !== "vendor" }
   );
 
-  // Construct marketplace link with vendor's specialty and city
   const marketplaceLink = useMemo(() => {
     if (user?.user_type === "vendor" && vendor) {
       const type = vendor.vendor_types?.split(',')[0]?.trim() || '';
@@ -57,185 +56,169 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     <aside
       className={`fixed top-0 ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } w-[250px] h-screen z-30 bg-white text-neutral-900 transition-transform duration-300`}
+      } w-[250px] h-screen z-30 bg-white border-r border-gray-200 transition-transform duration-300`}
     >
+      {/* Close button */}
       <button
         type="button"
-        className="absolute top-[14px] right-3 inline-flex items-center justify-center h-6 w-6 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors z-10"
+        className="absolute top-4 right-3 inline-flex items-center justify-center h-7 w-7 rounded-full hover:bg-gray-100 transition-colors z-10"
         onClick={toggleSidebar}
       >
-        <FontAwesomeIcon icon={faClose} className="text-sm" />
+        <FontAwesomeIcon icon={faClose} className="text-sm text-gray-500" />
       </button>
-      <div>
-        <Link
-          to="/dashboard"
-          className="flex h-[48px] items-center ml-3 border-r border-b text-xl font-semibold border-gray-200 px-3 py-2"
-        >
-          Inspectly
+
+      {/* Logo */}
+      <div className="h-16 flex items-center px-4 border-b border-gray-100">
+        <Link to="/dashboard" className="flex items-center">
+          <img src={logo} alt="Inspectly" className="h-9 w-auto" />
         </Link>
       </div>
-      <div className="h-[calc(100vh-48px)] overflow-y-scroll scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white border-r border-gray-200 px-3 py-2">
-        <ul className="sidebar-menu flex flex-col h-full">
+
+      {/* Navigation */}
+      <div className="h-[calc(100vh-64px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-white px-3 py-4">
+        <ul className="flex flex-col h-full space-y-1">
           <li>
             <Link
               to="/dashboard"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
             >
-              <FontAwesomeIcon
-                icon={faChalkboard}
-                className="mr-2 size-[19px]"
-              />
+              <FontAwesomeIcon icon={faChalkboard} className="mr-3 w-4" />
               <span>Dashboard</span>
-            </Link>
-          </li>
-          {isAuthReady && user?.user_type === "vendor" && (
-            <li>
-              <Link
-                to="/vendor/jobs"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                  activePage === "/vendor/jobs"
-                    ? "bg-blue-500 text-white"
-                    : "text-neutral-600 hover:text-blue-400"
-                }`}
-              >
-                <FontAwesomeIcon
-                  icon={faBriefcase}
-                  className="mr-2 size-[19px]"
-                />
-                <span>Jobs</span>
-              </Link>
-            </li>
-          )}
-          <li>
-            <Link
-              to="/listings"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/listings"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faListCheck}
-                className="mr-2 size-[19px]"
-              />
-              <span>Listings</span>
-            </Link>
-          </li>
-          {user?.user_type === "client" && (
-            <li>
-              <Link
-                to="/offers"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                  activePage === "/offers"
-                    ? "bg-blue-500 text-white"
-                    : "text-neutral-600 hover:text-blue-400"
-                }`}
-              >
-                <FontAwesomeIcon
-                  icon={faFileInvoiceDollar}
-                  className="mr-2 size-[19px]"
-                />
-                <span>Offers</span>
-              </Link>
-            </li>
-          )}
-          <li>
-            <Link
-              to="/dashboard/chat"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/chat"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faCommentDots}
-                className="mr-2 size-[19px]"
-              />
-              <span>Chat</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/pricing"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/pricing"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faMoneyBill1}
-                className="mr-2 size-[19px]"
-              />
-              <span>Pricing</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/dashboard/faqs"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/faqs"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faCircleQuestion}
-                className="mr-2 size-[19px]"
-              />
-              <span>FAQs.</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/dashboard/termsandconditions"
-              className={`group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium ${
-                activePage === "/dashboard/termsandconditions"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon
-                icon={faInfo}
-                className="mr-2 text-[10px] rounded-full border-2 py-[3px] px-1.5 border-neutral-600 group-hover:border-blue-400"
-              />
-              <span>Terms & Conditions</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/dashboard/settings"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                activePage === "/dashboard/settings"
-                  ? "bg-blue-500 text-white"
-                  : "text-neutral-600 hover:text-blue-400"
-              }`}
-            >
-              <FontAwesomeIcon icon={faGear} className="mr-2 size-[19px]" />
-              <span>Settings</span>
             </Link>
           </li>
 
           {isAuthReady && user?.user_type === "vendor" && (
-            <li className="mt-auto mb-2">
+            <li>
               <Link
-                to={marketplaceLink}
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition duration-150 ease-in-out ${
-                  activePage.startsWith("/marketplace")
-                    ? "bg-blue-500 text-white"
-                    : "text-white bg-blue-400 hover:bg-blue-500"
+                to="/vendor/jobs"
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  activePage === "/vendor/jobs"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
-                <FontAwesomeIcon
-                  icon={faShop}
-                  className="mr-2 size-[19px] text-white"
-                />
+                <FontAwesomeIcon icon={faBriefcase} className="mr-3 w-4" />
+                <span>Jobs</span>
+              </Link>
+            </li>
+          )}
+
+          <li>
+            <Link
+              to="/listings"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/listings"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
+              <span>Listings</span>
+            </Link>
+          </li>
+
+          {user?.user_type === "client" && (
+            <li>
+              <Link
+                to="/offers"
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  activePage === "/offers"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                <FontAwesomeIcon icon={faFileInvoiceDollar} className="mr-3 w-4" />
+                <span>Offers</span>
+              </Link>
+            </li>
+          )}
+
+          <li>
+            <Link
+              to="/dashboard/chat"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/dashboard/chat"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faCommentDots} className="mr-3 w-4" />
+              <span>Chat</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/pricing"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/pricing"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faMoneyBill1} className="mr-3 w-4" />
+              <span>Pricing</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/dashboard/faqs"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/dashboard/faqs"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faCircleQuestion} className="mr-3 w-4" />
+              <span>FAQs</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/dashboard/termsandconditions"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/dashboard/termsandconditions"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />
+              <span>Terms & Conditions</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/dashboard/settings"
+              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                activePage === "/dashboard/settings"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            >
+              <FontAwesomeIcon icon={faGear} className="mr-3 w-4" />
+              <span>Settings</span>
+            </Link>
+          </li>
+
+          {/* Marketplace button for vendors - gold accent */}
+          {isAuthReady && user?.user_type === "vendor" && (
+            <li className="mt-auto pt-4">
+              <Link
+                to={marketplaceLink}
+                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                  activePage.startsWith("/marketplace")
+                    ? "bg-amber-500 text-white"
+                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                <FontAwesomeIcon icon={faShop} className="mr-3 w-4" />
                 <span>Marketplace</span>
               </Link>
             </li>

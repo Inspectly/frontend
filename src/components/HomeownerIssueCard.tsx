@@ -40,12 +40,14 @@ export interface HomeownerIssueCardProps {
   issue: IssueType;
   listing?: Listing;
   onClose?: () => void;
+  defaultTab?: "details" | "offers" | "assessments";
 }
 
 const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   issue,
   listing,
   onClose,
+  defaultTab = "details",
 }) => {
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
@@ -88,7 +90,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<
     "details" | "offers" | "assessments"
-  >("details");
+  >(defaultTab);
   const [isActive, setIsActive] = useState<boolean>(issue.active);
 
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -109,7 +111,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
 
-  useEffect(() => setIsActive(issue.active), [issue.active]);
+  // Only sync isActive from props when issue.id changes (new issue loaded)
+  // Don't sync on issue.active changes to avoid race condition during updates
+  useEffect(() => setIsActive(issue.active), [issue.id]);
 
   const handleStatusChange = async (newStatus: string) => {
     // If status is moving to completed, trigger review modal
@@ -160,9 +164,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
   useEffect(() => {
-    setActiveTab("details");
-    navigate(`?tab=details`, { replace: true });
-  }, [issue?.id, navigate]);
+    setActiveTab(defaultTab);
+    navigate(`?tab=${defaultTab}`, { replace: true });
+  }, [issue?.id, defaultTab, navigate]);
 
   const vendorIdToName = useMemo(() => {
     const map: Record<number, string> = {};
@@ -226,7 +230,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     try {
       await updateIssue({
         ...issue,
-        status: issue.status,
+        status: statusMapping[issue.status as IssueStatus],
         active: next,
       }).unwrap();
     } catch (e) {
@@ -488,6 +492,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                   {/* Marketplace Visibility Toggle - disabled once an offer is accepted */}
                   {(() => {
                     const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
+                    const isDisabled = isUpdatingVisibility || hasAcceptedOffer || offersLoading;
                     return (
                       <div className="flex justify-between items-center gap-4">
                         <div>
@@ -504,16 +509,16 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              if (!hasAcceptedOffer) {
+                              if (!hasAcceptedOffer && !offersLoading) {
                                 handleToggleVisibility();
                               }
                             }}
-                            disabled={isUpdatingVisibility || hasAcceptedOffer}
+                            disabled={isDisabled}
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                               hasAcceptedOffer
                                 ? "bg-gray-200 cursor-not-allowed"
                                 : isActive ? "bg-blue-500" : "bg-gray-300"
-                            } ${isUpdatingVisibility ? "opacity-60 cursor-not-allowed" : ""}`}
+                            } ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                           >
                             <span
                               className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"}`}
