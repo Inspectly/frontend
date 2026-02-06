@@ -384,9 +384,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length + quoteItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
                 {(approvalItems.length + quoteItems.length) > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-red-600">
-                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                    {approvalItems.length > 0 ? `${approvalItems.length} overdue` : 'Review pending'}
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                    Action needed
                   </div>
                 )}
               </div>
@@ -398,9 +398,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{quoteItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Quotes to Compare</div>
-                <div className="text-xs text-gray-500 mt-2">
-                  Avg. response time: 6h
-                </div>
+                {quoteItems.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                    Review pending
+                  </div>
+                )}
               </div>
 
               {/* Visit Scheduled */}
