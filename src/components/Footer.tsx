@@ -27,13 +27,13 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-white border-t border-gray-200">
-      <div className="container mx-auto px-4 lg:px-8 py-12 max-w-6xl">
+    <footer className="bg-muted/30 border-t border-border">
+      <div className="container mx-auto px-4 lg:px-8 py-10 max-w-5xl">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           {/* Logo and description */}
           <div className="max-w-xs">
-            <img src={logo} alt="InspectlyAI" className="h-10 w-auto mb-4" />
-            <p className="text-gray-600 text-sm mb-5">
+            <img src={logo} alt="InspectlyAI" className="h-12 w-auto mb-4" />
+            <p className="text-muted-foreground text-sm mb-4">
               Connecting homeowners with trusted contractors.
             </p>
             {/* Social links */}
@@ -43,7 +43,7 @@ const Footer = () => {
                   key={index}
                   href={social.href}
                   aria-label={social.label}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-900 flex items-center justify-center text-gray-600 hover:text-white transition-all duration-300"
+                  className="w-8 h-8 rounded-full bg-muted hover:bg-foreground flex items-center justify-center text-foreground hover:text-background transition-all duration-300"
                 >
                   <social.icon className="w-4 h-4" />
                 </a>
@@ -52,15 +52,15 @@ const Footer = () => {
           </div>
 
           {/* Links */}
-          <div className="flex flex-wrap gap-x-16 gap-y-6">
+          <div className="flex flex-wrap gap-x-12 gap-y-6">
             <div>
-              <h4 className="font-semibold text-gray-900 text-sm mb-4">Company</h4>
-              <ul className="space-y-3">
+              <h4 className="font-semibold text-foreground text-sm mb-3">Company</h4>
+              <ul className="space-y-2">
                 {mainLinks.map((link) => (
                   <li key={link.label}>
                     <button
                       onClick={link.action}
-                      className="text-sm text-gray-600 hover:text-gray-900 transition-colors text-left"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                     >
                       {link.label}
                     </button>
@@ -70,13 +70,13 @@ const Footer = () => {
             </div>
 
             <div>
-              <h4 className="font-semibold text-gray-900 text-sm mb-4">Account</h4>
-              <ul className="space-y-3">
+              <h4 className="font-semibold text-foreground text-sm mb-3">Account</h4>
+              <ul className="space-y-2">
                 {authLinks.map((link) => (
                   <li key={link.label}>
                     <button
                       onClick={link.action}
-                      className="text-sm text-gray-600 hover:text-gray-900 transition-colors text-left"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                     >
                       {link.label}
                     </button>
@@ -86,13 +86,13 @@ const Footer = () => {
             </div>
 
             <div>
-              <h4 className="font-semibold text-gray-900 text-sm mb-4">Legal</h4>
-              <ul className="space-y-3">
+              <h4 className="font-semibold text-foreground text-sm mb-3">Legal</h4>
+              <ul className="space-y-2">
                 {legalLinks.map((link) => (
                   <li key={link.label}>
                     <button
                       onClick={link.action}
-                      className="text-sm text-gray-600 hover:text-gray-900 transition-colors text-left"
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors text-left"
                     >
                       {link.label}
                     </button>
@@ -104,9 +104,12 @@ const Footer = () => {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-10 pt-6 border-t border-gray-100">
-          <p className="text-sm text-gray-500 text-center">
+        <div className="border-t border-border mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} InspectlyAI. All rights reserved.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Made with ❤️ in Canada
           </p>
         </div>
       </div>
