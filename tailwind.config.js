@@ -122,6 +122,7 @@ export default {
 			fontFamily: {
 				display: ['"Outfit"', 'system-ui', 'sans-serif'],
 				sans: ['"Outfit"', 'system-ui', 'sans-serif'],
+				serif: ['"Playfair Display"', 'Georgia', 'serif'],
 				mono: ['"JetBrains Mono"', 'monospace'],
 			},
 		}
