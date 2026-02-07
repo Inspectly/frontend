@@ -207,18 +207,17 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           </li>
 
-          {/* Marketplace button for vendors - gold accent */}
+          {/* Spacer to push marketplace to bottom */}
+          <li className="flex-1" aria-hidden="true"></li>
+
+          {/* Marketplace button for vendors - amber accent */}
           {isAuthReady && user?.user_type === "vendor" && (
-            <li className="mt-auto pt-4">
+            <li className="pt-4">
               <Link
                 to={marketplaceLink}
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage.startsWith("/marketplace")
-                    ? "bg-amber-500 text-white"
-                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
-                }`}
+                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-amber-500 text-gray-900 hover:bg-amber-400"
               >
-                <FontAwesomeIcon icon={faShop} className="mr-3 w-4" />
+                <FontAwesomeIcon icon={faShop} className="mr-2 w-4" />
                 <span>Marketplace</span>
               </Link>
             </li>

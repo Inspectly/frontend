@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -55,10 +55,14 @@ const isIssueActive = (issueStatus?: string): boolean => {
 
 const VendorJobsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const user = useSelector((state: RootState) => state.auth.user);
   
-  // State
-  const [activeTab, setActiveTab] = useState<TabType>("all");
+  // State - initialize tab from URL if provided
+  const initialTab = (searchParams.get("tab") as TabType) || "all";
+  const [activeTab, setActiveTab] = useState<TabType>(
+    ["all", "active", "completed", "pending", "rejected"].includes(initialTab) ? initialTab : "all"
+  );
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -130,8 +134,7 @@ const VendorJobsPage: React.FC = () => {
         const searchLower = searchQuery.toLowerCase();
         return (
           issue?.type?.toLowerCase().includes(searchLower) ||
-          issue?.summary?.toLowerCase().includes(searchLower) ||
-          offer.issue_id.toString().includes(searchLower)
+          issue?.summary?.toLowerCase().includes(searchLower)
         );
       });
     }
@@ -413,7 +416,7 @@ const VendorJobsPage: React.FC = () => {
             />
             <input
               type="text"
-              placeholder="Search by issue type, ID, or description..."
+              placeholder="Search by issue type or description..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

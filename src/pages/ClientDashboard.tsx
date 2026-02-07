@@ -24,6 +24,7 @@ import {
   faCalendarAlt,
   faCheckCircle,
   faChevronRight,
+  faBriefcase,
   faClipboardList,
   faClock,
   faFileAlt,
@@ -459,17 +460,26 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     Let's get your home project started
                   </h2>
                   <p className="text-gray-400 text-base mb-6 max-w-lg">
-                    Upload your inspection report and our AI will analyze it instantly, then connect you with verified contractors who can help.
+                    Post a job to get quotes from verified contractors, or upload your inspection report for AI-powered analysis.
                   </p>
                   
-                  <button
-                    onClick={() => setIsAddListingModalOpen(true)}
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
-                  >
-                    <FontAwesomeIcon icon={faUpload} />
-                    Upload Your Report
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setIsCreateIssueModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
+                    >
+                      <FontAwesomeIcon icon={faBriefcase} />
+                      Post a Job
+                      <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                    <button
+                      onClick={() => setIsAddListingModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-white/10 text-white rounded-xl font-bold text-base hover:bg-white/20 transition-all border border-white/20"
+                    >
+                      <FontAwesomeIcon icon={faUpload} />
+                      Upload Report
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Visual illustration */}
@@ -494,14 +504,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             {/* Quick Start Steps */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-                   onClick={() => setIsAddListingModalOpen(true)}>
+                   onClick={() => setIsCreateIssueModalOpen(true)}>
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 transition-colors">
                     <span className="text-amber-600 font-bold group-hover:text-white transition-colors">1</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Upload Report</h3>
-                    <p className="text-sm text-gray-500">Add your property and upload an inspection report</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Post a Job</h3>
+                    <p className="text-sm text-gray-500">Describe what you need fixed or upload a report</p>
                   </div>
                 </div>
               </div>
@@ -512,8 +522,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <span className="text-gray-400 font-bold">2</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Review Issues</h3>
-                    <p className="text-sm text-gray-500">AI extracts and prioritizes repair items</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
+                    <p className="text-sm text-gray-500">Verified contractors send you competitive bids</p>
                   </div>
                 </div>
               </div>
@@ -524,8 +534,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <span className="text-gray-400 font-bold">3</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
-                    <p className="text-sm text-gray-500">Receive competitive quotes from verified pros</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Hire & Track</h3>
+                    <p className="text-sm text-gray-500">Choose a pro and track your project to completion</p>
                   </div>
                 </div>
               </div>
