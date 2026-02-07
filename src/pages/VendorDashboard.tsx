@@ -270,18 +270,16 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="min-h-screen w-full bg-gray-50">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-3 lg:px-8 lg:py-4">
         
-        {/* Hero Section - Compact */}
-        <div className="relative mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-white/10 via-white/5 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+        {/* Hero Section - Dark for Impact */}
+        <div className="relative mb-4 rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 shadow-lg">
           
           <div className="relative px-5 py-4 lg:px-6 lg:py-5">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex-1">
-                <h1 className="text-xl lg:text-2xl font-bold mb-1">
+                <h1 className="text-xl lg:text-2xl font-bold mb-1 text-white">
                   {getGreeting()}, {vendor.name?.split(' ')[0] || "there"}!
                 </h1>
-                <p className="text-blue-100 text-sm max-w-xl">
+                <p className="text-gray-400 text-sm max-w-xl">
                   {isNewVendor
                     ? "Welcome aboard! Your journey to finding great projects starts here."
                     : vendorMetrics.activeJobs > 0
@@ -292,7 +290,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               
               <Link
                 to={`/marketplace?type=${encodeURIComponent(vendor?.vendor_types?.split(',')[0]?.trim() || '')}&city=${encodeURIComponent(vendor?.city || '')}`}
-                className="group inline-flex items-center gap-2 px-4 py-2.5 bg-white text-blue-700 rounded-xl font-semibold text-sm hover:bg-blue-50 transition-all shadow-lg shadow-blue-900/10 hover:shadow-xl hover:scale-[1.02]"
+                className="group inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-gray-900 rounded-xl font-semibold text-sm hover:bg-amber-400 transition-all shadow-lg hover:shadow-xl hover:scale-[1.02]"
               >
                 <FontAwesomeIcon icon={faSearch} />
                 <span>Find Work</span>
@@ -302,24 +300,24 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             
             {/* Quick Stats Row - Clean Pills */}
             <div className="flex flex-wrap gap-2 mt-4">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
                 <span className="stat-value text-base text-white">{vendorMetrics.activeJobs}</span>
-                <span className="text-blue-100 text-xs">Active</span>
+                <span className="text-gray-300 text-xs">Active</span>
               </div>
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
                 <span className="stat-value text-base text-white">{vendorMetrics.pendingBids}</span>
-                <span className="text-blue-100 text-xs">Pending</span>
+                <span className="text-gray-300 text-xs">Pending</span>
               </div>
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
                 <span className="stat-value text-base text-white">${(vendorMetrics.totalEarnings / 1000).toFixed(1)}k</span>
-                <span className="text-blue-100 text-xs">Earned</span>
+                <span className="text-gray-300 text-xs">Earned</span>
               </div>
               
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/15 backdrop-blur-sm rounded-full border border-white/20">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full">
                 <span className="stat-value text-base text-white">{vendorMetrics.completedJobs}</span>
-                <span className="text-blue-100 text-xs">Completed</span>
+                <span className="text-gray-300 text-xs">Completed</span>
               </div>
             </div>
           </div>
@@ -386,7 +384,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
                         <FontAwesomeIcon icon={faBriefcase} className="text-white text-sm" />
                       </div>
                       <div>
@@ -412,8 +410,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                           className="group flex items-center justify-between px-3 py-2 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-100 hover:border-gray-300 cursor-pointer transition-all hover:shadow-sm"
                         >
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 bg-blue-100 rounded-md flex items-center justify-center">
-                              <FontAwesomeIcon icon={pickIcon(issue?.type)} className="text-blue-600 text-xs" />
+                            <div className="w-7 h-7 bg-gray-100 rounded-md flex items-center justify-center">
+                              <FontAwesomeIcon icon={pickIcon(issue?.type)} className="text-gray-700 text-xs" />
                             </div>
                             <div>
                               <div className="font-medium text-xs text-gray-900 group-hover:text-gray-700 transition-colors">
@@ -494,7 +492,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="dashboard-card">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
                       <FontAwesomeIcon icon={faCalendarAlt} className="text-white text-sm" />
                     </div>
                     <div>
@@ -530,12 +528,12 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
                         <FontAwesomeIcon icon={faFire} className="text-white text-sm" />
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900">Hot Opportunities</h3>
                     </div>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
+                    <span className="px-2 py-0.5 bg-gray-900 text-white rounded-full text-xs font-bold">
                       {availableCount} jobs
                     </span>
                   </div>
@@ -584,7 +582,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="px-4 py-3 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center">
                         <FontAwesomeIcon icon={faTrophy} className="text-white text-sm" />
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900">Performance</h3>
@@ -639,7 +637,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       <div className="text-xs text-gray-600">Won</div>
                     </div>
                     <div className="text-center">
-                      <div className="stat-value text-lg text-blue-600">{vendorMetrics.completedJobs}</div>
+                      <div className="stat-value text-lg text-emerald-600">{vendorMetrics.completedJobs}</div>
                       <div className="text-xs text-gray-600">Done</div>
                     </div>
                   </div>
@@ -650,10 +648,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             {/* Quick Actions - if no pending bids */}
             {!hasPendingBids && (
               <div className="col-span-12 lg:col-span-5">
-                <div className="dashboard-card h-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-0">
-                  <div className="p-6 h-full flex flex-col">
+                <div className="dashboard-card h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white border-0 relative overflow-hidden">
+                  <div className="relative p-6 h-full flex flex-col">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
                         <FontAwesomeIcon icon={faFire} className="text-white" />
                       </div>
                       <h3 className="font-semibold">Grow Your Business</h3>
@@ -662,29 +660,29 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <div className="flex-1 space-y-4">
                       <Link
                         to="/marketplace"
-                        className="block p-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 rounded-xl transition-colors"
+                        className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <FontAwesomeIcon icon={faRocket} className="text-white" />
+                          <FontAwesomeIcon icon={faRocket} className="text-gray-400" />
                           <div className="flex-1">
                             <div className="font-medium">Find New Jobs</div>
-                            <div className="text-sm text-blue-200">{availableCount} opportunities</div>
+                            <div className="text-sm text-gray-400">{availableCount} opportunities</div>
                           </div>
-                          <FontAwesomeIcon icon={faChevronRight} className="text-blue-200" />
+                          <FontAwesomeIcon icon={faChevronRight} className="text-gray-500" />
                         </div>
                       </Link>
                       
                       <Link
                         to="/vendor/jobs"
-                        className="block p-4 bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 rounded-xl transition-colors"
+                        className="block p-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl transition-colors"
                       >
                         <div className="flex items-center gap-3">
-                          <FontAwesomeIcon icon={faBriefcase} className="text-white" />
+                          <FontAwesomeIcon icon={faBriefcase} className="text-gray-400" />
                           <div className="flex-1">
                             <div className="font-medium">Manage Jobs</div>
-                            <div className="text-sm text-blue-200">View all your work</div>
+                            <div className="text-sm text-gray-400">View all your work</div>
                           </div>
-                          <FontAwesomeIcon icon={faChevronRight} className="text-blue-200" />
+                          <FontAwesomeIcon icon={faChevronRight} className="text-gray-500" />
                         </div>
                       </Link>
                     </div>

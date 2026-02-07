@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store/store";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
@@ -22,7 +23,11 @@ import {
   faTimesCircle,
   faClipboardList,
   faMapMarkerAlt,
-  faExclamationTriangle,
+  faRocket,
+  faArrowRight,
+  faHome,
+  faBolt,
+  faShieldAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { useGetIssuesQuery, useUpdateIssueMutation } from "../features/api/issuesApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
@@ -30,8 +35,7 @@ import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { issueOffersApi, useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing, Report } from "../types";
-import VendorName from "../components/VendorName";
-import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { shallowEqual } from "react-redux";
 
 type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review";
@@ -46,7 +50,9 @@ interface IssueWithOffers {
 
 const Offers: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const [searchParams] = useSearchParams();
 
   const { data: issues = [], isLoading: isLoadingIssues } = useGetIssuesQuery();
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
@@ -56,13 +62,24 @@ const Offers: React.FC = () => {
   const [updateIssue] = useUpdateIssueMutation();
   const [createCheckoutSession] = useCreateCheckoutSessionMutation();
 
-  const [filterStatus, setFilterStatus] = useState<FilterType>("all");
+  // Read initial filter from URL params
+  const initialFilter = (): FilterType => {
+    const param = searchParams.get("filter");
+    if (param === "review" || param === "in-review") return "in-review";
+    if (param === "pending") return "pending";
+    if (param === "accepted") return "accepted";
+    if (param === "rejected") return "rejected";
+    return "all";
+  };
+
+  const [filterStatus, setFilterStatus] = useState<FilterType>(initialFilter);
   const [filterProperty, setFilterProperty] = useState<string>("all");
   const [filterIssueType, setFilterIssueType] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortType>("date-desc");
+  const [visibleCount, setVisibleCount] = useState(10); // Show 10 issues at a time
 
   // Modal state for issue details
-  const [selectedIssue, setSelectedIssue] = useState<{ issue: IssueType; listing?: Listing } | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<{ issue: IssueType; listing?: Listing; defaultTab?: "details" | "offers" | "assessments" } | null>(null);
 
   // Modal state for approve/request changes
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -330,315 +347,384 @@ const Offers: React.FC = () => {
     }
   };
 
-  const getStatusBadge = (offerStatus: string, issueStatus?: string) => {
-    // If issue is in review, show "In Review" instead of offer status
-    if (issueStatus === "Status.REVIEW") {
-      return (
-        <span className="px-2 py-0.5 text-xs font-medium rounded border bg-purple-100 text-purple-800 border-purple-200">
-          In Review
-        </span>
-      );
-    }
-    
-    const badges = {
-      [IssueOfferStatus.RECEIVED]: { label: "Pending", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-      [IssueOfferStatus.ACCEPTED]: { label: "Accepted", color: "bg-green-100 text-green-800 border-green-200" },
-      [IssueOfferStatus.REJECTED]: { label: "Rejected", color: "bg-red-100 text-red-800 border-red-200" },
-      [IssueOfferStatus.EXPIRED]: { label: "Expired", color: "bg-gray-100 text-gray-800 border-gray-200" },
-    };
-    const badge = badges[offerStatus as keyof typeof badges] || badges[IssueOfferStatus.RECEIVED];
-    return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded border ${badge.color}`}>
-        {badge.label}
-      </span>
-    );
-  };
-
   if (!userId) {
     return <div className="p-6">Please log in to view offers.</div>;
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Offers</h1>
-        <p className="text-gray-600">
-          Review and manage offers from vendors for your property issues
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Total Offers</div>
-            <FontAwesomeIcon icon={faClipboardList} className="w-5 h-5 text-blue-500" />
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-[1600px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
+        
+        {/* Header - Clean like dashboard */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+              Offers & Approvals
+            </h1>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{stats.totalOffers}</div>
-        </div>
 
-        {/* In Review - most urgent, vendor has completed work */}
-        <div className={`rounded-xl border p-6 ${stats.inReviewCount > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Awaiting Approval</div>
-            <svg className={`w-5 h-5 ${stats.inReviewCount > 0 ? 'text-purple-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className={`text-3xl font-bold ${stats.inReviewCount > 0 ? 'text-purple-700' : 'text-gray-900'}`}>{stats.inReviewCount}</div>
-          {stats.inReviewCount > 0 && (
-            <div className="text-xs text-purple-600 mt-1">Work completed - needs your approval</div>
+          {/* Stat Cards Row - Only show if user has listings */}
+          {listings.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div 
+                onClick={() => setFilterStatus("all")}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'all' ? 'ring-2 ring-gray-900' : ''}`}
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.totalOffers}</div>
+                <div className="text-sm font-semibold text-gray-900">Total Offers</div>
+              </div>
+
+              <div 
+                onClick={() => setFilterStatus("in-review")}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'in-review' ? 'ring-2 ring-gray-900' : ''}`}
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.inReviewCount}</div>
+                <div className="text-sm font-semibold text-gray-900">Awaiting Approval</div>
+                {stats.inReviewCount > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
+                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                    Needs action
+                  </div>
+                )}
+              </div>
+
+              <div 
+                onClick={() => setFilterStatus("pending")}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'pending' ? 'ring-2 ring-gray-900' : ''}`}
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.pendingOffers}</div>
+                <div className="text-sm font-semibold text-gray-900">Pending Quotes</div>
+              </div>
+
+              <div 
+                onClick={() => setFilterStatus("accepted")}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'accepted' ? 'ring-2 ring-gray-900' : ''}`}
+              >
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.acceptedOffers}</div>
+                <div className="text-sm font-semibold text-gray-900">Accepted</div>
+              </div>
+            </div>
           )}
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Pending Offers</div>
-            <FontAwesomeIcon icon={faExclamationTriangle} className="w-5 h-5 text-yellow-500" />
+        {/* Filters Card - Only show if user has listings */}
+        {listings.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+          {/* Status Tabs */}
+          <div className="px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center gap-1 flex-wrap">
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'in-review', label: 'In Review', count: stats.inReviewCount },
+                { value: 'pending', label: 'Pending', count: stats.pendingOffers },
+                { value: 'accepted', label: 'Accepted', count: stats.acceptedOffers },
+                { value: 'rejected', label: 'Rejected' },
+              ].map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => setFilterStatus(tab.value as FilterType)}
+                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                    filterStatus === tab.value 
+                      ? 'bg-gray-900 text-white' 
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                      filterStatus === tab.value ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="text-3xl font-bold text-gray-900">{stats.pendingOffers}</div>
-        </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Accepted</div>
-            <FontAwesomeIcon icon={faCheckCircle} className="w-5 h-5 text-green-500" />
-          </div>
-          <div className="text-3xl font-bold text-gray-900">{stats.acceptedOffers}</div>
-        </div>
-      </div>
-
-      {/* Filters and Sort */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="flex flex-wrap gap-4">
-          {/* Status Filter */}
-          <div className="flex items-center gap-2">
-            <FontAwesomeIcon icon={faFilter} className="text-gray-400 w-4 h-4" />
+          {/* Secondary Filters */}
+          <div className="px-5 py-3 flex flex-wrap items-center gap-3">
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as FilterType)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filterProperty}
+              onChange={(e) => setFilterProperty(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             >
-              <option value="all">All Status</option>
-              <option value="in-review">In Review</option>
-              <option value="pending">Pending</option>
-              <option value="accepted">Accepted</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">All Properties</option>
+              {uniqueProperties.map(([id, address]) => (
+                <option key={id} value={id}>
+                  {address}
+                </option>
+              ))}
             </select>
-          </div>
 
-          {/* Property Filter */}
-          <select
-            value={filterProperty}
-            onChange={(e) => setFilterProperty(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Properties</option>
-            {uniqueProperties.map(([id, address]) => (
-              <option key={id} value={id}>
-                {address}
-              </option>
-            ))}
-          </select>
-
-          {/* Issue Type Filter */}
-          <select
-            value={filterIssueType}
-            onChange={(e) => setFilterIssueType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="all">All Issue Types</option>
-            {uniqueIssueTypes.map((type) => (
-              <option key={type} value={type}>
-                {normalizeAndCapitalize(type)}
-              </option>
-            ))}
-          </select>
-
-          {/* Sort */}
-          <div className="flex items-center gap-2 ml-auto">
-            <FontAwesomeIcon icon={faSort} className="text-gray-400 w-4 h-4" />
             <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortType)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filterIssueType}
+              onChange={(e) => setFilterIssueType(e.target.value)}
+              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
             >
-              <option value="date-desc">Newest First</option>
-              <option value="date-asc">Oldest First</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
+              <option value="all">All Issue Types</option>
+              {uniqueIssueTypes.map((type) => (
+                <option key={type} value={type}>
+                  {normalizeAndCapitalize(type)}
+                </option>
+              ))}
             </select>
+
+            <div className="ml-auto flex items-center gap-2">
+              <FontAwesomeIcon icon={faSort} className="text-gray-400 w-4 h-4" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortType)}
+                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              >
+                <option value="date-desc">Newest First</option>
+                <option value="date-asc">Oldest First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+        )}
 
-      {/* Offers List */}
-      <div className="space-y-6">
+      {/* Offers List - One row per issue */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {isLoading ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="p-12 text-center">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading offers...</h3>
             <p className="text-gray-500">Please wait while we fetch your offers</p>
           </div>
         ) : sortedIssues.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-            <FontAwesomeIcon
-              icon={faClipboardList}
-              className="w-16 h-16 text-gray-300 mb-4 mx-auto"
-            />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No offers found</h3>
-            <p className="text-gray-500 mb-6">
-              {filterStatus !== "all" || filterProperty !== "all" || filterIssueType !== "all"
-                ? "Try adjusting your filters"
-                : "You don't have any offers yet"}
-            </p>
-          </div>
-        ) : (
-          sortedIssues.map(({ issue, offers, listing }) => {
-            const pendingOffers = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
-            const hasAcceptedOffer = offers.some((o) => o.status === IssueOfferStatus.ACCEPTED);
-
-            return (
-              <div key={issue.id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                {/* Issue Header */}
-                <div
-                  className="p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
-                  onClick={() => setSelectedIssue({ issue, listing })}
+          <div className="p-8">
+            {filterStatus !== "all" || filterProperty !== "all" || filterIssueType !== "all" ? (
+              // Filtered empty state
+              <div className="text-center py-8">
+                <FontAwesomeIcon
+                  icon={faFilter}
+                  className="w-12 h-12 text-gray-300 mb-4 mx-auto"
+                />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No matching offers</h3>
+                <p className="text-gray-500 mb-4">Try adjusting your filters to see more results</p>
+                <button
+                  onClick={() => {
+                    setFilterStatus("all");
+                    setFilterProperty("all");
+                    setFilterIssueType("all");
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-200 transition"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                          {normalizeAndCapitalize(issue.type)}
-                        </span>
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                          issue.severity === "high"
-                            ? "bg-red-100 text-red-800"
-                            : issue.severity === "medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
-                        }`}>
-                          {issue.severity}
-                        </span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {issue.summary || `${normalizeAndCapitalize(issue.type)} Issue`}
-                      </h3>
-                      {listing && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
-                          <span>{listing.address}, {listing.city}</span>
-                        </div>
-                      )}
+                  Clear all filters
+                </button>
+              </div>
+            ) : listings.length === 0 ? (
+              // New user - no properties
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
+                {/* Decorative elements */}
+                <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+                
+                <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
+                  <div className="flex-1 text-center lg:text-left">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium mb-4">
+                      <FontAwesomeIcon icon={faRocket} />
+                      Get Started
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium text-gray-600">
-                        {offers.length} offer{offers.length !== 1 ? "s" : ""}
+                    <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">
+                      Ready to receive quotes?
+                    </h2>
+                    <p className="text-gray-400 text-base mb-6 max-w-lg">
+                      Upload your inspection report and post issues to the marketplace. Verified contractors will send you competitive quotes.
+                    </p>
+                    
+                    <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-6">
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <FontAwesomeIcon icon={faShieldAlt} className="text-amber-500" />
+                        Verified pros only
                       </div>
-                      {pendingOffers.length > 0 && (
-                        <div className="text-xs text-yellow-600 font-medium">
-                          {pendingOffers.length} pending
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <FontAwesomeIcon icon={faBolt} className="text-amber-500" />
+                        Fast responses
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <FontAwesomeIcon icon={faCheckCircle} className="text-amber-500" />
+                        Compare & save
+                      </div>
                     </div>
+                    
+                    <button
+                      onClick={() => navigate("/dashboard")}
+                      className="inline-flex items-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
+                    >
+                      <FontAwesomeIcon icon={faHome} />
+                      Add Your First Property
+                      <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
                   </div>
-                </div>
-
-                {/* Offers Table */}
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {offers.map((offer) => (
-                      <div
-                        key={offer.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <VendorName
-                              vendorId={offer.vendor_id}
-                              isVendorId={false}
-                              showRating
-                            />
-                            {getStatusBadge(offer.status, issue.status)}
-                          </div>
-                          {offer.comment_vendor && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              "{offer.comment_vendor}"
-                            </p>
-                          )}
-                          <p className="text-xs text-gray-500 mt-1">
-                            Submitted {new Date(offer.created_at).toLocaleDateString()}
-                          </p>
+                  
+                  {/* Visual illustration */}
+                  <div className="hidden lg:flex items-center justify-center">
+                    <div className="relative">
+                      <div className="absolute -top-2 -left-2 w-36 h-44 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
+                      <div className="absolute -top-1 -left-1 w-36 h-44 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
+                      <div className="relative w-36 h-44 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
+                        <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
+                          <FontAwesomeIcon icon={faClipboardList} className="text-xl text-amber-600" />
                         </div>
-                        <div className="flex items-center gap-4">
-                          <div className="text-right">
-                            <div className="text-2xl font-bold text-gray-900">
-                              ${offer.price.toLocaleString()}
-                            </div>
-                          </div>
-                          {/* Pending offers - Accept/Reject buttons */}
-                          {offer.status === IssueOfferStatus.RECEIVED && !hasAcceptedOffer && (
-                            <div className="flex flex-col gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptOffer(offer);
-                                }}
-                                className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
-                              >
-                                <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
-                                Accept
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRejectOffer(offer);
-                                }}
-                                className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
-                              >
-                                <FontAwesomeIcon icon={faTimesCircle} className="mr-1" />
-                                Reject
-                              </button>
-                            </div>
-                          )}
-                          {/* In Review issues - Approve/Revise buttons */}
-                          {issue.status === "Status.REVIEW" && offer.status === IssueOfferStatus.ACCEPTED && (
-                            <div className="flex flex-col gap-2">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedIssueForAction(issue);
-                                  setShowApproveModal(true);
-                                }}
-                                className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors"
-                              >
-                                <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
-                                Approve
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedIssueForAction(issue);
-                                  setShowRequestChangesModal(true);
-                                }}
-                                className="px-4 py-2 bg-amber-500 text-white text-sm font-medium rounded-lg hover:bg-amber-600 transition-colors"
-                              >
-                                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                Revise
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        <div className="h-2 w-20 bg-gray-200 rounded mb-2"></div>
+                        <div className="h-2 w-16 bg-gray-100 rounded mb-2"></div>
+                        <div className="h-2 w-12 bg-gray-100 rounded"></div>
                       </div>
-                    ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            );
-          })
+            ) : (
+              // Has properties but no offers yet
+              <div className="text-center py-12">
+                <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                  <FontAwesomeIcon icon={faClipboardList} className="text-3xl text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">No offers yet</h3>
+                <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                  Once you post issues to the marketplace, contractors will send you quotes. Make sure your issues are visible to vendors.
+                </p>
+                <button
+                  onClick={() => navigate("/listings")}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-lg font-medium text-sm hover:bg-gray-800 transition"
+                >
+                  View Your Properties
+                  <FontAwesomeIcon icon={faArrowRight} />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div className="divide-y divide-gray-100">
+              {sortedIssues.slice(0, visibleCount).map(({ issue, offers, listing }) => {
+                const pendingOffers = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
+                const acceptedOffer = offers.find((o) => o.status === IssueOfferStatus.ACCEPTED);
+                const isInReview = issue.status === "Status.REVIEW";
+                const lowestPendingOffer = pendingOffers.length > 0 
+                  ? pendingOffers.reduce((min, o) => (o.price || 0) < (min.price || 0) ? o : min, pendingOffers[0])
+                  : null;
+
+                return (
+                  <div
+                    key={issue.id}
+                    className="flex items-center justify-between px-5 py-4 border-l-4 border-transparent hover:border-amber-500 hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                    onClick={() => setSelectedIssue({ issue, listing, defaultTab: "offers" })}
+                  >
+                    {/* Left side - Issue info */}
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        issue.severity === 'high' ? 'bg-red-100' :
+                        issue.severity === 'medium' ? 'bg-amber-100' : 'bg-gray-100'
+                      }`}>
+                        <FontAwesomeIcon 
+                          icon={getIssueTypeIcon(issue.type)} 
+                          className={
+                            issue.severity === 'high' ? 'text-red-600' :
+                            issue.severity === 'medium' ? 'text-amber-600' : 'text-gray-600'
+                          } 
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-gray-900 truncate">
+                          {issue.summary || `${normalizeAndCapitalize(issue.type)} Issue`}
+                        </div>
+                        {listing && (
+                          <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
+                            <span className="truncate">{listing.address}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right side - Price, count, action */}
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                      {/* Show price and quote count */}
+                      {isInReview && acceptedOffer ? (
+                        <div className="text-right min-w-[80px]">
+                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
+                          <div className="text-xs text-amber-600">Work completed</div>
+                        </div>
+                      ) : lowestPendingOffer ? (
+                        <div className="text-right min-w-[80px]">
+                          <div className="text-lg font-bold text-gray-900">${lowestPendingOffer.price.toLocaleString()}</div>
+                          {pendingOffers.length > 1 && (
+                            <div className="text-xs text-gray-500">{pendingOffers.length} quotes</div>
+                          )}
+                        </div>
+                      ) : acceptedOffer ? (
+                        <div className="text-right min-w-[80px]">
+                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
+                          <div className="text-xs text-emerald-600">Accepted</div>
+                        </div>
+                      ) : null}
+
+                      {/* Action button - only positive actions */}
+                      {isInReview && acceptedOffer ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIssueForAction(issue);
+                            setShowApproveModal(true);
+                          }}
+                          className="min-w-[90px] px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors text-center"
+                        >
+                          Approve
+                        </button>
+                      ) : pendingOffers.length === 1 && !acceptedOffer ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptOffer(pendingOffers[0]);
+                          }}
+                          className="min-w-[90px] px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors text-center"
+                        >
+                          Accept
+                        </button>
+                      ) : pendingOffers.length > 1 ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIssue({ issue, listing, defaultTab: "offers" });
+                          }}
+                          className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
+                        >
+                          Compare
+                        </button>
+                      ) : (
+                        <button
+                          className="min-w-[90px] px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-lg text-center"
+                        >
+                          View
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Load More Button */}
+            {visibleCount < sortedIssues.length && (
+              <div className="p-4 border-t border-gray-100">
+                <button
+                  onClick={() => setVisibleCount((prev) => prev + 10)}
+                  className="w-full py-3 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  Load more ({sortedIssues.length - visibleCount} remaining)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -745,13 +831,16 @@ const Offers: React.FC = () => {
               &times;
             </button>
             <HomeownerIssueCard
+              key={`${selectedIssue.issue.id}-${selectedIssue.defaultTab}`}
               issue={selectedIssue.issue}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
+              defaultTab={selectedIssue.defaultTab || "details"}
             />
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
