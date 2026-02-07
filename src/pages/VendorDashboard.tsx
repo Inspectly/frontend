@@ -91,6 +91,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   // UI State
   const [activeTab, setActiveTab] = useState<"priority" | "new" | "bidding">("priority");
   const [projectSlide, setProjectSlide] = useState(0);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
+    return localStorage.getItem('vendor_welcome_banner_dismissed') !== 'true';
+  });
+
+  const dismissWelcomeBanner = () => {
+    setShowWelcomeBanner(false);
+    localStorage.setItem('vendor_welcome_banner_dismissed', 'true');
+  };
   
   // Modal state for issue details
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
@@ -409,6 +417,47 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="min-h-screen w-full bg-gray-100">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-4 lg:px-6">
         
+        {/* New Vendor Welcome Banner */}
+        {isNewVendor && showWelcomeBanner && (
+          <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 relative">
+            <div className="flex flex-col lg:flex-row items-center gap-5">
+              {/* Icon */}
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <FontAwesomeIcon icon={faRocket} className="text-gray-900 text-2xl" />
+              </div>
+              
+              {/* Content */}
+              <div className="flex-1 text-center lg:text-left">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  Welcome! Let's find your first project
+                </h2>
+                <p className="text-gray-800 text-sm mb-0 lg:mb-0">
+                  {availableCount} jobs available in your area • Browse, bid, and start earning today
+                </p>
+              </div>
+              
+              {/* CTA */}
+              <Link
+                to="/marketplace"
+                className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              >
+                <FontAwesomeIcon icon={faSearch} />
+                Explore Marketplace
+                <FontAwesomeIcon icon={faArrowRight} />
+              </Link>
+              
+              {/* Dismiss Button */}
+              <button
+                onClick={dismissWelcomeBanner}
+                className="flex-shrink-0 w-8 h-8 bg-white hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors shadow-sm"
+                aria-label="Dismiss"
+              >
+                <FontAwesomeIcon icon={faTimes} className="text-gray-600 text-sm" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Stat Cards Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* New Job Alert */}
@@ -439,12 +488,17 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-gray-900">{vendorMetrics.activeJobs}</span>
+              <span className="text-4xl font-bold text-gray-900">
+                {vendorMetrics.activeJobs > 0 ? vendorMetrics.activeJobs : "—"}
+              </span>
               <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
             </div>
             <div className="text-sm font-semibold text-gray-900">Active Jobs</div>
             <div className="text-xs text-gray-500 mt-1">
-              ${vendorMetrics.activeJobs > 0 ? activeJobs.reduce((sum, j) => sum + (j.offer.price || 0), 0).toLocaleString() : 0} In Progress
+              {vendorMetrics.activeJobs > 0 
+                ? `$${activeJobs.reduce((sum, j) => sum + (j.offer.price || 0), 0).toLocaleString()} In Progress`
+                : "Win a bid to start"
+              }
             </div>
           </div>
 
@@ -454,34 +508,52 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-gray-900">{vendorMetrics.pendingBids}</span>
+              <span className="text-4xl font-bold text-gray-900">
+                {vendorMetrics.pendingBids > 0 ? vendorMetrics.pendingBids : "—"}
+              </span>
               <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
             </div>
-            <div className="text-sm font-semibold text-gray-900">Jobs Bidding</div>
-            {pendingBidsCount > 0 && (
-              <div className="text-xs text-amber-600 mt-1">
-                Awaiting response
-              </div>
-            )}
+            <div className="text-sm font-semibold text-gray-900">My Bids</div>
+            <div className="text-xs mt-1">
+              {pendingBidsCount > 0 ? (
+                <span className="text-amber-600">Awaiting response</span>
+              ) : (
+                <span className="text-gray-500">Place your first bid</span>
+              )}
+            </div>
           </div>
 
           {/* Earnings & Performance - Dark Card */}
           <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl p-5 text-white">
             <div className="text-sm font-medium text-gray-400 mb-3">Earnings & Performance</div>
-            <div className="flex justify-between items-start mb-3">
-              <div className="text-left">
-                <div className="text-2xl font-bold">${vendorMetrics.thisMonthEarnings.toLocaleString()}</div>
-                <div className="text-xs text-gray-400">This Month</div>
+            {vendorMetrics.totalEarnings === 0 && vendorMetrics.thisMonthEarnings === 0 && vendorMetrics.outstandingBids === 0 ? (
+              // New vendor - show encouraging message
+              <div className="text-center py-2">
+                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <FontAwesomeIcon icon={faRocket} className="text-amber-400 text-lg" />
+                </div>
+                <div className="text-base font-semibold text-white mb-1">Start Earning</div>
+                <div className="text-xs text-gray-400">Win your first bid to see your earnings here</div>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold">${vendorMetrics.totalEarnings.toLocaleString()}</div>
-                <div className="text-xs text-gray-400">Year To Date</div>
-              </div>
-            </div>
-            <div className="pt-3 border-t border-gray-700 text-center">
-              <div className="text-xl font-bold">${vendorMetrics.outstandingBids.toLocaleString()}</div>
-              <div className="text-xs text-gray-400">Outstanding Bids</div>
-            </div>
+            ) : (
+              // Existing vendor - show earnings
+              <>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="text-left">
+                    <div className="text-2xl font-bold">${vendorMetrics.thisMonthEarnings.toLocaleString()}</div>
+                    <div className="text-xs text-gray-400">This Month</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">${vendorMetrics.totalEarnings.toLocaleString()}</div>
+                    <div className="text-xs text-gray-400">Year To Date</div>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-gray-700 text-center">
+                  <div className="text-xl font-bold">${vendorMetrics.outstandingBids.toLocaleString()}</div>
+                  <div className="text-xs text-gray-400">Outstanding Bids</div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -527,7 +599,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       }`}
                     >
                       <FontAwesomeIcon icon={faClock} />
-                      Bidding
+                      My Bids
                       {vendorMetrics.pendingBids > 0 && (
                         <span className="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded-full">
                           {vendorMetrics.pendingBids}+
@@ -579,20 +651,26 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                         </div>
 
                         {/* Right side info */}
-                        <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="flex items-center gap-3 flex-shrink-0">
                           {item.myBid ? (
                             <span className="text-lg font-bold text-gray-900">
                               ${item.myBid.toLocaleString()}
                             </span>
                           ) : item.bidCount === 0 ? (
-                            <span className="text-sm font-medium text-emerald-600 whitespace-nowrap">Be first!</span>
+                            <span className="text-xs font-medium text-emerald-600 whitespace-nowrap bg-emerald-50 px-2 py-1 rounded">Be first!</span>
                           ) : (
-                            <span className="text-sm text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
+                            <span className="text-xs text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
                           )}
-                          <FontAwesomeIcon 
-                            icon={faChevronRight} 
-                            className="text-gray-400" 
-                          />
+                          <button 
+                            className="px-3 py-1.5 bg-amber-500 text-gray-900 rounded-lg text-sm font-semibold hover:bg-amber-400 transition-colors flex items-center gap-1.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openIssueModal(item.id, activeTab === "bidding" ? "offers" : "details");
+                            }}
+                          >
+                            {activeTab === "bidding" ? "View Bid" : "View & Bid"}
+                            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -620,23 +698,24 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   </div>
                 )}
 
-                {/* View more link when there are items */}
-                {getPriorityItems().length > 0 && (activeTab === "priority" || activeTab === "new") && (
-                  <div className="px-5 py-3 border-t border-gray-100">
+                {/* Prominent Marketplace Button */}
+                {(activeTab === "priority" || activeTab === "new") && (
+                  <div className="px-5 py-4 border-t border-gray-100">
                     <Link
                       to="/marketplace"
-                      className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-gray-900 rounded-lg font-semibold text-sm hover:bg-amber-400 transition-colors"
                     >
-                      View all in Marketplace
+                      <FontAwesomeIcon icon={faSearch} />
+                      Explore Marketplace
                       <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
                     </Link>
                   </div>
                 )}
-                {getPriorityItems().length > 0 && activeTab === "bidding" && (
-                  <div className="px-5 py-3 border-t border-gray-100">
+                {activeTab === "bidding" && (
+                  <div className="px-5 py-4 border-t border-gray-100">
                     <Link
                       to="/vendor/jobs?tab=pending"
-                      className="text-sm font-medium text-gray-600 hover:text-gray-900 flex items-center justify-center gap-2"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-900 rounded-lg font-semibold text-sm hover:bg-gray-200 transition-colors"
                     >
                       View all pending bids
                       <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
@@ -749,17 +828,19 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                     ))}
                   </div>
                 ) : (
-                  <div className="py-6 text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-gray-400 text-xl" />
+                  <div className="py-8 text-center">
+                    <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <FontAwesomeIcon icon={faBriefcase} className="text-amber-500 text-2xl" />
                     </div>
-                    <p className="text-gray-600 font-medium text-sm mb-1">No active projects</p>
-                    <p className="text-xs text-gray-500 mb-3">Win a bid to start your first project</p>
+                    <p className="text-gray-900 font-semibold mb-1">No active projects yet</p>
+                    <p className="text-sm text-gray-500 mb-4">Browse jobs and submit your first bid to get started</p>
                     <Link
                       to="/marketplace"
-                      className="inline-flex items-center gap-2 text-amber-600 hover:text-amber-700 font-medium text-sm"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-gray-900 rounded-lg font-semibold text-sm hover:bg-amber-400 transition-colors"
                     >
-                      Browse marketplace <FontAwesomeIcon icon={faArrowRight} />
+                      <FontAwesomeIcon icon={faSearch} />
+                      Find Your First Project
+                      <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
                     </Link>
                   </div>
                 )}
@@ -867,47 +948,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
         </div>
 
-        {/* New Vendor CTA */}
-        {isNewVendor && (
-          <div className="mt-6 p-6 rounded-xl bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200">
-            <div className="flex flex-col lg:flex-row items-center gap-6">
-              <div className="flex-1 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-200 text-amber-800 rounded-full text-sm font-medium mb-3">
-                  <FontAwesomeIcon icon={faRocket} />
-                  Get Started
-                </div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">
-                  Find Your First Project
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  Browse {availableCount} available jobs, submit competitive bids, and start building your reputation.
-                </p>
-                <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-4">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FontAwesomeIcon icon={faCheckCircle} className="text-amber-500" />
-                    Verified homeowners
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FontAwesomeIcon icon={faCheckCircle} className="text-amber-500" />
-                    Set your own rates
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <FontAwesomeIcon icon={faCheckCircle} className="text-amber-500" />
-                    Get paid securely
-                  </div>
-                </div>
-                <Link
-                  to="/marketplace"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-amber-500 text-gray-900 rounded-lg font-semibold hover:bg-amber-400 transition-colors"
-                >
-                  <FontAwesomeIcon icon={faSearch} />
-                  Explore Marketplace
-                  <FontAwesomeIcon icon={faArrowRight} />
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Issue Details Modal */}
