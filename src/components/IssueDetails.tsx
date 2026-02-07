@@ -397,7 +397,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       >
         <div className="flex flex-row items-center justify-between">
           <h2 className="text-2xl font-medium mb-0">
-            {issue.id + " " + issue.summary || "No Title Found"}
+            {issue.summary || "No Title Found"}
           </h2>
           <div className="flex items-center gap-2">
             {/* Vendor: Mark Complete Button */}
