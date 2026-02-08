@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -8,7 +8,6 @@ import {
   faClock,
   faCheckCircle,
   faTimesCircle,
-  faFilter,
   faSearch,
   faBolt,
   faTint,
@@ -21,6 +20,14 @@ import {
   faSnowflake,
   faLeaf,
   faWrench,
+  faEnvelope,
+  faStar,
+  faChevronDown,
+  faPlus,
+  faChevronRight,
+  faPaperPlane,
+  faHourglass,
+  faTimes,
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing } from "../types";
@@ -29,7 +36,10 @@ import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
+import { useGetAssessmentsByVendorIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { faCalendarAlt } from "@fortawesome/free-regular-svg-icons";
 import ImageComponent from "../components/ImageComponent";
+import IssueDetails from "../components/IssueDetails";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 type TabType = "all" | "active" | "completed" | "pending" | "rejected";
@@ -65,6 +75,9 @@ const VendorJobsPage: React.FC = () => {
   );
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Modal state
+  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
 
   // Queries
   const { data: vendor } = useGetVendorByVendorUserIdQuery(String(user?.id), {
@@ -79,6 +92,10 @@ const VendorJobsPage: React.FC = () => {
   const { data: issues = [] } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
   const { data: reports = [] } = useGetReportsQuery();
+  const { data: vendorAssessments = [] } = useGetAssessmentsByVendorIdUsersInteractionIdQuery(
+    vendor?.id || 0,
+    { skip: !vendor?.id }
+  );
 
   // Create maps for quick lookups
   const issuesMap = useMemo(() => {
@@ -101,6 +118,35 @@ const VendorJobsPage: React.FC = () => {
       return acc;
     }, {} as Record<number, Listing>);
   }, [listings]);
+
+  // Map assessments by issue_id (only upcoming ones)
+  const assessmentsByIssueId = useMemo(() => {
+    const now = new Date();
+    return vendorAssessments.reduce((acc, assessment) => {
+      const startTime = new Date(assessment.start_time);
+      // Only include future assessments
+      if (startTime > now && assessment.issue_id) {
+        if (!acc[assessment.issue_id] || startTime < new Date(acc[assessment.issue_id].start_time)) {
+          acc[assessment.issue_id] = assessment;
+        }
+      }
+      return acc;
+    }, {} as Record<number, typeof vendorAssessments[0]>);
+  }, [vendorAssessments]);
+
+  // Selected issue for modal
+  const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
+  const selectedIssueReport = selectedIssue ? reportsMap[selectedIssue.report_id] : null;
+  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : null;
+
+  // Modal functions
+  const openIssueModal = (issueId: number) => {
+    setSelectedIssueId(issueId);
+  };
+
+  const closeIssueModal = () => {
+    setSelectedIssueId(null);
+  };
 
   // Filter and sort offers
   const filteredOffers = useMemo(() => {
@@ -232,67 +278,44 @@ const VendorJobsPage: React.FC = () => {
     return typeMap[type?.toLowerCase() || ""] || faWrench;
   };
 
-  const getStatusBadge = (status: IssueOfferStatus) => {
-    const badges = {
-      [IssueOfferStatus.ACCEPTED]: {
-        icon: faCheckCircle,
-        color: "bg-green-100 text-green-700 border-green-200",
-        label: "Active",
-      },
-      [IssueOfferStatus.RECEIVED]: {
-        icon: faClock,
-        color: "bg-yellow-100 text-yellow-700 border-yellow-200",
-        label: "Pending",
-      },
-      [IssueOfferStatus.REJECTED]: {
-        icon: faTimesCircle,
-        color: "bg-red-100 text-red-700 border-red-200",
-        label: "Rejected",
-      },
-    };
-
-    const badge = badges[status];
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full border ${badge.color}`}
-      >
-        <FontAwesomeIcon icon={badge.icon} className="w-3 h-3" />
-        {badge.label}
-      </span>
-    );
-  };
-
-  const getSeverityBadge = (severity?: string) => {
-    const severityColors = {
-      high: "bg-red-100 text-red-700 border-red-200",
-      medium: "bg-orange-100 text-orange-700 border-orange-200",
-      low: "bg-blue-100 text-blue-700 border-blue-200",
-    };
-    const color = severityColors[severity?.toLowerCase() as keyof typeof severityColors] || "bg-gray-100 text-gray-700 border-gray-200";
-    return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded border ${color}`}>
-        {severity || "N/A"}
-      </span>
-    );
-  };
-
-  const getIssueStatusBadge = (issueStatus?: string) => {
-    // Map issue status to readable labels and colors
-    const statusMap: Record<string, { label: string; color: string }> = {
-      "Status.OPEN": { label: "Open", color: "bg-gray-100 text-gray-700 border-gray-200" },
-      "Status.IN_PROGRESS": { label: "In Progress", color: "bg-blue-100 text-blue-700 border-blue-200" },
-      "Status.REVIEW": { label: "In Review", color: "bg-purple-100 text-purple-700 border-purple-200" },
-      "Status.COMPLETED": { label: "Completed", color: "bg-green-100 text-green-700 border-green-200" },
-    };
+  const getOfferStatusBadge = (offer: IssueOffer, issueStatus?: string) => {
+    // Determine the appropriate status based on offer and issue status
+    if (offer.status === IssueOfferStatus.REJECTED) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-red-50 text-red-600 border border-red-200">
+          <FontAwesomeIcon icon={faTimesCircle} className="w-3 h-3" />
+          Rejected
+        </span>
+      );
+    }
     
-    const status = statusMap[issueStatus || ""] || { label: issueStatus || "Unknown", color: "bg-gray-100 text-gray-700 border-gray-200" };
+    if (offer.status === IssueOfferStatus.ACCEPTED) {
+      // Check if awaiting approval (issue in review)
+      if (issueStatus?.toUpperCase().includes("REVIEW")) {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
+            Awaiting Approval
+          </span>
+        );
+      }
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+          <FontAwesomeIcon icon={faHourglass} className="w-3 h-3" />
+          Work in Progress
+        </span>
+      );
+    }
     
+    // RECEIVED - Bid sent, awaiting response
     return (
-      <span className={`px-2 py-0.5 text-xs font-medium rounded border ${status.color}`}>
-        {status.label}
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-gold-100 text-gold-700 border border-gold-200">
+        <FontAwesomeIcon icon={faPaperPlane} className="w-3 h-3" />
+        Bid Sent
       </span>
     );
   };
+
 
   if (isLoading) {
     return (
@@ -309,141 +332,165 @@ const VendorJobsPage: React.FC = () => {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Jobs</h1>
-        <p className="text-gray-600">
-          Manage your active jobs and track pending offers
-        </p>
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">My Jobs</h1>
+          <p className="text-gray-500">
+            Manage your jobs and track pending offers.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate("/marketplace")}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold text-white font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors"
+        >
+          <FontAwesomeIcon icon={faPlus} className="w-4 h-4" />
+          Find Jobs
+          <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
+        </button>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Active Jobs</div>
-            <FontAwesomeIcon icon={faCheckCircle} className="w-5 h-5 text-blue-500" />
+        <div 
+          onClick={() => setActiveTab("active")}
+          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
+        >
+          <div className="absolute top-3 right-3">
+            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+              <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 text-blue-500" />
+            </div>
           </div>
+          <div className="text-sm font-medium text-gray-600 mb-1">Active</div>
           <div className="text-3xl font-bold text-gray-900">{stats.activeCount}</div>
           <div className="text-sm text-gray-500 mt-1">
-            ${stats.activeRevenue.toLocaleString()} value
+            ${stats.activeRevenue.toLocaleString()} Value
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Completed</div>
-            <FontAwesomeIcon icon={faCheckCircle} className="w-5 h-5 text-green-500" />
+        <div 
+          onClick={() => setActiveTab("completed")}
+          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
+        >
+          <div className="absolute top-3 right-3">
+            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
+              <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 text-emerald-500" />
+            </div>
           </div>
+          <div className="text-sm font-medium text-gray-600 mb-1">Completed</div>
           <div className="text-3xl font-bold text-gray-900">{stats.completedCount}</div>
           <div className="text-sm text-gray-500 mt-1">
-            ${stats.completedRevenue.toLocaleString()} earned
+            ${stats.completedRevenue.toLocaleString()} Earned
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Pending Offers</div>
-            <FontAwesomeIcon icon={faClock} className="w-5 h-5 text-yellow-500" />
+        <div 
+          onClick={() => setActiveTab("pending")}
+          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
+        >
+          <div className="absolute top-3 right-3">
+            <div className="w-6 h-6 rounded-full bg-gold-200 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-gold"></div>
+            </div>
           </div>
+          <div className="text-sm font-medium text-gray-600 mb-1">Pending Offers</div>
           <div className="text-3xl font-bold text-gray-900">{stats.pendingCount}</div>
           <div className="text-sm text-gray-500 mt-1">
-            ${stats.potentialRevenue.toLocaleString()} potential
+            ${stats.potentialRevenue.toLocaleString()} Potential
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Total Bids</div>
-            <FontAwesomeIcon icon={faBriefcase} className="w-5 h-5 text-purple-500" />
+        <div className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative">
+          <div className="absolute top-3 right-3">
+            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+              <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-gray-500" />
+            </div>
           </div>
+          <div className="text-sm font-medium text-gray-600 mb-1">Total Bids</div>
           <div className="text-3xl font-bold text-gray-900">{stats.totalOffers}</div>
-          <div className="text-sm text-gray-500 mt-1">All time</div>
+          <div className="text-sm text-gray-500 mt-1">All Time</div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-medium text-gray-600">Win Rate</div>
-            <FontAwesomeIcon icon={faCheckCircle} className="w-5 h-5 text-orange-500" />
+        <div className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative">
+          <div className="absolute top-3 right-3">
+            <FontAwesomeIcon icon={faStar} className="w-5 h-5 text-gold" />
           </div>
+          <div className="text-sm font-medium text-gray-600 mb-1">Win Rate</div>
           <div className="text-3xl font-bold text-gray-900">
             {stats.totalOffers > 0
               ? Math.round(((stats.activeCount + stats.completedCount) / stats.totalOffers) * 100)
-              : 0}
-            %
+              : 0}%
           </div>
-          <div className="text-sm text-gray-500 mt-1">Success rate</div>
+          <div className="text-sm text-gray-500 mt-1">Success Rate</div>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {(["all", "active", "completed", "pending", "rejected"] as TabType[]).map((tab) => (
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
+        {/* Tabs */}
+        <div className="flex gap-1 flex-wrap">
+          {(["all", "active", "completed", "pending", "rejected"] as TabType[]).map((tab) => {
+            const count = tab === "active" ? stats.activeCount
+              : tab === "completed" ? stats.completedCount
+              : tab === "pending" ? stats.pendingCount
+              : tab === "rejected" ? stats.rejectedCount
+              : null;
+            
+            return (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   activeTab === tab
-                    ? "bg-blue-500 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                {tab !== "all" && (
-                  <span className="ml-2 opacity-75">
-                    (
-                    {tab === "active"
-                      ? stats.activeCount
-                      : tab === "completed"
-                      ? stats.completedCount
-                      : tab === "pending"
-                      ? stats.pendingCount
-                      : stats.rejectedCount}
-                    )
+                {count !== null && (
+                  <span className={`ml-1.5 ${activeTab === tab ? 'text-white/70' : 'text-gold font-semibold'}`}>
+                    ({count})
                   </span>
                 )}
               </button>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
-          {/* Search */}
-          <div className="flex-1 relative">
-            <FontAwesomeIcon
-              icon={faSearch}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
-            />
-            <input
-              type="text"
-              placeholder="Search by issue type or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+        {/* Search */}
+        <div className="flex-1 relative">
+          <FontAwesomeIcon
+            icon={faSearch}
+            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
+          />
+          <input
+            type="text"
+            placeholder="Search by issue type or description..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-gold focus:border-transparent text-sm"
+          />
+        </div>
 
-          {/* Sort */}
-          <div className="relative">
-            <FontAwesomeIcon
-              icon={faFilter}
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4"
-            />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-            >
-              <option value="date">Sort by Date</option>
-              <option value="price">Sort by Price</option>
-              <option value="status">Sort by Priority</option>
-            </select>
-          </div>
+        {/* Sort */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            className="pl-4 pr-10 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent appearance-none bg-white text-sm font-medium text-gray-700 cursor-pointer"
+          >
+            <option value="date">Sort by Date</option>
+            <option value="price">Sort by Price</option>
+            <option value="status">Sort by Priority</option>
+          </select>
+          <FontAwesomeIcon
+            icon={faChevronDown}
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none"
+          />
         </div>
       </div>
 
       {/* Jobs List */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filteredOffers.length === 0 ? (
           <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <FontAwesomeIcon
@@ -461,7 +508,7 @@ const VendorJobsPage: React.FC = () => {
             {!searchQuery && (
               <button
                 onClick={() => navigate("/marketplace")}
-                className="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-600 transition-colors"
+                className="px-6 py-3 bg-gold text-white font-medium rounded-lg hover:bg-foreground hover:text-background transition-colors"
               >
                 Browse Opportunities
               </button>
@@ -476,82 +523,109 @@ const VendorJobsPage: React.FC = () => {
             return (
               <div
                 key={offer.id}
-                onClick={() => navigate(`/marketplace/${offer.issue_id}`)}
-                className="bg-white rounded-xl border border-gray-200 p-6 hover:border-blue-300 transition-colors cursor-pointer"
+                onClick={() => openIssueModal(offer.issue_id)}
+                className="group bg-white rounded-xl border border-gray-200 p-4 border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Property Image */}
-                  {listing && (
-                    <div className="w-full lg:w-48 h-32 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                      <ImageComponent
-                        src={listing.image_url}
-                        fallback="/images/property_card_holder.jpg"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
+                <div className="flex gap-4">
+                  {/* Property Thumbnail */}
+                  <div className="w-24 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <ImageComponent
+                      src={listing?.image_url}
+                      fallback="/images/property_card_holder.jpg"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
 
-                  {/* Job Details */}
+                  {/* Job Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <FontAwesomeIcon
-                          icon={getIssueIcon(issue?.type)}
-                          className="w-5 h-5 text-gray-600"
-                        />
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
-                        </h3>
-                        {getSeverityBadge(issue?.severity)}
-                        {issue?.status && getIssueStatusBadge(issue.status)}
-                      </div>
-                      {getStatusBadge(offer.status)}
+                    <div className="flex items-start gap-2 mb-1">
+                      <h3 className="text-base font-semibold text-gray-900 truncate">
+                        {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Issue`}
+                      </h3>
+                      <span className="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600 border border-gray-200">
+                        {normalizeAndCapitalize(issue?.type || "General")}
+                      </span>
                     </div>
-
-                    <p className="text-gray-600 mb-3 line-clamp-2">
-                      {issue?.summary || "No description available"}
-                    </p>
-
-                    {listing && (
-                      <div className="text-sm text-gray-500 mb-3">
-                        <span className="font-medium">Location:</span> {listing.address},{" "}
-                        {listing.city}, {listing.state}
-                      </div>
+                    
+                    {/* Only show address for accepted offers */}
+                    {offer.status === IssueOfferStatus.ACCEPTED && listing && (
+                      <p className="text-sm text-gray-600 mb-2">
+                        {listing.address}, {listing.city}, {listing.state}
+                      </p>
                     )}
 
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-500">Your Bid:</span>
-                        <span className="text-xl font-bold text-gray-900">
-                          ${offer.price?.toLocaleString() || 0}
-                        </span>
-                      </div>
-                      <div className="text-gray-500">
-                        Submitted {new Date(offer.created_at).toLocaleDateString()}
-                      </div>
-                      {offer.comment_vendor && (
-                        <div className="text-gray-500 italic">
-                          Note: {offer.comment_vendor.substring(0, 50)}
-                          {offer.comment_vendor.length > 50 ? "..." : ""}
-                        </div>
-                      )}
-                    </div>
-
-                    {offer.status === IssueOfferStatus.REJECTED && offer.comment_client && (
-                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-700">
-                          <span className="font-medium">Client feedback:</span>{" "}
-                          {offer.comment_client}
-                        </p>
+                    {/* Show scheduled assessment if exists */}
+                    {assessmentsByIssueId[offer.issue_id] && (
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
+                        Visit: {new Date(assessmentsByIssueId[offer.issue_id].start_time).toLocaleDateString("en-US", { 
+                          weekday: 'short', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
                       </div>
                     )}
                   </div>
+
+                  {/* Price & Status */}
+                  <div className="flex flex-col items-end justify-between flex-shrink-0 gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="text-xl font-bold text-gray-900">
+                        ${offer.price?.toLocaleString() || 0}
+                      </div>
+                      {getOfferStatusBadge(offer, issue?.status)}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Submitted {new Date(offer.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </div>
+                  </div>
                 </div>
+
+                {/* Client feedback for rejected offers */}
+                {offer.status === IssueOfferStatus.REJECTED && offer.comment_client && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">
+                      <span className="font-medium">Client feedback:</span>{" "}
+                      {offer.comment_client}
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </div>
+
+      {/* Issue Details Modal */}
+      {selectedIssueId && selectedIssue && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/50 transition-opacity"
+            onClick={closeIssueModal}
+          />
+          
+          {/* Modal Content */}
+          <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
+              {/* Close Button */}
+              <button
+                onClick={closeIssueModal}
+                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} className="text-gray-600" />
+              </button>
+              
+              {/* Issue Details Component */}
+              <div className="p-6">
+                <IssueDetails issue={selectedIssue} listing={selectedIssueListing} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
