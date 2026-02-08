@@ -25,7 +25,6 @@ import {
   faUser,
   faFileLines
 } from "@fortawesome/free-regular-svg-icons";
-// Note: faGoogle import kept to prevent build errors if referenced elsewhere
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
 import {
@@ -51,25 +50,23 @@ import { nanoid } from "nanoid";
 // --- TYPES ---
 type VendorStep = 0 | 1 | 2;
 
-// --- STYLES CONSTANTS ---
-// Using tailwind.config.js gold color (rgb 212, 160, 23)
-const GOLD_BG = "bg-gold";
-const GOLD_TEXT = "text-gold";
-const GOLD_BORDER = "border-gold";
-const GOLD_RING_SOFT = "ring-gold-300";
-const GOLD_RING_FOCUS = "focus-within:ring-gold-300";
-const GOLD_BG_SOFT_16 = "bg-gold-200";
-const GOLD_BG_SOFT_18 = "bg-gold-200";
-const GOLD_SELECTED_BG = "bg-gold-200";
+// --- STYLES CONSTANTS (Restored to specific RGB values from your correct code) ---
+const GOLD_BG = "bg-[rgb(212_160_23_/_var(--tw-bg-opacity,_1))]";
+const GOLD_TEXT = "text-[rgb(212_160_23_/_1)]";
+const GOLD_BORDER = "border-[rgb(212_160_23_/_1)]";
+const GOLD_RING_SOFT = "ring-[rgb(212_160_23_/_0.20)]";
+const GOLD_RING_FOCUS = "focus-within:ring-[rgb(212_160_23_/_0.35)]";
+const GOLD_BG_SOFT_16 = "bg-[rgb(212_160_23_/_0.16)]";
+const GOLD_BG_SOFT_18 = "bg-[rgb(212_160_23_/_0.18)]";
+const GOLD_SELECTED_BG = "bg-[rgb(212_160_23_/_0.16)]";
 
-// --- DIMENSIONS (Matched exactly to your Login code) ---
+// --- DIMENSIONS ---
 const CARD_SIZE = "w-full max-w-[560px] min-h-[700px]";
 
 // --- COMPONENTS ---
 
-// FIXED: Moved FieldShell outside of the main component to prevent re-rendering/focus loss
 const FieldShell = ({ icon, children }: { icon: any; children: React.ReactNode }) => (
-  <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
+  <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
     <div className="flex-1">
       {children}
     </div>
@@ -84,7 +81,7 @@ const RightSideGraphic3D = ({ isVendor }: { isVendor: boolean }) => {
       <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(80%_60%_at_70%_20%,rgb(212_160_23_/_0.22),transparent_55%),radial-gradient(70%_60%_at_10%_90%,rgba(17,24,39,0.18),transparent_60%)]" />
 
       {/* subtle frame */}
-      <div className="absolute inset-0 rounded-3xl bg-white/50 backdrop-blur-[2px] shadow-2xl" />
+      <div className="absolute inset-0 rounded-3xl bg-white/50 backdrop-blur-[2px] shadow-lg" />
 
       {/* 3D stack */}
       <div className="relative h-full p-6 [perspective:1200px]">
@@ -371,7 +368,7 @@ const Signup: React.FC = () => {
   const validateVendorStep = (step: VendorStep) => {
     if (step === 0) {
       if (!selectedVendorTypes || selectedVendorTypes.length === 0) {
-        setError("Please select at least one Vendor Type.");
+        setError("Please select at least one Service Type.");
         return false;
       }
       if (!formData.email) {
@@ -557,8 +554,9 @@ const Signup: React.FC = () => {
 
   const handleSignUpWithThirdParty = async () => {
     try {
+      // 1. Validation Logic
       if (!formData.userType) {
-        setError("Please select a role.");
+        setError("Please select a user type.");
         return;
       }
 
@@ -573,22 +571,30 @@ const Signup: React.FC = () => {
         return;
       }
 
+      // 2. Authenticate with Google (Firebase)
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const firebaseUser = result.user;
       const token = await getIdToken(firebaseUser);
 
+      // 3. Check Backend Existence
       let backendUser = null;
       let userExists = false;
 
       try {
-        backendUser = await dispatch(getUserByFirebaseId.initiate(firebaseUser.uid)).unwrap();
+        backendUser = await dispatch(
+          getUserByFirebaseId.initiate(firebaseUser.uid)
+        ).unwrap();
         userExists = true;
       } catch (error: any) {
-        if (error?.status === 404) userExists = false;
-        else throw new Error("Failed to check user existence.");
+        if (error?.status === 404) {
+          userExists = false;
+        } else {
+          throw new Error("Failed to check user existence.");
+        }
       }
 
+      // 4. Force Login if User Exists
       if (userExists) {
         dispatch(setPageLoading(true));
         await signOut(auth);
@@ -596,12 +602,14 @@ const Signup: React.FC = () => {
         localStorage.removeItem("firebase_id");
         dispatch(logout());
         dispatch(setPageLoading(false));
+        
         navigate("/signup", {
           state: { error: "An account with this Google email already exists. Please log in instead." },
         });
         return;
       }
 
+      // 5. Create Base User
       backendUser = await createUser({
         firebase_id: firebaseUser.uid,
         user_type: { user_type: formData.userType },
@@ -619,6 +627,7 @@ const Signup: React.FC = () => {
         postal_code: "",
       };
 
+      // 6. Create Role-Specific User (Client/Vendor/Realtor)
       try {
         await createUserType(
           backendUser,
@@ -627,11 +636,15 @@ const Signup: React.FC = () => {
           formData.userType === "vendor" ? selectedVendorTypes : undefined
         );
       } catch (error: any) {
-        if (error?.response?.status !== 409) await firebaseUser.delete();
+        console.error("Creating user type failed:", error);
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete();
+        }
         dispatch(setPageLoading(false));
         throw new Error("Failed to create user type in backend.");
       }
 
+      // 7. Create User Login Record
       try {
         await createUserLogin({
           user_id: backendUser.id,
@@ -643,28 +656,42 @@ const Signup: React.FC = () => {
           gmail: updatedUserData.email,
         }).unwrap();
       } catch (error: any) {
-        if (error?.response?.status !== 409) await firebaseUser.delete();
+        console.error("User login tracking failed:", error);
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete();
+        }
         dispatch(setPageLoading(false));
         throw new Error("Failed to log user login method.");
       }
 
+      // 8. Create User Session
       try {
-        await createUserSession({
+        const payload = {
           user_id: backendUser.id,
           login: "gmail",
           login_time: new Date().toISOString(),
           authentication_code: token,
-        }).unwrap();
+        };
+        await createUserSession(payload).unwrap();
       } catch (error: any) {
-        if (error?.response?.status !== 409) await firebaseUser.delete();
+        console.error("User session creation failed:", error);
+        if (error?.response?.status !== 409) {
+          await firebaseUser.delete();
+        }
         dispatch(setPageLoading(false));
         throw new Error("Failed to create session in backend.");
       }
 
-      const refreshedUser = await dispatch(getUserByFirebaseId.initiate(firebaseUser.uid)).unwrap();
+      // 9. Finalize and Redirect
+      const refreshedUser = await dispatch(
+        getUserByFirebaseId.initiate(firebaseUser.uid)
+      ).unwrap();
+
       dispatch(login(refreshedUser));
       navigate("/dashboard");
+
     } catch (err: any) {
+      console.error("Third-party sign-up failed:", err);
       setError(err.message || "Failed to sign up with Google.");
       dispatch(setPageLoading(false));
     }
@@ -748,7 +775,7 @@ const Signup: React.FC = () => {
         <div className="w-full max-w-[1400px] flex items-center justify-center lg:justify-start gap-16 2xl:gap-24 px-4">
           
           {/* SIGN UP CARD - Matched CARD_SIZE and Styling */}
-          <div className={`${CARD_SIZE} bg-white rounded-3xl shadow-2xl p-10 relative z-20 flex flex-col shrink-0`}>
+          <div className={`${CARD_SIZE} bg-white rounded-3xl shadow-[0_35px_60px_-15px_rgba(0,0,0,0.15)] p-10 border border-gray-100 relative z-20 flex flex-col shrink-0`}>
             
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-900">Create an Account</h2>
@@ -776,7 +803,7 @@ const Signup: React.FC = () => {
                   "shadow-lg",
                   "hover:bg-black hover:text-white",
                   !isVendor
-                    ? `bg-gold-200`
+                    ? `bg-[rgb(212_160_23_/_0.16)]`
                     : "bg-white"
                 ].join(" ")}
                 >
@@ -923,7 +950,7 @@ const Signup: React.FC = () => {
                         />
                       </FieldShell>
 
-                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
+                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
                         <input
                           className="flex-1 w-full py-3.5 text-sm placeholder-gray-400 font-medium bg-white outline-none"
                           type={isPasswordVisible ? "text" : "password"}
@@ -939,7 +966,7 @@ const Signup: React.FC = () => {
                         </button>
                       </div>
 
-                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
+                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
                         <input
                           className="flex-1 w-full py-3.5 text-sm placeholder-gray-400 font-medium bg-white outline-none"
                           type={isConfirmPasswordVisible ? "text" : "password"}
@@ -1079,7 +1106,7 @@ const Signup: React.FC = () => {
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className={`mt-1 h-4 w-4 rounded border-gray-300 ${GOLD_TEXT} focus:ring-gold`}
+                    className={`mt-1 h-4 w-4 rounded border-gray-300 ${GOLD_TEXT} focus:ring-[rgb(212_160_23_/_1)]`}
                   />
                   <label htmlFor="terms" className="ml-2 text-sm text-gray-500">
                     I agree to the{" "}
@@ -1110,7 +1137,7 @@ const Signup: React.FC = () => {
                       <button
                         type="button"
                         onClick={goNextVendorStep}
-                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-gold/20 hover:bg-foreground hover:text-background transition`}
+                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-[rgb(212_160_23_/_0.2)] hover:bg-foreground hover:text-background transition`}
                       >
                         Next Step
                       </button>
@@ -1118,7 +1145,7 @@ const Signup: React.FC = () => {
                       <button
                         type="submit"
                         disabled={loading}
-                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-gold/20 hover:bg-foreground hover:text-background transition disabled:opacity-70`}
+                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-[rgb(212_160_23_/_0.2)] hover:bg-foreground hover:text-background transition disabled:opacity-70`}
                       >
                         {loading ? "Creating Account..." : "Create Account"}
                       </button>
@@ -1172,7 +1199,7 @@ const Signup: React.FC = () => {
           
           {/* 3D GRAPHIC: Hidden on mobile/tablet/laptop, Visible on 2XL+ screens */}
           {/* We hide it on smaller screens because fixed 3D transforms don't resize fluidly */}
-          <div className="hidden 2xl:flex items-center justify-center shrink-0">
+          <div className="hidden 2xl:block mt-10 shrink-0">
              <RightSideGraphic3D isVendor={isVendor} />
           </div>
 
