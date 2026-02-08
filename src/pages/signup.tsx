@@ -53,20 +53,21 @@ import { nanoid } from "nanoid";
 type VendorStep = 0 | 1 | 2;
 
 // --- STYLES CONSTANTS ---
-const GOLD_BG = "bg-[rgb(212_160_23_/_var(--tw-bg-opacity,_1))]";
-const GOLD_TEXT = "text-[rgb(212_160_23_/_1)]";
-const GOLD_BORDER = "border-[rgb(212_160_23_/_1)]";
-const GOLD_RING_SOFT = "ring-[rgb(212_160_23_/_0.20)]";
-const GOLD_RING_FOCUS = "focus-within:ring-[rgb(212_160_23_/_0.35)]";
-const GOLD_BG_SOFT_16 = "bg-[rgb(212_160_23_/_0.16)]";
-const GOLD_BG_SOFT_18 = "bg-[rgb(212_160_23_/_0.18)]";
-const GOLD_SELECTED_BG = "bg-[rgb(212_160_23_/_0.16)]";
+// Using tailwind.config.js gold color (rgb 212, 160, 23)
+const GOLD_BG = "bg-gold";
+const GOLD_TEXT = "text-gold";
+const GOLD_BORDER = "border-gold";
+const GOLD_RING_SOFT = "ring-gold-300";
+const GOLD_RING_FOCUS = "focus-within:ring-gold-300";
+const GOLD_BG_SOFT_16 = "bg-gold-200";
+const GOLD_BG_SOFT_18 = "bg-gold-200";
+const GOLD_SELECTED_BG = "bg-gold-200";
 
 // --- COMPONENTS ---
 
 // FIXED: Moved FieldShell outside of the main component to prevent re-rendering/focus loss
 const FieldShell = ({ icon, children }: { icon: any; children: React.ReactNode }) => (
-  <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
+  <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
     <div className="flex-1">
       {children}
     </div>
@@ -771,7 +772,7 @@ const Signup: React.FC = () => {
                   "shadow-lg",
                   "hover:bg-black hover:text-white",
                   !isVendor
-                    ? `bg-[rgb(212_160_23_/_0.16)]`
+                    ? `bg-gold-200`
                     : "bg-white"
                 ].join(" ")}
                 >
@@ -918,7 +919,7 @@ const Signup: React.FC = () => {
                         />
                       </FieldShell>
 
-                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
+                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
                         <input
                           className="flex-1 w-full py-3.5 text-sm placeholder-gray-400 font-medium bg-white outline-none"
                           type={isPasswordVisible ? "text" : "password"}
@@ -934,7 +935,7 @@ const Signup: React.FC = () => {
                         </button>
                       </div>
 
-                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-[rgb(212_160_23_/_1)] transition`}>
+                      <div className={`flex px-4 py-1 bg-white rounded-lg border border-gray-300 focus-within:ring-2 ${GOLD_RING_FOCUS} focus-within:border-gold transition`}>
                         <input
                           className="flex-1 w-full py-3.5 text-sm placeholder-gray-400 font-medium bg-white outline-none"
                           type={isConfirmPasswordVisible ? "text" : "password"}
@@ -1074,7 +1075,7 @@ const Signup: React.FC = () => {
                     type="checkbox"
                     checked={acceptedTerms}
                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className={`mt-1 h-4 w-4 rounded border-gray-300 ${GOLD_TEXT} focus:ring-[rgb(212_160_23_/_1)]`}
+                    className={`mt-1 h-4 w-4 rounded border-gray-300 ${GOLD_TEXT} focus:ring-gold`}
                   />
                   <label htmlFor="terms" className="ml-2 text-sm text-gray-500">
                     I agree to the{" "}
@@ -1105,7 +1106,7 @@ const Signup: React.FC = () => {
                       <button
                         type="button"
                         onClick={goNextVendorStep}
-                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-[rgb(212_160_23_/_0.2)] hover:bg-foreground hover:text-background transition`}
+                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-gold/20 hover:bg-foreground hover:text-background transition`}
                       >
                         Next Step
                       </button>
@@ -1113,7 +1114,7 @@ const Signup: React.FC = () => {
                       <button
                         type="submit"
                         disabled={loading}
-                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-[rgb(212_160_23_/_0.2)] hover:bg-foreground hover:text-background transition disabled:opacity-70`}
+                        className={`flex-1 rounded-lg ${GOLD_BG} px-5 py-3 text-sm font-bold text-white shadow-md shadow-gold/20 hover:bg-foreground hover:text-background transition disabled:opacity-70`}
                       >
                         {loading ? "Creating Account..." : "Create Account"}
                       </button>

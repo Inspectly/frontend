@@ -32,15 +32,17 @@ import {
   faWind,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { User, IssueOfferStatus, IssueType, Listing } from "../types";
+import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment, IssueAssessmentStatus } from "../types";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
+import { useGetAssessmentsByVendorIdUsersInteractionIdQuery, useUpdateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
 import ImageComponent from "../components/ImageComponent";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import IssueDetails from "../components/IssueDetails";
+import { faCalendarAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 
 // Issue type icons mapping
 const issueIcons: Record<string, any> = {
@@ -89,7 +91,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
   
   // UI State
-  const [activeTab, setActiveTab] = useState<"priority" | "new" | "bidding">("priority");
+  const [activeTab, setActiveTab] = useState<"priority" | "new" | "bidding" | "visits">("priority");
   const [projectSlide, setProjectSlide] = useState(0);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
     return localStorage.getItem('vendor_welcome_banner_dismissed') !== 'true';
@@ -108,6 +110,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
   const { data: issues, error: issuesError } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
+  
+  // Vendor assessments
+  const { data: vendorAssessments = [], refetch: refetchAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useGetAssessmentsByVendorIdUsersInteractionIdQuery(
+    vendor?.id || 0,
+    { skip: !vendor?.id }
+  );
+  const [updateAssessment] = useUpdateAssessmentMutation();
+
 
   // Listings map for lookups
   const listingsMap = useMemo(() => {
@@ -131,7 +141,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const selectedIssueListing = selectedIssue ? listingsMap[selectedIssue.listing_id] : undefined;
   
   // Open issue modal
-  const openIssueModal = (issueId: number, defaultTab: "details" | "offers" = "details") => {
+  const openIssueModal = (issueId: number, defaultTab: "details" | "offers" | "assessments" = "details") => {
     setSelectedIssueId(issueId);
     // Update URL to set the tab for IssueDetails
     navigate(`?tab=${defaultTab}`, { replace: true });
@@ -200,6 +210,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       isHot: boolean;
       estimatedPrice?: number;
       distance?: string;
+      created_at?: string;
     }>
   >([]);
 
@@ -219,14 +230,15 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           })
         : available;
       
-      const sorted = [...filtered].sort((a, b) => {
+      // Sort by severity for Priority List (high → medium → low)
+      const sortedBySeverity = [...filtered].sort((a, b) => {
         const severityOrder = { high: 0, medium: 1, low: 2 };
         return (severityOrder[a.severity as keyof typeof severityOrder] || 2) -
                (severityOrder[b.severity as keyof typeof severityOrder] || 2);
       });
 
       const jobsWithBids = await Promise.all(
-        sorted.slice(0, 10).map(async (issue) => {
+        sortedBySeverity.slice(0, 20).map(async (issue) => {
           let bidCount = 0;
           try {
             const result = await store.dispatch(getOffersByIssueId.initiate(issue.id));
@@ -243,6 +255,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             bidCount,
             listing,
             isHot: issue.severity === 'high' || bidCount === 0,
+            created_at: issue.created_at,
           };
         })
       );
@@ -336,7 +349,122 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(timer);
   }, [activeJobs.length]);
 
-  // Loading/Error states
+  // Process vendor assessments into categorized visits - GROUPED BY ISSUE
+  // NOTE: This useMemo must be BEFORE any early returns to comply with Rules of Hooks
+  const processedVisits = useMemo(() => {
+    // Group assessments by issue_id
+    const groupedByIssue: Record<number, IssueAssessment[]> = {};
+    vendorAssessments.forEach(assessment => {
+      if (!groupedByIssue[assessment.issue_id]) {
+        groupedByIssue[assessment.issue_id] = [];
+      }
+      groupedByIssue[assessment.issue_id].push(assessment);
+    });
+
+    // Process each issue group
+    const visits = Object.entries(groupedByIssue).map(([issueIdStr, assessments]) => {
+      const issueId = Number(issueIdStr);
+      const issue = issuesMap[issueId];
+      const listing = issue ? listingsMap[issue.listing_id] : undefined;
+      
+      // Check if there's an accepted assessment
+      // Note: Backend may return status as lowercase "accepted" or as enum "Assessment_Status.ACCEPTED"
+      const acceptedAssessment = assessments.find(a => 
+        a.status === IssueAssessmentStatus.ACCEPTED || 
+        a.status === "accepted" ||
+        (a.status as string)?.toLowerCase() === "accepted"
+      );
+      
+      // Helper to check if status is "received" (pending)
+      const isReceivedStatus = (status: string) => 
+        status === IssueAssessmentStatus.RECEIVED || 
+        status === "received" ||
+        status?.toLowerCase() === "received";
+
+      // Check if there are pending assessments from client (action required for vendor)
+      const actionRequiredAssessments = assessments.filter(a => 
+        isReceivedStatus(a.status as string) && a.user_id !== user.id
+      );
+      
+      // Check if there are pending assessments from vendor (waiting for client)
+      const pendingAssessments = assessments.filter(a => 
+        isReceivedStatus(a.status as string) && a.user_id === user.id
+      );
+
+      // Determine the primary category for this issue
+      let category: "action_required" | "pending" | "confirmed" = "pending";
+      let primaryAssessment: IssueAssessment | undefined;
+      let proposalCount = 0;
+
+      if (acceptedAssessment) {
+        category = "confirmed";
+        primaryAssessment = acceptedAssessment;
+      } else if (actionRequiredAssessments.length > 0) {
+        category = "action_required";
+        // Use the earliest proposed time
+        primaryAssessment = actionRequiredAssessments.sort(
+          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        )[0];
+        proposalCount = actionRequiredAssessments.length;
+      } else if (pendingAssessments.length > 0) {
+        category = "pending";
+        primaryAssessment = pendingAssessments.sort(
+          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        )[0];
+        proposalCount = pendingAssessments.length;
+      }
+
+      if (!primaryAssessment) return null;
+
+      return {
+        id: issueId, // Use issue ID as the key for grouping
+        issueId,
+        issue,
+        listing,
+        category,
+        startTime: new Date(primaryAssessment.start_time),
+        endTime: new Date(primaryAssessment.end_time),
+        proposalCount,
+        acceptedAssessment,
+      };
+    }).filter(Boolean) as Array<{
+      id: number;
+      issueId: number;
+      issue: IssueType | undefined;
+      listing: Listing | undefined;
+      category: "action_required" | "pending" | "confirmed";
+      startTime: Date;
+      endTime: Date;
+      proposalCount: number;
+      acceptedAssessment?: IssueAssessment;
+    }>;
+
+    // Filter to relevant visits - exclude past confirmed visits
+    const now = new Date();
+    const relevantVisits = visits.filter(v => {
+      if (v.category === "confirmed") {
+        // Only show future confirmed visits
+        return v.startTime >= now;
+      }
+      // Show all pending and action required (these need response regardless of proposed time)
+      return true;
+    });
+
+    // Sort: action required first, then confirmed, then pending, then by date
+    return relevantVisits.sort((a, b) => {
+      if (a.category === "action_required" && b.category !== "action_required") return -1;
+      if (b.category === "action_required" && a.category !== "action_required") return 1;
+      if (a.category === "confirmed" && b.category !== "confirmed") return -1;
+      if (b.category === "confirmed" && a.category !== "confirmed") return 1;
+      return a.startTime.getTime() - b.startTime.getTime();
+    });
+  }, [vendorAssessments, issuesMap, listingsMap, user.id]);
+
+  // Count issues with visits needing action (not individual assessments)
+  const actionRequiredCount = processedVisits.filter(v => v.category === "action_required").length;
+  const confirmedVisitsCount = processedVisits.filter(v => v.category === "confirmed").length;
+
+  // Loading/Error states - AFTER all hooks
   if (issuesError) return <p>Error loading dashboard data</p>;
   if (isVendorLoading) {
     return (
@@ -379,13 +507,31 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const getPriorityItems = () => {
     switch (activeTab) {
       case "new":
-        // All marketplace jobs vendor hasn't bid on yet (max 5)
-        return marketplaceJobs.filter(j => !alreadyBidOnIds.has(j.id)).slice(0, 5);
+        // Jobs created in the last 7 days, vendor hasn't bid on yet, sorted by newest
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        return marketplaceJobs
+          .filter(j => !alreadyBidOnIds.has(j.id)) // Haven't bid yet
+          .filter(j => {
+            if (!j.created_at) return false;
+            const createdDate = new Date(j.created_at);
+            return createdDate >= sevenDaysAgo;
+          })
+          .sort((a, b) => {
+            // Sort by newest first
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          })
+          .slice(0, 5);
       
       case "bidding":
         // Vendor's pending bids (max 5)
+        // Use offer.id for unique key, but store issue.id for navigation
         return pendingBids.slice(0, 5).map(b => ({
-          id: b.issue?.id || 0,
+          id: b.offer.id, // Use offer ID for unique key
+          issueId: b.issue?.id || 0, // Store issue ID for navigation
           type: b.issue?.type || "General",
           summary: b.issue?.summary || "",
           severity: b.issue?.severity || "medium",
@@ -394,6 +540,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           isHot: false,
           myBid: b.offer.price,
         }));
+      
+      case "visits":
+        // Return visits data for special rendering
+        return processedVisits.slice(0, 5);
       
       default:
         // Priority List: Jobs to bid on, ranked by opportunity (max 5)
@@ -419,7 +569,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         
         {/* New Vendor Welcome Banner */}
         {isNewVendor && showWelcomeBanner && (
-          <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 relative">
+          <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-gold to-gold-400 relative">
             <div className="flex flex-col lg:flex-row items-center gap-5">
               {/* Icon */}
               <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -463,12 +613,12 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* New Job Alert */}
           <div 
             onClick={() => { setActiveTab("new"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-amber-500">{availableCount}</span>
+              <span className="text-4xl font-bold text-gold">{availableCount}</span>
               {availableCount > 0 && (
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-bold rounded">
+                <span className="px-2 py-0.5 bg-gold-200 text-gold-700 text-xs font-bold rounded">
                   hot <FontAwesomeIcon icon={faFire} className="ml-0.5" />
                 </span>
               )}
@@ -485,7 +635,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Active Jobs */}
           <div 
             onClick={() => navigate("/vendor/jobs?tab=active")}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-4xl font-bold text-gray-900">
@@ -505,7 +655,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Jobs Bidding */}
           <div 
             onClick={() => { setActiveTab("bidding"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-4xl font-bold text-gray-900">
@@ -516,7 +666,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             <div className="text-sm font-semibold text-gray-900">My Bids</div>
             <div className="text-xs mt-1">
               {pendingBidsCount > 0 ? (
-                <span className="text-amber-600">Awaiting response</span>
+                <span className="text-gold">Awaiting response</span>
               ) : (
                 <span className="text-gray-500">Place your first bid</span>
               )}
@@ -529,8 +679,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             {vendorMetrics.totalEarnings === 0 && vendorMetrics.thisMonthEarnings === 0 && vendorMetrics.outstandingBids === 0 ? (
               // New vendor - show encouraging message
               <div className="text-center py-2">
-                <div className="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <FontAwesomeIcon icon={faRocket} className="text-amber-400 text-lg" />
+                <div className="w-10 h-10 bg-gold/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <FontAwesomeIcon icon={faRocket} className="text-gold text-lg" />
                 </div>
                 <div className="text-base font-semibold text-white mb-1">Start Earning</div>
                 <div className="text-xs text-gray-400">Win your first bid to see your earnings here</div>
@@ -573,7 +723,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         activeTab === "priority" 
                           ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-gray-100"
+                          : "text-gray-600 hover:bg-foreground hover:text-background"
                       }`}
                     >
                       <FontAwesomeIcon icon={faListUl} />
@@ -584,7 +734,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         activeTab === "new" 
                           ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-gray-100"
+                          : "text-gray-600 hover:bg-foreground hover:text-background"
                       }`}
                     >
                       <FontAwesomeIcon icon={faBriefcase} />
@@ -595,14 +745,32 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         activeTab === "bidding" 
                           ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-gray-100"
+                          : "text-gray-600 hover:bg-foreground hover:text-background"
                       }`}
                     >
                       <FontAwesomeIcon icon={faClock} />
                       My Bids
                       {vendorMetrics.pendingBids > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 bg-amber-500 text-white text-xs rounded-full">
+                        <span className="ml-1 px-1.5 py-0.5 bg-gold text-white text-xs rounded-full">
                           {vendorMetrics.pendingBids}+
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("visits")}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        activeTab === "visits" 
+                          ? "bg-gray-900 text-white" 
+                          : "text-gray-600 hover:bg-foreground hover:text-background"
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                      Visits
+                      {(actionRequiredCount > 0 || confirmedVisitsCount > 0) && (
+                        <span className={`ml-1 px-1.5 py-0.5 text-white text-xs rounded-full ${
+                          actionRequiredCount > 0 ? "bg-red-500" : "bg-gold"
+                        }`}>
+                          {actionRequiredCount > 0 ? actionRequiredCount : confirmedVisitsCount}
                         </span>
                       )}
                     </button>
@@ -612,90 +780,208 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
               {/* Priority List Items */}
               <div className="divide-y divide-gray-100">
-                {getPriorityItems().length > 0 ? (
-                  getPriorityItems().map((item: any, index) => (
-                    <div key={item.id || index}>
-                      {/* Job Row */}
-                      <div 
-                        onClick={() => openIssueModal(item.id, activeTab === "bidding" ? "offers" : "details")}
-                        className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 border-transparent hover:border-amber-500"
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* Icon */}
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                            item.isHot ? "bg-amber-100" : "bg-gray-100"
-                          }`}>
-                            <FontAwesomeIcon 
-                              icon={pickIcon(item.type)} 
-                              className={item.isHot ? "text-amber-600" : "text-gray-600"} 
-                            />
-                          </div>
-                          
-                          {/* Job Info */}
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              {item.isHot && (
-                                <span className="text-xs font-bold text-amber-600">hot</span>
-                              )}
-                              <span className="font-semibold text-gray-900 truncate max-w-[300px]">
-                                {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
-                              </span>
-                              <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded flex-shrink-0">
-                                {normalizeAndCapitalize(item.type)}
-                              </span>
+                {activeTab === "visits" ? (
+                  // Visits Tab Rendering
+                  getPriorityItems().length > 0 ? (
+                    (getPriorityItems() as typeof processedVisits).map((visit, index) => (
+                      <div key={`visit-${visit.issueId}`}>
+                        <div 
+                          onClick={() => openIssueModal(visit.issueId, "assessments")}
+                          className={`flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${
+                            visit.category === "action_required" 
+                              ? "border-red-500 bg-red-50/30" 
+                              : visit.category === "confirmed" 
+                                ? "border-emerald-500 bg-emerald-50/30" 
+                                : "border-transparent hover:border-gold"
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Calendar Icon */}
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              visit.category === "action_required" 
+                                ? "bg-red-100" 
+                                : visit.category === "confirmed" 
+                                  ? "bg-emerald-100" 
+                                  : "bg-gold-100"
+                            }`}>
+                              <FontAwesomeIcon 
+                                icon={faCalendarAlt} 
+                                className={
+                                  visit.category === "action_required" 
+                                    ? "text-red-600" 
+                                    : visit.category === "confirmed" 
+                                      ? "text-emerald-600" 
+                                      : "text-gold"
+                                } 
+                              />
                             </div>
-                            <div className="text-sm text-gray-500 truncate">
-                              {item.listing?.address || "View location"}
+                            
+                            {/* Visit Info */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {/* Status Badge */}
+                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                  visit.category === "action_required" 
+                                    ? "bg-red-100 text-red-700" 
+                                    : visit.category === "confirmed" 
+                                      ? "bg-emerald-100 text-emerald-700" 
+                                      : "bg-gold-100 text-gold-700"
+                                }`}>
+                                  {visit.category === "action_required" 
+                                    ? `${visit.proposalCount} Proposal${visit.proposalCount > 1 ? 's' : ''} from Client` 
+                                    : visit.category === "confirmed" 
+                                      ? "Confirmed" 
+                                      : `${visit.proposalCount} Time${visit.proposalCount > 1 ? 's' : ''} Proposed`}
+                                </span>
+                                <span className="font-semibold text-gray-900 truncate max-w-[250px]">
+                                  {visit.issue?.summary || normalizeAndCapitalize(visit.issue?.type || "Assessment")}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-sm text-gray-500">
+                                <span className="flex items-center gap-1">
+                                  <FontAwesomeIcon icon={faCalendarAlt} className="text-xs" />
+                                  {visit.startTime.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                                </span>
+                                <span>
+                                  {visit.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                </span>
+                                {visit.listing?.address && (
+                                  <span className="flex items-center gap-1 truncate max-w-[200px]">
+                                    <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                    {visit.listing.address}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Right side info */}
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          {item.myBid ? (
-                            <span className="text-lg font-bold text-gray-900">
-                              ${item.myBid.toLocaleString()}
-                            </span>
-                          ) : item.bidCount === 0 ? (
-                            <span className="text-xs font-medium text-emerald-600 whitespace-nowrap bg-emerald-50 px-2 py-1 rounded">Be first!</span>
-                          ) : (
-                            <span className="text-xs text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
-                          )}
-                          <button 
-                            className="px-3 py-1.5 bg-amber-500 text-gray-900 rounded-lg text-sm font-semibold hover:bg-amber-400 transition-colors flex items-center gap-1.5"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openIssueModal(item.id, activeTab === "bidding" ? "offers" : "details");
-                            }}
-                          >
-                            {activeTab === "bidding" ? "View Bid" : "View & Bid"}
-                            <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                          </button>
+                          {/* Right side actions */}
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {visit.category === "action_required" && (
+                              <button 
+                                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-foreground hover:text-background transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openIssueModal(visit.issueId, "assessments");
+                                }}
+                              >
+                                Respond
+                              </button>
+                            )}
+                            {visit.category === "confirmed" && (
+                              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium">
+                                <FontAwesomeIcon icon={faCheckCircle} />
+                                Scheduled
+                              </span>
+                            )}
+                            {visit.category === "pending" && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                Waiting for client
+                              </span>
+                            )}
+                            <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
+                          </div>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-2xl" />
+                      </div>
+                      <p className="text-gray-600 font-medium mb-2">No scheduled visits</p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        When clients accept your bids, you can schedule assessment visits
+                      </p>
                     </div>
-                  ))
+                  )
                 ) : (
-                  <div className="py-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-gray-400 text-2xl" />
+                  // Jobs Tab Rendering (Priority, New, Bidding)
+                  getPriorityItems().length > 0 ? (
+                    getPriorityItems().map((item: any, index) => (
+                      <div key={item.id || index}>
+                        {/* Job Row */}
+                        <div 
+                          onClick={() => openIssueModal(item.issueId || item.id, activeTab === "bidding" ? "offers" : "details")}
+                          className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 border-transparent hover:border-gold"
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Icon */}
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              item.isHot ? "bg-gold-200" : "bg-gray-100"
+                            }`}>
+                              <FontAwesomeIcon 
+                                icon={pickIcon(item.type)} 
+                                className={item.isHot ? "text-gold" : "text-gray-600"} 
+                              />
+                            </div>
+                            
+                            {/* Job Info */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {item.isHot && (
+                                  <span className="text-xs font-bold text-gold">hot</span>
+                                )}
+                                <span className="font-semibold text-gray-900 truncate max-w-[300px]">
+                                  {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                                </span>
+                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded flex-shrink-0">
+                                  {normalizeAndCapitalize(item.type)}
+                                </span>
+                              </div>
+                              <div className="text-sm text-gray-500 truncate">
+                                {item.listing?.address || "View location"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side info */}
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            {item.myBid ? (
+                              <span className="text-lg font-bold text-gray-900">
+                                ${item.myBid.toLocaleString()}
+                              </span>
+                            ) : item.bidCount === 0 ? (
+                              <span className="text-xs font-medium text-emerald-600 whitespace-nowrap bg-emerald-50 px-2 py-1 rounded">Be first!</span>
+                            ) : (
+                              <span className="text-xs text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
+                            )}
+                            <button 
+                              className="px-3 py-1.5 bg-gold text-white rounded-lg text-sm font-semibold hover:bg-foreground hover:text-background transition-colors flex items-center gap-1.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openIssueModal(item.issueId || item.id, activeTab === "bidding" ? "offers" : "details");
+                              }}
+                            >
+                              {activeTab === "bidding" ? "View Bid" : "View & Bid"}
+                              <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <FontAwesomeIcon icon={faBriefcase} className="text-gray-400 text-2xl" />
+                      </div>
+                      <p className="text-gray-600 font-medium mb-2">
+                        {activeTab === "bidding" ? "No pending bids" : activeTab === "new" ? "No new jobs in the last 7 days" : "No jobs available"}
+                      </p>
+                      <p className="text-sm text-gray-500 mb-4">
+                        {activeTab === "bidding" 
+                          ? "Submit bids on jobs to see them here" 
+                          : "Check back later for new opportunities"}
+                      </p>
+                      <Link
+                        to="/marketplace"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faSearch} />
+                        Browse Marketplace
+                      </Link>
                     </div>
-                    <p className="text-gray-600 font-medium mb-2">
-                      {activeTab === "bidding" ? "No pending bids" : "No jobs available"}
-                    </p>
-                    <p className="text-sm text-gray-500 mb-4">
-                      {activeTab === "bidding" 
-                        ? "Submit bids on jobs to see them here" 
-                        : "Check back later for new opportunities"}
-                    </p>
-                    <Link
-                      to="/marketplace"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-gray-900 rounded-lg font-semibold text-sm hover:bg-amber-400 transition-colors"
-                    >
-                      <FontAwesomeIcon icon={faSearch} />
-                      Browse Marketplace
-                    </Link>
-                  </div>
+                  )
                 )}
 
                 {/* Prominent Marketplace Button */}
@@ -703,7 +989,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   <div className="px-5 py-4 border-t border-gray-100">
                     <Link
                       to="/marketplace"
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-gray-900 rounded-lg font-semibold text-sm hover:bg-amber-400 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
                     >
                       <FontAwesomeIcon icon={faSearch} />
                       Explore Marketplace
@@ -802,7 +1088,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                           </div>
                           {/* Avatar */}
                           <div className="absolute bottom-3 right-3">
-                            <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
+                            <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
                               {vendor?.name?.[0] || "V"}
                             </div>
                           </div>
@@ -819,8 +1105,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                             </span>
                           </div>
                           
-                          <div className="flex items-center gap-1.5 text-xs text-amber-600">
-                            <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                          <div className="flex items-center gap-1.5 text-xs text-gold">
+                            <span className="w-2 h-2 bg-gold rounded-full"></span>
                             In progress
                           </div>
                         </div>
@@ -829,14 +1115,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   </div>
                 ) : (
                   <div className="py-8 text-center">
-                    <div className="w-14 h-14 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-amber-500 text-2xl" />
+                    <div className="w-14 h-14 bg-gold-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+                      <FontAwesomeIcon icon={faBriefcase} className="text-gold text-2xl" />
                     </div>
                     <p className="text-gray-900 font-semibold mb-1">No active projects yet</p>
                     <p className="text-sm text-gray-500 mb-4">Browse jobs and submit your first bid to get started</p>
                     <Link
                       to="/marketplace"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-gray-900 rounded-lg font-semibold text-sm hover:bg-amber-400 transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
                     >
                       <FontAwesomeIcon icon={faSearch} />
                       Find Your First Project
@@ -854,8 +1140,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             <div className="bg-white rounded-xl overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faTrophy} className="text-amber-600" />
+                  <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faTrophy} className="text-gold" />
                   </div>
                   <span className="font-semibold text-gray-900">Performance</span>
                 </div>

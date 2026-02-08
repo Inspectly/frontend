@@ -146,7 +146,7 @@ export default function ReviewSidebar({
                             reviewed
                               ? "text-green-600"
                               : (issue as any).review_status === "in_review"
-                              ? "text-amber-500"
+                              ? "text-gold"
                               : "text-neutral-300"
                           }
                         />
