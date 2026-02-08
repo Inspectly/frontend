@@ -20,8 +20,10 @@ import {
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
+import ImageComponent from "./ImageComponent";
 import MapComponent from "./MapComponent";
 import VendorName from "./VendorName";
+import { BUTTON_HOVER } from "../styles/shared";
 import { useNavigate } from "react-router-dom";
 import { useUpdateIssueMutation } from "../features/api/issuesApi";
 import {
@@ -92,8 +94,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   });
 
   const getUsersInteractionId = (vendorId: number) => {
-    if (!report?.user_id || !vendorId || !issue?.id) return "";
-    return `${report.user_id}_${vendorId}_${issue.id}`;
+    // Use report's user_id, or fall back to listing's user_id
+    const clientUserId = report?.user_id || listing?.user_id;
+    if (!clientUserId || !vendorId || !issue?.id) return "";
+    return `${clientUserId}_${vendorId}_${issue.id}`;
   };
 
   const usersInteractionId = currentVendor
@@ -108,8 +112,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     skip: !issue.id,
   });
 
+  // For vendors: use interaction-based query if available, otherwise fall back to issue-based
+  // For clients: always use issue-based query
   const assessmentsData = isVendor
-    ? assessmentsByInteraction
+    ? (usersInteractionId ? assessmentsByInteraction : assessmentsByIssue)
     : assessmentsByIssue;
 
   const {
@@ -346,6 +352,22 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
     }
   };
 
+  const handleRejectSingle = async (assessment: IssueAssessment) => {
+    setIsSubmittingProposal(true);
+    try {
+      await updateAssessmentStatus({
+        ...assessment,
+        interaction_id: assessment.users_interaction_id,
+        status: "rejected",
+      });
+      await refetchAssessments();
+    } catch (err) {
+      console.error("Failed to reject assessment", err);
+    } finally {
+      setIsSubmittingProposal(false);
+    }
+  };
+
   const vendorIdToName = useMemo(() => {
     const map: Record<number, string> = {};
     allVendors.forEach((vendor) => {
@@ -391,13 +413,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       ref={cardRef}
       className="relative rounded-lg bg-white border-0 overflow-hidden flex flex-col"
     >
-      <div
-        className={`items-center px-6 py-4 active border-b border-neutral-200 ${issue.active ? "" : "bg-red-100"
-          }`}
-      >
-        <div className="flex flex-row items-center justify-between">
-          <h2 className="text-2xl font-medium mb-0">
-            {issue.id + " " + issue.summary || "No Title Found"}
+      <div className="px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {issue.summary || "No Title Found"}
           </h2>
           <div className="flex items-center gap-2">
             {/* Vendor: Mark Complete Button */}
@@ -405,19 +424,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <div className="relative group">
                 <button
                   onClick={() => setShowMarkCompleteModal(true)}
-                  className="w-8 h-8 bg-blue-500 text-white rounded-full inline-flex items-center justify-center hover:bg-blue-600 transition-colors shadow-sm hover:shadow-md relative"
+                  className="w-9 h-9 bg-emerald-500 text-white rounded-full inline-flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-sm"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  {/* Pulse animation */}
-                  <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-30"></span>
                 </button>
-                {/* Tooltip */}
-                <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                  <div className="font-semibold mb-0.5">Mark Work Complete</div>
-                  <div className="text-gray-300">Submit completed work for client review</div>
-                  {/* Arrow */}
+                <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg">
+                  <div className="font-semibold">Mark Work Complete</div>
                   <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                 </div>
               </div>
@@ -426,52 +440,39 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             {/* Client: Review Actions - Approve or Revise */}
             {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
               <>
-                {/* Revise Button */}
                 <div className="relative group">
                   <button
                     onClick={() => setShowRequestChangesModal(true)}
-                    className="w-8 h-8 bg-amber-500 text-white rounded-full inline-flex items-center justify-center hover:bg-amber-600 transition-colors shadow-sm hover:shadow-md"
+                    className={`w-9 h-9 bg-gold text-white rounded-full inline-flex items-center justify-center shadow-sm ${BUTTON_HOVER}`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                   </button>
-                  {/* Tooltip */}
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                    <div className="font-semibold mb-0.5">Revise</div>
-                    <div className="text-gray-300">Send work back for revisions or fixes</div>
-                    {/* Arrow */}
+                  <div className="absolute right-0 top-full mt-2 w-40 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg">
+                    <div className="font-semibold">Request Revisions</div>
                     <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                   </div>
                 </div>
-
-                {/* Approve Button with notification badge */}
                 <div className="relative group">
                   <button
                     onClick={() => setShowApproveModal(true)}
-                    className="w-8 h-8 bg-green-500 text-white rounded-full inline-flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm hover:shadow-md relative"
+                    className="w-9 h-9 bg-emerald-500 text-white rounded-full inline-flex items-center justify-center hover:bg-emerald-600 transition-colors shadow-sm relative"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
-                    {/* Notification badge */}
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                   </button>
-                  {/* Tooltip */}
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                    <div className="font-semibold mb-0.5 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                      Approve
-                    </div>
-                    <div className="text-gray-300">Work is satisfactory - finalize and complete project</div>
-                    {/* Arrow */}
+                  <div className="absolute right-0 top-full mt-2 w-40 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg">
+                    <div className="font-semibold">Approve Work</div>
                     <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                   </div>
                 </div>
               </>
             )}
 
-            {/* Active/Inactive Toggle - disabled once an offer is accepted */}
+            {/* Visibility Toggle */}
             {(() => {
               const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
               return (
@@ -487,20 +488,20 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       }
                     }}
                     disabled={hasAcceptedOffer}
-                    className={`w-8 h-8 rounded-full inline-flex items-center justify-center ${
+                    className={`w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors ${
                       hasAcceptedOffer 
                         ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                        : "bg-blue-100 text-primary-600"
+                        : "bg-gray-100 hover:bg-gray-200 text-gray-600"
                     }`}
                   >
                     <FontAwesomeIcon
                       icon={issue.active ? faEye : faEyeSlash}
-                      className={hasAcceptedOffer ? "text-gray-400 size-3.5" : "text-blue-600 size-3.5"}
+                      className="text-sm"
                     />
                   </button>
                   {hasAcceptedOffer && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                      <div className="text-gray-300">Cannot hide issue after an offer has been accepted</div>
+                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg">
+                      <div className="text-gray-300">Cannot hide after offer accepted</div>
                       <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
                     </div>
                   )}
@@ -513,16 +514,15 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
       <div className="mb-4 border-b border-gray-200 pt-4 mx-6">
         <ul
-          className="flex flex-wrap -mb-px text-sm font-medium text-center"
+          className="flex gap-1 text-sm"
           id="default-tab"
-          data-tabs-toggle="#default-tab-content"
           role="tablist"
         >
           <li role="presentation">
             <button
-              className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${activeTab === "details"
-                  ? "text-blue-600 border-blue-600"
-                  : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "details"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               type="button"
               role="tab"
@@ -535,9 +535,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           </li>
           <li role="presentation">
             <button
-              className={`inline-block px-4 py-2.5 relative font-semibold border-b-2 rounded-t-lg ${activeTab === "offers"
-                  ? "text-blue-600 border-blue-600"
-                  : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+              className={`px-4 py-2 rounded-lg font-medium transition-colors relative ${activeTab === "offers"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               type="button"
               role="tab"
@@ -546,16 +546,16 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               onClick={() => handleTabChange("offers")}
             >
               Offers
-              <span className="absolute -top-1 right-1 text-xl text-red-500 font-semibold">
-                •
-              </span>
+              {offers.length > 0 && activeTab !== "offers" && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-gold rounded-full"></span>
+              )}
             </button>
           </li>
           <li role="presentation">
             <button
-              className={`inline-block px-4 py-2.5 font-semibold border-b-2 rounded-t-lg ${activeTab === "assessments"
-                  ? "text-blue-600 border-blue-600"
-                  : "text-gray-500 hover:text-gray-600 border-gray-100 hover:border-gray-300"
+              className={`px-4 py-2 rounded-lg font-medium transition-colors relative ${activeTab === "assessments"
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               type="button"
               role="tab"
@@ -564,123 +564,87 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               onClick={() => handleTabChange("assessments")}
             >
               Assessments
+              {assessments.length > 0 && activeTab !== "assessments" && (
+                <span className="absolute top-1 right-1 w-2 h-2 bg-gold rounded-full"></span>
+              )}
             </button>
           </li>
         </ul>
       </div>
 
-      <div className="h-[calc(100vh-320px)] overflow-y-auto px-6 pb-6 pt-2">
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
         {activeTab === "details" && (
-          <div
-            id="default-offers"
-            role="tabpanel"
-            className="flex flex-col lg:flex-row gap-6"
-          >
-            {/* Left Section */}
-            <div className="w-full lg:w-2/3 space-y-8">
-              {/* Issue Image */}
-              <div>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setImageOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {imageOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
+          <div id="default-details" role="tabpanel">
+            {/* Property Image - Full Width */}
+            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url)}>
+              <ImageComponent
+                src={issue.image_urls || listing?.image_url}
+                fallback="/images/property_card_holder.jpg"
+                className="rounded-xl w-full h-[280px] object-cover shadow-sm"
+              />
+            </div>
+
+            {/* Image Lightbox Modal */}
+            {selectedImage && (
+              <div className="fixed inset-0 flex items-center justify-center bg-black/80 z-50">
+                <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl mx-4">
+                  <button
+                    className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+                    onClick={() => setSelectedImage(null)}
+                  >
+                    <FontAwesomeIcon icon={faTimes} className="text-2xl" />
                   </button>
-                  <h2 className="text-lg font-semibold">Image</h2>
+                  <img
+                    src={selectedImage}
+                    alt="Full View"
+                    className="max-w-full max-h-[85vh] rounded-xl"
+                  />
                 </div>
-                {imageOpen && (
-                  <div className="mt-4 w-full">
-                    <img
-                      src={issue.image_urls || "/images/no-image.webp"}
-                      alt="Issue"
-                      className="rounded-lg w-full h-[300px] object-cover cursor-pointer"
-                      onClick={() => setSelectedImage(issue.image_urls)}
-                    />
-                  </div>
-                )}
               </div>
+            )}
 
-              {selectedImage && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-                  <div className="relative bg-white rounded-lg shadow-lg max-w-3xl">
-                    <button
-                      className="absolute top-2 right-2 text-gray-800 py-1 px-2 rounded-full"
-                      onClick={() => setSelectedImage(null)}
-                    >
-                      <FontAwesomeIcon icon={faTimes} className="text-xl" />
-                    </button>
-                    <img
-                      src={selectedImage}
-                      alt="Full View"
-                      className="max-w-full max-h-[90vh] rounded"
+            {/* Two Column Layout */}
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Left Column */}
+              <div className="flex-1 space-y-6">
+                {/* Details Section */}
+                <div>
+                  <button
+                    className="flex items-center gap-2 mb-4"
+                    onClick={() => toggleSection(setDetailsOpen)}
+                  >
+                    <FontAwesomeIcon
+                      icon={detailsOpen ? faChevronUp : faChevronDown}
+                      className="w-3 h-3 text-gray-500"
                     />
-                  </div>
-                </div>
-              )}
-
-              {/* Details Section */}
-              <div>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setDetailsOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {detailsOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
+                    <h3 className="text-base font-semibold text-gray-900">Details</h3>
                   </button>
-                  <h2 className="text-lg font-semibold">Details</h2>
-                </div>
-                {detailsOpen && (
-                  <div className="mt-4">
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-24">
+                  {detailsOpen && (
+                    <div className="space-y-4 pl-5">
+                      {/* Type and Priority Badges */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Type
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {normalizeAndCapitalize(issue.type)}
-                        </p>
+                        <p className="text-sm text-gray-500 mb-2">Type</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg border border-gray-200">
+                            {normalizeAndCapitalize(issue.type)}
+                          </span>
+                          {issue.severity === "High" && (
+                            <span className="px-3 py-1.5 bg-gold-100 text-gold-700 text-sm font-medium rounded-lg flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                              High Priority
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      {/* Status */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Status
-                        </h4>
-                        {/* Show dropdown only for assigned vendor to update progress.
-                            Clients always see read-only badge and use Approve/Revise buttons when in review. */}
+                        <p className="text-sm text-gray-500 mb-1">Status</p>
                         {(userType === "vendor" && issue.vendor_id === currentVendor?.id) ? (
-                          <>
+                          <div className="relative inline-block">
                             <button
-                              className={`px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
-                                  "open"
-                                  ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                                  : statusMapping[issue.status as IssueStatus] ===
-                                    "in_progress"
-                                    ? "bg-blue-100 text-blue-600 border border-blue-600"
-                                    : statusMapping[issue.status as IssueStatus] ===
-                                      "review"
-                                      ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
-                                      : "bg-green-100 text-green-600 border border-green-600"
-                                }`}
+                              className="text-sm font-medium text-gray-900 flex items-center gap-1 hover:text-gold transition-colors"
                               ref={progressDropdownButtonRef}
                               onClick={() =>
                                 setProgressDropdownOpen((prev) =>
@@ -693,26 +657,18 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                   option.value ===
                                   statusMapping[issue.status as IssueStatus]
                               )?.label || "Unknown"}
-
-                              <FontAwesomeIcon
-                                icon={faChevronDown}
-                                className="ml-1"
-                              />
+                              <FontAwesomeIcon icon={faChevronDown} className="w-2.5 h-2.5" />
                             </button>
                             {Number(progressDropdownOpen) === issue.id && (
                               <Dropdown
                                 buttonRef={progressDropdownButtonRef}
                                 onClose={() => setProgressDropdownOpen(null)}
                               >
-                                <div className="dropdown-content">
+                                <div className="py-1">
                                   {statusOptions.map(({ value, label }) => (
                                     <button
                                       key={value}
-                                      className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` ===
-                                          issue.status
-                                          ? "font-bold"
-                                          : ""
-                                        }`}
+                                      className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` === issue.status ? "font-semibold bg-gray-50" : ""}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         handleStatusChange(issue.id, value);
@@ -724,261 +680,133 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                                 </div>
                               </Dropdown>
                             )}
-                          </>
+                          </div>
                         ) : (
-                          <span
-                            className={`inline-block px-2.5 py-1.5 rounded font-medium text-sm ${statusMapping[issue.status as IssueStatus] ===
-                                "open"
-                                ? "bg-neutral-100 text-neutral-600 border border-neutral-600"
-                                : statusMapping[issue.status as IssueStatus] ===
-                                  "in_progress"
-                                  ? "bg-blue-100 text-blue-600 border border-blue-600"
-                                  : statusMapping[issue.status as IssueStatus] ===
-                                    "review"
-                                    ? "bg-yellow-100 text-yellow-600 border border-yellow-600"
-                                    : "bg-green-100 text-green-600 border border-green-600"
-                              }`}
-                          >
+                          <p className="text-sm font-medium text-gray-900">
                             {statusOptions.find(
                               (option) =>
-                                option.value ===
-                                statusMapping[issue.status as IssueStatus]
+                                option.value === statusMapping[issue.status as IssueStatus]
                             )?.label || "Unknown"}
-                          </span>
+                          </p>
                         )}
                       </div>
+
+                      {/* Severity */}
                       <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Severity
-                        </h4>
-                        <p
-                          className={`text-base font-semibold ${issue.severity === "High"
-                              ? "text-red-600"
-                              : issue.severity === "Medium"
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                            }`}
-                        >
+                        <p className="text-sm text-gray-500 mb-1">Severity</p>
+                        <p className={`text-sm font-medium ${
+                          issue.severity === "High" ? "text-red-600" 
+                          : issue.severity === "Medium" ? "text-gold-600" 
+                          : "text-green-600"
+                        }`}>
                           {issue.severity}
                         </p>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Cost
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {issue.cost || "N/A"}
+
+                      {/* Description */}
+                      <div className="col-span-2 pt-2">
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {issue.description || "No description available."}
                         </p>
                       </div>
-                    </div>
-                  </div>
-                )}
-              </div>
 
-
-              {/* Description Section */}
-              <div>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setDescriptionOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {descriptionOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
-                  </button>
-                  <h2 className="text-lg font-semibold">Description</h2>
-                </div>
-                {descriptionOpen && (
-                  <p className="mt-2 text-gray-700">
-                    {issue.description || "No description available."}
-                  </p>
-                )}
-              </div>
-
-              {/* Location Section */}
-              {userType !== "vendor" && (
-                <div>
-                  <div
-                    className="flex items-center cursor-pointer"
-                    onClick={() => toggleSection(setLocationOpen)}
-                  >
-                    <button className="rounded bg-neutral-200 px-2 mr-2">
-                      {locationOpen ? (
-                        <FontAwesomeIcon
-                          icon={faChevronUp}
-                          className="size-2.5 align-middle"
-                        />
-                      ) : (
-                        <FontAwesomeIcon
-                          icon={faChevronDown}
-                          className="size-2.5 align-middle"
-                        />
-                      )}
-                    </button>
-                    <h2 className="text-lg font-semibold">Listing Location</h2>
-                  </div>
-
-                  {locationOpen && (
-                    <div className="mt-2">
-                      {/* Map Preview */}
-                      {locationError ? (
-                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 text-red-600 font-medium text-center p-4 rounded">
-                          <p>
-                            Unable to load map. Location not found for this
-                            listing.
-                          </p>
-                        </div>
-                      ) : coords ? (
-                        <MapComponent
-                          key="map-visible"
-                          latitude={coords.latitude}
-                          longitude={coords.longitude}
-                          listingName={listing?.address || ""}
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-64 w-full bg-gray-200 animate-pulse">
-                          <p className="text-gray-500">Loading map...</p>
-                        </div>
-                      )}
-
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Location
-                        </h4>
-                        <p className="text-base font-semibold text-gray-700">
-                          {listing?.address}, {listing?.city}, {listing?.state},{" "}
-                          {listing?.postal_code}, {listing?.country}
+                      {/* Cost/Price Range */}
+                      <div className="col-span-2 pt-2">
+                        <p className="text-lg font-semibold text-gray-900">
+                          {issue.cost || "Price TBD"}
                         </p>
                       </div>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Attachment Section */}
-              <div>
-                <Attachments issueId={issue.id} userType={userType} />
-              </div>
+                {/* Attachments Section */}
+                <div className="pt-4 border-t border-gray-100">
+                  <Attachments issueId={issue.id} userType={userType} />
+                </div>
 
-              {/* Comments Section */}
-              <div>
+                {/* Comments Section - Client only */}
                 {userType !== "vendor" && (
-                  <Comments issueId={issue.id} userId={userId} />
+                  <div className="pt-4 border-t border-gray-100">
+                    <Comments issueId={issue.id} userId={userId} />
+                  </div>
                 )}
               </div>
-            </div>
 
-            {/* Right Section */}
-            <div className="w-full lg:w-1/3 space-y-6">
-              {/* People Section */}
-              <div className="p-4 bg-white rounded-lg shadow">
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setPeopleOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {peopleOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
+              {/* Right Column */}
+              <div className="lg:w-72 space-y-6">
+                {/* People Section */}
+                <div>
+                  <button
+                    className="flex items-center gap-2 mb-4"
+                    onClick={() => toggleSection(setPeopleOpen)}
+                  >
+                    <FontAwesomeIcon
+                      icon={peopleOpen ? faChevronUp : faChevronDown}
+                      className="w-3 h-3 text-gray-500"
+                    />
+                    <h3 className="text-base font-semibold text-gray-900">People</h3>
                   </button>
-                  <h2 className="text-lg font-semibold">People</h2>
-                </div>
-                {peopleOpen && (
-                  <div className="mt-4 space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium text-gray-500">
-                          Vendor
-                        </h4>
+                  {peopleOpen && (
+                    <div className="space-y-4 pl-5">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Vendor</p>
+                        <div className="text-sm font-medium text-gray-900">
+                          {issue.vendor_id ? (
+                            <VendorName
+                              vendorId={issue.vendor_id}
+                              isVendorId={false}
+                              showRating
+                            />
+                          ) : (
+                            <span className="text-gray-500">No vendor assigned</span>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-base font-semibold text-gray-700">
-                        {issue.vendor_id ? (
-                          <VendorName
-                            vendorId={issue.vendor_id}
-                            isVendorId={false}
-                            showRating
-                          />
-                        ) : (
-                          "No vendor assigned"
-                        )}
-                      </p>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Realtor</p>
+                        <p className="text-sm font-medium text-gray-500">
+                          No Realtor assigned
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Realtor
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        No Realtor assigned
-                        {/* {issue.realtor_id ? (
-                           {listing?.realtor_id}
-                        ) : (
-                          "No Realtor assigned"
-                        )} */}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Dates Section */}
-              <div className="p-4 bg-white rounded-lg shadow">
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => toggleSection(setDatesOpen)}
-                >
-                  <button className="rounded bg-neutral-200 px-2 mr-2">
-                    {datesOpen ? (
-                      <FontAwesomeIcon
-                        icon={faChevronUp}
-                        className="size-2.5 align-middle"
-                      />
-                    ) : (
-                      <FontAwesomeIcon
-                        icon={faChevronDown}
-                        className="size-2.5 align-middle"
-                      />
-                    )}
-                  </button>
-                  <h2 className="text-lg font-semibold">Dates</h2>
+                  )}
                 </div>
-                {datesOpen && (
-                  <div className="mt-4 space-y-3">
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Date Created
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        {formatDate(issue.created_at)}
-                      </p>
-                    </div>
 
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-gray-500">
-                        Date Updated
-                      </h4>
-                      <p className="text-base font-semibold text-gray-700">
-                        {formatDate(issue.updated_at)}
-                      </p>
+                {/* Dates Section */}
+                <div className="pt-6">
+                  <button
+                    className="flex items-center gap-2 mb-4"
+                    onClick={() => toggleSection(setDatesOpen)}
+                  >
+                    <FontAwesomeIcon
+                      icon={datesOpen ? faChevronUp : faChevronDown}
+                      className="w-3 h-3 text-gray-500"
+                    />
+                    <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Dates
+                    </h3>
+                  </button>
+                  {datesOpen && (
+                    <div className="space-y-4 pl-5">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Date Created</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatDate(issue.created_at)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Last Updated</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatDate(issue.updated_at)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1061,6 +889,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 assessments={assessments}
                 onAccept={handleAccept}
                 onRejectAll={handleRejectAll}
+                onRejectSingle={handleRejectSingle}
                 issueId={issue.id}
                 userId={userId}
                 userType={userType}
@@ -1078,83 +907,98 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       </div>
 
       {isOfferModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Place Your Offer</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">Place Your Offer</h2>
+            </div>
 
-            <input
-              type="number"
-              value={offerAmount}
-              disabled={isOfferSubmitting}
-              onChange={(e) => {
-                setOfferAmount(e.target.value);
-                setOfferError("");
-              }}
-              min="1"
-              placeholder={`Enter your offer amount`}
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-2"
-            />
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Offer Amount</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    value={offerAmount}
+                    disabled={isOfferSubmitting}
+                    onChange={(e) => {
+                      setOfferAmount(e.target.value);
+                      setOfferError("");
+                    }}
+                    min="1"
+                    placeholder="Enter amount"
+                    className="w-full border border-gray-300 rounded-lg pl-8 pr-4 py-2.5 focus:ring-2 focus:ring-gold focus:border-gold transition-colors"
+                  />
+                </div>
+              </div>
 
-            {userType === "vendor" && (
-              <textarea
-                value={commentVendor}
-                disabled={isOfferSubmitting}
-                onChange={(e) => setCommentVendor(e.target.value)}
-                placeholder="Comment for client (optional)"
-                className="w-full border border-gray-300 rounded px-3 py-2 mb-1 text-sm"
-                rows={2}
-              />
-            )}
+              {userType === "vendor" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Comment (optional)</label>
+                  <textarea
+                    value={commentVendor}
+                    disabled={isOfferSubmitting}
+                    onChange={(e) => setCommentVendor(e.target.value)}
+                    placeholder="Add a message for the client..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-colors"
+                    rows={2}
+                  />
+                </div>
+              )}
 
-            {userType === "client" && (
-              <textarea
-                value={commentClient}
-                onChange={(e) => setCommentClient(e.target.value)}
-                placeholder="Private comment (optional)"
-                className="w-full border border-gray-300 rounded px-3 py-2 mb-2 text-sm"
-                rows={2}
-              />
-            )}
+              {userType === "client" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Private Note (optional)</label>
+                  <textarea
+                    value={commentClient}
+                    onChange={(e) => setCommentClient(e.target.value)}
+                    placeholder="Add a private note..."
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-gold focus:border-gold transition-colors"
+                    rows={2}
+                  />
+                </div>
+              )}
 
-            {offerError && (
-              <p className="text-red-600 text-sm mb-2">{offerError}</p>
-            )}
+              {offerError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-red-600 text-sm">{offerError}</p>
+                </div>
+              )}
 
-            {counterTarget ? (
-              <p className="text-sm text-gray-600 mb-3">
-                You are placing a <strong>counter</strong> to the original offer
-                of <strong>${counterTarget.price}</strong>
+              {counterTarget ? (
+                <p className="text-sm text-gray-600">
+                  You are placing a <strong>counter</strong> to the original offer of{" "}
+                  <strong>${counterTarget.price}</strong>
+                </p>
+              ) : (
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <p className="text-sm text-gray-600 mb-1">Your offer</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${new Intl.NumberFormat("en-US").format(Number(offerAmount) || 0)}
+                  </p>
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500">
+                By selecting <strong>Confirm offer</strong>, you are committing to this issue.
               </p>
-            ) : (
-              <p className="text-sm text-gray-600 mb-2">
-                You are about to place an offer for:{" "}
-                <strong>
-                  $
-                  {new Intl.NumberFormat("en-US").format(
-                    Number(offerAmount) || 0
-                  )}
-                </strong>
-              </p>
-            )}
-            <p className="text-xs text-gray-500 mt-2">
-              By selecting <strong>Confirm offer</strong>, you are committing to
-              this issue.
-            </p>
+            </div>
 
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100 rounded-b-xl">
               <button
                 onClick={() => setIsOfferModalOpen(false)}
-                className="text-sm px-4 py-2 rounded border border-gray-400"
+                className={`flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg ${BUTTON_HOVER}`}
                 disabled={isOfferSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleOfferSubmit}
-                className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
+                className={`flex-1 px-4 py-2.5 text-sm font-medium text-white bg-gold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
                 disabled={isOfferSubmitting}
               >
-                {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
+                {isOfferSubmitting ? "Sending..." : "Confirm Offer"}
               </button>
             </div>
           </div>
@@ -1167,8 +1011,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowMarkCompleteModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full flex-shrink-0">
-                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center w-10 h-10 bg-gold-100 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
@@ -1181,13 +1025,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${BUTTON_HOVER}`}
                 onClick={() => setShowMarkCompleteModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-blue-600 hover:bg-blue-700 transition-colors"
+                className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gray-900 ${BUTTON_HOVER}`}
                 onClick={() => {
                   updateIssue({
                     ...issue,
@@ -1219,9 +1063,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 <p className="text-sm text-gray-600 mb-3">
                   This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
                 </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <p className="text-xs text-amber-800 font-medium flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gold-50 border border-gold-200 rounded-lg p-3">
+                  <p className="text-xs text-gold-700 font-medium flex items-start gap-2">
+                    <svg className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <span>Once approved, this action cannot be undone.</span>
@@ -1231,13 +1075,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             </div>
             <div className="flex justify-end gap-2 mt-6">
               <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${BUTTON_HOVER}`}
                 onClick={() => setShowApproveModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-green-600 hover:bg-green-700 transition-colors"
+                className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={() => {
                   updateIssue({
                     ...issue,
@@ -1259,8 +1103,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center w-10 h-10 bg-gold-200 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
@@ -1276,13 +1120,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               value={changeRequestMessage}
               onChange={(e) => setChangeRequestMessage(e.target.value)}
               placeholder="Describe what needs to be corrected or improved..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent resize-none"
               rows={4}
             />
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-              <p className="text-xs text-blue-800 flex items-start gap-2">
-                <svg className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 mt-3">
+              <p className="text-xs text-gold-700 flex items-start gap-2">
+                <svg className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>Your feedback will be posted as a comment and the vendor will be notified.</span>
@@ -1291,7 +1135,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
             <div className="flex justify-end gap-2 mt-6">
               <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${BUTTON_HOVER}`}
                 onClick={() => {
                   setShowRequestChangesModal(false);
                   setChangeRequestMessage("");
@@ -1300,7 +1144,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gold ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={!changeRequestMessage.trim()}
                 onClick={() => {
                   if (changeRequestMessage.trim()) {

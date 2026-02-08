@@ -83,7 +83,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faChalkboard} className="mr-3 w-4" />
@@ -98,7 +98,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                   activePage === "/vendor/jobs"
                     ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               >
                 <FontAwesomeIcon icon={faBriefcase} className="mr-3 w-4" />
@@ -113,7 +113,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/listings"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
@@ -128,7 +128,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                   activePage === "/offers"
                     ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    : "text-gray-600 hover:bg-foreground hover:text-background"
                 }`}
               >
                 <FontAwesomeIcon icon={faFileInvoiceDollar} className="mr-3 w-4" />
@@ -143,7 +143,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard/chat"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faCommentDots} className="mr-3 w-4" />
@@ -157,7 +157,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/pricing"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faMoneyBill1} className="mr-3 w-4" />
@@ -171,7 +171,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard/faqs"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faCircleQuestion} className="mr-3 w-4" />
@@ -185,7 +185,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard/termsandconditions"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />
@@ -199,7 +199,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activePage === "/dashboard/settings"
                   ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
             >
               <FontAwesomeIcon icon={faGear} className="mr-3 w-4" />
@@ -207,18 +207,17 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           </li>
 
+          {/* Spacer to push marketplace to bottom */}
+          <li className="flex-1" aria-hidden="true"></li>
+
           {/* Marketplace button for vendors - gold accent */}
           {isAuthReady && user?.user_type === "vendor" && (
-            <li className="mt-auto pt-4">
+            <li className="pt-4">
               <Link
                 to={marketplaceLink}
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage.startsWith("/marketplace")
-                    ? "bg-amber-500 text-white"
-                    : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
-                }`}
+                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-white hover:bg-foreground hover:text-background"
               >
-                <FontAwesomeIcon icon={faShop} className="mr-3 w-4" />
+                <FontAwesomeIcon icon={faShop} className="mr-2 w-4" />
                 <span>Marketplace</span>
               </Link>
             </li>

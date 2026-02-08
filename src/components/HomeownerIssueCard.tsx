@@ -35,6 +35,8 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 import AssessmentReviewTab from "./AssessmentReviewTab";
 import VendorReviewModal from "./VendorReviewModal";
 import { useCreateVendorReviewMutation } from "../features/api/vendorReviewsApi";
+import ImageComponent from "./ImageComponent";
+import { BUTTON_HOVER } from "../styles/shared";
 
 export interface HomeownerIssueCardProps {
   issue: IssueType;
@@ -72,6 +74,14 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const { data: report } = useGetReportByIdQuery(issue.report_id, {
     skip: !issue.report_id,
   });
+
+  // Function to get users_interaction_id for a vendor
+  const getUsersInteractionId = (vendorId: number) => {
+    // Use report's user_id, or fall back to listing's user_id
+    const clientUserId = report?.user_id || listing?.user_id;
+    if (!clientUserId || !vendorId || !issue?.id) return "";
+    return `${clientUserId}_${vendorId}_${issue.id}`;
+  };
 
   const [updateIssue, { isLoading: isUpdatingVisibility }] =
     useUpdateIssueMutation();
@@ -219,6 +229,20 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     }
   };
 
+  const handleRejectSingleAssessment = async (assessment: IssueAssessment) => {
+    try {
+      await updateAssessmentStatus({
+        ...assessment,
+        interaction_id: assessment.users_interaction_id,
+        user_last_viewed: new Date().toISOString(),
+        status: "rejected",
+      });
+      refetchAssessments();
+    } catch (err) {
+      console.error("Failed to reject assessment", err);
+    }
+  };
+
 
 
   const handleToggleVisibility = async () => {
@@ -347,16 +371,16 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       </div>
 
       {/* tabs */}
-      <div className="flex gap-2 px-6 pt-4 border-b bg-white">
+      <div className="flex gap-1 px-6 pt-4 border-b bg-white">
         {["details", "offers", "assessments"].map((tab) => (
           <button
             key={tab}
             onClick={() =>
               handleTabChange(tab as "details" | "offers" | "assessments")
             }
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg relative ${activeTab === tab
-              ? "text-blue-600 border-b-2 border-blue-600"
-              : "text-gray-500 hover:text-gray-700"
+            className={`px-4 py-2 text-sm font-medium rounded-lg relative transition-colors ${activeTab === tab
+              ? "bg-gray-900 text-white"
+              : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -366,7 +390,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               </span>
             )}
             {tab === "assessments" && assessments.length > 0 && (
-              <span className="absolute -top-1 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-500 text-white text-[0.65rem] flex items-center justify-center">
+              <span className="absolute -top-1 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-gold text-white text-[0.65rem] flex items-center justify-center">
                 {assessments.length > 9 ? "9+" : assessments.length}
               </span>
             )}
@@ -376,23 +400,23 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
       {/* Action bar for issues in Review status - client needs to approve or request changes */}
       {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
-        <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+        <div className="mx-6 mt-4 p-4 bg-gold-50 border border-gold-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-gold-200 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-amber-900">Work Ready for Review</p>
-                <p className="text-sm text-amber-700">The vendor has completed work and is awaiting your approval</p>
+                <p className="font-semibold text-gold-700">Work Ready for Review</p>
+                <p className="text-sm text-gold-700">The vendor has completed work and is awaiting your approval</p>
               </div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowRequestChangesModal(true)}
-                className="px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-100 transition-colors"
+                className="px-4 py-2 bg-white border border-gold-300 text-gold-700 text-sm font-medium rounded-lg hover:bg-gold-200 transition-colors"
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -401,7 +425,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               </button>
               <button
                 onClick={() => setShowApproveModal(true)}
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                className={`px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg ${BUTTON_HOVER}`}
               >
                 <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -421,8 +445,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-6">
               <div>
-                <img
-                  src={issue.image_urls || "/images/no-image.webp"}
+                <ImageComponent
+                  src={issue.image_urls}
+                  fallback="/images/property_card_holder.jpg"
                   alt="Issue"
                   className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
                   onClick={() => setSelectedImage(issue.image_urls)}
@@ -517,7 +542,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                               hasAcceptedOffer
                                 ? "bg-gray-200 cursor-not-allowed"
-                                : isActive ? "bg-blue-500" : "bg-gray-300"
+                                : isActive ? "bg-gold" : "bg-gray-300"
                             } ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                           >
                             <span
@@ -543,11 +568,11 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium ${statusMapping[issue.status as IssueStatus] === "open"
                         ? "bg-gray-100 text-gray-700"
                         : statusMapping[issue.status as IssueStatus] === "in_progress"
-                          ? "bg-blue-100 text-blue-700"
+                          ? "bg-gold-100 text-gold-700"
                           : statusMapping[issue.status as IssueStatus] === "review"
-                            ? "bg-yellow-100 text-yellow-700"
+                            ? "bg-gold-100 text-gold-700"
                             : statusMapping[issue.status as IssueStatus] === "completed"
-                              ? "bg-green-100 text-green-700"
+                              ? "bg-emerald-100 text-emerald-700"
                               : "bg-gray-100 text-gray-700"
                         }`}
                     >
@@ -660,11 +685,17 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               <AssessmentReviewTab
                 assessments={assessments}
                 onAccept={handleAcceptAssessment}
+                onRejectSingle={handleRejectSingleAssessment}
                 userId={userId}
                 userType={userType}
                 vendorIdToName={vendorIdToName}
                 onlyShowVendorId={undefined}
                 assessmentsLoading={assessmentsLoading || assessmentsFetching}
+                issueId={issue.id}
+                getUsersInteractionId={getUsersInteractionId}
+                onProposalSubmitted={async () => {
+                  await refetchAssessments();
+                }}
               />
             )}
           </div>
@@ -746,14 +777,14 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setIsOfferModalOpen(false)}
-                className="text-sm px-4 py-2 rounded border border-gray-400"
+                className={`text-sm px-4 py-2 rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
                 disabled={isOfferSubmitting}
               >
                 Cancel
               </button>
               <button
                 onClick={handleOfferSubmit}
-                className="text-sm px-4 py-2 rounded bg-blue-600 text-white"
+                className={`text-sm px-4 py-2 rounded-lg bg-gray-900 text-white ${BUTTON_HOVER} disabled:opacity-50`}
                 disabled={isOfferSubmitting}
               >
                 {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
@@ -797,8 +828,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             )}
             <button
               onClick={() => setReviewSubmitStatus("idle")}
-              className={`w-full py-2 px-4 rounded font-medium text-white transition-colors ${reviewSubmitStatus === "success" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"
-                }`}
+              className={`w-full py-2 px-4 rounded-lg font-medium text-white ${reviewSubmitStatus === "success" ? "bg-gray-900" : "bg-gray-900"
+                } ${BUTTON_HOVER}`}
             >
               Close
             </button>
@@ -822,9 +853,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 <p className="text-sm text-gray-600 mb-3">
                   This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
                 </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <p className="text-xs text-amber-800 font-medium flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gold-50 border border-gold-200 rounded-lg p-3">
+                  <p className="text-xs text-gold-700 font-medium flex items-start gap-2">
+                    <svg className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     This action cannot be undone. Payment will be released to the vendor.
@@ -834,13 +865,13 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             </div>
             <div className="flex justify-end gap-2">
               <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${BUTTON_HOVER}`}
                 onClick={() => setShowApproveModal(false)}
               >
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-green-600 hover:bg-green-700 transition-colors"
+                className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={async () => {
                   try {
                     await updateIssue({
@@ -866,8 +897,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div className="absolute inset-0 bg-black/40" onClick={() => { setShowRequestChangesModal(false); setChangeRequestMessage(""); }} />
           <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6 mx-4">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center w-10 h-10 bg-gold-200 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
@@ -883,12 +914,12 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               value={changeRequestMessage}
               onChange={(e) => setChangeRequestMessage(e.target.value)}
               placeholder="Describe what changes are needed..."
-              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent resize-none"
             />
             
             <div className="flex justify-end gap-2 mt-4">
               <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+                className={`px-4 py-2 rounded-lg border text-sm font-medium ${BUTTON_HOVER}`}
                 onClick={() => {
                   setShowRequestChangesModal(false);
                   setChangeRequestMessage("");
@@ -897,7 +928,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gold hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!changeRequestMessage.trim()}
                 onClick={async () => {
                   try {

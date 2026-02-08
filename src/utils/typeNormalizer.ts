@@ -44,7 +44,8 @@ export const normalizeAndCapitalize = (type: string): string => {
 /**
  * Get icon for an issue type
  */
-export const getIssueTypeIcon = (type: string): IconDefinition => {
+export const getIssueTypeIcon = (type?: string | null): IconDefinition => {
+  if (!type) return faWrench;
   const normalizedType = normalizeIssueType(type).toLowerCase();
   
   const iconMap: Record<string, IconDefinition> = {

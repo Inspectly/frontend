@@ -22,25 +22,32 @@ import {
   faBolt,
   faBuilding,
   faCalendarAlt,
+  faCheck,
   faCheckCircle,
   faChevronRight,
+  faBriefcase,
   faClipboardList,
   faClock,
+  faEdit,
   faFileAlt,
   faHome,
   faMapMarkerAlt,
   faPlus,
   faRocket,
   faMagic,
+  faTimes,
   faTrophy,
   faUpload,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   CalendarReadyAssessment,
+  IssueAssessment,
   IssueAssessmentStatus,
   IssueOffer,
   IssueOfferStatus,
   IssueType,
+  Listing,
+  ReportType,
   User,
   Vendor,
 } from "../types";
@@ -49,7 +56,7 @@ import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
-import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
@@ -58,6 +65,7 @@ import AddListingByReportModal, { ListingByReportFormData } from "../components/
 import { handleAddListingWithReport } from "../utils/reportUtil";
 import CreateIssueModal from "../components/CreateIssueModal";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
+import { BUTTON_HOVER } from "../styles/shared";
 
 interface DashboardProps {
   user: User;
@@ -75,11 +83,22 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: clients } = useGetClientsQuery();
   const client = clients?.find((c) => c.user_id === user.id);
 
-  const { data: assessments = [] } =
-    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id);
+  const { data: assessments = [], refetch: refetchAssessments } =
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id });
 
   const [createListing] = useCreateListingMutation();
   const [uploadReportFile] = useUploadReportFileMutation();
+  const [updateAssessment, { isLoading: isUpdatingAssessment }] = useUpdateAssessmentMutation();
+
+  // State for propose time modal
+  const [proposeTimeModal, setProposeTimeModal] = useState<{
+    isOpen: boolean;
+    assessment: (CalendarReadyAssessment & { issue?: IssueType }) | null;
+  }>({ isOpen: false, assessment: null });
+  const [proposedDateTime, setProposedDateTime] = useState<string>("");
+  
+  // State for full schedule modal
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Parse accepted assessments
   const acceptedAssessments = useMemo(() => {
@@ -200,26 +219,45 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return items.slice(0, 5);
   }, [issuesAwaitingReview, issuesWithPendingOffers]);
 
-  // Calendar events
+  // Calendar events - include full assessment data for status and actions
   const calendarEvents = useMemo(() => {
     const issuesMap = filteredIssuesByUser.reduce((acc, issue) => {
       acc[issue.id] = issue;
       return acc;
     }, {} as Record<number, typeof filteredIssuesByUser[0]>);
+
+    // Create listings map for quick lookup
+    const listingsMap = (_listings || []).reduce((acc, listing) => {
+      acc[listing.id] = listing;
+      return acc;
+    }, {} as Record<number, Listing>);
+
+    // Create reports map to link issues to listings
+    const reportsMap = (reports || []).reduce((acc, report) => {
+      acc[report.id] = report;
+      return acc;
+    }, {} as Record<number, ReportType>);
     
     return assessments
       .filter((a) => new Date(a.start_time) > new Date())
       .map((a) => {
         const issue = issuesMap[a.issue_id];
+        const report = issue ? reportsMap[issue.report_id] : undefined;
+        const listing = report ? listingsMap[report.listing_id] : undefined;
         return {
+          ...a, // Include full assessment data
           id: a.id,
-          title: `Assessment - ${issue?.summary || normalizeAndCapitalize(issue?.type || "") + " Issue"}`,
+          title: issue?.summary || normalizeAndCapitalize(issue?.type || "") + " Issue",
           start: new Date(a.start_time),
           end: new Date(a.end_time),
           user_id: a.user_id,
+          issue, // Include issue for context
+          listing, // Include listing for property address
         };
-      }) as CalendarReadyAssessment[];
-  }, [assessments, filteredIssuesByUser]);
+      })
+      // Sort by start time ascending (nearest first)
+      .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing })[];
+  }, [assessments, filteredIssuesByUser, _listings, reports]);
 
   // Fetch offers for user's issues
   useEffect(() => {
@@ -265,7 +303,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       const listing = _listings.find((l) => l.id === report.listing_id);
       return {
         id: report.id,
-        name: `${listing?.address || 'Unknown Property'} - ${report.report_type || 'Report'}`
+        name: `${listing?.address || 'Unknown Property'} - ${report.name || 'Report'}`
       };
     });
   }, [reports, _listings]);
@@ -276,6 +314,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const hasActionRequired = realMetrics.pendingOffers > 0 || realMetrics.reviewIssues > 0;
   const hasUpcomingAssessments = calendarEvents.length > 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
+  
+  // Separate pending vs confirmed assessments
+  const pendingAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.RECEIVED);
+  const confirmedAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.ACCEPTED);
+  const hasPendingAssessments = pendingAssessments.length > 0;
 
   // Get greeting based on time of day
   const getGreeting = () => {
@@ -285,8 +328,80 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return "Good evening";
   };
 
+  // Handle accepting an assessment
+  const handleAcceptAssessment = async (assessment: CalendarReadyAssessment) => {
+    try {
+      // Only send fields the backend expects
+      const payload = {
+        id: assessment.id,
+        issue_id: assessment.issue_id,
+        user_id: assessment.user_id,
+        user_type: assessment.user_type,
+        interaction_id: assessment.users_interaction_id,
+        users_interaction_id: assessment.users_interaction_id,
+        start_time: assessment.start_time,
+        end_time: assessment.end_time,
+        status: "accepted",
+        min_assessment_time: assessment.min_assessment_time,
+        user_last_viewed: new Date().toISOString(), // Required by backend
+      };
+      console.log("Sending assessment update:", payload);
+      const result = await updateAssessment(payload).unwrap();
+      console.log("Assessment accepted:", result);
+      // Refetch to update the UI
+      refetchAssessments();
+    } catch (err: any) {
+      console.error("Failed to accept assessment:", err);
+      console.error("Error details:", err?.data || err?.message || err);
+      alert("Failed to accept the visit. Please try again.");
+    }
+  };
+
+  // Handle proposing a new time
+  const handleProposeNewTime = async () => {
+    if (!proposeTimeModal.assessment || !proposedDateTime) return;
+    
+    const assessment = proposeTimeModal.assessment;
+    const newStart = new Date(proposedDateTime);
+    // Default assessment duration: 1 hour
+    const newEnd = new Date(newStart.getTime() + 60 * 60 * 1000);
+    
+    try {
+      const payload = {
+        id: assessment.id,
+        issue_id: assessment.issue_id,
+        user_id: assessment.user_id,
+        user_type: assessment.user_type,
+        interaction_id: assessment.users_interaction_id,
+        users_interaction_id: assessment.users_interaction_id,
+        start_time: newStart.toISOString(),
+        end_time: newEnd.toISOString(),
+        status: "received", // Keep as received - vendor will see the new time
+        min_assessment_time: assessment.min_assessment_time,
+        user_last_viewed: new Date().toISOString(),
+      };
+      await updateAssessment(payload).unwrap();
+      setProposeTimeModal({ isOpen: false, assessment: null });
+      setProposedDateTime("");
+      // Refetch to update the UI
+      refetchAssessments();
+    } catch (err) {
+      console.error("Failed to propose new time:", err);
+      alert("Failed to propose new time. Please try again.");
+    }
+  };
+
+  // Open propose time modal
+  const openProposeTimeModal = (assessment: CalendarReadyAssessment & { issue?: IssueType }) => {
+    // Pre-fill with the current proposed time
+    const currentTime = new Date(assessment.start);
+    const localDateTime = currentTime.toISOString().slice(0, 16);
+    setProposedDateTime(localDateTime);
+    setProposeTimeModal({ isOpen: true, assessment });
+  };
+
   // Tab state for Priority Inbox
-  const [activeInboxTab, setActiveInboxTab] = useState<'approvals' | 'quotes'>('approvals');
+  const [activeInboxTab, setActiveInboxTab] = useState<'approvals' | 'quotes' | 'visits'>('approvals');
   const [activePropertyIndex, setActivePropertyIndex] = useState(0);
 
   // Get items needing approval (issues in review status)
@@ -338,7 +453,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             <div className="relative" ref={createDropdownRef}>
               <button
                 onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-                className="group inline-flex items-center gap-2 px-5 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-sm hover:bg-amber-400 transition-all shadow-sm"
+                className="group inline-flex items-center gap-2 px-5 py-3 bg-gold text-white rounded-xl font-bold text-sm hover:bg-foreground hover:text-background transition-all shadow-sm"
               >
                 <FontAwesomeIcon icon={faPlus} />
                 <span>Create</span>
@@ -379,13 +494,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               {/* Approvals Needed */}
               <div 
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length + quoteItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
                 {(approvalItems.length + quoteItems.length) > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
-                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
+                    <span className="w-2 h-2 bg-gold rounded-full"></span>
                     Action needed
                   </div>
                 )}
@@ -394,20 +509,20 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               {/* Quotes to Compare */}
               <div 
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{quoteItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Quotes to Compare</div>
                 {quoteItems.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
-                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
+                    <span className="w-2 h-2 bg-gold rounded-full"></span>
                     Review pending
                   </div>
                 )}
               </div>
 
               {/* Visit Scheduled */}
-              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="text-3xl font-bold text-gray-900 mb-1">{calendarEvents.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Visit Scheduled</div>
                 {calendarEvents.length > 0 && (
@@ -418,10 +533,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
 
               {/* Budget / Spend */}
-              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <span className="text-amber-600 font-bold">$</span>
+                  <span className="w-9 h-9 bg-gold-200 rounded-lg flex items-center justify-center">
+                    <span className="text-gold font-bold">$</span>
                   </span>
                   <div>
                     <div className="text-xl font-bold text-gray-900">
@@ -431,7 +546,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   </div>
                 </div>
                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full" style={{ width: '45%' }}></div>
+                  <div className="h-full bg-gradient-to-r from-gold-400 to-gold rounded-full" style={{ width: '45%' }}></div>
                 </div>
               </div>
             </div>
@@ -444,32 +559,41 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             {/* Hero Welcome Card */}
             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
               {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-              <div className="absolute top-10 right-10 w-20 h-20 border border-amber-500/20 rounded-xl rotate-12"></div>
+              <div className="absolute top-0 right-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+              <div className="absolute top-10 right-10 w-20 h-20 border border-gold/20 rounded-xl rotate-12"></div>
               <div className="absolute bottom-10 right-32 w-12 h-12 border border-white/10 rounded-lg -rotate-6"></div>
               
               <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
                 <div className="flex-1 text-center lg:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium mb-4">
-                    <FontAwesomeIcon icon={faMagic} className="text-amber-400" />
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/20 text-gold rounded-full text-sm font-medium mb-4">
+                    <FontAwesomeIcon icon={faMagic} className="text-gold" />
                     Welcome to Inspectly
                   </div>
                   <h2 className="text-2xl lg:text-3xl font-bold text-white mb-3">
                     Let's get your home project started
                   </h2>
                   <p className="text-gray-400 text-base mb-6 max-w-lg">
-                    Upload your inspection report and our AI will analyze it instantly, then connect you with verified contractors who can help.
+                    Post a job to get quotes from verified contractors, or upload your inspection report for AI-powered analysis.
                   </p>
                   
-                  <button
-                    onClick={() => setIsAddListingModalOpen(true)}
-                    className="inline-flex items-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
-                  >
-                    <FontAwesomeIcon icon={faUpload} />
-                    Upload Your Report
-                    <FontAwesomeIcon icon={faArrowRight} />
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => setIsCreateIssueModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-gold text-white rounded-xl font-bold text-base hover:bg-foreground hover:text-background transition-all shadow-lg hover:shadow-gold/25 hover:-translate-y-0.5"
+                    >
+                      <FontAwesomeIcon icon={faBriefcase} />
+                      Post a Job
+                      <FontAwesomeIcon icon={faArrowRight} />
+                    </button>
+                    <button
+                      onClick={() => setIsAddListingModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-3 px-6 py-3 bg-white/10 text-white rounded-xl font-bold text-base hover:bg-white/20 transition-all border border-white/20"
+                    >
+                      <FontAwesomeIcon icon={faUpload} />
+                      Upload Report
+                    </button>
+                  </div>
                 </div>
                 
                 {/* Visual illustration */}
@@ -479,8 +603,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <div className="absolute -top-3 -left-3 w-40 h-48 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
                     <div className="absolute -top-1 -left-1 w-40 h-48 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
                     <div className="relative w-40 h-48 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
-                      <div className="w-16 h-16 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
-                        <FontAwesomeIcon icon={faHome} className="text-2xl text-amber-600" />
+                      <div className="w-16 h-16 bg-gold-200 rounded-xl flex items-center justify-center mb-3">
+                        <FontAwesomeIcon icon={faHome} className="text-2xl text-gold" />
                       </div>
                       <div className="h-2 w-24 bg-gray-200 rounded mb-2"></div>
                       <div className="h-2 w-20 bg-gray-100 rounded mb-2"></div>
@@ -494,14 +618,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             {/* Quick Start Steps */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
-                   onClick={() => setIsAddListingModalOpen(true)}>
+                   onClick={() => setIsCreateIssueModalOpen(true)}>
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500 transition-colors">
-                    <span className="text-amber-600 font-bold group-hover:text-white transition-colors">1</span>
+                  <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-gold transition-colors">
+                    <span className="text-gold font-bold group-hover:text-white transition-colors">1</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Upload Report</h3>
-                    <p className="text-sm text-gray-500">Add your property and upload an inspection report</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Post a Job</h3>
+                    <p className="text-sm text-gray-500">Describe what you need fixed or upload a report</p>
                   </div>
                 </div>
               </div>
@@ -512,8 +636,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <span className="text-gray-400 font-bold">2</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Review Issues</h3>
-                    <p className="text-sm text-gray-500">AI extracts and prioritizes repair items</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
+                    <p className="text-sm text-gray-500">Verified contractors send you competitive bids</p>
                   </div>
                 </div>
               </div>
@@ -524,8 +648,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <span className="text-gray-400 font-bold">3</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
-                    <p className="text-sm text-gray-500">Receive competitive quotes from verified pros</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Hire & Track</h3>
+                    <p className="text-sm text-gray-500">Choose a pro and track your project to completion</p>
                   </div>
                 </div>
               </div>
@@ -537,8 +661,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         {!isNewUser && (
           <div className="grid grid-cols-12 gap-5 w-full min-w-0 overflow-hidden">
             
+            {/* LEFT COLUMN - Priority Inbox + Active Properties stacked */}
+            <div className="col-span-12 lg:col-span-8 flex flex-col gap-5 min-w-0">
+            
             {/* PRIORITY INBOX - Main Card */}
-            <div className="col-span-12 lg:col-span-8 min-w-0">
+            <div className="min-w-0">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 {/* Header with icon and tabs */}
                 <div className="px-5 py-4 border-b border-gray-100">
@@ -559,13 +686,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
                         activeInboxTab === 'approvals' 
                           ? 'bg-gray-900 text-white' 
-                          : 'text-gray-600 hover:bg-gray-100'
+                          : 'text-gray-600 hover:bg-foreground hover:text-background'
                       }`}
                     >
                       Approvals
                       {approvalItems.length > 0 && (
                         <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                          activeInboxTab === 'approvals' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                          activeInboxTab === 'approvals' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
                         }`}>
                           {approvalItems.length}
                         </span>
@@ -576,15 +703,32 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
                         activeInboxTab === 'quotes' 
                           ? 'bg-gray-900 text-white' 
-                          : 'text-gray-600 hover:bg-gray-100'
+                          : 'text-gray-600 hover:bg-foreground hover:text-background'
                       }`}
                     >
                       Quotes
                       {quoteItems.length > 0 && (
                         <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                          activeInboxTab === 'quotes' ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                          activeInboxTab === 'quotes' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
                         }`}>
                           {quoteItems.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setActiveInboxTab('visits')}
+                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+                        activeInboxTab === 'visits' 
+                          ? 'bg-gray-900 text-white' 
+                          : 'text-gray-600 hover:bg-foreground hover:text-background'
+                      }`}
+                    >
+                      Visit Requests
+                      {pendingAssessments.length > 0 && (
+                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                          activeInboxTab === 'visits' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
+                        }`}>
+                          {pendingAssessments.length}
                         </span>
                       )}
                     </button>
@@ -613,11 +757,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               <div
                                 key={item.id}
                                 onClick={() => openIssueModal(item)}
-                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                               >
                                 <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-amber-50">
-                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-amber-600" />
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gold-100">
+                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-gold" />
                                   </div>
                                   <div>
                                     <div className="font-semibold text-gray-900">
@@ -633,7 +777,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                   {acceptedOffer && (
                                     <span className="text-lg font-bold text-gray-900">${acceptedOffer.price?.toLocaleString()}</span>
                                   )}
-                                  <button className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg hover:bg-amber-400 transition-colors flex items-center gap-2">
+                                  <button className="px-4 py-2 bg-gold text-white font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors flex items-center gap-2">
                                     Approve <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                                   </button>
                                 </div>
@@ -676,11 +820,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               <div
                                 key={item.id}
                                 onClick={() => openIssueModal(item, "offers")}
-                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                               >
                                 <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-amber-50">
-                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-amber-600" />
+                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gold-100">
+                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-gold" />
                                   </div>
                                   <div>
                                     <div className="font-semibold text-gray-900">
@@ -702,7 +846,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                     </div>
                                   )}
                                   {pendingOffers.length === 1 ? (
-                                    <button className="px-4 py-2 bg-amber-500 text-white font-semibold rounded-lg hover:bg-amber-400 transition-colors flex items-center gap-2">
+                                    <button className="px-4 py-2 bg-gold text-white font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors flex items-center gap-2">
                                       Accept <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                                     </button>
                                   ) : (
@@ -727,72 +871,103 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     </div>
                   )}
 
-                </div>
-              </div>
-            </div>
-
-            {/* PROJECT HEALTH - Sidebar Card */}
-            <div className="col-span-12 lg:col-span-4 min-w-0">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faTrophy} className="text-gray-600" />
-                    </div>
-                    <h2 className="text-lg font-bold text-gray-900">Project Health</h2>
-                  </div>
-                  <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-                </div>
-                
-                <div className="p-5 space-y-5">
-                  {/* Resolution Progress */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Resolution Rate</span>
-                      <span className="text-sm font-bold text-gray-900">{resolutionRate}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all duration-500" 
-                        style={{ width: `${resolutionRate}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Next Visit */}
-                  {calendarEvents.length > 0 && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Next Visit</div>
-                      <div className="text-sm font-bold text-gray-900">
-                        {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="text-xs text-gray-500">{calendarEvents[0]?.title}</div>
+                  {/* Visit Requests Tab */}
+                  {activeInboxTab === 'visits' && (
+                    <div className="space-y-3">
+                      {pendingAssessments.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <FontAwesomeIcon icon={faCalendarAlt} className="text-3xl text-gray-300 mb-2" />
+                          <p>No visit requests pending</p>
+                        </div>
+                      ) : (
+                        <>
+                          {pendingAssessments.slice(0, 3).map((event) => (
+                            <div
+                              key={event.id}
+                              className="group p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                            >
+                              <div className="flex items-start gap-4">
+                                {/* Issue type icon */}
+                                <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-gold-300">
+                                  <FontAwesomeIcon 
+                                    icon={getIssueTypeIcon(event.issue?.type)} 
+                                    className="text-gold" 
+                                  />
+                                </div>
+                                
+                                <div className="flex-1 min-w-0">
+                                  {/* Issue title */}
+                                  <div className="font-semibold text-gray-900 mb-1 truncate">
+                                    {event.title}
+                                  </div>
+                                  
+                                  {/* Property address */}
+                                  {event.listing && (
+                                    <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
+                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                      <span className="truncate">
+                                        {event.listing.address?.split(',')[0] || event.listing.address}
+                                      </span>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Date and time */}
+                                  <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
+                                    <FontAwesomeIcon icon={faClock} className="text-xs" />
+                                    <span>
+                                      {event.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
+                                      {' · '}
+                                      {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Action buttons */}
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAcceptAssessment(event);
+                                      }}
+                                      disabled={isUpdatingAssessment}
+                                      className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
+                                    >
+                                      <FontAwesomeIcon icon={faCheck} />
+                                      {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openProposeTimeModal(event);
+                                      }}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                                    >
+                                      <FontAwesomeIcon icon={faEdit} />
+                                      Propose New Time
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {pendingAssessments.length > 3 && (
+                            <button
+                              onClick={() => setShowScheduleModal(true)}
+                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                              View all {pendingAssessments.length} visit requests →
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
 
-                  {/* Quick Stats */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-gray-900">{realMetrics.totalIssues}</div>
-                      <div className="text-xs text-gray-500">Total</div>
-                    </div>
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-gray-900">{realMetrics.openIssues}</div>
-                      <div className="text-xs text-gray-500">Open</div>
-                    </div>
-                    <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                      <div className="text-xl font-bold text-emerald-600">{realMetrics.completedIssues}</div>
-                      <div className="text-xs text-gray-500">Done</div>
-                    </div>
-                  </div>
-
                 </div>
               </div>
             </div>
 
-            {/* ACTIVE PROPERTIES - Like "Active Renovations" in mockup */}
-            <div className="col-span-12">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            {/* ACTIVE PROPERTIES - Inside left column */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -879,7 +1054,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                 <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
                                     {openCount > 0 ? (
-                                      <span className="text-sm text-amber-600 font-medium">
+                                      <span className="text-sm text-gold font-medium">
                                         {openCount} open issue{openCount !== 1 ? 's' : ''}
                                       </span>
                                     ) : (
@@ -900,7 +1075,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                                   <div 
                                     className={`h-full rounded-full transition-all duration-500 ${
-                                      openCount > 0 ? 'bg-amber-500' : 'bg-emerald-500'
+                                      openCount > 0 ? 'bg-gold' : 'bg-emerald-500'
                                     }`}
                                     style={{ width: `${progressPercent}%` }}
                                   ></div>
@@ -928,44 +1103,122 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   )}
                 </div>
               </div>
-            </div>
 
-            {/* SCHEDULE CARD - Only shown if there are upcoming events */}
-            {hasUpcomingAssessments && (
-              <div className="col-span-12 lg:col-span-4">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-600" />
-                      </div>
-                      <h2 className="text-lg font-bold text-gray-900">Schedule</h2>
+            </div> {/* End LEFT COLUMN */}
+
+            {/* RIGHT COLUMN - Project Health + Schedule stacked */}
+            <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <FontAwesomeIcon icon={faTrophy} className="text-gray-600" />
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-900">Project Health</h2>
+                  </div>
+                  <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
+                </div>
+                
+                <div className="p-5 space-y-5">
+                  {/* Resolution Progress */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Resolution Rate</span>
+                      <span className="text-sm font-bold text-gray-900">{resolutionRate}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-gold-400 to-gold rounded-full transition-all duration-500" 
+                        style={{ width: `${resolutionRate}%` }}
+                      ></div>
                     </div>
                   </div>
+
+                  {/* Next Visit */}
+                  {calendarEvents.length > 0 && (
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="text-sm font-medium text-gray-700 mb-1">Next Visit</div>
+                      <div className="text-sm font-bold text-gray-900">
+                        {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className="text-xs text-gray-500">{calendarEvents[0]?.title}</div>
+                    </div>
+                  )}
+
+                  {/* Quick Stats */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xl font-bold text-gray-900">{realMetrics.totalIssues}</div>
+                      <div className="text-xs text-gray-500">Total</div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xl font-bold text-gray-900">{realMetrics.openIssues}</div>
+                      <div className="text-xs text-gray-500">Open</div>
+                    </div>
+                    <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                      <div className="text-xl font-bold text-emerald-600">{realMetrics.completedIssues}</div>
+                      <div className="text-xs text-gray-500">Done</div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            {/* UPCOMING VISITS CARD - Only confirmed visits (informational) */}
+            {confirmedAssessments.length > 0 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                        <FontAwesomeIcon icon={faCalendarAlt} className="text-emerald-600" />
+                      </div>
+                      <h2 className="text-lg font-bold text-gray-900">Upcoming Visits</h2>
+                    </div>
+                    {confirmedAssessments.length > 3 && (
+                      <button
+                        onClick={() => setShowScheduleModal(true)}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        View all
+                      </button>
+                    )}
+                  </div>
                   <div className="p-4">
-                    <div className="space-y-3">
-                      {calendarEvents.slice(0, 2).map((event) => (
-                        <div key={event.id} className="group flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-l-4 border-transparent hover:border-amber-500 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                          <div className="w-12 h-14 bg-white rounded-lg shadow-sm flex flex-col items-center justify-center flex-shrink-0 border border-gray-200">
-                            <span className="text-xs font-semibold text-gray-500 uppercase">
-                              {event.start.toLocaleDateString("en-US", { month: "short" })}
-                            </span>
-                            <span className="text-lg font-bold text-gray-900">{event.start.getDate()}</span>
+                    <div className="space-y-2">
+                      {confirmedAssessments.slice(0, 3).map((event) => (
+                        <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <FontAwesomeIcon 
+                              icon={getIssueTypeIcon(event.issue?.type)} 
+                              className="text-gray-600 text-sm" 
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm text-gray-900 truncate">{event.title}</div>
-                            <div className="text-sm text-gray-500 flex items-center gap-1.5">
-                              <FontAwesomeIcon icon={faClock} />
+                            <div className="text-sm font-medium text-gray-900 truncate">
+                              {event.title}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {event.listing?.address?.split(',')[0] || 'Property'}
+                              {' · '}
+                              {event.start.toLocaleDateString("en-US", { weekday: 'short' })}
+                              {' '}
                               {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
+                    
+                    {confirmedAssessments.length === 0 && (
+                      <div className="text-center py-4 text-gray-500 text-sm">
+                        No confirmed visits scheduled
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
             )}
+
+            </div> {/* End RIGHT COLUMN */}
           </div>
         )}
       </div>
@@ -1017,6 +1270,211 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               onClose={() => setSelectedIssueForModal(null)}
               defaultTab={modalDefaultTab}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Propose New Time Modal */}
+      {proposeTimeModal.isOpen && proposeTimeModal.assessment && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Propose New Time</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setProposeTimeModal({ isOpen: false, assessment: null });
+                  setProposedDateTime("");
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-1">Current proposed time:</p>
+                <p className="font-semibold text-gray-900">
+                  {proposeTimeModal.assessment.start.toLocaleDateString("en-US", { 
+                    weekday: 'long', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })} at {proposeTimeModal.assessment.start.toLocaleTimeString("en-US", { 
+                    hour: "numeric", 
+                    minute: "2-digit" 
+                  })}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select your preferred date & time
+                </label>
+                <input
+                  type="datetime-local"
+                  value={proposedDateTime}
+                  onChange={(e) => setProposedDateTime(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold text-gray-900"
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mb-6">
+                The contractor will be notified of your proposed time and can confirm or suggest alternatives.
+              </p>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setProposeTimeModal({ isOpen: false, assessment: null });
+                    setProposedDateTime("");
+                  }}
+                  className={`flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg ${BUTTON_HOVER}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleProposeNewTime}
+                  disabled={!proposedDateTime}
+                  className={`flex-1 px-4 py-3 bg-gold text-white font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Propose Time
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Schedule Modal */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">All Scheduled Visits</h3>
+                  <p className="text-sm text-gray-500">
+                    {pendingAssessments.length} pending · {confirmedAssessments.length} confirmed
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowScheduleModal(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {/* Pending Section */}
+              {pendingAssessments.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-gold-700 uppercase tracking-wide mb-3">
+                    Awaiting Your Response ({pendingAssessments.length})
+                  </h4>
+                  <div className="space-y-3">
+                    {pendingAssessments.map((event) => (
+                      <div key={event.id} className="p-4 bg-gold-50 rounded-xl border border-gold-200">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                            <FontAwesomeIcon 
+                              icon={getIssueTypeIcon(event.issue?.type)} 
+                              className="text-gold" 
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 mb-1">{event.title}</div>
+                            {event.listing && (
+                              <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-1">
+                                <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs text-gray-400" />
+                                {event.listing.address}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-3">
+                              <FontAwesomeIcon icon={faClock} className="text-xs text-gray-400" />
+                              {event.start.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric' })}
+                              {' at '}
+                              {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => handleAcceptAssessment(event)}
+                                disabled={isUpdatingAssessment}
+                                className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                <FontAwesomeIcon icon={faCheck} />
+                                {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowScheduleModal(false);
+                                  openProposeTimeModal(event);
+                                }}
+                                className={`flex items-center gap-1.5 px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                              >
+                                <FontAwesomeIcon icon={faEdit} />
+                                Propose New Time
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Confirmed Section */}
+              {confirmedAssessments.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-semibold text-emerald-700 uppercase tracking-wide mb-3">
+                    Confirmed Visits ({confirmedAssessments.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {confirmedAssessments.map((event) => (
+                      <div key={event.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FontAwesomeIcon icon={faCheckCircle} className="text-emerald-600 text-sm" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm text-gray-900 truncate">{event.title}</div>
+                          <div className="text-xs text-gray-500">
+                            {event.listing?.address?.split(',')[0] || 'Property'}
+                            {' · '}
+                            {event.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {' · '}
+                            {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {calendarEvents.length === 0 && (
+                <div className="text-center py-12">
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-4xl text-gray-300 mb-3" />
+                  <p className="text-gray-500">No scheduled visits</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
