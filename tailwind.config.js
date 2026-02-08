@@ -68,6 +68,18 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			colors: {
+				// Brand gold color (rgb 212, 160, 23)
+				gold: {
+					DEFAULT: 'rgb(212, 160, 23)',
+					50: 'rgb(212, 160, 23, 0.05)',
+					100: 'rgb(212, 160, 23, 0.10)',
+					200: 'rgb(212, 160, 23, 0.16)',
+					300: 'rgb(212, 160, 23, 0.25)',
+					400: 'rgb(212, 160, 23, 0.40)',
+					500: 'rgb(212, 160, 23)',
+					600: 'rgb(180, 136, 20)',
+					700: 'rgb(150, 113, 16)',
+				},
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				card: {

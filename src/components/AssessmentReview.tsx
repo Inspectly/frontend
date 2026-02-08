@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAdd, faDownload } from "@fortawesome/free-solid-svg-icons";
 import { generateCalendarLinks } from "../utils/calendarUtils";
 import VendorName from "./VendorName";
+import { BUTTON_HOVER } from "../styles/shared";
 
 interface AssessmentReviewProps {
   assessments: IssueAssessment[];
@@ -17,6 +18,7 @@ interface AssessmentReviewProps {
     rejected: IssueAssessment[]
   ) => Promise<void>;
   onRejectAll: (vendorId: number) => void;
+  onRejectSingle?: (assessment: IssueAssessment) => Promise<void>;
   issueId: number;
   userId: number;
   vendorIdToName: Record<number, string>;
@@ -33,6 +35,7 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
   assessments,
   onAccept,
   onRejectAll,
+  onRejectSingle,
   issueId,
   userId,
   vendorIdToName,
@@ -167,7 +170,7 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
     <div className="p-4 bg-white rounded shadow space-y-6">
       {(isSubmitting || isSubmittingProposal || assessmentsLoading) && (
         <div className="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gold border-t-transparent"></div>
         </div>
       )}
 
@@ -200,149 +203,187 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
                 })
               : { googleCalendarUrl: "", icsUrl: "" };
 
+            const formatScheduledTime = (startTime: string, endTime: string) => {
+              const start = new Date(startTime);
+              const end = new Date(endTime);
+              return {
+                date: start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                timeRange: `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`,
+                full: `${start.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}, ${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`
+              };
+            };
+
             return (
               <div
                 key={vendorKey}
-                className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mb-6"
+                className="border border-gray-200 rounded-xl overflow-hidden mb-6"
               >
-                {!onlyShowVendorId && (
-                  <h4 className="text-lg font-semibold text-gray-800 mb-4">
-                    <VendorName vendorId={vendorId} />
-                    's Proposals
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+                  <h4 className="text-base font-semibold text-gray-900">
+                    {onlyShowVendorId ? "Assessment Proposals" : (
+                      <><VendorName vendorId={vendorId} showRating />'s Proposals</>
+                    )}
                   </h4>
-                )}
+                </div>
 
-                {acceptedTimeDisplay && (
-                  <div className="bg-green-50 text-green-700 p-3 rounded-md text-sm mb-4">
-                    <strong>Scheduled:</strong> {acceptedTimeDisplay}
-                    {googleCalendarUrl && icsUrl && (
-                      <div className="mt-2 space-x-4">
-                        <a
-                          href={googleCalendarUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline text-sm"
-                        >
-                          <FontAwesomeIcon icon={faAdd} /> Add to Google
-                          Calendar
-                        </a>
-                        <a
-                          href={icsUrl}
-                          download="assessment-invite.ics"
-                          className="text-blue-600 underline text-sm"
-                        >
-                          <FontAwesomeIcon icon={faDownload} /> Download ICS
-                        </a>
-                      </div>
+                <div className="p-5 space-y-4">
+                  {/* Scheduled Time Banner */}
+                  {acceptedAssessment && (
+                    <div className="bg-gold-50 border border-gold-200 rounded-lg p-4">
+                      <p className="text-gray-900 font-medium mb-2">
+                        Scheduled on {formatScheduledTime(acceptedAssessment.start_time, acceptedAssessment.end_time).date} from {formatScheduledTime(acceptedAssessment.start_time, acceptedAssessment.end_time).timeRange}
+                      </p>
+                      {googleCalendarUrl && icsUrl && (
+                        <div className="flex items-center gap-4">
+                          <a
+                            href={googleCalendarUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-gold-700 hover:text-gray-900 transition-colors"
+                          >
+                            <FontAwesomeIcon icon={faAdd} className="w-3 h-3" />
+                            Add to Google Calendar
+                          </a>
+                          <a
+                            href={icsUrl}
+                            download="assessment-invite.ics"
+                            className="inline-flex items-center gap-1.5 text-sm text-gold-700 hover:text-gray-900 transition-colors"
+                          >
+                            <FontAwesomeIcon icon={faDownload} className="w-3 h-3" />
+                            Download ICS
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Assessment Cards */}
+                  <div className="space-y-3">
+                    {[...assessments]
+                      .filter((a) => !locallyRemovedIds.includes(Number(a.id)))
+                      .sort(
+                        (a, b) =>
+                          new Date(a.start_time).getTime() -
+                          new Date(b.start_time).getTime()
+                      )
+                      .map((assessment) => {
+                        const proposedTime = formatScheduledTime(assessment.start_time, assessment.end_time);
+                        const isAccepted = assessment.status === IssueAssessmentStatus.ACCEPTED;
+                        const isRejected = assessment.status === IssueAssessmentStatus.REJECTED;
+                        const isPending = assessment.status === IssueAssessmentStatus.RECEIVED;
+                        
+                        return (
+                          <div
+                            key={assessment.id}
+                            className={`border rounded-lg p-4 transition-all ${
+                              isAccepted 
+                                ? "border-gold-300 bg-gold-50" 
+                                : isRejected 
+                                ? "border-gray-200 bg-gray-50 opacity-60" 
+                                : "border-gray-200 hover:border-gold hover:shadow-md"
+                            }`}
+                          >
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900 mb-1">
+                                  {proposedTime.full}
+                                </p>
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                    isAccepted
+                                      ? "bg-gold text-white"
+                                      : isRejected
+                                      ? "bg-gray-200 text-gray-600"
+                                      : "bg-gold-100 text-gold-700"
+                                  }`}
+                                >
+                                  {ISSUE_ASSESSMENT_STATUS_LABELS[assessment.status]}
+                                </span>
+                              </div>
+
+                              {isPending && userId !== assessment.user_id ? (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={async () => {
+                                      await handleAccept(
+                                        assessment,
+                                        minDuration,
+                                        vendorId
+                                      );
+                                    }}
+                                    className={`px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg ${BUTTON_HOVER}`}
+                                  >
+                                    Accept
+                                  </button>
+                                  {onRejectSingle && (
+                                    <button
+                                      onClick={async () => {
+                                        setIsSubmitting(true);
+                                        try {
+                                          await onRejectSingle(assessment);
+                                          setLocallyRemovedIds(prev => [...prev, Number(assessment.id)]);
+                                        } catch (err) {
+                                          console.error("Error rejecting assessment:", err);
+                                        } finally {
+                                          setIsSubmitting(false);
+                                        }
+                                      }}
+                                      className={`px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                                    >
+                                      Reject
+                                    </button>
+                                  )}
+                                </div>
+                              ) : isPending ? (
+                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                  Waiting for {userType === "vendor" ? "client" : "vendor"}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* Status Message */}
+                  {acceptedAssessment && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-sm text-gray-600">
+                        Assessment time has been confirmed. {userType === "vendor" ? "Visit the property at the scheduled time." : "The vendor will visit at the scheduled time."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons - Only show if no accepted assessment */}
+                {!acceptedAssessment && (
+                  <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => {
+                        setShouldRejectAll(false);
+                        setCurrentVendor({ vendorId, vendorName, minDuration });
+                        setShowRejectModal(true);
+                      }}
+                      className={`flex-1 px-4 py-2.5 bg-gold text-white text-sm font-medium rounded-lg ${BUTTON_HOVER} flex items-center justify-center gap-2`}
+                    >
+                      <FontAwesomeIcon icon={faAdd} className="w-3 h-3" />
+                      {userType === "vendor" ? "Modify Schedule" : "Propose New Times"}
+                    </button>
+                    {assessments.filter(a => a.status !== "Assessment_Status.REJECTED").length > 0 && (
+                      <button
+                        onClick={() => {
+                          setShouldRejectAll(true);
+                          setCurrentVendor({ vendorId, vendorName, minDuration });
+                          setShowRejectModal(true);
+                        }}
+                        className={`flex-1 px-4 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                      >
+                        Reject All & Propose New
+                      </button>
                     )}
                   </div>
                 )}
-
-                <div className="space-y-3">
-                  {[...assessments]
-                    .filter((a) => !locallyRemovedIds.includes(Number(a.id)))
-                    .sort(
-                      (a, b) =>
-                        new Date(a.start_time).getTime() -
-                        new Date(b.start_time).getTime()
-                    )
-                    .map((assessment) => (
-                      <div
-                        key={assessment.id}
-                        className="border border-gray-100 rounded-md bg-gray-50 px-4 py-3 flex flex-col md:flex-row justify-between items-start md:items-center"
-                      >
-                        <div className="text-sm text-gray-800">
-                          <p>
-                            <strong>Proposed:</strong>{" "}
-                            {new Date(assessment.start_time).toLocaleString(
-                              "en-US",
-                              {
-                                weekday: "long",
-                                month: "short",
-                                day: "numeric",
-                                hour: "numeric",
-                                minute: "2-digit",
-                              }
-                            )}{" "}
-                            –{" "}
-                            {new Date(assessment.end_time).toLocaleTimeString(
-                              "en-US",
-                              {
-                                hour: "numeric",
-                                minute: "2-digit",
-                              }
-                            )}
-                          </p>
-                          <p className="text-gray-600 mt-1">
-                            <strong>Status:</strong>{" "}
-                            <span
-                              className={
-                                assessment.status ===
-                                IssueAssessmentStatus.ACCEPTED
-                                  ? "text-green-600"
-                                  : assessment.status ===
-                                    IssueAssessmentStatus.REJECTED
-                                  ? "text-red-600"
-                                  : "text-yellow-600"
-                              }
-                            >
-                              {
-                                ISSUE_ASSESSMENT_STATUS_LABELS[
-                                  assessment.status
-                                ]
-                              }
-                            </span>
-                          </p>
-                        </div>
-
-                        {assessment.status === IssueAssessmentStatus.RECEIVED &&
-                        userId !== assessment.user_id ? (
-                          <button
-                            onClick={async () => {
-                              await handleAccept(
-                                assessment,
-                                minDuration,
-                                vendorId
-                              );
-                            }}
-                            className="mt-3 md:mt-0 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-md text-sm transition"
-                          >
-                            Accept
-                          </button>
-                        ) : assessment.status ===
-                          IssueAssessmentStatus.RECEIVED ? (
-                          <p className="text-sm text-gray-500 mt-3 md:mt-0">
-                            Waiting for{" "}
-                            {userType === "vendor" ? "client" : "vendor"} to
-                            respond.
-                          </p>
-                        ) : null}
-                      </div>
-                    ))}
-                </div>
-
-                <div className="mt-6 flex flex-col sm:flex-row sm:justify-end gap-3">
-                  <button
-                    onClick={() => {
-                      setShouldRejectAll(true);
-                      setCurrentVendor({ vendorId, vendorName, minDuration });
-                      setShowRejectModal(true);
-                    }}
-                    className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md text-sm transition"
-                  >
-                    Reject All & Propose Times
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShouldRejectAll(false);
-                      setCurrentVendor({ vendorId, vendorName, minDuration });
-                      setShowRejectModal(true);
-                    }}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm transition"
-                  >
-                    Propose Additional Times
-                  </button>
-                </div>
               </div>
             );
           }
@@ -446,7 +487,7 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
 
             <div className="flex justify-end gap-3">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
+                className={`px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
                 onClick={() => {
                   setShowTimeModal(false);
                   setSelectedAssessment(null);
@@ -456,7 +497,7 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded"
+                className={`px-4 py-2 bg-gray-900 text-white rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={!selectedSlot}
                 onClick={async () => {
                   if (!selectedAssessment || !selectedSlot) return;

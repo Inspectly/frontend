@@ -368,7 +368,7 @@ const Offers: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
               <div 
                 onClick={() => setFilterStatus("all")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'all' ? 'ring-2 ring-gray-900' : ''}`}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'all' ? 'ring-2 ring-gray-900' : ''}`}
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{stats.totalOffers}</div>
                 <div className="text-sm font-semibold text-gray-900">Total Offers</div>
@@ -376,13 +376,13 @@ const Offers: React.FC = () => {
 
               <div 
                 onClick={() => setFilterStatus("in-review")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'in-review' ? 'ring-2 ring-gray-900' : ''}`}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'in-review' ? 'ring-2 ring-gray-900' : ''}`}
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{stats.inReviewCount}</div>
                 <div className="text-sm font-semibold text-gray-900">Awaiting Approval</div>
                 {stats.inReviewCount > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
-                    <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
+                    <span className="w-2 h-2 bg-gold rounded-full"></span>
                     Needs action
                   </div>
                 )}
@@ -390,7 +390,7 @@ const Offers: React.FC = () => {
 
               <div 
                 onClick={() => setFilterStatus("pending")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'pending' ? 'ring-2 ring-gray-900' : ''}`}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'pending' ? 'ring-2 ring-gray-900' : ''}`}
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{stats.pendingOffers}</div>
                 <div className="text-sm font-semibold text-gray-900">Pending Quotes</div>
@@ -398,7 +398,7 @@ const Offers: React.FC = () => {
 
               <div 
                 onClick={() => setFilterStatus("accepted")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-amber-500 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'accepted' ? 'ring-2 ring-gray-900' : ''}`}
+                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'accepted' ? 'ring-2 ring-gray-900' : ''}`}
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{stats.acceptedOffers}</div>
                 <div className="text-sm font-semibold text-gray-900">Accepted</div>
@@ -426,13 +426,13 @@ const Offers: React.FC = () => {
                   className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
                     filterStatus === tab.value 
                       ? 'bg-gray-900 text-white' 
-                      : 'text-gray-600 hover:bg-gray-100'
+                      : 'text-gray-600 hover:bg-foreground hover:text-background'
                   }`}
                 >
                   {tab.label}
                   {tab.count !== undefined && tab.count > 0 && (
                     <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                      filterStatus === tab.value ? 'bg-amber-500 text-white' : 'bg-amber-100 text-amber-700'
+                      filterStatus === tab.value ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
                     }`}>
                       {tab.count}
                     </span>
@@ -521,12 +521,12 @@ const Offers: React.FC = () => {
               // New user - no properties
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
                 {/* Decorative elements */}
-                <div className="absolute top-0 right-0 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+                <div className="absolute top-0 right-0 w-72 h-72 bg-gold/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-gold/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
                 
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
                   <div className="flex-1 text-center lg:text-left">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium mb-4">
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/20 text-gold rounded-full text-sm font-medium mb-4">
                       <FontAwesomeIcon icon={faRocket} />
                       Get Started
                     </div>
@@ -539,22 +539,22 @@ const Offers: React.FC = () => {
                     
                     <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-6">
                       <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <FontAwesomeIcon icon={faShieldAlt} className="text-amber-500" />
+                        <FontAwesomeIcon icon={faShieldAlt} className="text-gold" />
                         Verified pros only
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <FontAwesomeIcon icon={faBolt} className="text-amber-500" />
+                        <FontAwesomeIcon icon={faBolt} className="text-gold" />
                         Fast responses
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-300">
-                        <FontAwesomeIcon icon={faCheckCircle} className="text-amber-500" />
+                        <FontAwesomeIcon icon={faCheckCircle} className="text-gold" />
                         Compare & save
                       </div>
                     </div>
                     
                     <button
                       onClick={() => navigate("/dashboard")}
-                      className="inline-flex items-center gap-3 px-6 py-3 bg-amber-500 text-gray-900 rounded-xl font-bold text-base hover:bg-amber-400 transition-all shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5"
+                      className="inline-flex items-center gap-3 px-6 py-3 bg-gold text-white rounded-xl font-bold text-base hover:bg-foreground hover:text-background transition-all shadow-lg hover:shadow-gold/25 hover:-translate-y-0.5"
                     >
                       <FontAwesomeIcon icon={faHome} />
                       Add Your First Property
@@ -568,8 +568,8 @@ const Offers: React.FC = () => {
                       <div className="absolute -top-2 -left-2 w-36 h-44 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
                       <div className="absolute -top-1 -left-1 w-36 h-44 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
                       <div className="relative w-36 h-44 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
-                        <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center mb-3">
-                          <FontAwesomeIcon icon={faClipboardList} className="text-xl text-amber-600" />
+                        <div className="w-14 h-14 bg-gold-200 rounded-xl flex items-center justify-center mb-3">
+                          <FontAwesomeIcon icon={faClipboardList} className="text-xl text-gold" />
                         </div>
                         <div className="h-2 w-20 bg-gray-200 rounded mb-2"></div>
                         <div className="h-2 w-16 bg-gray-100 rounded mb-2"></div>
@@ -613,20 +613,20 @@ const Offers: React.FC = () => {
                 return (
                   <div
                     key={issue.id}
-                    className="flex items-center justify-between px-5 py-4 border-l-4 border-transparent hover:border-amber-500 hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                    className="flex items-center justify-between px-5 py-4 border-l-4 border-transparent hover:border-gold hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
                     onClick={() => setSelectedIssue({ issue, listing, defaultTab: "offers" })}
                   >
                     {/* Left side - Issue info */}
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         issue.severity === 'high' ? 'bg-red-100' :
-                        issue.severity === 'medium' ? 'bg-amber-100' : 'bg-gray-100'
+                        issue.severity === 'medium' ? 'bg-gold-200' : 'bg-gray-100'
                       }`}>
                         <FontAwesomeIcon 
                           icon={getIssueTypeIcon(issue.type)} 
                           className={
                             issue.severity === 'high' ? 'text-red-600' :
-                            issue.severity === 'medium' ? 'text-amber-600' : 'text-gray-600'
+                            issue.severity === 'medium' ? 'text-gold' : 'text-gray-600'
                           } 
                         />
                       </div>
@@ -649,7 +649,7 @@ const Offers: React.FC = () => {
                       {isInReview && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
                           <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                          <div className="text-xs text-amber-600">Work completed</div>
+                          <div className="text-xs text-gold">Work completed</div>
                         </div>
                       ) : lowestPendingOffer ? (
                         <div className="text-right min-w-[80px]">
@@ -673,7 +673,7 @@ const Offers: React.FC = () => {
                             setSelectedIssueForAction(issue);
                             setShowApproveModal(true);
                           }}
-                          className="min-w-[90px] px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors text-center"
+                          className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"
                         >
                           Approve
                         </button>
@@ -683,7 +683,7 @@ const Offers: React.FC = () => {
                             e.stopPropagation();
                             handleAcceptOffer(pendingOffers[0]);
                           }}
-                          className="min-w-[90px] px-4 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-400 transition-colors text-center"
+                          className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"
                         >
                           Accept
                         </button>
@@ -744,9 +744,9 @@ const Offers: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-3">
                   This will mark the work as complete and finalize the project. Make sure you're satisfied with the work quality before approving.
                 </p>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <p className="text-xs text-amber-800 font-medium flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-gold-50 border border-gold-200 rounded-lg p-3">
+                  <p className="text-xs text-gold-700 font-medium flex items-start gap-2">
+                    <svg className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     <span>Once approved, this action cannot be undone.</span>
@@ -778,8 +778,8 @@ const Offers: React.FC = () => {
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
           <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
             <div className="flex items-start gap-3 mb-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-amber-100 rounded-full flex-shrink-0">
-                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center justify-center w-10 h-10 bg-gold-200 rounded-full flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </div>
@@ -795,7 +795,7 @@ const Offers: React.FC = () => {
               value={changeRequestMessage}
               onChange={(e) => setChangeRequestMessage(e.target.value)}
               placeholder="Describe what changes are needed..."
-              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent resize-none"
+              className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent resize-none"
             />
             
             <div className="flex justify-end gap-2 mt-4">
@@ -809,7 +809,7 @@ const Offers: React.FC = () => {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-amber-600 hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gold hover:bg-foreground hover:text-background transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!changeRequestMessage.trim()}
                 onClick={handleRequestChanges}
               >
