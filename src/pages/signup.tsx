@@ -1163,7 +1163,7 @@ const Signup: React.FC = () => {
                       fill="#EA4335"
                     />
                   </svg>
-                  <span className="group-hover:text-white font-semibold">Sign In with Google</span>
+                  <span className="group-hover:text-white font-semibold">Sign Up with Google</span>
                 </button>
               </div>
 
