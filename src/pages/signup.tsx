@@ -25,8 +25,7 @@ import {
   faUser,
   faFileLines
 } from "@fortawesome/free-regular-svg-icons";
-// Note: faGoogle import kept to prevent build errors if referenced elsewhere, 
-// but we are using a custom SVG for the button now.
+// Note: faGoogle import kept to prevent build errors if referenced elsewhere
 import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
 import {
@@ -62,6 +61,9 @@ const GOLD_BG_SOFT_16 = "bg-[rgb(212_160_23_/_0.16)]";
 const GOLD_BG_SOFT_18 = "bg-[rgb(212_160_23_/_0.18)]";
 const GOLD_SELECTED_BG = "bg-[rgb(212_160_23_/_0.16)]";
 
+// --- DIMENSIONS (Matched exactly to your Login code) ---
+const CARD_SIZE = "w-full max-w-[560px] min-h-[700px]";
+
 // --- COMPONENTS ---
 
 // FIXED: Moved FieldShell outside of the main component to prevent re-rendering/focus loss
@@ -81,7 +83,7 @@ const RightSideGraphic3D = ({ isVendor }: { isVendor: boolean }) => {
       <div className="absolute inset-0 rounded-3xl bg-[radial-gradient(80%_60%_at_70%_20%,rgb(212_160_23_/_0.22),transparent_55%),radial-gradient(70%_60%_at_10%_90%,rgba(17,24,39,0.18),transparent_60%)]" />
 
       {/* subtle frame */}
-      <div className="absolute inset-0 rounded-3xl bg-white/50 backdrop-blur-[2px] shadow-lg" />
+      <div className="absolute inset-0 rounded-3xl bg-white/50 backdrop-blur-[2px] shadow-2xl" />
 
       {/* 3D stack */}
       <div className="relative h-full p-6 [perspective:1200px]">
@@ -711,40 +713,42 @@ const Signup: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-x-hidden">
-      {/* LEFT BRANDING */}
-      <div className="hidden lg:flex lg:w-5/12 2xl:w-4/12 bg-gray-900 text-white sticky top-0 h-screen items-center">
-        <div className="px-16 w-full">
-          <div className="slide-in">
-            <div className={`inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 py-2 mb-6`}>
-              <FontAwesomeIcon icon={roleUI.icon} className="text-white" />
-              <span className="text-sm font-semibold text-white">{roleUI.kicker}</span>
-            </div>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-white overflow-hidden">
+      
+      {/* LEFT BRANDING (4/12 Width - Matched from Login) */}
+      <div className="hidden lg:flex lg:w-4/12 flex-col justify-center bg-gray-900 text-white h-screen px-12 xl:px-20 shrink-0 relative z-10 sticky top-0">
+        <div className="slide-in">
+          <div className={`inline-flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 py-2 mb-8 shadow-lg shadow-yellow-500/20`}>
+            <FontAwesomeIcon icon={roleUI.icon} className="text-white text-xs" />
+            <span className="text-xs font-bold uppercase tracking-wider text-white">{roleUI.kicker}</span>
+          </div>
 
-            <h1 className="text-6xl font-extrabold tracking-tight mb-4">{roleUI.title}</h1>
+          <h1 className="text-5xl xl:text-6xl font-extrabold tracking-tight mb-6">{roleUI.title}</h1>
 
-            <p className="text-xl font-light leading-relaxed max-w-md">{roleUI.subtitle}</p>
+          <p className="text-lg font-light leading-relaxed max-w-sm text-gray-400">{roleUI.subtitle}</p>
 
-            <ul className="mt-8 space-y-3 text-white/90">
+          <ul className="mt-8 space-y-3 text-white/80">
               {roleUI.bullets.map((b) => (
                 <li key={b} className="flex items-center gap-3">
                   <span className="h-2 w-2 rounded-full bg-white/70" />
-                  <span className="text-base">{b}</span>
+                  <span className="text-sm">{b}</span>
                 </li>
               ))}
             </ul>
 
-            <div className={`mt-10 h-1 w-24 ${GOLD_BG} rounded-full`} />
-          </div>
+          <div className={`mt-12 h-1.5 w-24 ${GOLD_BG} rounded-full`} />
         </div>
       </div>
 
-      {/* RIGHT SIDE: Form + Graphic */}
-      <div className="w-full lg:w-7/12 2xl:w-8/12 flex items-center justify-center px-4 py-10 lg:px-8 xl:px-12 2xl:px-8 overflow-y-auto overflow-x-hidden">
-        <div className="w-full max-w-7xl mx-auto flex flex-col 2xl:flex-row items-center 2xl:items-start justify-center gap-8 2xl:gap-12 min-w-0">
+      {/* RIGHT SIDE (8/12 Width - Matched from Login) */}
+      <div className="w-full lg:w-8/12 min-h-screen flex items-center justify-center lg:justify-start lg:pl-20 xl:pl-24 bg-white p-6 relative">
+        
+        {/* Content Container - Matched max-w-[1400px] and gaps */}
+        <div className="w-full max-w-[1400px] flex items-center justify-center lg:justify-start gap-16 2xl:gap-24 px-4">
           
-          {/* FORM CONTAINER */}
-          <div className="w-full max-w-md min-w-0">
+          {/* SIGN UP CARD - Matched CARD_SIZE and Styling */}
+          <div className={`${CARD_SIZE} bg-white rounded-3xl shadow-2xl p-10 relative z-20 flex flex-col shrink-0`}>
+            
             <div className="mb-6">
               <h2 className="text-3xl font-bold text-gray-900">Create an Account</h2>
               <p className="text-gray-500 mt-1">
@@ -842,7 +846,7 @@ const Signup: React.FC = () => {
 
             </div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-6">
+            <div className="bg-white rounded-2xl p-6">
               <form onSubmit={handleFormSubmit}>
                 {/* VENDOR: STEP TRACKER */}
                 {isVendor && (
@@ -1167,7 +1171,7 @@ const Signup: React.FC = () => {
           
           {/* 3D GRAPHIC: Hidden on mobile/tablet/laptop, Visible on 2XL+ screens */}
           {/* We hide it on smaller screens because fixed 3D transforms don't resize fluidly */}
-          <div className="hidden 2xl:block mt-10 shrink-0">
+          <div className="hidden 2xl:flex items-center justify-center shrink-0">
              <RightSideGraphic3D isVendor={isVendor} />
           </div>
 
