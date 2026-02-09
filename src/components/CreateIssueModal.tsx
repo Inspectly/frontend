@@ -7,7 +7,7 @@ import type { IssueStatus } from "../types";
 import { toast } from "react-hot-toast";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
-type IssueCollection = { id: number; name: string };
+type IssueCollection = { id: number; listing_id: number; name: string };
 
 type Props = {
   open: boolean;
@@ -28,6 +28,7 @@ const CreateIssueModal: React.FC<Props> = ({
   // NOTE: no default auto-select; user must choose a collection
   const [formData, setFormData] = useState<{
     report_id?: number;
+    listing_id?: number;
     type: string;
     description: string;
     summary: string;
@@ -37,6 +38,7 @@ const CreateIssueModal: React.FC<Props> = ({
     image_url: string;
   }>({
     report_id: undefined,
+    listing_id: undefined,
     type: "",
     description: "",
     summary: "",
@@ -61,9 +63,11 @@ const CreateIssueModal: React.FC<Props> = ({
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
     } else if (name === "report_id") {
+      const selectedCollection = issueCollections.find(c => c.id === Number(value));
       setFormData((prev) => ({
         ...prev,
         report_id: value ? Number(value) : undefined,
+        listing_id: selectedCollection?.listing_id,
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -101,6 +105,7 @@ const CreateIssueModal: React.FC<Props> = ({
     try {
       await createIssue({
         report_id: formData.report_id,
+        listing_id: formData.listing_id,
         type: formData.type,
         summary: formData.summary,
         description: formData.description,
@@ -116,6 +121,7 @@ const CreateIssueModal: React.FC<Props> = ({
       // reset form & close
       setFormData({
         report_id: undefined,
+        listing_id: undefined,
         type: "",
         description: "",
         summary: "",
@@ -127,9 +133,10 @@ const CreateIssueModal: React.FC<Props> = ({
       setSelectedFileName("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to create issue:", err);
-      toast.error("Failed to create issue");
+      const errorMsg = err?.data?.detail?.[0]?.msg || "Failed to create issue";
+      toast.error(errorMsg);
     }
   };
 

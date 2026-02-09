@@ -36,7 +36,8 @@ export const normalizeIssueType = (type: string): string => {
  * Normalizes and capitalizes issue type for display
  * Example: "electrician" → "Electrical"
  */
-export const normalizeAndCapitalize = (type: string): string => {
+export const normalizeAndCapitalize = (type?: string | null): string => {
+  if (!type) return "General";
   const normalized = normalizeIssueType(type);
   return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
 };

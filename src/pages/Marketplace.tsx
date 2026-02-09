@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -7,23 +8,56 @@ import {
   faMagnifyingGlass,
   faAngleDoubleLeft,
   faAngleDoubleRight,
+  faMapMarkerAlt,
+  faWrench,
 } from "@fortawesome/free-solid-svg-icons";
+import { BUTTON_HOVER, CARD_HOVER } from "../styles/shared";
 import {
   useGetAddressesByIssueIdsMutation,
   useGetPaginatedIssuesQuery,
 } from "../features/api/issuesApi";
+import { useGetListingsQuery } from "../features/api/listingsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import IssueItem from "../components/IssueItem";
 import AddressGroupCard from "../components/AddressGroupCard";
+import IssueDetails from "../components/IssueDetails";
 import { IssueAddress, IssueType } from "../types";
+import { RootState } from "../store/store";
 import { marketplacePrefetchService } from "../services/marketplacePrefetchService";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 const Marketplace: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
+  // Get current user and vendor data
+  const user = useSelector((state: RootState) => state.auth.user);
+  const isVendor = user?.user_type === "vendor";
+  const { data: vendor } = useGetVendorByVendorUserIdQuery(String(user?.id), {
+    skip: !user?.id || !isVendor,
+  });
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Normalize URL type param to match dropdown values
+  const normalizeTypeParam = (type: string | null): string => {
+    if (!type) return "";
+    const normalized = type.toLowerCase();
+    // Map vendor types to issue types
+    const typeMapping: Record<string, string> = {
+      general: 'other',
+      electrician: 'electrical',
+      plumber: 'plumbing',
+      painter: 'painting',
+      roofer: 'roofing',
+      carpenter: 'carpentry',
+      landscaper: 'landscaping',
+    };
+    return typeMapping[normalized] || normalized;
+  };
+  
   const [selectedType, setSelectedType] = useState(() => {
-    return searchParams.get('type') || "";
+    return normalizeTypeParam(searchParams.get('type'));
   });
   const [selectedCity, setSelectedCity] = useState(() => {
     return searchParams.get('city') || "";
@@ -32,6 +66,10 @@ const Marketplace: React.FC = () => {
   const [groupByAddress, setGroupByAddress] = useState(() => {
     return searchParams.get('grouped') === 'true';
   });
+  
+  // Modal state
+  const [selectedIssue, setSelectedIssue] = useState<IssueType | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const itemsPerPage = 12;
   const maxFetchLimit = 50000; // Configurable limit for grouping - can be adjusted based on system capacity
@@ -40,7 +78,7 @@ const Marketplace: React.FC = () => {
   useEffect(() => {
     const type = searchParams.get('type');
     const city = searchParams.get('city');
-    if (type) setSelectedType(type);
+    if (type) setSelectedType(normalizeTypeParam(type));
     if (city) setSelectedCity(city);
   }, []); // Only run on mount
 
@@ -74,6 +112,45 @@ const Marketplace: React.FC = () => {
     return typeMap[selectedType] || [selectedType];
   }, []);
 
+  // Map vendor type to issue type for filtering
+  const vendorTypeToIssueType: Record<string, string> = {
+    electrician: 'electrical',
+    plumber: 'plumbing',
+    painter: 'painting',
+    roofer: 'roofing',
+    carpenter: 'carpentry',
+    landscaper: 'landscaping',
+    hvac: 'hvac',
+    general: 'other',
+  };
+  
+  // Get vendor's primary specialty mapped to issue type
+  const vendorSpecialtyAsIssueType = useMemo(() => {
+    if (!vendor?.vendor_types) return null;
+    const primaryType = vendor.vendor_types.toLowerCase().split(',')[0]?.trim();
+    return vendorTypeToIssueType[primaryType] || primaryType || null;
+  }, [vendor?.vendor_types]);
+  
+  // Auto-apply vendor's filters on first load (only if no URL params)
+  const [hasAutoApplied, setHasAutoApplied] = useState(false);
+  useEffect(() => {
+    if (hasAutoApplied || !isVendor || !vendor) return;
+    
+    const urlType = searchParams.get('type');
+    const urlCity = searchParams.get('city');
+    
+    // Only auto-apply if no URL params are set
+    if (!urlType && !urlCity) {
+      if (vendorSpecialtyAsIssueType) {
+        setSelectedType(vendorSpecialtyAsIssueType);
+      }
+      if (vendor.city) {
+        setSelectedCity(vendor.city);
+      }
+    }
+    setHasAutoApplied(true);
+  }, [isVendor, vendor, vendorSpecialtyAsIssueType, searchParams, hasAutoApplied]);
+
   // Determine API parameters - fetch all available data when grouping or type filtering
   const apiParams = useMemo(() => {
     return {
@@ -106,20 +183,27 @@ const Marketplace: React.FC = () => {
   });
 
 
-  // Separate API call to get ALL issues for dropdown options (without city/state filters)
-  const { data: allIssuesData } = useGetPaginatedIssuesQuery({
+  // Query for unassigned issues (for display and filtering)
+  const allUnassignedQueryParams = {
     offset: 0,
     limit: maxFetchLimit,
     search: "",
     type: "",
     city: "",
     state: "",
-    vendor_assigned: false,
-  });
+    vendor_assigned: false, // Only unassigned issues
+  };
+  
+  const { data: allUnassignedData, isLoading: isLoadingAllUnassigned } = useGetPaginatedIssuesQuery(allUnassignedQueryParams);
+
+  // Fetch ALL listings to get all available cities/states for dropdowns
+  // This shows all locations where properties exist, regardless of issues
+  const { data: allListings, isLoading: isLoadingListings } = useGetListingsQuery();
 
   // Get addresses for issues
   const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
   const [addresses, setAddresses] = useState<IssueAddress[]>([]);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
 
 
   // Use prefetched data if available, otherwise use API data
@@ -127,19 +211,77 @@ const Marketplace: React.FC = () => {
     return prefetchedData?.issues || data?.issues || [];
   }, [prefetchedData?.issues, data?.issues]);
 
-  // Apply client-side type filtering for better matching
-  const filteredIssues = useMemo(() => {
-    if (!selectedType) return rawIssues;
+  // Apply client-side type filtering for better matching with smart fallbacks
+  const { filteredIssues, currentFilterMode } = useMemo(() => {
+    // Helper to filter by type
+    const filterByType = (issues: IssueType[], type: string) => {
+      const typeVariations = getTypeVariations(type);
+      return issues.filter((issue: IssueType) => {
+        const issueType = issue.type?.toLowerCase() || '';
+        return typeVariations.some(variation => 
+          issueType.includes(variation.toLowerCase()) || 
+          variation.toLowerCase().includes(issueType)
+        );
+      });
+    };
     
-    const typeVariations = getTypeVariations(selectedType);
-    return rawIssues.filter((issue: IssueType) => {
-      const issueType = issue.type?.toLowerCase() || '';
-      return typeVariations.some(variation => 
-        issueType.includes(variation.toLowerCase()) || 
-        variation.toLowerCase().includes(issueType)
-      );
-    });
-  }, [rawIssues, selectedType, getTypeVariations]);
+    // Helper to filter by city (using addresses)
+    const filterByCity = (issues: IssueType[], city: string) => {
+      return issues.filter((issue: IssueType) => {
+        const address = addresses.find(a => a.issue_id === issue.id);
+        return address?.city?.toLowerCase() === city.toLowerCase();
+      });
+    };
+    
+    // If no filters applied, return all
+    if (!selectedType && !selectedCity) {
+      return { filteredIssues: rawIssues, currentFilterMode: "all" as const };
+    }
+    
+    // Try exact match first (both type and city if both are set)
+    let result = rawIssues;
+    
+    if (selectedType) {
+      result = filterByType(result, selectedType);
+    }
+    
+    // For city filtering, we need addresses loaded
+    if (selectedCity && addresses.length > 0) {
+      const cityFiltered = filterByCity(result, selectedCity);
+      
+      // If we have results with both filters, return them
+      if (cityFiltered.length > 0) {
+        return { filteredIssues: cityFiltered, currentFilterMode: "exact" as const };
+      }
+      
+      // Fallback: If type+city returns nothing, try just type
+      if (selectedType && result.length > 0) {
+        return { 
+          filteredIssues: result, 
+          currentFilterMode: "type_only" as const 
+        };
+      }
+      
+      // Fallback: If just type returns nothing, try just city
+      if (selectedType) {
+        const cityOnly = filterByCity(rawIssues, selectedCity);
+        if (cityOnly.length > 0) {
+          return { 
+            filteredIssues: cityOnly, 
+            currentFilterMode: "city_only" as const 
+          };
+        }
+      }
+      
+      // No results with any combination - show all
+      return { 
+        filteredIssues: rawIssues, 
+        currentFilterMode: "all" as const 
+      };
+    }
+    
+    return { filteredIssues: result, currentFilterMode: "exact" as const };
+  }, [rawIssues, selectedType, selectedCity, getTypeVariations, addresses]);
 
   // For ungrouped view, paginate the issues client-side when using prefetched data or filtering
   const issues = useMemo(() => {
@@ -170,71 +312,53 @@ const Marketplace: React.FC = () => {
     }, {} as Record<number, IssueAddress>);
   }, [addresses]);
 
-  // Fetch addresses for ALL issues (for dropdown options)
+  // Fetch addresses for displayed issues (for showing location info on cards)
   useEffect(() => {
-    if (allIssuesData?.issues && allIssuesData.issues.length > 0) {
-      const issueIds = allIssuesData.issues.map((issue) => issue.id);
+    if (allUnassignedData?.issues && allUnassignedData.issues.length > 0) {
+      setIsLoadingAddresses(true);
+      const issueIds = allUnassignedData.issues.map((issue) => issue.id);
       getAddressesByIssueIds(issueIds)
         .unwrap()
-        .then(setAddresses)
-        .catch((err) => console.error("Error fetching addresses:", err));
+        .then((fetchedAddresses) => {
+          setAddresses(fetchedAddresses);
+          setIsLoadingAddresses(false);
+        })
+        .catch((err) => {
+          console.error("Error fetching addresses:", err);
+          setIsLoadingAddresses(false);
+        });
+    } else if (!isLoadingAllUnassigned && (!allUnassignedData?.issues || allUnassignedData.issues.length === 0)) {
+      setIsLoadingAddresses(false);
     }
-  }, [allIssuesData?.issues, getAddressesByIssueIds]);
+  }, [allUnassignedData?.issues, getAddressesByIssueIds, isLoadingAllUnassigned]);
 
 
-  // Extract unique cities and states from address data
-  // When type is selected, only show cities/states that have issues of that type
+  // Extract unique cities and states from ALL listings (shows all available locations)
   const uniqueCities: string[] = useMemo(() => {
-    const relevantAddresses = selectedType 
-      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
-      : addresses;
-    
-    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.city).filter(Boolean))].sort() as string[];
-  }, [addresses, selectedType, filteredIssues, addressMap]);
+    if (!allListings) return [];
+    return [...new Set(allListings.map((listing) => listing.city).filter(Boolean))].sort() as string[];
+  }, [allListings]);
 
   const uniqueStates: string[] = useMemo(() => {
-    const relevantAddresses = selectedType 
-      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
-      : addresses;
-    
-    return [...new Set(relevantAddresses.map((addr: IssueAddress) => addr.state).filter(Boolean))].sort() as string[];
-  }, [addresses, selectedType, filteredIssues, addressMap]);
+    if (!allListings) return [];
+    return [...new Set(allListings.map((listing) => listing.state).filter(Boolean))].sort() as string[];
+  }, [allListings]);
 
   // Filter cities based on selected state (for cascading dropdown)
   const filteredCities: string[] = useMemo(() => {
-    if (!selectedProvince) {
+    if (!selectedProvince || !allListings) {
       return uniqueCities; // Show all cities if no state selected
     }
     
-    // Use contextually relevant addresses (filtered by type if type is selected)
-    const relevantAddresses = selectedType 
-      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
-      : addresses;
-    
-    const citiesInState = relevantAddresses
-      .filter((addr: IssueAddress) => addr.state === selectedProvince)
-      .map((addr: IssueAddress) => addr.city)
+    // Filter cities by selected state - use listings data
+    const citiesInState = allListings
+      .filter((listing) => listing.state === selectedProvince)
+      .map((listing) => listing.city)
       .filter(Boolean);
     
     return [...new Set(citiesInState)].sort() as string[];
-  }, [uniqueCities, addresses, selectedProvince, selectedType, filteredIssues, addressMap]);
+  }, [uniqueCities, allListings, selectedProvince]);
 
-  // Create a mapping of city to state for auto-selecting state when city is chosen
-  const cityToStateMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    
-    // Use contextually relevant addresses (filtered by type if type is selected)
-    const relevantAddresses = selectedType 
-      ? filteredIssues.map((issue: IssueType) => addressMap[issue.id]).filter(Boolean)
-      : addresses;
-    
-    relevantAddresses.forEach((addr: IssueAddress) => {
-      if (addr.city && addr.state) {
-        map[addr.city] = addr.state;
-      }
-    });
-    return map;
-  }, [addresses, selectedType, filteredIssues, addressMap]);
 
   // Group issues by address when grouping is enabled (works with filtered issues)
   const groupedIssues: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
@@ -333,7 +457,7 @@ const Marketplace: React.FC = () => {
   if (isDataLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gold"></div>
       </div>
     );
   }
@@ -352,9 +476,9 @@ const Marketplace: React.FC = () => {
 
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">Search & Filter</h2>
-            <p className="text-sm text-gray-600">Find the perfect issues for your expertise</p>
+          <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filter</h2>
+            <p className="text-sm text-gray-600">Find the perfect jobs for your expertise</p>
       </div>
 
           <div className="p-6">
@@ -364,11 +488,11 @@ const Marketplace: React.FC = () => {
             <div className="relative">
               <input
                 type="text"
-                    placeholder="Search issues..."
+                    placeholder="Search jobs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white"
               />
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
@@ -385,7 +509,7 @@ const Marketplace: React.FC = () => {
                     setSelectedType(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white"
                 >
                   <option value="">All Types</option>
                   <option value="electrical">Electrical</option>
@@ -403,34 +527,6 @@ const Marketplace: React.FC = () => {
           </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
-            <select
-              value={selectedCity}
-              onChange={(e) => {
-                const newCity = e.target.value;
-                setSelectedCity(newCity);
-                
-                // Auto-select state when city is chosen
-                if (newCity && cityToStateMap[newCity]) {
-                  setSelectedProvince(cityToStateMap[newCity]);
-                } else if (!newCity) {
-                  // Don't clear state when "All Cities" is selected - let user keep state filter
-                }
-                
-                setCurrentPage(1);
-              }}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
-            >
-              <option value="">All Cities</option>
-                  {filteredCities.map((city: string) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
-            </div>
-
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
             <select
                   value={selectedProvince}
@@ -439,10 +535,10 @@ const Marketplace: React.FC = () => {
                 setSelectedProvince(newState);
                 
                 // Clear city if it's not available in the new state
-                if (selectedCity && newState) {
-                  const citiesInNewState = addresses
-                    .filter((addr) => addr.state === newState)
-                    .map((addr) => addr.city)
+                if (selectedCity && newState && allListings) {
+                  const citiesInNewState = allListings
+                    .filter((listing) => listing.state === newState)
+                    .map((listing) => listing.city)
                     .filter(Boolean);
                   
                   const uniqueCitiesInState = [...new Set(citiesInNewState)];
@@ -454,9 +550,10 @@ const Marketplace: React.FC = () => {
                 
                 setCurrentPage(1);
               }}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
+              disabled={isLoadingListings}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white disabled:opacity-50"
             >
-                  <option value="">All States</option>
+                  <option value="">{isLoadingListings ? "Loading states..." : "All States"}</option>
                   {uniqueStates.map((state) => (
                 <option key={state} value={state}>
                   {state}
@@ -465,17 +562,37 @@ const Marketplace: React.FC = () => {
             </select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+            <select
+              value={selectedCity}
+              onChange={(e) => {
+                setSelectedCity(e.target.value);
+                setCurrentPage(1);
+              }}
+              disabled={isLoadingListings}
+                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white disabled:opacity-50"
+            >
+              <option value="">{isLoadingListings ? "Loading cities..." : "All Cities"}</option>
+                  {filteredCities.map((city: string) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
+            </select>
+            </div>
+
               <div className="flex flex-col justify-end">
                 <div className="flex gap-2">
                   <button
                     onClick={handleSearch}
-                    className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                    className={`flex-1 px-4 py-3 bg-gray-900 text-white rounded-lg font-medium shadow-sm hover:shadow-md hover:bg-gold transition-all duration-200`}
                   >
                     Search
                   </button>
                   <button
                     onClick={clearFilters}
-                    className="px-4 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-all duration-200 font-medium border border-gray-300"
+                    className={`px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-300 ${BUTTON_HOVER}`}
                   >
                     Clear
             </button>
@@ -492,9 +609,9 @@ const Marketplace: React.FC = () => {
                   setGroupByAddress(e.target.checked);
                 setCurrentPage(1);
               }}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                  className="w-4 h-4 rounded border-gray-300 text-gold focus:ring-gold focus:ring-2"
               />
-                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                <span className="text-sm font-medium text-gray-700 group-hover:text-gold transition-colors">
                   📍 Group by address
                 </span>
             </label>
@@ -502,6 +619,34 @@ const Marketplace: React.FC = () => {
             </div>
           </div>
           </div>
+
+        {/* Smart Filter Fallback Banner */}
+        {isVendor && currentFilterMode !== "exact" && currentFilterMode !== "all" && (selectedType || selectedCity) && (
+          <div className="mb-6 px-4 py-3 rounded-lg flex items-start gap-3 bg-gold-50 text-gray-800 border border-gold-200">
+            <FontAwesomeIcon 
+              icon={currentFilterMode === "type_only" ? faMapMarkerAlt : faWrench} 
+              className="mt-0.5 flex-shrink-0 text-gold"
+            />
+            <div>
+              <p className="font-medium">
+                {currentFilterMode === "type_only" && (
+                  <>No {normalizeAndCapitalize(selectedType)} jobs found in {selectedCity}</>
+                )}
+                {currentFilterMode === "city_only" && (
+                  <>No {normalizeAndCapitalize(selectedType)} jobs available</>
+                )}
+              </p>
+              <p className="text-sm mt-1 text-gray-600">
+                {currentFilterMode === "type_only" && (
+                  <>Showing {normalizeAndCapitalize(selectedType)} opportunities in other areas. Consider expanding your service area.</>
+                )}
+                {currentFilterMode === "city_only" && (
+                  <>Showing other job types in {selectedCity}. Consider adding more specialties to your profile.</>
+                )}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Results Section */}
         <div className="mb-6">
@@ -531,7 +676,11 @@ const Marketplace: React.FC = () => {
                   <IssueItem
                     key={issue.id}
                     issue={issue}
-                  address={addressMap[issue.id]}
+                    address={addressMap[issue.id]}
+                    onClick={(clickedIssue) => {
+                      setSelectedIssue(clickedIssue);
+                      setIsModalOpen(true);
+                    }}
                   />
                 ))}
               </div>
@@ -542,7 +691,7 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(Math.max(1, currentPage - 5))}
               disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
             >
               <FontAwesomeIcon icon={faAngleDoubleLeft} />
               </button>
@@ -550,7 +699,7 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
               >
               <FontAwesomeIcon icon={faArrowLeft} />
               </button>
@@ -560,12 +709,12 @@ const Marketplace: React.FC = () => {
                 key={index}
                 onClick={() => typeof page === "number" && handlePageChange(page)}
                 disabled={page === "..."}
-                className={`px-3 py-2 rounded-lg border ${
+                className={`px-3 py-2 rounded-lg border transition-colors ${
                   page === currentPage
-                    ? "bg-blue-600 text-white border-blue-600"
+                    ? "bg-gray-900 text-white border-gray-900"
                     : page === "..."
                     ? "bg-white border-gray-300 text-gray-400 cursor-default"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold"
                 }`}
               >
                 {page}
@@ -575,7 +724,7 @@ const Marketplace: React.FC = () => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
             >
               <FontAwesomeIcon icon={faArrowRight} />
               </button>
@@ -583,13 +732,44 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(Math.min(totalPages, currentPage + 5))}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
             >
               <FontAwesomeIcon icon={faAngleDoubleRight} />
               </button>
           </div>
         )}
       </div>
+
+      {/* Issue Details Modal */}
+      {isModalOpen && selectedIssue && (
+        <div
+          className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-start justify-center pt-10 pb-10"
+          onClick={() => {
+            setIsModalOpen(false);
+            setSelectedIssue(null);
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => {
+                setIsModalOpen(false);
+                setSelectedIssue(null);
+              }}
+              className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              ✕
+            </button>
+            
+            <div className="p-6">
+              <IssueDetails issue={selectedIssue} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

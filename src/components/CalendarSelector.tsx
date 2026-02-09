@@ -22,6 +22,7 @@ import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import { nanoid } from "nanoid";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheckDouble, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { parseAsUTC } from "../utils/calendarUtils";
 
 const localizer = momentLocalizer(moment);
 const DragAndDropCalendar = withDragAndDrop<CalendarReadyAssessment>(Calendar);
@@ -174,8 +175,8 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
           const mapped = res.data.map((a: IssueAssessment) => ({
             ...a,
             title: ISSUE_ASSESSMENT_STATUS_LABELS[a.status],
-            start: new Date(a.start_time),
-            end: new Date(a.end_time),
+            start: parseAsUTC(a.start_time),
+            end: parseAsUTC(a.end_time),
             isNew: false,
           }));
           setEvents(mapped);
@@ -186,8 +187,8 @@ const CalendarSelector: React.FC<CalendarSelectorProps> = ({
         existingAssessments.map((a) => ({
           ...a,
           title: ISSUE_ASSESSMENT_STATUS_LABELS[a.status],
-          start: new Date(a.start_time),
-          end: new Date(a.end_time),
+          start: parseAsUTC(a.start_time),
+          end: parseAsUTC(a.end_time),
           isNew: false,
         }))
       );

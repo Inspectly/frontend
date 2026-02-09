@@ -12,14 +12,11 @@ const getGlobalSubscriptions = (): Map<number, any> => {
   return w[SUBS_KEY];
 };
 import { useNavigate, Link } from "react-router-dom";
-import UserCalendar from "../components/UserCalendar";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
-  faExternalLinkAlt,
-  faBolt,
   faBuilding,
   faCalendarAlt,
   faCheck,
@@ -33,15 +30,16 @@ import {
   faHome,
   faMapMarkerAlt,
   faPlus,
-  faRocket,
   faMagic,
   faTimes,
   faTrophy,
   faUpload,
+  faTrash,
+  faUser,
+  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   CalendarReadyAssessment,
-  IssueAssessment,
   IssueAssessmentStatus,
   IssueOffer,
   IssueOfferStatus,
@@ -51,21 +49,22 @@ import {
   User,
   Vendor,
 } from "../types";
-import VendorMap from "../components/VendorMap";
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientsQuery } from "../features/api/clientsApi";
-import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../store/store";
-import { getVendorById } from "../features/api/vendorsApi";
+import { getVendorById, useGetVendorsQuery } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
 import CreateIssueModal from "../components/CreateIssueModal";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
 import { BUTTON_HOVER } from "../styles/shared";
+import { toast } from "react-hot-toast";
+import { parseAsUTC } from "../utils/calendarUtils";
 
 interface DashboardProps {
   user: User;
@@ -74,28 +73,29 @@ interface DashboardProps {
 const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: issues } = useGetIssuesQuery();
-  const { data: clients } = useGetClientsQuery();
-  const client = clients?.find((c) => c.user_id === user.id);
+  useGetClientsQuery();
 
   const { data: assessments = [], refetch: refetchAssessments } =
     useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id });
+  const { data: allVendors = [] } = useGetVendorsQuery();
 
   const [createListing] = useCreateListingMutation();
   const [uploadReportFile] = useUploadReportFileMutation();
   const [updateAssessment, { isLoading: isUpdatingAssessment }] = useUpdateAssessmentMutation();
+  const [deleteAssessment, { isLoading: isDeletingAssessment }] = useDeleteAssessmentMutation();
+  const [createAssessment, { isLoading: isCreatingAssessment }] = useCreateAssessmentMutation();
 
-  // State for propose time modal
+  // State for propose time modal - now supports up to 3 time slots
   const [proposeTimeModal, setProposeTimeModal] = useState<{
     isOpen: boolean;
     assessment: (CalendarReadyAssessment & { issue?: IssueType }) | null;
   }>({ isOpen: false, assessment: null });
-  const [proposedDateTime, setProposedDateTime] = useState<string>("");
+  const [proposedTimes, setProposedTimes] = useState<string[]>([""]);
   
   // State for full schedule modal
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -115,8 +115,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const issueIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.issue_id))], [acceptedAssessments]);
   const vendorIds = useMemo(() => [...new Set(acceptedAssessments.map((a) => a.vendor_id))], [acceptedAssessments]);
 
-  const [issueMap, setIssueMap] = useState<Record<number, IssueType>>({});
-  const [vendorMap, setVendorMap] = useState<Record<number, Vendor>>({});
+  const [, setIssueMap] = useState<Record<number, IssueType>>({});
+  const [, setVendorMap] = useState<Record<number, Vendor>>({});
   const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
   const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
@@ -193,32 +193,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return { totalIssues, openIssues, completedIssues, inProgressIssues, reviewIssues, totalReports, totalListings, totalOffersReceived, pendingOffers };
   }, [filteredIssuesByUser, reports, _listings, offersByIssueId]);
 
-  // Issues with pending offers (for action items)
-  const issuesWithPendingOffers = useMemo(() => {
-    return filteredIssuesByUser
-      .filter((issue) => {
-        const offers = offersByIssueId[issue.id] ?? [];
-        return offers.some((o) => o.status === IssueOfferStatus.RECEIVED);
-      })
-      .slice(0, 5);
-  }, [filteredIssuesByUser, offersByIssueId]);
-
-  // Issues requiring review (vendor completed work)
-  const issuesAwaitingReview = useMemo(() => {
-    return filteredIssuesByUser
-      .filter((issue) => issue.status === "Status.REVIEW")
-      .slice(0, 5);
-  }, [filteredIssuesByUser]);
-
-  // Combined action items
-  const actionRequiredItems = useMemo(() => {
-    const items = [
-      ...issuesAwaitingReview.map(issue => ({ ...issue, actionType: 'review' as const })),
-      ...issuesWithPendingOffers.map(issue => ({ ...issue, actionType: 'offers' as const }))
-    ];
-    return items.slice(0, 5);
-  }, [issuesAwaitingReview, issuesWithPendingOffers]);
-
   // Calendar events - include full assessment data for status and actions
   const calendarEvents = useMemo(() => {
     const issuesMap = filteredIssuesByUser.reduce((acc, issue) => {
@@ -237,27 +211,40 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       acc[report.id] = report;
       return acc;
     }, {} as Record<number, ReportType>);
+
+    // Create vendors map for quick lookup (by vendor id, since users_interaction_id uses vendor.id)
+    const vendorsMap = allVendors.reduce((acc, vendor) => {
+      acc[vendor.id] = vendor;
+      return acc;
+    }, {} as Record<number, Vendor>);
     
     return assessments
-      .filter((a) => new Date(a.start_time) > new Date())
+      .filter((a) => parseAsUTC(a.start_time) > new Date())
       .map((a) => {
         const issue = issuesMap[a.issue_id];
         const report = issue ? reportsMap[issue.report_id] : undefined;
         const listing = report ? listingsMap[report.listing_id] : undefined;
+        
+        // Extract vendor id from users_interaction_id (format: clientUserId_vendorId_issueId)
+        const parts = a.users_interaction_id?.split("_") ?? [];
+        const vendorId = parts.length > 1 ? parseInt(parts[1], 10) : NaN;
+        const vendor = Number.isFinite(vendorId) ? vendorsMap[vendorId] : undefined;
+        
         return {
           ...a, // Include full assessment data
           id: a.id,
           title: issue?.summary || normalizeAndCapitalize(issue?.type || "") + " Issue",
-          start: new Date(a.start_time),
-          end: new Date(a.end_time),
+          start: parseAsUTC(a.start_time),
+          end: parseAsUTC(a.end_time),
           user_id: a.user_id,
           issue, // Include issue for context
           listing, // Include listing for property address
+          vendor, // Include vendor for name/rating
         };
       })
       // Sort by start time ascending (nearest first)
-      .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing })[];
-  }, [assessments, filteredIssuesByUser, _listings, reports]);
+      .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing; vendor?: Vendor })[];
+  }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
 
   // Fetch offers for user's issues
   useEffect(() => {
@@ -303,6 +290,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       const listing = _listings.find((l) => l.id === report.listing_id);
       return {
         id: report.id,
+        listing_id: report.listing_id,
         name: `${listing?.address || 'Unknown Property'} - ${report.name || 'Report'}`
       };
     });
@@ -310,23 +298,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
-  const hasPendingOffers = realMetrics.pendingOffers > 0;
-  const hasActionRequired = realMetrics.pendingOffers > 0 || realMetrics.reviewIssues > 0;
-  const hasUpcomingAssessments = calendarEvents.length > 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
   
   // Separate pending vs confirmed assessments
   const pendingAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.RECEIVED);
   const confirmedAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.ACCEPTED);
-  const hasPendingAssessments = pendingAssessments.length > 0;
-
-  // Get greeting based on time of day
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
 
   // Handle accepting an assessment
   const handleAcceptAssessment = async (assessment: CalendarReadyAssessment) => {
@@ -345,59 +321,99 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         min_assessment_time: assessment.min_assessment_time,
         user_last_viewed: new Date().toISOString(), // Required by backend
       };
-      console.log("Sending assessment update:", payload);
-      const result = await updateAssessment(payload).unwrap();
-      console.log("Assessment accepted:", result);
-      // Refetch to update the UI
-      refetchAssessments();
-    } catch (err: any) {
-      console.error("Failed to accept assessment:", err);
-      console.error("Error details:", err?.data || err?.message || err);
-      alert("Failed to accept the visit. Please try again.");
-    }
-  };
-
-  // Handle proposing a new time
-  const handleProposeNewTime = async () => {
-    if (!proposeTimeModal.assessment || !proposedDateTime) return;
-    
-    const assessment = proposeTimeModal.assessment;
-    const newStart = new Date(proposedDateTime);
-    // Default assessment duration: 1 hour
-    const newEnd = new Date(newStart.getTime() + 60 * 60 * 1000);
-    
-    try {
-      const payload = {
-        id: assessment.id,
-        issue_id: assessment.issue_id,
-        user_id: assessment.user_id,
-        user_type: assessment.user_type,
-        interaction_id: assessment.users_interaction_id,
-        users_interaction_id: assessment.users_interaction_id,
-        start_time: newStart.toISOString(),
-        end_time: newEnd.toISOString(),
-        status: "received", // Keep as received - vendor will see the new time
-        min_assessment_time: assessment.min_assessment_time,
-        user_last_viewed: new Date().toISOString(),
-      };
       await updateAssessment(payload).unwrap();
-      setProposeTimeModal({ isOpen: false, assessment: null });
-      setProposedDateTime("");
       // Refetch to update the UI
       refetchAssessments();
     } catch (err) {
+      console.error("Failed to accept assessment:", err);
+      toast.error("Failed to accept the visit. Please try again.");
+    }
+  };
+
+  // Handle proposing new times - CREATE new assessments for each proposed time slot
+  const handleProposeNewTime = async () => {
+    const validTimes = proposedTimes.filter(t => t.trim() !== "");
+    if (!proposeTimeModal.assessment || validTimes.length === 0) return;
+    
+    const assessment = proposeTimeModal.assessment;
+    // Default to 30 minutes for assessment duration
+    const minTime = 30;
+    
+    try {
+      // Create an assessment for each proposed time slot
+      await Promise.all(
+        validTimes.map(timeStr => {
+          const newStart = new Date(timeStr);
+          const newEnd = new Date(newStart.getTime() + minTime * 60 * 1000);
+          
+          return createAssessment({
+            issue_id: assessment.issue_id,
+            user_id: user.id, // Client's user ID - vendor will see this as a counter-proposal
+            user_type: "client",
+            interaction_id: assessment.users_interaction_id,
+            users_interaction_id: assessment.users_interaction_id,
+            start_time: newStart.toISOString(),
+            end_time: newEnd.toISOString(),
+            status: "received",
+            min_assessment_time: minTime,
+          }).unwrap();
+        })
+      );
+      
+      toast.success(`${validTimes.length} time${validTimes.length > 1 ? 's' : ''} proposed successfully!`);
+      setProposeTimeModal({ isOpen: false, assessment: null });
+      setProposedTimes([""]);
+      // Refetch to update the UI
+      await refetchAssessments();
+    } catch (err: any) {
       console.error("Failed to propose new time:", err);
-      alert("Failed to propose new time. Please try again.");
+      console.error("Error details:", err?.data || err?.message || err);
+      toast.error("Failed to propose times. Please try again.");
     }
   };
 
   // Open propose time modal
   const openProposeTimeModal = (assessment: CalendarReadyAssessment & { issue?: IssueType }) => {
-    // Pre-fill with the current proposed time
-    const currentTime = new Date(assessment.start);
-    const localDateTime = currentTime.toISOString().slice(0, 16);
-    setProposedDateTime(localDateTime);
+    // Start with one empty time slot
+    setProposedTimes([""]);
     setProposeTimeModal({ isOpen: true, assessment });
+  };
+  
+  // Add a new time slot (max 3)
+  const addTimeSlot = () => {
+    if (proposedTimes.length < 3) {
+      setProposedTimes([...proposedTimes, ""]);
+    }
+  };
+  
+  // Remove a time slot
+  const removeTimeSlot = (index: number) => {
+    if (proposedTimes.length > 1) {
+      setProposedTimes(proposedTimes.filter((_, i) => i !== index));
+    }
+  };
+  
+  // Update a specific time slot
+  const updateTimeSlot = (index: number, value: string) => {
+    const newTimes = [...proposedTimes];
+    newTimes[index] = value;
+    setProposedTimes(newTimes);
+  };
+
+  // Handle canceling/deleting a client's own proposal
+  const handleCancelProposal = async (assessment: CalendarReadyAssessment) => {
+    try {
+      await deleteAssessment({
+        id: Number(assessment.id),
+        issue_id: assessment.issue_id,
+        interaction_id: assessment.users_interaction_id,
+      }).unwrap();
+      toast.success("Proposal cancelled successfully");
+      await refetchAssessments();
+    } catch (err: any) {
+      console.error("Failed to cancel proposal:", err);
+      toast.error("Failed to cancel proposal. Please try again.");
+    }
   };
 
   // Tab state for Priority Inbox
@@ -416,13 +432,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       return offers.some(o => o.status === IssueOfferStatus.RECEIVED);
     });
   }, [filteredIssuesByUser, offersByIssueId]);
-
-  // Get open issues
-  const openIssueItems = useMemo(() => {
-    return filteredIssuesByUser.filter(i => 
-      i.status === "Status.OPEN" || i.status === "Status.IN_PROGRESS"
-    );
-  }, [filteredIssuesByUser]);
 
   // State for issue detail modal
   const [selectedIssueForModal, setSelectedIssueForModal] = useState<IssueType | null>(null);
@@ -901,6 +910,18 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                     {event.title}
                                   </div>
                                   
+                                  {/* Vendor name and rating */}
+                                  {event.vendor && (
+                                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                                      <FontAwesomeIcon icon={faUser} className="text-xs text-gray-400" />
+                                      <span className="font-medium">{event.vendor.name || "Vendor"}</span>
+                                      <span className="flex items-center gap-0.5 text-gold">
+                                        <FontAwesomeIcon icon={faStar} className="text-xs" />
+                                        <span className="text-gray-600">{event.vendor.rating || "New"}</span>
+                                      </span>
+                                    </div>
+                                  )}
+                                  
                                   {/* Property address */}
                                   {event.listing && (
                                     <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
@@ -921,29 +942,52 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                     </span>
                                   </div>
                                   
-                                  {/* Action buttons */}
+                                  {/* Action buttons - different based on who proposed */}
                                   <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAcceptAssessment(event);
-                                      }}
-                                      disabled={isUpdatingAssessment}
-                                      className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
-                                    >
-                                      <FontAwesomeIcon icon={faCheck} />
-                                      {isUpdatingAssessment ? "Accepting..." : "Accept"}
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        openProposeTimeModal(event);
-                                      }}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors"
-                                    >
-                                      <FontAwesomeIcon icon={faEdit} />
-                                      Propose New Time
-                                    </button>
+                                    {event.user_id === user.id ? (
+                                      // Client's own proposal - show cancel option
+                                      <>
+                                        <span className="text-xs text-gold-600 font-medium bg-gold-100 px-2 py-1 rounded">
+                                          Your proposal
+                                        </span>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleCancelProposal(event);
+                                          }}
+                                          disabled={isDeletingAssessment}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 bg-red-50 text-xs font-semibold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                                        >
+                                          <FontAwesomeIcon icon={faTrash} />
+                                          {isDeletingAssessment ? "Cancelling..." : "Cancel"}
+                                        </button>
+                                      </>
+                                    ) : (
+                                      // Vendor's proposal - show accept/propose options
+                                      <>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAcceptAssessment(event);
+                                          }}
+                                          disabled={isUpdatingAssessment}
+                                          className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
+                                        >
+                                          <FontAwesomeIcon icon={faCheck} />
+                                          {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openProposeTimeModal(event);
+                                          }}
+                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                                        >
+                                          <FontAwesomeIcon icon={faEdit} />
+                                          Propose New Time
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1284,12 +1328,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Propose New Time</h3>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Propose Times</h3>
+                  <p className="text-xs text-gray-500">Add up to 3 time options</p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   setProposeTimeModal({ isOpen: false, assessment: null });
-                  setProposedDateTime("");
+                  setProposedTimes([""]);
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
               >
@@ -1299,35 +1346,56 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
             {/* Content */}
             <div className="p-6">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-1">Current proposed time:</p>
-                <p className="font-semibold text-gray-900">
-                  {proposeTimeModal.assessment.start.toLocaleDateString("en-US", { 
-                    weekday: 'long', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })} at {proposeTimeModal.assessment.start.toLocaleTimeString("en-US", { 
-                    hour: "numeric", 
-                    minute: "2-digit" 
-                  })}
+              {/* Issue context */}
+              <div className="mb-5 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-1">For issue:</p>
+                <p className="font-medium text-gray-900 text-sm">
+                  {proposeTimeModal.assessment.issue?.summary || proposeTimeModal.assessment.title}
                 </p>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select your preferred date & time
+              {/* Time slots */}
+              <div className="space-y-3 mb-5">
+                <label className="block text-sm font-medium text-gray-700">
+                  Select your preferred times (30 min each)
                 </label>
-                <input
-                  type="datetime-local"
-                  value={proposedDateTime}
-                  onChange={(e) => setProposedDateTime(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold text-gray-900"
-                />
+                
+                {proposedTimes.map((time, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-gold-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-bold text-gold-700">{index + 1}</span>
+                    </div>
+                    <input
+                      type="datetime-local"
+                      value={time}
+                      onChange={(e) => updateTimeSlot(index, e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold text-gray-900 text-sm"
+                    />
+                    {proposedTimes.length > 1 && (
+                      <button
+                        onClick={() => removeTimeSlot(index)}
+                        className="w-8 h-8 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                
+                {proposedTimes.length < 3 && (
+                  <button
+                    onClick={addTimeSlot}
+                    className="flex items-center gap-2 text-sm text-gold-600 font-medium hover:text-gold-700 transition-colors mt-2"
+                  >
+                    <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                    Add another time option
+                  </button>
+                )}
               </div>
 
               <p className="text-xs text-gray-500 mb-6">
-                The contractor will be notified of your proposed time and can confirm or suggest alternatives.
+                The contractor will be able to accept one of your proposed times or suggest alternatives.
               </p>
 
               {/* Actions */}
@@ -1335,7 +1403,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <button
                   onClick={() => {
                     setProposeTimeModal({ isOpen: false, assessment: null });
-                    setProposedDateTime("");
+                    setProposedTimes([""]);
                   }}
                   className={`flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg ${BUTTON_HOVER}`}
                 >
@@ -1343,10 +1411,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </button>
                 <button
                   onClick={handleProposeNewTime}
-                  disabled={!proposedDateTime}
+                  disabled={proposedTimes.every(t => !t.trim()) || isCreatingAssessment}
                   className={`flex-1 px-4 py-3 bg-gold text-white font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  Propose Time
+                  {isCreatingAssessment ? "Proposing..." : `Propose ${proposedTimes.filter(t => t.trim()).length || ""} Time${proposedTimes.filter(t => t.trim()).length !== 1 ? 's' : ''}`}
                 </button>
               </div>
             </div>
@@ -1399,6 +1467,17 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-semibold text-gray-900 mb-1">{event.title}</div>
+                            {/* Vendor name and rating */}
+                            {event.vendor && (
+                              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                                <FontAwesomeIcon icon={faUser} className="text-xs text-gray-400" />
+                                <span className="font-medium">{event.vendor.name || "Vendor"}</span>
+                                <span className="flex items-center gap-0.5 text-gold">
+                                  <FontAwesomeIcon icon={faStar} className="text-xs" />
+                                  <span className="text-gray-600">{event.vendor.rating || "New"}</span>
+                                </span>
+                              </div>
+                            )}
                             {event.listing && (
                               <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-1">
                                 <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs text-gray-400" />
@@ -1412,24 +1491,44 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                             </div>
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleAcceptAssessment(event)}
-                                disabled={isUpdatingAssessment}
-                                className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
-                              >
-                                <FontAwesomeIcon icon={faCheck} />
-                                {isUpdatingAssessment ? "Accepting..." : "Accept"}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowScheduleModal(false);
-                                  openProposeTimeModal(event);
-                                }}
-                                className={`flex items-center gap-1.5 px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
-                              >
-                                <FontAwesomeIcon icon={faEdit} />
-                                Propose New Time
-                              </button>
+                              {event.user_id === user.id ? (
+                                // Client's own proposal
+                                <>
+                                  <span className="text-xs text-gold-600 font-medium bg-gold-100 px-2 py-1 rounded">
+                                    Your proposal
+                                  </span>
+                                  <button
+                                    onClick={() => handleCancelProposal(event)}
+                                    disabled={isDeletingAssessment}
+                                    className="flex items-center gap-1.5 px-4 py-2 text-red-600 bg-red-50 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                                  >
+                                    <FontAwesomeIcon icon={faTrash} />
+                                    {isDeletingAssessment ? "Cancelling..." : "Cancel"}
+                                  </button>
+                                </>
+                              ) : (
+                                // Vendor's proposal
+                                <>
+                                  <button
+                                    onClick={() => handleAcceptAssessment(event)}
+                                    disabled={isUpdatingAssessment}
+                                    className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                  >
+                                    <FontAwesomeIcon icon={faCheck} />
+                                    {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setShowScheduleModal(false);
+                                      openProposeTimeModal(event);
+                                    }}
+                                    className={`flex items-center gap-1.5 px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                                  >
+                                    <FontAwesomeIcon icon={faEdit} />
+                                    Propose New Time
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1454,6 +1553,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm text-gray-900 truncate">{event.title}</div>
                           <div className="text-xs text-gray-500">
+                            {event.vendor?.name && (
+                              <span className="font-medium text-gray-700">{event.vendor.name} · </span>
+                            )}
                             {event.listing?.address?.split(',')[0] || 'Property'}
                             {' · '}
                             {event.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
