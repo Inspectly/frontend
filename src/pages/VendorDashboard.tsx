@@ -37,10 +37,11 @@ import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetAssessmentsByVendorIdUsersInteractionIdQuery, useUpdateAssessmentMutation } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByUserIdQuery, useUpdateAssessmentMutation, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
 import ImageComponent from "../components/ImageComponent";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { parseAsUTC } from "../utils/calendarUtils";
 import IssueDetails from "../components/IssueDetails";
 import { faCalendarAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
 
@@ -111,13 +112,64 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: issues, error: issuesError } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
   
-  // Vendor assessments
-  const { data: vendorAssessments = [], refetch: refetchAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useGetAssessmentsByVendorIdUsersInteractionIdQuery(
-    vendor?.id || 0,
-    { skip: !vendor?.id }
+  // Vendor assessments - use user.id since that's what's stored in the assessment records
+  const { data: vendorAssessments = [], refetch: refetchAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useGetAssessmentsByUserIdQuery(
+    user.id,
+    { skip: !user?.id }
   );
   const [updateAssessment] = useUpdateAssessmentMutation();
+  const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
 
+  // State to hold ALL assessments for vendor's interactions (including client counter-proposals)
+  const [allAssessments, setAllAssessments] = useState<IssueAssessment[]>([]);
+
+  // Get unique interaction IDs - memoized to prevent infinite loops
+  const uniqueInteractionIds = useMemo(() => {
+    return [...new Set(vendorAssessments.map(a => a.users_interaction_id).filter(Boolean))].sort();
+  }, [vendorAssessments]);
+  
+  // Stable key for the interaction IDs
+  const interactionIdsKey = uniqueInteractionIds.join(",");
+
+  // Fetch all assessments for the vendor's interaction IDs (to include client counter-proposals)
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchAllAssessments = async () => {
+      if (uniqueInteractionIds.length === 0) {
+        if (isMounted) setAllAssessments(vendorAssessments);
+        return;
+      }
+      
+      try {
+        // Fetch ALL assessments for each interaction ID
+        const results = await Promise.all(
+          uniqueInteractionIds.map(id => fetchAssessmentsByInteraction(id).unwrap())
+        );
+        
+        if (!isMounted) return;
+        
+        // Flatten and dedupe by assessment ID
+        const allResults = results.flat();
+        const uniqueAssessments = Array.from(
+          new Map(allResults.map(a => [a.id, a])).values()
+        ) as IssueAssessment[];
+        
+        setAllAssessments(uniqueAssessments);
+      } catch (err) {
+        console.error("Failed to fetch all assessments:", err);
+        // Fall back to just vendor's assessments
+        if (isMounted) setAllAssessments(vendorAssessments);
+      }
+    };
+    
+    fetchAllAssessments();
+    
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactionIdsKey]);
 
   // Listings map for lookups
   const listingsMap = useMemo(() => {
@@ -192,10 +244,35 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
   }, [vendorOffers, issuesMap]);
 
+  // Mapping from vendor types to issue types they can handle
+  const vendorToIssueTypeMap: Record<string, string[]> = {
+    electrician: ['electrical', 'electrician', 'electric', 'wiring'],
+    plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
+    painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
+    hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
+    roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
+    carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
+    landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
+    cleaner: ['cleaning', 'cleaner', 'janitorial'],
+    general: ['general', 'other', 'misc', 'interior', 'exterior'],
+  };
+
   // Get vendor specialties for filtering
   const vendorSpecialties = useMemo(() => {
     if (!vendor?.vendor_types) return [];
-    return vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+    const rawTypes = vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+    
+    // Expand to include all matching issue types
+    const expanded = new Set<string>();
+    rawTypes.forEach(type => {
+      // Add the original type
+      expanded.add(type);
+      // Add mapped issue types
+      const mappedTypes = vendorToIssueTypeMap[type] || [];
+      mappedTypes.forEach(t => expanded.add(t));
+    });
+    
+    return Array.from(expanded);
   }, [vendor?.vendor_types]);
 
   // Available opportunities from marketplace with bid info
@@ -213,22 +290,67 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       created_at?: string;
     }>
   >([]);
+  
+  // Track which filter mode is active for showing appropriate banner
+  const [filterMode, setFilterMode] = useState<"exact" | "specialty_only" | "city_only" | "all">("exact");
 
-  // Filter and fetch marketplace opportunities
+  // Helper to check if issue matches vendor specialty
+  const matchesSpecialty = (issue: IssueType) => {
+    if (vendorSpecialties.length === 0) return true;
+    const issueType = (issue.type || '').toLowerCase();
+    return vendorSpecialties.some(specialty => 
+      issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
+    );
+  };
+
+  // Helper to check if issue is in vendor's city
+  const matchesCity = (issue: IssueType) => {
+    if (!vendor?.city) return true; // If no vendor city, match all
+    const listing = listingsMap[issue.listing_id];
+    if (!listing?.city) return false;
+    return listing.city.toLowerCase() === vendor.city.toLowerCase();
+  };
+
+  // Filter and fetch marketplace opportunities with smart fallbacks
   useEffect(() => {
     const fetchOpportunities = async () => {
       if (!issues) return;
 
       const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
       
-      const filtered = vendorSpecialties.length > 0
-        ? available.filter((i) => {
-            const issueType = (i.type || '').toLowerCase();
-            return vendorSpecialties.some(specialty => 
-              issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
-            );
-          })
-        : available;
+      // Try different filter combinations with fallbacks
+      let filtered: IssueType[] = [];
+      let mode: "exact" | "specialty_only" | "city_only" | "all" = "exact";
+      
+      // 1. Best match: specialty + city
+      const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
+      
+      if (exactMatch.length > 0) {
+        filtered = exactMatch;
+        mode = "exact";
+      } else {
+        // 2. Fallback A: specialty only (any location)
+        const specialtyOnly = available.filter((i) => matchesSpecialty(i));
+        
+        if (specialtyOnly.length > 0) {
+          filtered = specialtyOnly;
+          mode = "specialty_only";
+        } else {
+          // 3. Fallback B: city only (any specialty)
+          const cityOnly = available.filter((i) => matchesCity(i));
+          
+          if (cityOnly.length > 0) {
+            filtered = cityOnly;
+            mode = "city_only";
+          } else {
+            // 4. Fallback C: show all available
+            filtered = available;
+            mode = "all";
+          }
+        }
+      }
+      
+      setFilterMode(mode);
       
       // Sort by severity for Priority List (high → medium → low)
       const sortedBySeverity = [...filtered].sort((a, b) => {
@@ -264,7 +386,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     fetchOpportunities();
-  }, [issues, vendorSpecialties, listingsMap]);
+  }, [issues, vendorSpecialties, listingsMap, vendor?.city]);
 
   // Active jobs (accepted offers)
   const activeJobs = useMemo(() => {
@@ -349,12 +471,12 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(timer);
   }, [activeJobs.length]);
 
-  // Process vendor assessments into categorized visits - GROUPED BY ISSUE
+  // Process ALL assessments (including client counter-proposals) into categorized visits - GROUPED BY ISSUE
   // NOTE: This useMemo must be BEFORE any early returns to comply with Rules of Hooks
   const processedVisits = useMemo(() => {
     // Group assessments by issue_id
     const groupedByIssue: Record<number, IssueAssessment[]> = {};
-    vendorAssessments.forEach(assessment => {
+    allAssessments.forEach(assessment => {
       if (!groupedByIssue[assessment.issue_id]) {
         groupedByIssue[assessment.issue_id] = [];
       }
@@ -369,17 +491,17 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       
       // Check if there's an accepted assessment
       // Note: Backend may return status as lowercase "accepted" or as enum "Assessment_Status.ACCEPTED"
-      const acceptedAssessment = assessments.find(a => 
-        a.status === IssueAssessmentStatus.ACCEPTED || 
-        a.status === "accepted" ||
-        (a.status as string)?.toLowerCase() === "accepted"
-      );
+      const acceptedAssessment = assessments.find(a => {
+        const status = (a.status as string)?.toLowerCase() || "";
+        return status === "accepted" || status.includes("accepted");
+      });
       
       // Helper to check if status is "received" (pending)
-      const isReceivedStatus = (status: string) => 
-        status === IssueAssessmentStatus.RECEIVED || 
-        status === "received" ||
-        status?.toLowerCase() === "received";
+      const isReceivedStatus = (status: string) => {
+        if (!status) return false;
+        const lowerStatus = status.toLowerCase();
+        return lowerStatus === "received" || lowerStatus.includes("received");
+      };
 
       // Check if there are pending assessments from client (action required for vendor)
       const actionRequiredAssessments = assessments.filter(a => 
@@ -403,13 +525,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         category = "action_required";
         // Use the earliest proposed time
         primaryAssessment = actionRequiredAssessments.sort(
-          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          (a, b) => parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
         )[0];
         proposalCount = actionRequiredAssessments.length;
       } else if (pendingAssessments.length > 0) {
         category = "pending";
         primaryAssessment = pendingAssessments.sort(
-          (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          (a, b) => parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
         )[0];
         proposalCount = pendingAssessments.length;
       }
@@ -422,8 +544,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         issue,
         listing,
         category,
-        startTime: new Date(primaryAssessment.start_time),
-        endTime: new Date(primaryAssessment.end_time),
+        startTime: parseAsUTC(primaryAssessment.start_time),
+        endTime: parseAsUTC(primaryAssessment.end_time),
         proposalCount,
         acceptedAssessment,
       };
@@ -458,7 +580,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       if (b.category === "confirmed" && a.category !== "confirmed") return 1;
       return a.startTime.getTime() - b.startTime.getTime();
     });
-  }, [vendorAssessments, issuesMap, listingsMap, user.id]);
+  }, [allAssessments, issuesMap, listingsMap, user.id]);
 
   // Count issues with visits needing action (not individual assessments)
   const actionRequiredCount = processedVisits.filter(v => v.category === "action_required").length;
@@ -778,6 +900,33 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
 
+              {/* Smart Filter Info Banner */}
+              {(activeTab === "priority" || activeTab === "new") && filterMode !== "exact" && marketplaceJobs.length > 0 && (
+                <div className={`px-4 py-3 flex items-center gap-3 text-sm ${
+                  filterMode === "specialty_only" 
+                    ? "bg-blue-50 text-blue-700 border-b border-blue-100" 
+                    : filterMode === "city_only"
+                      ? "bg-amber-50 text-amber-700 border-b border-amber-100"
+                      : "bg-gray-50 text-gray-600 border-b border-gray-100"
+                }`}>
+                  <FontAwesomeIcon 
+                    icon={filterMode === "specialty_only" ? faMapMarkerAlt : filterMode === "city_only" ? faWrench : faSearch} 
+                    className="flex-shrink-0"
+                  />
+                  <span>
+                    {filterMode === "specialty_only" && (
+                      <>No {normalizeAndCapitalize(vendor?.vendor_types?.split(',')[0] || 'specialty')} jobs in <strong>{vendor?.city || 'your city'}</strong>. Showing opportunities in other areas.</>
+                    )}
+                    {filterMode === "city_only" && (
+                      <>No jobs matching your specialty in <strong>{vendor?.city || 'your city'}</strong>. Showing other job types nearby.</>
+                    )}
+                    {filterMode === "all" && (
+                      <>Showing all available opportunities. Consider expanding your service area or specialties.</>
+                    )}
+                  </span>
+                </div>
+              )}
+
               {/* Priority List Items */}
               <div className="divide-y divide-gray-100">
                 {activeTab === "visits" ? (
@@ -947,7 +1096,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                               <span className="text-xs text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
                             )}
                             <button 
-                              className="px-3 py-1.5 bg-gold text-white rounded-lg text-sm font-semibold hover:bg-foreground hover:text-background transition-colors flex items-center gap-1.5"
+                              className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gold transition-colors flex items-center gap-1.5"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openIssueModal(item.issueId || item.id, activeTab === "bidding" ? "offers" : "details");
@@ -968,18 +1117,11 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       <p className="text-gray-600 font-medium mb-2">
                         {activeTab === "bidding" ? "No pending bids" : activeTab === "new" ? "No new jobs in the last 7 days" : "No jobs available"}
                       </p>
-                      <p className="text-sm text-gray-500 mb-4">
+                      <p className="text-sm text-gray-500">
                         {activeTab === "bidding" 
                           ? "Submit bids on jobs to see them here" 
                           : "Check back later for new opportunities"}
                       </p>
-                      <Link
-                        to="/marketplace"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faSearch} />
-                        Browse Marketplace
-                      </Link>
                     </div>
                   )
                 )}
@@ -1155,7 +1297,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       <circle cx="56" cy="56" r="48" stroke="#e5e7eb" strokeWidth="8" fill="none" />
                       <circle 
                         cx="56" cy="56" r="48" 
-                        stroke="#3b82f6" 
+                        stroke="#D4A853" 
                         strokeWidth="8" 
                         fill="none"
                         strokeLinecap="round"
@@ -1178,7 +1320,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                     <div className="text-xs text-gray-500">Total Bids</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xl font-bold text-emerald-600">{vendorMetrics.acceptedCount}</div>
+                    <div className="text-xl font-bold text-gold">{vendorMetrics.acceptedCount}</div>
                     <div className="text-xs text-gray-500">Won</div>
                   </div>
                   <div className="text-center">
@@ -1208,7 +1350,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   recentActivity.map((activity) => (
                     <div key={activity.id} className="px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors">
                       <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 flex-shrink-0">
+                        <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white flex-shrink-0">
                           <FontAwesomeIcon icon={faCheck} className="text-xs" />
                         </div>
                         <div className="flex-1 min-w-0">

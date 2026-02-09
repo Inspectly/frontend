@@ -37,6 +37,7 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 import { IssueOffer, IssueOfferStatus, IssueType, Listing, Report } from "../types";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { shallowEqual } from "react-redux";
+import { toast } from "react-hot-toast";
 
 type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review";
 type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
@@ -283,9 +284,14 @@ const Offers: React.FC = () => {
         offer_id: offer.id,
       }).unwrap();
       window.location.href = response.session_url;
-    } catch (err) {
+    } catch (err: any) {
       console.error("Stripe error", err);
-      alert("Could not start payment session. Please try again.");
+      const errorDetail = err?.data?.detail || "";
+      if (errorDetail.includes("Stripe Information not found")) {
+        toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
+      } else {
+        toast.error("Could not start payment session. Please try again.");
+      }
     }
   };
 
@@ -311,7 +317,7 @@ const Offers: React.FC = () => {
       );
     } catch (err) {
       console.error("Failed to reject offer", err);
-      alert("Failed to reject offer. Please try again.");
+      toast.error("Failed to reject offer. Please try again.");
     }
   };
 
@@ -326,7 +332,7 @@ const Offers: React.FC = () => {
       setSelectedIssueForAction(null);
     } catch (err) {
       console.error("Failed to approve work", err);
-      alert("Failed to approve work. Please try again.");
+      toast.error("Failed to approve work. Please try again.");
     }
   };
 
@@ -343,7 +349,7 @@ const Offers: React.FC = () => {
       setChangeRequestMessage("");
     } catch (err) {
       console.error("Failed to request changes", err);
-      alert("Failed to request changes. Please try again.");
+      toast.error("Failed to request changes. Please try again.");
     }
   };
 

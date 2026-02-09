@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -36,11 +36,14 @@ import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
-import { useGetAssessmentsByVendorIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { IssueAssessment } from "../types";
 import { faCalendarAlt } from "@fortawesome/free-regular-svg-icons";
 import ImageComponent from "../components/ImageComponent";
 import IssueDetails from "../components/IssueDetails";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+
+import { parseAsUTC } from "../utils/calendarUtils";
 
 type TabType = "all" | "active" | "completed" | "pending" | "rejected";
 type SortBy = "date" | "price" | "status";
@@ -92,10 +95,57 @@ const VendorJobsPage: React.FC = () => {
   const { data: issues = [] } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
   const { data: reports = [] } = useGetReportsQuery();
-  const { data: vendorAssessments = [] } = useGetAssessmentsByVendorIdUsersInteractionIdQuery(
-    vendor?.id || 0,
-    { skip: !vendor?.id }
+  const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
+    user?.id || 0,
+    { skip: !user?.id }
   );
+  const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
+
+  // State to hold ALL assessments (including client counter-proposals)
+  const [allAssessments, setAllAssessments] = useState<IssueAssessment[]>([]);
+
+  // Get unique interaction IDs from vendor's assessments
+  const uniqueInteractionIds = useMemo(() => {
+    return [...new Set(vendorAssessments.map(a => a.users_interaction_id).filter(Boolean))].sort();
+  }, [vendorAssessments]);
+  
+  const interactionIdsKey = uniqueInteractionIds.join(",");
+
+  // Fetch all assessments for each interaction ID (to include client counter-proposals)
+  useEffect(() => {
+    let isMounted = true;
+    
+    const fetchAll = async () => {
+      if (uniqueInteractionIds.length === 0) {
+        if (isMounted) setAllAssessments(vendorAssessments);
+        return;
+      }
+      
+      try {
+        const results = await Promise.all(
+          uniqueInteractionIds.map(id => fetchAssessmentsByInteraction(id).unwrap())
+        );
+        
+        if (!isMounted) return;
+        
+        const allResults = results.flat();
+        const uniqueAssessments = Array.from(
+          new Map(allResults.map(a => [a.id, a])).values()
+        ) as IssueAssessment[];
+        
+        setAllAssessments(uniqueAssessments);
+      } catch (err) {
+        console.error("Failed to fetch all assessments:", err);
+        if (isMounted) setAllAssessments(vendorAssessments);
+      }
+    };
+    
+    fetchAll();
+    
+    return () => { isMounted = false; };
+    // Note: fetchAssessmentsByInteraction is a stable RTK Query hook, not included to prevent infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interactionIdsKey]);
 
   // Create maps for quick lookups
   const issuesMap = useMemo(() => {
@@ -119,20 +169,74 @@ const VendorJobsPage: React.FC = () => {
     }, {} as Record<number, Listing>);
   }, [listings]);
 
-  // Map assessments by issue_id (only upcoming ones)
-  const assessmentsByIssueId = useMemo(() => {
+  // Map assessments by issue_id with status context (uses allAssessments to include client counter-proposals)
+  const assessmentInfoByIssueId = useMemo(() => {
     const now = new Date();
-    return vendorAssessments.reduce((acc, assessment) => {
-      const startTime = new Date(assessment.start_time);
-      // Only include future assessments
-      if (startTime > now && assessment.issue_id) {
-        if (!acc[assessment.issue_id] || startTime < new Date(acc[assessment.issue_id].start_time)) {
-          acc[assessment.issue_id] = assessment;
+    const result: Record<number, {
+      assessment: IssueAssessment;
+      status: "confirmed" | "proposed" | "action_required";
+    }> = {};
+
+    // Group assessments by issue_id first
+    const groupedByIssue: Record<number, IssueAssessment[]> = {};
+    allAssessments.forEach(assessment => {
+      if (!assessment.issue_id) return;
+      if (!groupedByIssue[assessment.issue_id]) {
+        groupedByIssue[assessment.issue_id] = [];
+      }
+      groupedByIssue[assessment.issue_id].push(assessment);
+    });
+
+    // Process each issue's assessments
+    Object.entries(groupedByIssue).forEach(([issueIdStr, assessments]) => {
+      const issueId = Number(issueIdStr);
+      
+      // Check for accepted assessment
+      const acceptedAssessment = assessments.find(a => {
+        const status = (a.status as string)?.toLowerCase() || "";
+        return status === "accepted" || status.includes("accepted");
+      });
+
+      if (acceptedAssessment) {
+        const startTime = parseAsUTC(acceptedAssessment.start_time);
+        if (startTime > now) {
+          result[issueId] = { assessment: acceptedAssessment, status: "confirmed" };
+        }
+        return;
+      }
+
+      // Check for pending assessments
+      const pendingAssessments = assessments.filter(a => {
+        const status = (a.status as string)?.toLowerCase() || "";
+        return status === "received" || status.includes("received");
+      });
+
+      if (pendingAssessments.length === 0) return;
+
+      // Check if client has counter-proposed (assessment from someone other than vendor)
+      const clientProposals = pendingAssessments.filter(a => a.user_type === "client");
+      const vendorProposals = pendingAssessments.filter(a => a.user_type === "vendor");
+
+      if (clientProposals.length > 0) {
+        // Client has counter-proposed - action required
+        const earliestClientProposal = clientProposals.sort(
+          (a, b) => parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
+        )[0];
+        result[issueId] = { assessment: earliestClientProposal, status: "action_required" };
+      } else if (vendorProposals.length > 0) {
+        // Only vendor proposals - pending
+        const earliestVendorProposal = vendorProposals.sort(
+          (a, b) => parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
+        )[0];
+        const startTime = parseAsUTC(earliestVendorProposal.start_time);
+        if (startTime > now) {
+          result[issueId] = { assessment: earliestVendorProposal, status: "proposed" };
         }
       }
-      return acc;
-    }, {} as Record<number, typeof vendorAssessments[0]>);
-  }, [vendorAssessments]);
+    });
+
+    return result;
+  }, [allAssessments]);
 
   // Selected issue for modal
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
@@ -554,19 +658,42 @@ const VendorJobsPage: React.FC = () => {
                       </p>
                     )}
 
-                    {/* Show scheduled assessment if exists */}
-                    {assessmentsByIssueId[offer.issue_id] && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
-                        Visit: {new Date(assessmentsByIssueId[offer.issue_id].start_time).toLocaleDateString("en-US", { 
-                          weekday: 'short', 
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit'
-                        })}
-                      </div>
-                    )}
+                    {/* Show assessment status if exists */}
+                    {assessmentInfoByIssueId[offer.issue_id] && (() => {
+                      const info = assessmentInfoByIssueId[offer.issue_id];
+                      const dateStr = parseAsUTC(info.assessment.start_time).toLocaleDateString("en-US", { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      });
+                      
+                      if (info.status === "confirmed") {
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium">
+                            <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
+                            Visit: {dateStr}
+                          </div>
+                        );
+                      } else if (info.status === "action_required") {
+                        // Client has counter-proposed - show their proposed time
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gold-50 text-gold-700 rounded-full text-xs font-medium border border-gold-200">
+                            <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
+                            Client proposed: {dateStr}
+                          </div>
+                        );
+                      } else {
+                        // Vendor's proposal awaiting response
+                        return (
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                            <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
+                            Proposed: {dateStr}
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
 
                   {/* Price & Status */}

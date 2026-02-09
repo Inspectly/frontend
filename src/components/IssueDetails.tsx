@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import {
   IssueAssessment,
   IssueOffer,
@@ -10,6 +11,7 @@ import {
   statusOptions,
 } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { parseAsUTC } from "../utils/calendarUtils";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -172,7 +174,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   };
 
   const handleEditOfferModal = (offer?: IssueOffer) => {
-    console.log(offer);
     setEditingOffer(offer || null);
     setIsOfferModalOpen(true);
   };
@@ -838,9 +839,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                           // Note: Issue status will be updated to "in_progress" by the backend
                           // webhook after successful payment, not here
                           window.location.href = response.session_url;
-                        } catch (err) {
+                        } catch (err: any) {
                           console.error("Stripe error", err);
-                          alert("Could not start payment session. Please try again.");
+                          const errorDetail = err?.data?.detail || "";
+                          if (errorDetail.includes("Stripe Information not found")) {
+                            toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
+                          } else {
+                            toast.error("Could not start payment session. Please try again.");
+                          }
                         }
                       }}
                     />
@@ -875,8 +881,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                 existingAssessments={assessments.map((a) => ({
                   ...a,
                   title: "Available",
-                  start: new Date(a.start_time),
-                  end: new Date(a.end_time),
+                  start: parseAsUTC(a.start_time),
+                  end: parseAsUTC(a.end_time),
                   isNew: false,
                 }))}
               />
@@ -1156,7 +1162,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     });
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
-                    alert(`Changes requested! The vendor will be notified.\n\nFeedback: "${changeRequestMessage}"\n\n📝 Note: This will be integrated with the comments system in the next update.`);
+                    toast.success("Changes requested! The vendor will be notified.");
                   }
                 }}
               >

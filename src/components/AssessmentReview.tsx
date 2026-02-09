@@ -7,7 +7,7 @@ import {
 import CalendarSelector from "./CalendarSelector";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAdd, faDownload } from "@fortawesome/free-solid-svg-icons";
-import { generateCalendarLinks } from "../utils/calendarUtils";
+import { generateCalendarLinks, parseAsUTC } from "../utils/calendarUtils";
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
 
@@ -137,15 +137,15 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
     vendorId: number
   ) => {
     const duration =
-      (new Date(assessment.end_time).getTime() -
-        new Date(assessment.start_time).getTime()) /
+      (parseAsUTC(assessment.end_time).getTime() -
+        parseAsUTC(assessment.start_time).getTime()) /
       60000;
 
     if (duration > minDuration) {
       // Needs modal
       const slots: string[] = [];
       const slotCount = Math.floor(duration / minDuration);
-      const base = new Date(assessment.start_time);
+      const base = parseAsUTC(assessment.start_time);
 
       for (let i = 0; i < slotCount; i++) {
         const slotStart = new Date(base.getTime() + i * minDuration * 60000);
@@ -192,7 +192,7 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
             );
 
             const acceptedTimeDisplay = acceptedAssessment
-              ? new Date(acceptedAssessment.start_time).toLocaleString()
+              ? parseAsUTC(acceptedAssessment.start_time).toLocaleString()
               : null;
 
             const { googleCalendarUrl, icsUrl } = acceptedAssessment
@@ -204,8 +204,8 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
               : { googleCalendarUrl: "", icsUrl: "" };
 
             const formatScheduledTime = (startTime: string, endTime: string) => {
-              const start = new Date(startTime);
-              const end = new Date(endTime);
+              const start = parseAsUTC(startTime);
+              const end = parseAsUTC(endTime);
               return {
                 date: start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
                 timeRange: `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} - ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`,
@@ -264,8 +264,8 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
                       .filter((a) => !locallyRemovedIds.includes(Number(a.id)))
                       .sort(
                         (a, b) =>
-                          new Date(a.start_time).getTime() -
-                          new Date(b.start_time).getTime()
+                          parseAsUTC(a.start_time).getTime() -
+                          parseAsUTC(b.start_time).getTime()
                       )
                       .map((assessment) => {
                         const proposedTime = formatScheduledTime(assessment.start_time, assessment.end_time);
@@ -447,8 +447,8 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
                   .map((a) => ({
                     ...a,
                     title: a.status,
-                    start: new Date(a.start_time),
-                    end: new Date(a.end_time),
+                    start: parseAsUTC(a.start_time),
+                    end: parseAsUTC(a.end_time),
                     isNew: false,
                   }))}
               />

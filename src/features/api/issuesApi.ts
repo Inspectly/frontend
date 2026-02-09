@@ -33,9 +33,12 @@ export const issuesApi = api.injectEndpoints({
         const params = new URLSearchParams({
           offset: offset.toString(),
           limit: limit.toString(),
-          vendor_assigned: vendor_assigned ? "true" : "false",
         });
     
+        // Only add vendor_assigned if explicitly set (not undefined)
+        if (vendor_assigned !== undefined) {
+          params.append("vendor_assigned", vendor_assigned ? "true" : "false");
+        }
         if (search) params.append("search", search);
         if (type) params.append("type", type);
         if (city) params.append("city", city);

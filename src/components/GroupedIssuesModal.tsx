@@ -14,10 +14,11 @@ import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { useCreateOfferMutation } from "../features/api/issueOffersApi";
-import { useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { formatRelativeTime } from "../utils/dateUtils";
+import { BUTTON_HOVER } from "../styles/shared";
+import { toast } from "react-toastify";
 
 interface GroupedIssuesModalProps {
   address: IssueAddress;
@@ -41,12 +42,8 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
   const [offerComment, setOfferComment] = useState("");
   const [offerError, setOfferError] = useState("");
   
-  // Assessment modal state
-  const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
-  
   // API hooks
   const [createOffer] = useCreateOfferMutation();
-  const [createAssessment] = useCreateAssessmentMutation();
   
   // User info
   const userId = useSelector((state: RootState) => state.auth.user?.id);
@@ -139,8 +136,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
       setOfferError("");
       setIsOfferModalOpen(false);
       
-      // Show success message (you might want to add a toast notification here)
-      alert(`Offers submitted successfully for ${selectedIssueIds.size} issue${selectedIssueIds.size > 1 ? 's' : ''}!`);
+      toast.success(`Offers submitted successfully for ${selectedIssueIds.size} issue${selectedIssueIds.size > 1 ? 's' : ''}!`);
       
     } catch (error) {
       console.error("Failed to submit offers:", error);
@@ -152,9 +148,8 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
   const handleScheduleAssessment = () => {
     if (selectedIssueIds.size === 0) return;
     
-    // For now, show a placeholder message
-    // In a full implementation, this would open a calendar/scheduling modal
-    alert(`Assessment scheduling for ${selectedIssueIds.size} issue${selectedIssueIds.size > 1 ? 's' : ''} - Calendar integration coming soon!`);
+    // TODO: In a full implementation, this would open a calendar/scheduling modal
+    toast.info(`Assessment scheduling for ${selectedIssueIds.size} issue${selectedIssueIds.size > 1 ? 's' : ''} - Coming soon!`);
   };
 
   if (!isOpen) return null;
@@ -198,7 +193,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                   </h4>
                   <button
                     onClick={handleSelectAll}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-sm text-gold hover:text-gold-700 font-medium"
                   >
                     {selectedIssueIds.size === issues.length ? 'Deselect All' : 'Select All'}
                   </button>
@@ -223,7 +218,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       key={issue.id}
                       className={`p-4 border-b cursor-pointer transition-colors ${
                         isDisplayed 
-                          ? 'bg-blue-50 border-l-4 border-l-blue-500' 
+                          ? 'bg-gold-50 border-l-4 border-l-gold' 
                           : 'hover:bg-gray-100'
                       }`}
                       onClick={() => handleIssueClick(issue.id)}
@@ -237,8 +232,8 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                           }}
                           className={`mt-1 w-5 h-5 border-2 rounded flex items-center justify-center transition-all ${
                             isSelected 
-                              ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700' 
-                              : 'border-gray-500 hover:border-blue-500 bg-white'
+                              ? 'bg-gray-900 border-gray-900 text-white hover:bg-gray-800' 
+                              : 'border-gray-500 hover:border-gold bg-white'
                           }`}
                         >
                           {isSelected && (
@@ -251,7 +246,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                         {/* Issue Content */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded">
+                            <span className="text-xs font-semibold text-white bg-gray-900 px-2 py-1 rounded">
                               {normalizeAndCapitalize(issue.type)}
                             </span>
                             <div className="flex items-center gap-1">
@@ -289,8 +284,8 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                     {/* Issue Header */}
                     <div className="mb-6">
                       <div className="flex items-center gap-3 mb-3">
-                        <span className="text-sm font-semibold text-white bg-blue-600 px-3 py-1.5 rounded-lg">
-                          {currentIssue.type}
+                        <span className="text-sm font-semibold text-white bg-gray-900 px-3 py-1.5 rounded-lg">
+                          {normalizeAndCapitalize(currentIssue.type)}
                         </span>
                         <div className="flex items-center gap-2">
                           <FontAwesomeIcon 
@@ -319,7 +314,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       <h3 className="text-lg font-medium text-gray-900 mb-3">Image</h3>
                       <div className="rounded-lg overflow-hidden">
                         <ImageComponent
-                          src={currentissue.image_urls || "/images/property_card_holder.jpg"}
+                          src={currentIssue.image_urls || "/images/property_card_holder.jpg"}
                           fallback="/images/property_card_holder.jpg"
                           className="w-full h-64 object-cover"
                         />
@@ -369,7 +364,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                         <button
                           onClick={() => setIsOfferModalOpen(true)}
                           disabled={selectedIssueIds.size === 0 || userType !== 'vendor'}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                           <FontAwesomeIcon icon={faDollarSign} />
                           Submit Offer
@@ -377,7 +372,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                         <button
                           onClick={handleScheduleAssessment}
                           disabled={selectedIssueIds.size === 0 || userType !== 'vendor'}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className={`flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gold transition-colors`}
                         >
                           <FontAwesomeIcon icon={faCalendarAlt} />
                           Schedule Assessment
@@ -414,7 +409,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                 min="1"
                 step="0.01"
                 placeholder="Enter your offer amount"
-                className="w-full border border-gray-300 rounded px-3 py-2"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gold focus:border-gold"
               />
             </div>
 
@@ -426,7 +421,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                 value={offerComment}
                 onChange={(e) => setOfferComment(e.target.value)}
                 placeholder="Add a comment for the client..."
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold focus:border-gold"
                 rows={3}
               />
             </div>
@@ -457,14 +452,14 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                   setOfferComment("");
                   setOfferError("");
                 }}
-                className="text-sm px-4 py-2 rounded border border-gray-400 hover:bg-gray-50"
+                className={`text-sm px-4 py-2 rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleOfferSubmit}
                 disabled={!offerAmount || parseFloat(offerAmount) <= 0}
-                className="text-sm px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-sm px-4 py-2 rounded-lg bg-gold text-white hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Submit Offers
               </button>
