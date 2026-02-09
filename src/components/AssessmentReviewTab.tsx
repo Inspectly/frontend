@@ -6,7 +6,7 @@ import {
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAdd, faDownload } from "@fortawesome/free-solid-svg-icons";
-import { generateCalendarLinks } from "../utils/calendarUtils";
+import { generateCalendarLinks, parseAsUTC } from "../utils/calendarUtils";
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
 import CalendarSelector from "./CalendarSelector";
@@ -104,7 +104,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
     Object.values(groups).forEach((g) => {
       g.assessments.sort(
         (a, b) =>
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
       );
     });
 
@@ -231,14 +231,14 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
     vendorId: number
   ) => {
     const durationMinutes =
-      (new Date(assessment.end_time).getTime() -
-        new Date(assessment.start_time).getTime()) /
+      (parseAsUTC(assessment.end_time).getTime() -
+        parseAsUTC(assessment.start_time).getTime()) /
       60000;
 
     if (minDuration && durationMinutes > minDuration) {
       const slots: string[] = [];
       const slotCount = Math.floor(durationMinutes / minDuration);
-      const base = new Date(assessment.start_time);
+      const base = parseAsUTC(assessment.start_time);
 
       for (let i = 0; i < slotCount; i++) {
         const slotStart = new Date(base.getTime() + i * minDuration * 60000);
@@ -568,8 +568,8 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                   .map((a) => ({
                     ...a,
                     title: "Available",
-                    start: new Date(a.start_time),
-                    end: new Date(a.end_time),
+                    start: parseAsUTC(a.start_time),
+                    end: parseAsUTC(a.end_time),
                     isNew: false,
                   }))}
               />

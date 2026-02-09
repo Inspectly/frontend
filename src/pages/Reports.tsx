@@ -324,6 +324,7 @@ const Reports: React.FC = () => {
         onClose={() => setIsCreateIssueOpen(false)}
         issueCollections={listingReports.map((r) => ({
           id: r.id,
+          listing_id: r.listing_id,
           name: r.name ?? `Collection #${r.id}`,
         }))}
         onCreated={() => {
