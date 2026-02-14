@@ -63,7 +63,7 @@ export const issuesApi = api.injectEndpoints({
 
     getIssueById: builder.query<IssueType, string>({
       query: (id) => `issues/${id}`,
-      providesTags: (result, error, id) => [{ type: "Issues", id }],
+      providesTags: (_result, _error, id) => [{ type: "Issues", id }],
       transformResponse: (response: IssueType) => {
         // Transform status from backend format to frontend format
         return {

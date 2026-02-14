@@ -103,6 +103,7 @@ export type Vendor = {
   license: string;
   verified: boolean;
   name: string;
+  company_name: string;
   email: string;
   phone: string;
   address: string;
@@ -110,6 +111,7 @@ export type Vendor = {
   state: string;
   country: string;
   postal_code: string;
+  profile_image_url: string;
   rating: string;
   review: string;
   created_at: string;
@@ -153,6 +155,8 @@ export type ReportType = {
   updated_at: string;
   review_status: string;
 };
+
+export type Report = ReportType;
 
 export type UpdateReportPutPayload = {
   id: number;
@@ -210,7 +214,7 @@ export type IssueType = {
   severity: string;
   status: IssueStatus | string;
   vendor_id: number | null;
-  image_url: string;
+  image_urls: string;
   cost: string;
   active: boolean;
   created_at: string;

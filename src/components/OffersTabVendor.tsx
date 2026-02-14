@@ -246,7 +246,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
               </div>
               <div className="flex items-center gap-1 text-sm text-gray-600">
                 <FontAwesomeIcon icon={faStar} className="text-gold w-3 h-3" />
-                <span>{currentVendor?.rating?.toFixed(1) || "5.0"}</span>
+                <span>{currentVendor?.rating ? parseFloat(currentVendor.rating).toFixed(1) : "5.0"}</span>
               </div>
             </div>
           </div>

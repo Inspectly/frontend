@@ -18,7 +18,6 @@ export function generateCalendarLinks(assessment: {
     const {
       start_time,
       end_time,
-      min_assessment_time = 30,
       title = "Assessment Appointment",
       description = "Your scheduled assessment slot.",
       location = "Online",

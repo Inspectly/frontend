@@ -24,7 +24,6 @@ import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
 import ImageComponent from "./ImageComponent";
-import MapComponent from "./MapComponent";
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
 import { useNavigate } from "react-router-dom";
@@ -36,7 +35,6 @@ import {
 } from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
 import {
   useGetAssessmentsByIssueIdQuery,
   useGetAssessmentsByUsersInteractionIdQuery,
@@ -134,18 +132,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     isFetching: assessmentsFetching,
   } = assessmentsData;
 
-  const [coords, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const [imageOpen, setImageOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
-  const [descriptionOpen, setDescriptionOpen] = useState(true);
-  const [locationOpen, setLocationOpen] = useState(true);
   const [peopleOpen, setPeopleOpen] = useState(true);
   const [datesOpen, setDatesOpen] = useState(true);
 
   const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
-  const [locationError, setLocationError] = useState(false);
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
@@ -381,22 +374,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     return map;
   }, [allVendors]);
 
-  useEffect(() => {
-    if (!listing) return;
-
-    const address = `${listing?.address}, ${listing?.city}, ${listing?.state}, ${listing?.country}`;
-
-    getCoordinatesFromAddress(address)
-      .then((coords) => {
-        setCoords(coords);
-        setLocationError(false);
-      })
-      .catch((error) => {
-        console.error("Location fetch failed:", error);
-        setLocationError(true);
-      });
-  }, [listing]);
-
   // Sync tab state: use defaultTab when provided (e.g. modal), otherwise URL
   useEffect(() => {
     if (defaultTab) {
@@ -586,7 +563,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
         {activeTab === "details" && (
           <div id="default-details" role="tabpanel">
             {/* Property Image - Full Width */}
-            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url)}>
+            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url || null)}>
               <ImageComponent
                 src={issue.image_urls || listing?.image_url}
                 fallback="/images/property_card_holder.jpg"

@@ -20,7 +20,6 @@ import {
   faFilter,
   faSort,
   faCheckCircle,
-  faTimesCircle,
   faClipboardList,
   faMapMarkerAlt,
   faRocket,
@@ -357,32 +356,6 @@ const Offers: React.FC = () => {
       } else {
         toast.error("Could not start payment session. Please try again.");
       }
-    }
-  };
-
-  const handleRejectOffer = async (offer: IssueOffer) => {
-    try {
-      await updateOffer({
-        id: offer.id,
-        issue_id: offer.issue_id,
-        vendor_id: offer.vendor_id,
-        price: offer.price,
-        status: "rejected",
-        user_last_viewed: new Date().toISOString(),
-        comment_vendor: offer.comment_vendor || "",
-        comment_client: offer.comment_client || "",
-      }).unwrap();
-      
-      // Refresh offers in cache
-      await dispatch(
-        issueOffersApi.endpoints.getOffersByIssueId.initiate(offer.issue_id, { 
-          forceRefetch: true,
-          subscribe: false 
-        })
-      );
-    } catch (err) {
-      console.error("Failed to reject offer", err);
-      toast.error("Failed to reject offer. Please try again.");
     }
   };
 

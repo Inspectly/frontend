@@ -131,23 +131,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   // Don't sync on issue.active changes to avoid race condition during updates
   useEffect(() => setIsActive(issue.active), [issue.id]);
 
-  const handleStatusChange = async (newStatus: string) => {
-    // If status is moving to completed, trigger review modal
-    const isCompleted = newStatus === "completed" || newStatus === "Status.COMPLETED";
-
-    if (isCompleted && issue.vendor_id && issue.review_status !== "completed") {
-      setPendingStatusChange(newStatus);
-      setIsReviewModalOpen(true);
-      return;
-    }
-
-    try {
-      await updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id)).unwrap();
-    } catch (error) {
-      console.error("Failed to update status", error);
-    }
-  };
-
   const handleReviewSubmit = async (rating: number, review: string) => {
     if (!issue.vendor_id || !userId) return;
 

@@ -191,10 +191,6 @@ const AssessmentReview: React.FC<AssessmentReviewProps> = ({
                 Number(a.users_interaction_id.split("_")[1]) === vendorId
             );
 
-            const acceptedTimeDisplay = acceptedAssessment
-              ? parseAsUTC(acceptedAssessment.start_time).toLocaleString()
-              : null;
-
             const { googleCalendarUrl, icsUrl } = acceptedAssessment
               ? generateCalendarLinks({
                   ...acceptedAssessment,

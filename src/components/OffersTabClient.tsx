@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faStar, faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 import VendorName from "./VendorName";
 import { useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import { useGetVendorsQuery } from "../features/api/vendorsApi";
@@ -79,13 +79,6 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
     });
   };
 
-  const formatTime = (dateStr: string) => {
-    return new Date(dateStr + "Z").toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("en-US", {

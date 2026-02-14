@@ -5,35 +5,35 @@ export const issueAssessmentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getAssessmentsByIssueId: builder.query<IssueAssessment[], number>({
       query: (issueId) => `issue_assessments/issue/${issueId}`,
-      providesTags: (result, error, issueId) => [
+      providesTags: (_result, _error, issueId) => [
         { type: "Assessments", id: `issue-${issueId}` },
         { type: "Assessments", id: "LIST" },
       ],
     }),
     getAssessmentsByUserId: builder.query<IssueAssessment[], number>({
       query: (userId) => `issue_assessments/user_id/${userId}`,
-      providesTags: (result, error, userId) => [
+      providesTags: (_result, _error, userId) => [
         { type: "Assessments", id: `user-${userId}` },
         { type: "Assessments", id: "LIST" },
       ],
     }),
     getAssessmentsByUsersInteractionId: builder.query<CalendarReadyAssessment[], string>({
       query: (userInteractionId) => `issue_assessments/users_interaction/${userInteractionId}`,
-      providesTags: (result, error, interactionId) => [
+      providesTags: (_result, _error, interactionId) => [
         { type: "Assessments", id: `interaction-${interactionId}` },
         { type: "Assessments", id: "LIST" },
       ],
     }),
     getAssessmentsByClientIdUsersInteractionId: builder.query<IssueAssessment[], number>({
       query: (clientId) => `issue_assessments/client_id_users_interaction_id/${clientId}`,
-      providesTags: (result, error, clientId) => [
+      providesTags: (_result, _error, clientId) => [
         { type: "Assessments", id: `client-${clientId}` },
         { type: "Assessments", id: "LIST" },
       ],
     }),
     getAssessmentsByVendorIdUsersInteractionId: builder.query<IssueAssessment[], number>({
       query: (vendor) => `issue_assessments/vendor_id_users_interaction_id/${vendor}`,
-      providesTags: (result, error, vendorId) => [
+      providesTags: (_result, _error, vendorId) => [
         { type: "Assessments", id: `vendor-${vendorId}` },
         { type: "Assessments", id: "LIST" },
       ],
