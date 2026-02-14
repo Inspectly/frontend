@@ -56,6 +56,7 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 export interface IssueDetailsProps {
   issue: IssueType;
   listing?: Listing;
+  defaultTab?: "details" | "offers" | "assessments";
 }
 
 // Extract tab from URL (default to "details")
@@ -64,7 +65,7 @@ const getTabFromURL = () => {
   return params.get("tab") || "details"; // Default tab
 };
 
-const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
+const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab }) => {
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const userType = useSelector(
@@ -139,7 +140,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
   const [peopleOpen, setPeopleOpen] = useState(true);
   const [datesOpen, setDatesOpen] = useState(true);
 
-  const [activeTab, setActiveTab] = useState(getTabFromURL());
+  const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
   const [locationError, setLocationError] = useState(false);
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
@@ -392,10 +393,14 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
       });
   }, [listing]);
 
-  // Sync tab state when URL changes
+  // Sync tab state: use defaultTab when provided (e.g. modal), otherwise URL
   useEffect(() => {
-    setActiveTab(getTabFromURL());
-  }, [location.search]);
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    } else {
+      setActiveTab(getTabFromURL());
+    }
+  }, [defaultTab, issue?.id, location.search]);
 
 
   useEffect(() => {
@@ -419,8 +424,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
             {issue.summary || "No Title Found"}
           </h2>
           <div className="flex items-center gap-2">
-            {/* Vendor: Mark Complete Button */}
-            {userType === "vendor" && statusMapping[issue.status as IssueStatus] === "in_progress" && (
+            {/* Vendor: Mark Complete Button - show when issue is in progress and this vendor is assigned (vendor_id = user id) */}
+            {userType === "vendor" && (() => {
+              const statusNorm = statusMapping[issue.status as IssueStatus] ?? String(issue.status || "").toLowerCase();
+              const isInProgress = statusNorm === "in_progress" || String(issue.status || "").toUpperCase().includes("IN_PROGRESS");
+              const isAssignedVendor = issue.vendor_id != null && Number(issue.vendor_id) === Number(userId);
+              return isInProgress && isAssignedVendor;
+            })() && (
               <div className="relative group">
                 <button
                   onClick={() => setShowMarkCompleteModal(true)}
