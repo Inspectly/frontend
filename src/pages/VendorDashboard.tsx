@@ -41,7 +41,6 @@ import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetAssessmentsByUserIdQuery, useUpdateAssessmentMutation, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
 import ImageComponent from "../components/ImageComponent";
-import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 import IssueDetails from "../components/IssueDetails";
 import { faCalendarAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
