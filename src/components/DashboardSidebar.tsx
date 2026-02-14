@@ -2,7 +2,6 @@ import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faChalkboard,
   faClose,
-  faGear,
   faInfo,
   faListCheck,
   faShop,
@@ -158,20 +157,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             >
               <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />
               <span>Terms & Conditions</span>
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/dashboard/settings"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/settings"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
-              }`}
-            >
-              <FontAwesomeIcon icon={faGear} className="mr-3 w-4" />
-              <span>Settings</span>
             </Link>
           </li>
 

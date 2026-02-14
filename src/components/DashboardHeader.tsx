@@ -5,27 +5,56 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useGetClientsQuery } from "../features/api/clientsApi";
 import {
   faBars,
+  faGear,
   faPowerOff,
+  faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { faUser } from "@fortawesome/free-regular-svg-icons";
+import SettingsSidebar from "./SettingsSidebar";
+import VendorProfileSettings from "./VendorProfileSettings";
+import ClientProfileSettings from "./ClientProfileSettings";
+import RealtorProfileSettings from "./RealtorProfileSettings";
+import AccountAndSecuritySetting from "./AccountAndSecuritySetting";
+import PaymentSettings from "./PaymentSettings";
 
 interface DashboardHeaderProps {
   handleLogout: () => void;
   toggleSidebar: () => void;
   isSidebarOpen: boolean;
   pageTitle?: string;
+  userType?: string | null;
   children: React.ReactNode;
 }
+
+/* ---------- Settings section renderer ---------- */
+const renderSettingsSection = (section: string, userType: string | null) => {
+  switch (section) {
+    case "Profile Settings":
+      if (userType === "vendor") return <VendorProfileSettings />;
+      if (userType === "client") return <ClientProfileSettings />;
+      if (userType === "realtor") return <RealtorProfileSettings />;
+      return <p>Unknown user type</p>;
+    case "Account & Security":
+      return <AccountAndSecuritySetting />;
+    case "Payment Settings":
+      return <PaymentSettings />;
+    default:
+      return <p className="text-neutral-600 text-sm">We are working on it!</p>;
+  }
+};
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   handleLogout,
   toggleSidebar,
   isSidebarOpen,
   pageTitle,
+  userType = null,
   children,
 }) => {
   const [currentUser, setCurrentUser] = useState(() => auth.currentUser);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState("Profile Settings");
 
   const profileDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +87,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Close settings modal on Escape
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsSettingsOpen(false);
+    };
+    if (isSettingsOpen) {
+      document.addEventListener("keydown", handleEsc);
+      return () => document.removeEventListener("keydown", handleEsc);
+    }
+  }, [isSettingsOpen]);
 
   return (
     <main
@@ -129,6 +169,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                   </li>
                   <li>
                     <button
+                      className="text-black px-4 py-2 hover:text-blue-400 flex items-center gap-4 w-full text-left"
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        setSettingsSection("Profile Settings");
+                        setIsSettingsOpen(true);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faGear} />
+                      Settings
+                    </button>
+                  </li>
+                  <li>
+                    <button
                       className="text-black px-4 py-2 hover:text-red-500 flex items-center gap-4 w-full text-left"
                       onClick={handleLogout}
                     >
@@ -143,6 +196,43 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         </div>
       </header>
       {children}
+
+      {/* ---- Settings Modal ---- */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setIsSettingsOpen(false)}
+          />
+
+          {/* Modal */}
+          <div className="relative w-full max-w-4xl max-h-[85vh] rounded-2xl bg-white shadow-xl border flex overflow-hidden">
+            {/* Close button */}
+            <button
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors"
+              onClick={() => setIsSettingsOpen(false)}
+            >
+              <FontAwesomeIcon icon={faTimes} className="text-sm" />
+            </button>
+
+            {/* Sidebar */}
+            <div className="w-[220px] border-r border-gray-200 bg-white overflow-y-auto shrink-0">
+              <SettingsSidebar
+                selected={settingsSection}
+                onSelect={setSettingsSection}
+              />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 p-6 overflow-y-auto bg-gray-50">
+              <section className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                {renderSettingsSection(settingsSection, userType)}
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };
