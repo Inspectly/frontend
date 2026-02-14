@@ -1,4 +1,3 @@
-
 import {
   useGetReportByIdQuery,
   useUpdateReportMutation,
@@ -344,6 +343,7 @@ export default function ReportReviewPage() {
       setIsCreating(true);
       const created = await createIssue({
         report_id: Number(reportId),
+        listing_id: Number(listingId),
         type: formData.type,
         description: formData.description,
         summary: formData.summary,

@@ -12,8 +12,9 @@ import { Link, useParams } from "react-router-dom";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 
 import VendorName from "./VendorName";
-import { IssueStatus, IssueOfferStatus } from "../types";
+import { IssueOfferStatus, IssueStatus, IssueType } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
@@ -137,12 +138,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
         console.error("Issue not found:", id);
         return;
       }
-      console.log("Issue before update:", issueToUpdate);
-      await updateIssue({
-        ...issueToUpdate,
-        status: newProgress,
-      }).unwrap();
-
+      await updateIssue(buildIssueUpdateBody(issueToUpdate, { status: newProgress }, listingId ? Number(listingId) : undefined)).unwrap();
       refetch();
       setDropdownOpen(null);
     } catch (error) {
@@ -157,13 +153,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
         console.error("Issue not found:", id);
         return;
       }
-      console.log("Issue before update:", issueToUpdate);
-      await updateIssue({
-        ...issueToUpdate,
-        status: statusMapping[issueToUpdate.status as IssueStatus],
-        active: newActive,
-      }).unwrap();
-
+      await updateIssue(buildIssueUpdateBody(issueToUpdate, { active: newActive }, listingId ? Number(listingId) : undefined)).unwrap();
       refetch();
     } catch (error) {
       console.error("Error updating issue:", error);
@@ -180,9 +170,16 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const severityMap: Record<string, string> = {
+        low: "Low",
+        medium: "Medium",
+        high: "High",
+      };
       await createIssue({
         report_id: Number(reportId),
+        listing_id: Number(listingId),
         ...formData,
+        severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: formData.status as IssueStatus,
       }).unwrap();
       refetch();

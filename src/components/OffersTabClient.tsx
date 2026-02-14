@@ -18,11 +18,15 @@ interface OffersTabClientProps {
   handleOpenOfferModal: (offer: IssueOffer) => void;
   onOpenOfferModal: () => void;
   onOfferAccepted?: (offer: IssueOffer) => void;
+  issueVendorId?: number | null;
+  isProcessingPayment?: boolean;
 }
 
 const OffersTabClient: React.FC<OffersTabClientProps> = ({
   offers,
   onOfferAccepted,
+  issueVendorId,
+  isProcessingPayment = false,
 }) => {
   const [updateOffer] = useUpdateOfferMutation();
   const { data: allVendors = [] } = useGetVendorsQuery();
@@ -59,8 +63,9 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
   };
 
   const hasAcceptedOffer = useMemo(() => {
-    return offers.some((offer) => offer.status === IssueOfferStatus.ACCEPTED);
-  }, [offers]);
+    // Check both: if any offer is accepted OR if the issue already has a vendor assigned
+    return offers.some((offer) => offer.status === IssueOfferStatus.ACCEPTED) || !!issueVendorId;
+  }, [offers, issueVendorId]);
 
   const acceptedOffer = useMemo(() => {
     return offers.find((offer) => offer.status === IssueOfferStatus.ACCEPTED);
@@ -140,7 +145,7 @@ const OffersTabClient: React.FC<OffersTabClientProps> = ({
                 <tbody>
                   {sortedOffers.map((offer) => {
                     const isPending = offer.status === IssueOfferStatus.RECEIVED;
-                    const canTakeAction = isPending && !hasAcceptedOffer;
+                    const canTakeAction = isPending && !hasAcceptedOffer && !isProcessingPayment;
 
                     return (
                       <tr key={offer.id} className="border-b border-gray-100 last:border-0">

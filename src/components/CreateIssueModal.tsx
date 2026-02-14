@@ -103,13 +103,18 @@ const CreateIssueModal: React.FC<Props> = ({
     if (!canSubmit || !formData.report_id) return;
 
     try {
+      const severityMap: Record<string, string> = {
+        low: "Low",
+        medium: "Medium",
+        high: "High",
+      };
       await createIssue({
         report_id: formData.report_id,
         listing_id: formData.listing_id,
         type: formData.type,
         summary: formData.summary,
         description: formData.description,
-        severity: formData.severity,
+        severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
         image_url: formData.image_url,
@@ -126,7 +131,7 @@ const CreateIssueModal: React.FC<Props> = ({
         description: "",
         summary: "",
         severity: "",
-        status: "open",    // ✅ keep default for next open
+        status: "open",
         active: true,
         image_url: "",
       });

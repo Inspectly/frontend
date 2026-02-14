@@ -12,6 +12,7 @@ import {
 } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -51,6 +52,7 @@ import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
 import OffersTabVendor from "./OffersTabVendor";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
+
 export interface IssueDetailsProps {
   issue: IssueType;
   listing?: Listing;
@@ -186,10 +188,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
 
   const handleStatusChange = (id: number, newStatus: string) => {
     // Backend expects simple format: "open", "in_progress", "review", "completed"
-    updateIssue({
-      ...issue,
-      status: newStatus,
-    });
+    updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id));
 
     setTimeout(() => {
       setProgressDropdownOpen(null); // Delay closing to let the event register
@@ -481,11 +480,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   <button
                     onClick={() => {
                       if (!hasAcceptedOffer) {
-                        updateIssue({
-                          ...issue,
-                          status: statusMapping[issue.status as IssueStatus],
-                          active: !issue.active,
-                        });
+                        updateIssue(buildIssueUpdateBody(issue, { active: !issue.active }, listing?.id));
                       }
                     }}
                     disabled={hasAcceptedOffer}
@@ -826,21 +821,27 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                       uniqueVendors={uniqueVendors}
                       handleOpenOfferModal={handleOpenOfferModal}
                       onOpenOfferModal={() => setIsOfferModalOpen(true)}
+                      issueVendorId={issue.vendor_id}
                       onOfferAccepted={async (acceptedOffer) => {
                         try {
-                          // First, create the checkout session
+                          localStorage.setItem("pending_offer_payment", JSON.stringify({
+                            offer_id: acceptedOffer.id,
+                            issue_id: acceptedOffer.issue_id,
+                            vendor_id: acceptedOffer.vendor_id,
+                            price: acceptedOffer.price,
+                            comment_vendor: acceptedOffer.comment_vendor || "",
+                            comment_client: acceptedOffer.comment_client || "",
+                          }));
+                          
                           const response = await createCheckoutSession({
                             client_id: userId,
                             vendor_id: acceptedOffer.vendor_id,
                             offer_id: acceptedOffer.id,
                           }).unwrap();
-                          
-                          // Redirect to Stripe payment page
-                          // Note: Issue status will be updated to "in_progress" by the backend
-                          // webhook after successful payment, not here
                           window.location.href = response.session_url;
                         } catch (err: any) {
                           console.error("Stripe error", err);
+                          localStorage.removeItem("pending_offer_payment");
                           const errorDetail = err?.data?.detail || "";
                           if (errorDetail.includes("Stripe Information not found")) {
                             toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
@@ -858,11 +859,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                     vendorId={currentVendor?.id}
                     onOpenOfferModal={handleEditOfferModal}
                     onOfferAccepted={(acceptedOffer) => {
-                      updateIssue({
-                        ...issue,
-                        status: statusMapping[issue.status as IssueStatus],
-                        vendor_id: acceptedOffer.vendor_id,
-                      });
+                      updateIssue(buildIssueUpdateBody(issue, { vendor_id: acceptedOffer.vendor_id }, listing?.id));
                     }}
                   />
                 )}
@@ -1039,10 +1036,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <button
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gray-900 ${BUTTON_HOVER}`}
                 onClick={() => {
-                  updateIssue({
-                    ...issue,
-                    status: "review",
-                  });
+                  updateIssue(buildIssueUpdateBody(issue, { status: "review" }, listing?.id));
                   setShowMarkCompleteModal(false);
                 }}
               >
@@ -1089,10 +1083,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
               <button
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={() => {
-                  updateIssue({
-                    ...issue,
+                  updateIssue(buildIssueUpdateBody(issue, { 
                     status: "completed",
-                  });
+                    review_status: "completed",
+                  }, listing?.id));
                   setShowApproveModal(false);
                 }}
               >
@@ -1156,10 +1150,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing }) => {
                   if (changeRequestMessage.trim()) {
                     // TODO: Post this as a comment with special "Change Request" flag
                     // TODO: Send notification to vendor
-                    updateIssue({
-                      ...issue,
-                      status: "in_progress",
-                    });
+                    updateIssue(buildIssueUpdateBody(issue, { status: "in_progress" }, listing?.id));
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
                     toast.success("Changes requested! The vendor will be notified.");
