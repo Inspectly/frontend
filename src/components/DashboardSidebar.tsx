@@ -1,8 +1,4 @@
-import {
-  faCircleQuestion,
-  faCommentDots,
-  faMoneyBill1,
-} from "@fortawesome/free-regular-svg-icons";
+import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faChalkboard,
   faClose,
@@ -136,34 +132,6 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               </Link>
             </li>
           )}
-
-          <li>
-            <Link
-              to="/dashboard/chat"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/chat"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
-              }`}
-            >
-              <FontAwesomeIcon icon={faCommentDots} className="mr-3 w-4" />
-              <span>Chat</span>
-            </Link>
-          </li>
-
-          <li>
-            <Link
-              to="/pricing"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/pricing"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
-              }`}
-            >
-              <FontAwesomeIcon icon={faMoneyBill1} className="mr-3 w-4" />
-              <span>Pricing</span>
-            </Link>
-          </li>
 
           <li>
             <Link
