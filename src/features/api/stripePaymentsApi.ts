@@ -4,6 +4,8 @@ type CheckoutPayload = {
   client_id: number;
   vendor_id: number;
   offer_id: number;
+  success_url?: string;
+  cancel_url?: string;
 };
 
 type CheckoutResponse = {

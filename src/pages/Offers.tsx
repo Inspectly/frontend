@@ -36,6 +36,7 @@ import { issueOffersApi, useUpdateOfferMutation } from "../features/api/issueOff
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing, Report } from "../types";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
 
@@ -53,15 +54,65 @@ const Offers: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: issues = [], isLoading: isLoadingIssues } = useGetIssuesQuery();
+  const { data: issues = [], isLoading: isLoadingIssues, refetch: refetchIssues } = useGetIssuesQuery();
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
   
   const [updateOffer] = useUpdateOfferMutation();
   const [updateIssue] = useUpdateIssueMutation();
   const [createCheckoutSession] = useCreateCheckoutSessionMutation();
+
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
+    const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+    
+    if (sessionId && !paymentVerified && pendingPayment) {
+      setPaymentVerified(true);
+      
+      (async () => {
+        try {
+          await updateOffer({
+            id: pendingPayment.offer_id,
+            issue_id: pendingPayment.issue_id,
+            vendor_id: pendingPayment.vendor_id,
+            price: pendingPayment.price,
+            status: "accepted",
+            user_last_viewed: new Date().toISOString(),
+            comment_vendor: pendingPayment.comment_vendor || "",
+            comment_client: pendingPayment.comment_client || "",
+          }).unwrap();
+          
+          const issueId = Number(pendingPayment.issue_id);
+          const issue = issues.find(i => i.id === issueId);
+          if (issue) {
+            const report = reports.find(r => r.id === issue.report_id);
+            const listing = listings.find(l => l.id === report?.listing_id);
+            try {
+              await updateIssue(buildIssueUpdateBody(issue, { 
+                vendor_id: pendingPayment.vendor_id,
+                status: "in_progress"
+              }, listing?.id)).unwrap();
+            } catch {
+              // Offer accepted, issue update failed silently
+            }
+          }
+          
+          toast.success("Payment successful! Offer accepted.");
+          localStorage.removeItem("pending_offer_payment");
+          refetchIssues();
+        } catch {
+          toast.error("Payment completed but status update failed. Please refresh.");
+        }
+        
+        searchParams.delete("session_id");
+        setSearchParams(searchParams, { replace: true });
+      })();
+    }
+  }, [searchParams, paymentVerified, refetchIssues, setSearchParams, updateOffer, updateIssue, issues, reports, listings]);
 
   // Read initial filter from URL params
   const initialFilter = (): FilterType => {
@@ -85,7 +136,7 @@ const Offers: React.FC = () => {
   // Modal state for approve/request changes
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
-  const [selectedIssueForAction, setSelectedIssueForAction] = useState<IssueType | null>(null);
+  const [selectedIssueForAction, setSelectedIssueForAction] = useState<{ issue: IssueType; listing?: Listing } | null>(null);
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
 
   // Get user's issues
@@ -278,6 +329,16 @@ const Offers: React.FC = () => {
 
   const handleAcceptOffer = async (offer: IssueOffer) => {
     try {
+      const pendingData = {
+        offer_id: offer.id,
+        issue_id: offer.issue_id,
+        vendor_id: offer.vendor_id,
+        price: offer.price,
+        comment_vendor: offer.comment_vendor || "",
+        comment_client: offer.comment_client || "",
+      };
+      localStorage.setItem("pending_offer_payment", JSON.stringify(pendingData));
+      
       const response = await createCheckoutSession({
         client_id: userId!,
         vendor_id: offer.vendor_id,
@@ -286,6 +347,7 @@ const Offers: React.FC = () => {
       window.location.href = response.session_url;
     } catch (err: any) {
       console.error("Stripe error", err);
+      localStorage.removeItem("pending_offer_payment");
       const errorDetail = err?.data?.detail || "";
       if (errorDetail.includes("Stripe Information not found")) {
         toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
@@ -324,12 +386,13 @@ const Offers: React.FC = () => {
   const handleApproveWork = async () => {
     if (!selectedIssueForAction) return;
     try {
-      await updateIssue({
-        ...selectedIssueForAction,
+      await updateIssue(buildIssueUpdateBody(selectedIssueForAction.issue, { 
         status: "completed",
-      }).unwrap();
+        review_status: "completed",
+      }, selectedIssueForAction.listing?.id)).unwrap();
       setShowApproveModal(false);
       setSelectedIssueForAction(null);
+      toast.success("Work approved successfully!");
     } catch (err) {
       console.error("Failed to approve work", err);
       toast.error("Failed to approve work. Please try again.");
@@ -339,14 +402,12 @@ const Offers: React.FC = () => {
   const handleRequestChanges = async () => {
     if (!selectedIssueForAction || !changeRequestMessage.trim()) return;
     try {
-      await updateIssue({
-        ...selectedIssueForAction,
-        status: "in_progress",
-      }).unwrap();
+      await updateIssue(buildIssueUpdateBody(selectedIssueForAction.issue, { status: "in_progress" }, selectedIssueForAction.listing?.id)).unwrap();
       // TODO: Post changeRequestMessage as a comment with "Change Request" flag
       setShowRequestChangesModal(false);
       setSelectedIssueForAction(null);
       setChangeRequestMessage("");
+      toast.success("Changes requested! The vendor will be notified.");
     } catch (err) {
       console.error("Failed to request changes", err);
       toast.error("Failed to request changes. Please try again.");
@@ -676,7 +737,7 @@ const Offers: React.FC = () => {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedIssueForAction(issue);
+                            setSelectedIssueForAction({ issue, listing });
                             setShowApproveModal(true);
                           }}
                           className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"

@@ -8,8 +8,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 
-import { IssueStatus, IssueOfferStatus} from "../types";
+import { IssueOfferStatus, IssueStatus, IssueType } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
@@ -135,12 +136,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
         console.error("Issue not found:", id);
         return;
       }
-      await updateIssue({
-        ...issueToUpdate,
-        status: statusMapping[issueToUpdate.status as IssueStatus],
-        active: newActive,
-      }).unwrap();
-
+      await updateIssue(buildIssueUpdateBody(issueToUpdate, { active: newActive }, listingId ? Number(listingId) : undefined)).unwrap();
       refetch();
     } catch (error) {
       console.error("Error updating issue:", error);
@@ -157,9 +153,16 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const severityMap: Record<string, string> = {
+        low: "Low",
+        medium: "Medium", 
+        high: "High",
+      };
       await createIssue({
         report_id: Number(reportId),
+        listing_id: Number(listingId),
         ...formData,
+        severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: formData.status as IssueStatus,
       }).unwrap();
       refetch();

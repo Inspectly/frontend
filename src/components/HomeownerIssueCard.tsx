@@ -13,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTimes } from "@fortawesome/free-solid-svg-icons";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
@@ -137,10 +138,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     }
 
     try {
-      await updateIssue({
-        ...issue,
-        status: newStatus,
-      }).unwrap();
+      await updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id)).unwrap();
     } catch (error) {
       console.error("Failed to update status", error);
     }
@@ -158,11 +156,10 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       }).unwrap();
 
       // Complete the status change and mark review as completed
-      await updateIssue({
-        ...issue,
-        status: pendingStatusChange || "Status.COMPLETED",
+      await updateIssue(buildIssueUpdateBody(issue, { 
+        status: pendingStatusChange || "completed",
         review_status: "completed",
-      }).unwrap();
+      }, listing?.id)).unwrap();
 
       setReviewSubmitStatus("success");
       setIsReviewModalOpen(false);
@@ -253,11 +250,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     setIsActive(next);
 
     try {
-      await updateIssue({
-        ...issue,
-        status: statusMapping[issue.status as IssueStatus],
-        active: next,
-      }).unwrap();
+      await updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id)).unwrap();
     } catch (e) {
       setIsActive(!next); // rollback
       console.error("Failed to update visibility", e);
@@ -655,8 +648,17 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     }
                     handleOpenOfferModal={handleOpenOfferModal}
                     onOpenOfferModal={() => setIsOfferModalOpen(true)}
+                    issueVendorId={issue.vendor_id}
                     onOfferAccepted={async (acceptedOffer) => {
                       try {
+                        localStorage.setItem("pending_offer_payment", JSON.stringify({
+                          offer_id: acceptedOffer.id,
+                          issue_id: acceptedOffer.issue_id,
+                          vendor_id: acceptedOffer.vendor_id,
+                          price: acceptedOffer.price,
+                          comment_vendor: acceptedOffer.comment_vendor || "",
+                          comment_client: acceptedOffer.comment_client || "",
+                        }));
                         const response = await createCheckoutSession({
                           client_id: userId,
                           vendor_id: acceptedOffer.vendor_id,
@@ -665,6 +667,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                         window.location.href = response.session_url;
                       } catch (err: any) {
                         console.error("Stripe error", err);
+                        localStorage.removeItem("pending_offer_payment");
                         const errorDetail = err?.data?.detail || "";
                         if (errorDetail.includes("Stripe Information not found")) {
                           toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
@@ -880,10 +883,10 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={async () => {
                   try {
-                    await updateIssue({
-                      ...issue,
+                    await updateIssue(buildIssueUpdateBody(issue, { 
                       status: "completed",
-                    }).unwrap();
+                      review_status: "completed",
+                    }, listing?.id)).unwrap();
                     setShowApproveModal(false);
                   } catch (err) {
                     console.error("Failed to approve work", err);
@@ -938,11 +941,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 disabled={!changeRequestMessage.trim()}
                 onClick={async () => {
                   try {
-                    await updateIssue({
-                      ...issue,
-                      status: "in_progress",
-                      // TODO: Add change request message to issue or create a comment
-                    }).unwrap();
+                    // TODO: Add change request message to issue or create a comment
+                    await updateIssue(buildIssueUpdateBody(issue, { status: "in_progress" }, listing?.id)).unwrap();
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
                   } catch (err) {

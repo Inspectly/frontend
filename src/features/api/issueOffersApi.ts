@@ -1,10 +1,30 @@
 import { api } from "./apiSlice";
-import { IssueOffer } from "../../types";
+import { IssueOffer, IssueOfferStatus } from "../../types";
+
+// Normalize offer status from backend format to frontend enum
+const normalizeOfferStatus = (status: string): IssueOfferStatus => {
+  const normalized = status?.toLowerCase().replace("bid_status.", "") || "";
+  if (normalized === "accepted" || status === IssueOfferStatus.ACCEPTED) {
+    return IssueOfferStatus.ACCEPTED;
+  }
+  if (normalized === "rejected" || status === IssueOfferStatus.REJECTED) {
+    return IssueOfferStatus.REJECTED;
+  }
+  // Default to RECEIVED for "received" or any other status
+  return IssueOfferStatus.RECEIVED;
+};
+
+// Transform offer to normalize status
+const transformOffer = (offer: IssueOffer): IssueOffer => ({
+  ...offer,
+  status: normalizeOfferStatus(offer.status as unknown as string),
+});
 
 export const issueOffersApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getOffersByIssueId: builder.query<IssueOffer[], number>({
         query: (issueId) => `/issue_offers/issue/${issueId}`,
+        transformResponse: (response: IssueOffer[]) => response.map(transformOffer),
         providesTags: (result) =>
           result
             ? [
@@ -18,6 +38,7 @@ export const issueOffersApi = api.injectEndpoints({
       }),
       getOffersByVendorId: builder.query<IssueOffer[], number>({
         query: (vendorId) => `/issue_offers/vendor/${vendorId}`,
+        transformResponse: (response: IssueOffer[]) => response.map(transformOffer),
         providesTags: (result) =>
           result
             ? [
@@ -42,7 +63,10 @@ export const issueOffersApi = api.injectEndpoints({
           method: "PUT",
           body,
         }),
-        invalidatesTags: (result, error, body) => [{ type: "Offers", id: body.id }],
+        invalidatesTags: (result, error, body) => [
+          { type: "Offers", id: body.id },
+          { type: "Offers", id: "LIST" },
+        ],
       }),
       deleteOffer: builder.mutation({
         query: ({ id, issue_id }) => ({
@@ -50,7 +74,10 @@ export const issueOffersApi = api.injectEndpoints({
           method: "DELETE",
           body: { issue_id },
         }),
-        invalidatesTags: (result, error, { id }) => [{ type: "Offers", id }],
+        invalidatesTags: (result, error, { id }) => [
+          { type: "Offers", id },
+          { type: "Offers", id: "LIST" },
+        ],
       }),
   }),
 });
