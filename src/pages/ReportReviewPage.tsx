@@ -79,9 +79,17 @@ function statusToApi(status: string): string {
   return status; // already in simple format
 }
 
-function buildIssuePutBody(original: IssueType, patch: Partial<IssueType>) {
+function buildIssuePutBody(
+  original: IssueType,
+  patch: Partial<IssueType>,
+  fallbackListingId?: number
+) {
   const merged: any = {
     report_id: (patch as any).report_id ?? (original as any).report_id,
+    listing_id:
+      (patch as any).listing_id ??
+      (original as any).listing_id ??
+      fallbackListingId,
     vendor_id: (patch as any).vendor_id ?? (original as any).vendor_id ?? null,
 
     type: (patch as any).type ?? (original as any).type ?? "other",
@@ -358,7 +366,11 @@ export default function ReportReviewPage() {
       | undefined;
 
     if (rs === "not_reviewed") {
-      const body = buildIssuePutBody(selectedIssue, { review_status: "in_review" } as any);
+      const body = buildIssuePutBody(
+        selectedIssue,
+        { review_status: "in_review" } as any,
+        report?.listing_id ?? (listingId ? Number(listingId) : undefined)
+      );
       updateIssue(body)
         .unwrap()
         .then(() => refetch())
@@ -409,7 +421,11 @@ export default function ReportReviewPage() {
           onCreateIssueClick={() => setIsAddIssueModalOpen(true)}
           onAcceptOne={async (issue) => {
             try {
-              const body = buildIssuePutBody(issue, { review_status: "completed" } as any);
+              const body = buildIssuePutBody(
+                issue,
+                { review_status: "completed" } as any,
+                report?.listing_id ?? (listingId ? Number(listingId) : undefined)
+              );
               await updateIssue(body as any).unwrap();
               await refetch();
             } catch (e) {
@@ -459,7 +475,13 @@ export default function ReportReviewPage() {
                     resetSignal={resetSignal}
                     updateIssue={updateIssue}
                     refetch={refetch}
-                    buildIssuePutBody={buildIssuePutBody}
+                    buildIssuePutBody={(orig, patch) =>
+                      buildIssuePutBody(
+                        orig,
+                        patch,
+                        report?.listing_id ?? (listingId ? Number(listingId) : undefined)
+                      )
+                    }
                   />
                 )}
               </div>
@@ -510,7 +532,11 @@ export default function ReportReviewPage() {
 
           for (const it of pending) {
             try {
-              const body = buildIssuePutBody(it, { review_status: "completed" } as any);
+              const body = buildIssuePutBody(
+                it,
+                { review_status: "completed" } as any,
+                report?.listing_id ?? (listingId ? Number(listingId) : undefined)
+              );
               await updateIssue(body as any).unwrap();
               setCompleteCount((c) => c + 1);
             } catch {
