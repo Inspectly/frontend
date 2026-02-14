@@ -46,7 +46,7 @@ const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
 };
 
 const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
-  const { reportId, listingId } = useParams<{
+  const { listingId, reportId } = useParams<{
     listingId: string;
     reportId: string;
   }>();

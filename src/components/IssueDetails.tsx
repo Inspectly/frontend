@@ -35,7 +35,6 @@ import {
 } from "../features/api/issueOffersApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
-import { getCoordinatesFromAddress, Coordinates } from "../utils/mapUtils";
 import {
   useGetAssessmentsByIssueIdQuery,
   useGetAssessmentsByUsersInteractionIdQuery,
@@ -133,7 +132,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     isFetching: assessmentsFetching,
   } = assessmentsData;
 
-  const [, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -141,7 +139,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
   const [datesOpen, setDatesOpen] = useState(true);
 
   const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
-  const [, setLocationError] = useState(false);
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
@@ -377,22 +374,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     return map;
   }, [allVendors]);
 
-  useEffect(() => {
-    if (!listing) return;
-
-    const address = `${listing?.address}, ${listing?.city}, ${listing?.state}, ${listing?.country}`;
-
-    getCoordinatesFromAddress(address)
-      .then((coords) => {
-        setCoords(coords);
-        setLocationError(false);
-      })
-      .catch((error) => {
-        console.error("Location fetch failed:", error);
-        setLocationError(true);
-      });
-  }, [listing]);
-
   // Sync tab state: use defaultTab when provided (e.g. modal), otherwise URL
   useEffect(() => {
     if (defaultTab) {
@@ -582,7 +563,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
         {activeTab === "details" && (
           <div id="default-details" role="tabpanel">
             {/* Property Image - Full Width */}
-            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_url || listing?.image_url || null)}>
+            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url || null)}>
               <ImageComponent
                 src={issue.image_url || listing?.image_url}
                 fallback="/images/property_card_holder.jpg"
