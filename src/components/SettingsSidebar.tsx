@@ -17,7 +17,7 @@ const sections = [
 
 const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ selected, onSelect }) => {
   return (
-    <aside className="w-[250px] h-screen bg-white border-r border-gray-200 px-4 py-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white">
+    <aside className="w-full h-full bg-white px-4 py-3 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-white">
       <h2 className="text-3xl font-semibold text-neutral-900 mb-4 px-1">Settings</h2>
       <ul className="flex flex-col space-y-2">
         {sections.map((section) => (

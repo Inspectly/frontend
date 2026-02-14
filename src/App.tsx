@@ -33,7 +33,7 @@ import VendorJobsPage from "./pages/VendorJobsPage";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
-import Settings from "./pages/Settings";
+
 import ReportReviewPage from "./pages/ReportReviewPage";
 import Offers from "./pages/Offers";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
@@ -261,6 +261,7 @@ function App() {
             toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             isSidebarOpen={isSidebarOpen}
             pageTitle={getPageTitle(location.pathname)}
+            userType={userType}
           >
             <Routes>
               <Route
@@ -308,12 +309,6 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/issues/:issueId"
                 element={<PrivateRoute element={<Issue />} />}
-              />
-              <Route
-                path="/dashboard/settings"
-                element={
-                  userType ? (<PrivateRoute element={<Settings userType={userType} />} />) : (<Preloader />)
-                }
               />
               <Route
                 path="/listings/:listingId/reports/:reportId/review"
