@@ -31,8 +31,10 @@ import VendorJobsPage from "./pages/VendorJobsPage";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
-import Settings from "./pages/Settings";
+
 import ReportReviewPage from "./pages/ReportReviewPage";
+import Offers from "./pages/Offers";
+import VendorCelebrationListener from "./components/VendorCelebrationListener";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
 import Footer from "./components/Footer";
@@ -48,6 +50,7 @@ function App() {
       '/dashboard': 'Dashboard',
       '/marketplace': 'Marketplace',
       '/listings': 'Listings',
+      '/offers': 'Offers',
       '/reports': 'Reports',
       '/issues': 'Issues',
       '/pricing': 'Pricing',
@@ -221,6 +224,9 @@ function App() {
   return (
     <>
       <ToastContainer />
+      {authenticated && userType === "vendor" && userInfo && (
+        <VendorCelebrationListener userId={userInfo.id} />
+      )}
       {authenticated ? (
         <div className="flex min-h-screen w-screen overflow-x-hidden">
           <DashboardSidebar
@@ -232,6 +238,7 @@ function App() {
             toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
             isSidebarOpen={isSidebarOpen}
             pageTitle={getPageTitle(location.pathname)}
+            userType={userType}
           >
             <Routes>
               <Route
@@ -251,6 +258,10 @@ function App() {
               <Route
                 path="/listings"
                 element={<PrivateRoute element={<Listings />} />}
+              />
+              <Route
+                path="/offers"
+                element={<PrivateRoute element={<Offers />} />}
               />
               <Route
                 path="/marketplace"
@@ -275,12 +286,6 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/issues/:issueId"
                 element={<PrivateRoute element={<Issue />} />}
-              />
-              <Route
-                path="/dashboard/settings"
-                element={
-                  userType ? (<PrivateRoute element={<Settings userType={userType} />} />) : (<Preloader />)
-                }
               />
               <Route
                 path="/listings/:listingId/reports/:reportId/review"

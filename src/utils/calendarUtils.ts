@@ -1,3 +1,12 @@
+/**
+ * Helper to parse time strings as UTC.
+ * Backend may strip the Z suffix, so we append it if missing.
+ */
+export const parseAsUTC = (timeStr: string): Date => {
+  if (!timeStr) return new Date();
+  return new Date(timeStr.endsWith("Z") ? timeStr : timeStr + "Z");
+};
+
 export function generateCalendarLinks(assessment: {
     start_time: string;
     end_time: string;
@@ -14,8 +23,8 @@ export function generateCalendarLinks(assessment: {
       location = "Online",
     } = assessment;
   
-    const start = new Date(start_time);
-    const end = new Date(end_time);
+    const start = parseAsUTC(start_time);
+    const end = parseAsUTC(end_time);
   
     const formatDateForCalendar = (date: Date) =>
       date.toISOString().replace(/[-:]|\.\d{3}/g, "");

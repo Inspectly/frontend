@@ -6,8 +6,10 @@ import {
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAdd, faDownload } from "@fortawesome/free-solid-svg-icons";
-import { generateCalendarLinks } from "../utils/calendarUtils";
+import { generateCalendarLinks, parseAsUTC } from "../utils/calendarUtils";
 import VendorName from "./VendorName";
+import { BUTTON_HOVER } from "../styles/shared";
+import CalendarSelector from "./CalendarSelector";
 
 type AssessmentReviewTabProps = {
   assessments: IssueAssessment[];
@@ -15,21 +17,30 @@ type AssessmentReviewTabProps = {
     accepted: IssueAssessment,
     rejected: IssueAssessment[]
   ) => Promise<void> | void;
+  onRejectSingle?: (assessment: IssueAssessment) => Promise<void>;
   userId?: number | null;
   userType?: string;
   vendorIdToName: Record<number, string>;
   onlyShowVendorId?: number;
   assessmentsLoading?: boolean;
+  // Props for "Propose New Times" functionality
+  issueId?: number;
+  getUsersInteractionId?: (vendorId: number) => string;
+  onProposalSubmitted?: () => Promise<void>;
 };
 
 const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
   assessments,
   onAccept,
+  onRejectSingle,
   userId,
   userType,
   vendorIdToName,
   onlyShowVendorId,
   assessmentsLoading = false,
+  issueId,
+  getUsersInteractionId,
+  onProposalSubmitted,
 }) => {
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
@@ -38,6 +49,14 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalMinDuration, setModalMinDuration] = useState<number | null>(null);
+  
+  // State for "Propose New Times" modal
+  const [showProposeModal, setShowProposeModal] = useState(false);
+  const [proposeForVendor, setProposeForVendor] = useState<{
+    vendorId: number;
+    vendorName: string;
+    minDuration: number;
+  } | null>(null);
 
   // Group by vendor
   const vendorGroups = useMemo(() => {
@@ -85,7 +104,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
     Object.values(groups).forEach((g) => {
       g.assessments.sort(
         (a, b) =>
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+          parseAsUTC(a.start_time).getTime() - parseAsUTC(b.start_time).getTime()
       );
     });
 
@@ -155,14 +174,14 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
   };
 
   const statusColor = (status?: string | null) => {
-    if (!status) return "text-yellow-600";
+    if (!status) return "text-gold-700";
     const s = status.toLowerCase();
     if (s === IssueAssessmentStatus.ACCEPTED.toLowerCase())
-      return "text-green-600";
+      return "text-emerald-600";
     if (s === IssueAssessmentStatus.REJECTED.toLowerCase())
       return "text-red-600";
     if (s === IssueAssessmentStatus.RECEIVED.toLowerCase())
-      return "text-yellow-600";
+      return "text-gold-700";
     return "text-gray-700";
   };
 
@@ -212,14 +231,14 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
     vendorId: number
   ) => {
     const durationMinutes =
-      (new Date(assessment.end_time).getTime() -
-        new Date(assessment.start_time).getTime()) /
+      (parseAsUTC(assessment.end_time).getTime() -
+        parseAsUTC(assessment.start_time).getTime()) /
       60000;
 
     if (minDuration && durationMinutes > minDuration) {
       const slots: string[] = [];
       const slotCount = Math.floor(durationMinutes / minDuration);
-      const base = new Date(assessment.start_time);
+      const base = parseAsUTC(assessment.start_time);
 
       for (let i = 0; i < slotCount; i++) {
         const slotStart = new Date(base.getTime() + i * minDuration * 60000);
@@ -261,7 +280,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
     <div className="space-y-3 relative">
       {isSubmitting && (
         <div className="fixed inset-0 z-50 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent" />
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gold border-t-transparent" />
         </div>
       )}
 
@@ -288,8 +307,8 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                     className={`w-full px-4 py-3 rounded-2xl border flex items-center justify-between gap-3 text-left transition
                       ${
                         isActive
-                          ? "bg-blue-50 border-blue-500 text-blue-700"
-                          : "bg-white border-gray-200 text-gray-900 hover:bg-gray-50"
+                          ? "bg-gold-50 border-gold text-gray-900"
+                          : "bg-white border-gray-200 text-gray-900 hover:bg-foreground hover:text-background"
                       }`}
                   >
                     <div className="flex min-w-0 flex-col">
@@ -321,7 +340,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                         className={`min-w-[1.75rem] h-6 px-1.5 rounded-full flex items-center justify-center text-[0.72rem] font-semibold
                           ${
                             proposals.length
-                              ? "bg-blue-600 text-white"
+                              ? "bg-gold text-white"
                               : "bg-gray-200 text-gray-700"
                           }`}
                       >
@@ -329,7 +348,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                       </span>
 
                       {accepted && (
-                        <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[0.62rem] font-semibold whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[0.62rem] font-semibold whitespace-nowrap">
                           Accepted
                         </span>
                       )}
@@ -350,7 +369,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
             ) : (
               <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5 h-[420px] flex flex-col">
                 <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                  <span className="cursor-pointer text-blue-600 hover:underline">
+                  <span className="cursor-pointer text-gold hover:underline">
                     <VendorName vendorId={activeVendorId} />
                   </span>
                   &apos;s Proposals
@@ -364,7 +383,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                   });
 
                   return (
-                    <div className="bg-green-50 text-green-700 p-3 rounded-md text-sm mb-3">
+                    <div className="bg-gold-50 text-gray-900 p-3 rounded-md text-sm mb-3 border border-gold-200">
                       <strong>Scheduled:</strong>{" "}
                       {new Date(
                         activeAccepted.start_time
@@ -381,7 +400,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                             href={googleCalendarUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 underline text-sm"
+                            className="text-gold-700 hover:text-gray-900 text-sm inline-flex items-center gap-1"
                           >
                             <FontAwesomeIcon icon={faAdd} /> Add to Google
                             Calendar
@@ -389,7 +408,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                           <a
                             href={icsUrl}
                             download="assessment-invite.ics"
-                            className="text-blue-600 underline text-sm"
+                            className="text-gold-700 hover:text-gray-900 text-sm inline-flex items-center gap-1"
                           >
                             <FontAwesomeIcon icon={faDownload} /> Download ICS
                           </a>
@@ -436,36 +455,128 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
 
                         {isPending ? (
                           userId !== assessment.user_id ? (
-                            <button
-                              onClick={async () =>
-                                handleAccept(
-                                  assessment,
-                                  activeMinDuration,
-                                  activeVendorId
-                                )
-                              }
-                              className="mt-2 md:mt-0 bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-md text-xs transition"
-                              disabled={isSubmitting}
-                            >
-                              Accept
-                            </button>
+                            <div className="flex items-center gap-2 mt-2 md:mt-0">
+                              <button
+                                onClick={async () =>
+                                  handleAccept(
+                                    assessment,
+                                    activeMinDuration,
+                                    activeVendorId
+                                  )
+                                }
+                                className={`bg-gray-900 text-white px-4 py-1.5 rounded-lg text-xs font-medium ${BUTTON_HOVER}`}
+                                disabled={isSubmitting}
+                              >
+                                Accept
+                              </button>
+                              {onRejectSingle && (
+                                <button
+                                  onClick={async () => {
+                                    setIsSubmitting(true);
+                                    try {
+                                      await onRejectSingle(assessment);
+                                    } catch (err) {
+                                      console.error("Error rejecting assessment:", err);
+                                    } finally {
+                                      setIsSubmitting(false);
+                                    }
+                                  }}
+                                  className={`bg-white text-gray-700 px-4 py-1.5 rounded-lg text-xs font-medium border border-gray-300 ${BUTTON_HOVER}`}
+                                  disabled={isSubmitting}
+                                >
+                                  Reject
+                                </button>
+                              )}
+                            </div>
                           ) : (
-                            <p className="text-xs text-gray-500 mt-2 md:mt-0">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded mt-2 md:mt-0">
                               Waiting for{" "}
-                              {userType === "vendor" ? "client" : "vendor"} to
-                              respond.
-                            </p>
+                              {userType === "vendor" ? "client" : "vendor"}
+                            </span>
                           )
                         ) : null}
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Propose New Times button - only show if no accepted assessment and props are available */}
+                {!activeAccepted && issueId && getUsersInteractionId && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => {
+                        setProposeForVendor({
+                          vendorId: activeVendorId,
+                          vendorName: activeGroup?.vendorName || "",
+                          minDuration: activeMinDuration,
+                        });
+                        setShowProposeModal(true);
+                      }}
+                      className={`w-full px-4 py-2.5 bg-gold text-white text-sm font-medium rounded-lg ${BUTTON_HOVER} flex items-center justify-center gap-2`}
+                    >
+                      <FontAwesomeIcon icon={faAdd} className="w-3 h-3" />
+                      {userType === "vendor" ? "Modify Schedule" : "Propose New Times"}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Propose New Times modal with CalendarSelector */}
+      {showProposeModal && proposeForVendor && issueId && getUsersInteractionId && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl relative h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 z-10 bg-white px-6 pt-4 pb-2 border-b flex justify-between items-center">
+              <h2 className="text-lg font-semibold">
+                Propose Availability for{" "}
+                <VendorName vendorId={proposeForVendor.vendorId} showRating />
+              </h2>
+              <button
+                className="text-3xl font-light text-gray-600 hover:text-gray-800"
+                onClick={() => setShowProposeModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 pt-4">
+              {userType === "client" && proposeForVendor.minDuration > 0 && (
+                <p className="text-sm text-gray-600 mb-4">
+                  This vendor requires a minimum assessment time of{" "}
+                  <strong>{proposeForVendor.minDuration} minutes</strong>.
+                </p>
+              )}
+              <CalendarSelector
+                issueId={issueId}
+                onSubmitted={async () => {
+                  if (onProposalSubmitted) {
+                    await onProposalSubmitted();
+                  }
+                  setShowProposeModal(false);
+                }}
+                usersInteractionId={getUsersInteractionId(proposeForVendor.vendorId)}
+                minDuration={proposeForVendor.minDuration}
+                existingAssessments={assessments
+                  .filter(
+                    (a) =>
+                      Number(a.users_interaction_id.split("_")[1]) ===
+                      proposeForVendor.vendorId
+                  )
+                  .map((a) => ({
+                    ...a,
+                    title: "Available",
+                    start: parseAsUTC(a.start_time),
+                    end: parseAsUTC(a.end_time),
+                    isNew: false,
+                  }))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Time-splitting modal (when slot > minDuration) */}
       {showTimeModal && selectedAssessment && (
@@ -498,7 +609,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
 
             <div className="flex justify-end gap-3">
               <button
-                className="px-4 py-2 bg-gray-300 rounded"
+                className={`px-4 py-2 bg-white text-gray-700 rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
                 onClick={() => {
                   setShowTimeModal(false);
                   setSelectedAssessment(null);
@@ -508,7 +619,7 @@ const AssessmentReviewTab: React.FC<AssessmentReviewTabProps> = ({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-green-600 text-white rounded"
+                className={`px-4 py-2 bg-gray-900 text-white rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={!selectedSlot}
                 onClick={async () => {
                   if (!selectedAssessment || !selectedSlot) return;

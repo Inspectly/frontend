@@ -29,13 +29,17 @@ export const issuesApi = api.injectEndpoints({
         vendor_assigned?: boolean;
       }
     >({
+      providesTags: ["Issues"],
       query: ({ offset, limit, search = "", type = "", city = "", state = "", vendor_assigned }) => {
         const params = new URLSearchParams({
           offset: offset.toString(),
           limit: limit.toString(),
-          vendor_assigned: vendor_assigned ? "true" : "false",
         });
     
+        // Only add vendor_assigned if explicitly set (not undefined)
+        if (vendor_assigned !== undefined) {
+          params.append("vendor_assigned", vendor_assigned ? "true" : "false");
+        }
         if (search) params.append("search", search);
         if (type) params.append("type", type);
         if (city) params.append("city", city);
@@ -59,6 +63,7 @@ export const issuesApi = api.injectEndpoints({
 
     getIssueById: builder.query<IssueType, string>({
       query: (id) => `issues/${id}`,
+      providesTags: (result, error, id) => [{ type: "Issues", id }],
       transformResponse: (response: IssueType) => {
         // Transform status from backend format to frontend format
         return {
@@ -128,12 +133,16 @@ export const issuesApi = api.injectEndpoints({
 
         try {
           await queryFulfilled;
+          dispatch(issuesApi.endpoints.getIssues.initiate(undefined, { forceRefetch: true }));
+          dispatch(issuesApi.endpoints.getIssueById.initiate(updatedIssue.id.toString(), { forceRefetch: true }));
+          dispatch(issuesApi.endpoints.getPaginatedIssues.initiate({ offset: 0, limit: 50000, search: "", type: "", city: "", state: "", vendor_assigned: false }, { forceRefetch: true }));
         } catch {
           patchResult.undo();
           patchIssuesList.undo();
           patchPaginatedIssues.undo();
         }
       },
+      invalidatesTags: ["Issues"],
     }),
 
     createIssue: builder.mutation<IssueType, Partial<IssueType>>({
@@ -144,27 +153,14 @@ export const issuesApi = api.injectEndpoints({
       }),
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
-          const { data: createdIssue } = await queryFulfilled;
-          
-          // Add the new issue to the main issues list
-          dispatch(
-            issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
-              draft.push(createdIssue);
-            })
-          );
-
-          // Update paginated issues cache total count
-          dispatch(
-            issuesApi.util.updateQueryData("getPaginatedIssues", {} as any, (draft) => {
-              if (draft.total) {
-                draft.total.count += 1;
-              }
-            })
-          );
+          await queryFulfilled;
+          dispatch(issuesApi.endpoints.getIssues.initiate(undefined, { forceRefetch: true }));
+          dispatch(issuesApi.endpoints.getPaginatedIssues.initiate({ offset: 0, limit: 50000, search: "", type: "", city: "", state: "", vendor_assigned: false }, { forceRefetch: true }));
         } catch {
           // Error is handled by the component
         }
       },
+      invalidatesTags: ["Issues"],
     }),
 
     /** ---------- DELETE (optimistic removal) ---------- */

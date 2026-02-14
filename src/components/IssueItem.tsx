@@ -12,14 +12,16 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { formatRelativeTime } from "../utils/dateUtils";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { CARD_HOVER } from "../styles/shared";
 
 interface IssueItemProps {
   issue: IssueType;
   userType?: string;
   address?: IssueAddress;
+  onClick?: (issue: IssueType) => void;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
+const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -39,26 +41,32 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address }) => {
 
   const severityConfig = getSeverityIcon(issue.severity);
 
+  const handleClick = () => {
+    if (onClick) {
+      onClick(issue);
+    } else {
+      const currentParams = new URLSearchParams(searchParams);
+      const paramsString = currentParams.toString();
+      const url = `/marketplace/${issue.id}${paramsString ? `?${paramsString}` : ''}`;
+      navigate(url);
+    }
+  };
+
   return (
     <div
-      onClick={() => {
-        const currentParams = new URLSearchParams(searchParams);
-        const paramsString = currentParams.toString();
-        const url = `/marketplace/${issue.id}${paramsString ? `?${paramsString}` : ''}`;
-        navigate(url);
-      }}
-      className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white h-[350px]"
+      onClick={handleClick}
+      className={`group cursor-pointer border border-gray-200 rounded-xl overflow-hidden bg-white h-[350px] ${CARD_HOVER.LIFT}`}
     >
       {/* Image Section - Top 3/4 */}
       <div className="h-3/4 overflow-hidden relative">
         <ImageComponent
-          src={issue.image_url || "/images/property_card_holder.jpg"}
+          src={issue.image_urls || "/images/property_card_holder.jpg"}
           fallback="/images/property_card_holder.jpg"
           className="w-full h-full object-cover"
         />
         {/* Issue Type Label - Bottom Left Corner of Image */}
         <div className="absolute bottom-3 left-3">
-          <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
+          <span className="text-xs font-semibold text-white bg-gray-900/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
             {normalizeAndCapitalize(issue.type)}
           </span>
         </div>

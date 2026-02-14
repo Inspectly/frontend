@@ -203,6 +203,7 @@ export type IssueAddress = {
 export type IssueType = {
   id: number;
   report_id: number;
+  listing_id: number;
   type: string;
   summary: string;
   description: string;

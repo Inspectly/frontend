@@ -1,13 +1,26 @@
-
 import {
   useGetReportByIdQuery,
   useUpdateReportMutation,
 } from "../features/api/reportsApi";
 
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faWrench,
+  faBolt,
+  faBuilding,
+  faTint,
+  faPaintRoller,
+  faBroom,
+  faWind,
+  faHouse,
+  faSnowflake,
+  faGripLines,
+  faLayerGroup,
+  faHammer,
+  faLeaf,
+  faQuestionCircle,
   faListCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -19,13 +32,30 @@ import {
 } from "../features/api/issuesApi";
 
 import { IssueStatus, IssueType, statusMapping } from "../types";
-import { ReportImage } from "../components/IssueImageManager";
+import { IssueImage, ReportImage } from "../components/IssueImageManager";
 import ReviewIssueEditor from "../components/ReviewIssueEditor";
 import ReviewSidebar from "../components/ReviewSidebar";
 
 /* ---------------- helpers & constants ---------------- */
 
 type RouteParams = { listingId?: string; reportId?: string };
+
+const issueIcons: Record<string, any> = {
+  general: faWrench,
+  structural: faBuilding,
+  electrician: faBolt,
+  plumber: faTint,
+  painter: faPaintRoller,
+  cleaner: faBroom,
+  hvac: faWind,
+  roofing: faHouse,
+  insulation: faSnowflake,
+  drywall: faGripLines,
+  plaster: faLayerGroup,
+  carpentry: faHammer,
+  landscaping: faLeaf,
+  other: faQuestionCircle,
+};
 
 const VENDOR_TYPE_OPTIONS = [
   "GENERAL",
@@ -122,7 +152,7 @@ function buildIssuePutBody(original: IssueType, patch: Partial<IssueType>) {
 function buildReportPutBody(r: any, status: "not_reviewed" | "in_review" | "completed") {
   if (!r) return null;
   return {
-    id: r.id,
+    id: r.id,              
     user_id: r.user_id,
     listing_id: r.listing_id,
     aws_link: r.aws_link ?? "",
@@ -246,7 +276,7 @@ export default function ReportReviewPage() {
     if (current === "not_reviewed") {
       const body = buildReportPutBody(report, "in_review");
       if (body) {
-        updateReport(body as any).unwrap().catch(() => { });
+        updateReport(body as any).unwrap().catch(() => {});
       }
     }
   }, [report, updateReport]);
@@ -258,8 +288,8 @@ export default function ReportReviewPage() {
       const imgs = Array.isArray((iss as any).images)
         ? ((iss as any).images as string[])
         : (iss as any).image_url
-          ? [String((iss as any).image_url)]
-          : [];
+        ? [String((iss as any).image_url)]
+        : [];
       imgs.forEach((u) => {
         if (u && !urls.includes(u)) urls.push(u);
       });
@@ -313,6 +343,7 @@ export default function ReportReviewPage() {
       setIsCreating(true);
       const created = await createIssue({
         report_id: Number(reportId),
+        listing_id: Number(listingId),
         type: formData.type,
         description: formData.description,
         summary: formData.summary,
@@ -374,28 +405,28 @@ export default function ReportReviewPage() {
       {/* Header / breadcrumb */}
       <header className="sticky top-0 z-10 bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 h-14 flex gap-3 justify-end">
-          <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
-            <li className="font-medium">
-              <a
-                href="/listings"
-                className="flex items-center gap-2 hover:text-blue-400"
-              >
-                <FontAwesomeIcon icon={faListCheck} className="size-4" />
-                Listings
-              </a>
-            </li>
-            <li>-</li>
-            <li className="font-medium">
-              <a
-                href={`/listings/${listingId}`}
-                className="flex items-center gap-2 hover:text-blue-400"
-              >
-                Reports
-              </a>
-            </li>
-            <li>-</li>
-            <li className="font-medium">Review Report</li>
-          </ul>
+                  <ul className="text-lg text-gray-600 flex items-center gap-[6px]">
+                    <li className="font-medium">
+                      <a
+                        href="/listings"
+                        className="flex items-center gap-2 hover:text-blue-400"
+                      >
+                        <FontAwesomeIcon icon={faListCheck} className="size-4" />
+                        Listings
+                      </a>
+                    </li>
+                    <li>-</li>
+                    <li className="font-medium">
+                      <a
+                        href={`/listings/${listingId}`}
+                        className="flex items-center gap-2 hover:text-blue-400"
+                      >
+                        Reports
+                      </a>
+                    </li>
+                    <li>-</li>
+                    <li className="font-medium">Review Report</li>
+                  </ul>
         </div>
       </header>
 
@@ -541,7 +572,7 @@ export default function ReportReviewPage() {
             if (payload) {
               await updateReport(payload as any).unwrap();
             }
-            navigate(`/listings/${listingId ?? ""}/reports/${reportId ?? ""}`);
+            navigate(`/listings/${listingId ?? ""}`);
           } catch (e) {
             console.error("Failed to mark report completed:", (e as any)?.data ?? e);
           } finally {

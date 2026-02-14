@@ -1,5 +1,5 @@
-/* Import distinctive fonts */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Import distinctive fonts - adding elegant serif for headlines */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,6 +9,7 @@
 :root {
   /* Typography */
   --font-display: 'Outfit', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* ========================================
@@ -87,6 +88,10 @@ body {
 /* Utility classes for the design system */
 .font-display {
   font-family: var(--font-display);
+}
+
+.font-serif {
+  font-family: var(--font-serif);
 }
 
 .font-mono {
@@ -202,16 +207,38 @@ body {
 
 /* Dashboard card base */
 .dashboard-card {
-  background: white;
-  border-radius: 1.25rem;
-  border: 1px solid #e4e4e7;
+  background: linear-gradient(145deg, #ffffff 0%, #fafafa 100%);
+  border-radius: 1rem;
+  border: 1px solid #e5e5e5;
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .dashboard-card:hover {
-  border-color: #d4d4d8;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  border-color: #d1d5db;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-3px);
+}
+
+/* Card header accent */
+.dashboard-card-header {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.dashboard-card-header::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  border-radius: 2px;
 }
 
 /* Hero gradient backgrounds - Dark with Gold accent */

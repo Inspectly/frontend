@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faMagnifyingGlass,
@@ -15,19 +15,24 @@ import {
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { IssueStatus, statusMapping, statusOptions } from "../types";
+import { toast } from "react-hot-toast";
+import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 
 import VendorName from "../components/VendorName";
 import {
   useGetIssueByIdQuery,
   useGetIssuesQuery,
+  useUpdateIssueMutation,
 } from "../features/api/issuesApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
+import { useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import IssueDetails from "../components/IssueDetails";
 
 const Issue: React.FC = () => {
   const navigate = useNavigate();
-const [searchParams] = useSearchParams();
-const paymentStatus = searchParams.get("payment");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paymentStatus = searchParams.get("payment");
+  const sessionId = searchParams.get("session_id");
 
   const { listingId, reportId, issueId } = useParams<{
     listingId: string;
@@ -41,15 +46,73 @@ const paymentStatus = searchParams.get("payment");
     data: issue,
     isLoading,
     error,
+    refetch: refetchIssue,
   } = useGetIssueByIdQuery(validIssueId, {
-    skip: !validIssueId, // Skip fetching if issueId is missing
+    skip: !validIssueId,
   });
 
-  const { data: issues } = useGetIssuesQuery();
+  const { data: issues, refetch: refetchIssues } = useGetIssuesQuery();
 
   const { data: listing } = useGetListingByIdQuery(Number(listingId), {
-    skip: !listingId, // Skip fetching if listingId is missing
+    skip: !listingId,
   });
+
+  const [updateOffer] = useUpdateOfferMutation();
+  const [updateIssue] = useUpdateIssueMutation();
+
+  const [pendingIssueUpdate, setPendingIssueUpdate] = useState<{vendor_id: number} | null>(null);
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  useEffect(() => {
+    const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
+    const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
+    
+    if ((sessionId || paymentStatus === "success") && !paymentVerified && pendingPayment) {
+      setPaymentVerified(true);
+      
+      (async () => {
+        try {
+          await updateOffer({
+            id: pendingPayment.offer_id,
+            issue_id: pendingPayment.issue_id,
+            vendor_id: pendingPayment.vendor_id,
+            price: pendingPayment.price,
+            status: "accepted",
+            user_last_viewed: new Date().toISOString(),
+            comment_vendor: pendingPayment.comment_vendor || "",
+            comment_client: pendingPayment.comment_client || "",
+          }).unwrap();
+          
+          setPendingIssueUpdate({ vendor_id: pendingPayment.vendor_id });
+          toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
+          localStorage.removeItem("pending_offer_payment");
+        } catch {
+          toast.error("Payment completed but offer update failed. Please refresh.");
+        }
+        
+        searchParams.delete("session_id");
+        searchParams.delete("payment");
+        setSearchParams(searchParams, { replace: true });
+      })();
+    }
+  }, [sessionId, paymentStatus, paymentVerified, updateOffer, searchParams, setSearchParams]);
+  
+  useEffect(() => {
+    if (pendingIssueUpdate && issue && !isLoading) {
+      (async () => {
+        try {
+          await updateIssue(buildIssueUpdateBody(issue, { 
+            vendor_id: pendingIssueUpdate.vendor_id,
+            status: "in_progress"
+          }, listing?.id)).unwrap();
+          refetchIssue();
+          refetchIssues();
+        } catch {
+          // Issue update failed silently - offer is already accepted
+        }
+        setPendingIssueUpdate(null);
+      })();
+    }
+  }, [pendingIssueUpdate, issue, isLoading, listing, updateIssue, refetchIssue, refetchIssues]);
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -206,8 +269,8 @@ const paymentStatus = searchParams.get("payment");
                 </p>
 
                 {/* Severity & Vendor */}
-                <p className="mt-12 text-sm flex flex-wrap justify-between gap-2">
-                  Severity:{" "}
+                <div className="mt-12 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Severity:</span>
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-2 h-2 rounded-full ${
@@ -236,9 +299,9 @@ const paymentStatus = searchParams.get("payment");
                       {filteredIssue.severity}
                     </span>
                   </div>
-                </p>
-                <p className="mt-1 text-sm flex flex-wrap justify-between gap-2">
-                  Vendor:{" "}
+                </div>
+                <div className="mt-1 text-sm flex flex-wrap justify-between gap-2">
+                  <span>Vendor:</span>
                   <span
                     className={`text-md font-semibold ${
                       filteredIssue.id === issue.id
@@ -256,7 +319,7 @@ const paymentStatus = searchParams.get("payment");
                       "N/A"
                     )}
                   </span>
-                </p>
+                </div>
 
                 {/* Category Badge */}
                 <span

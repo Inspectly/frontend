@@ -13,6 +13,7 @@ import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import GroupedIssuesModal from "./GroupedIssuesModal";
 import { formatRelativeTime } from "../utils/dateUtils";
+import { CARD_HOVER } from "../styles/shared";
 
 interface AddressGroupCardProps {
   address: IssueAddress;
@@ -59,12 +60,12 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
     <>
     <div
       onClick={handleCardClick}
-      className="group cursor-pointer border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all bg-white h-[350px]"
+      className={`group cursor-pointer border border-gray-200 rounded-xl overflow-hidden bg-white h-[350px] ${CARD_HOVER.LIFT}`}
     >
       {/* Image Section - Top 3/4 */}
       <div className="h-3/4 overflow-hidden relative">
           <ImageComponent
-            src={currentIssue.image_url || "/images/property_card_holder.jpg"}
+            src={currentIssue.image_urls || "/images/property_card_holder.jpg"}
             fallback="/images/property_card_holder.jpg"
             className="w-full h-full object-cover"
           />
@@ -72,7 +73,7 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
         {/* Issue Type and Count Labels - Bottom Left Corner of Image */}
         <div className="absolute bottom-3 left-3 flex items-center gap-2">
           <div className="relative group">
-            <span className="text-xs font-semibold text-white bg-blue-600/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg flex items-center gap-1">
+            <span className="text-xs font-semibold text-white bg-gray-900/90 px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg flex items-center gap-1">
               {(() => {
                 const uniqueTypes = [...new Set(issues.map(issue => issue.type))];
                 return uniqueTypes.length > 1 ? 'Mixed Types' : currentIssue.type;
@@ -119,7 +120,7 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
             })()}
           </div>
           
-          <div className="bg-blue-600/90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
+          <div className="bg-gold/90 text-white text-xs font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg">
             {issues.length} Issue{issues.length > 1 ? 's' : ''}
           </div>
         </div>
