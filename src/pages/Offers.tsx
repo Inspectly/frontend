@@ -32,6 +32,7 @@ import {
 import { useGetIssuesQuery, useUpdateIssueMutation } from "../features/api/issuesApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
+import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { issueOffersApi, useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing, Report } from "../types";
@@ -60,6 +61,7 @@ const Offers: React.FC = () => {
   const { data: issues = [], isLoading: isLoadingIssues, refetch: refetchIssues } = useGetIssuesQuery();
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
+  const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), { skip: !userId });
   
   const [updateOffer] = useUpdateOfferMutation();
   const [updateIssue] = useUpdateIssueMutation();
@@ -341,7 +343,7 @@ const Offers: React.FC = () => {
       localStorage.setItem("pending_offer_payment", JSON.stringify(pendingData));
       
       const response = await createCheckoutSession({
-        client_id: userId!,
+        client_id: (client?.id ?? userId)!,
         vendor_id: offer.vendor_id,
         offer_id: offer.id,
       }).unwrap();
@@ -351,7 +353,7 @@ const Offers: React.FC = () => {
       localStorage.removeItem("pending_offer_payment");
       const errorDetail = err?.data?.detail || "";
       if (errorDetail.includes("Stripe Information not found")) {
-        toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
+        toast.error("Payment setup required. Add a payment method in Settings (gear icon → Payment Settings), or the vendor may need to complete Stripe setup.");
       } else {
         toast.error("Could not start payment session. Please try again.");
       }
