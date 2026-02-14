@@ -5,9 +5,9 @@ import {
   faRotateRight,
   faCircleNotch,
   faTriangleExclamation,
-  faClock,
   faCheckCircle,
   faFileLines,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
 import { ExtractionStatus, ReportCardMode, ReviewStatus } from "../types";
 
@@ -28,6 +28,8 @@ interface Props {
 
 const extractionBadge = (status: ExtractionStatus) => {
   switch (status) {
+    case "PENDING":
+      return { label: "Queued", icon: faClock };
     case "IN_PROGRESS":
       return { label: "Extracting…", icon: faCircleNotch, spin: true };
     case "FAILED":
@@ -47,6 +49,12 @@ const primaryForMode = (mode: ReportCardMode) => {
       return { label: "Continue Review", style: "bg-indigo-500 hover:bg-indigo-600 text-white" };
     case "VIEW":
       return { label: "View", style: "bg-slate-800 hover:bg-slate-900 text-white" };
+    case "PENDING":
+      return { label: "Queued", style: "bg-gray-100 text-gray-400 cursor-not-allowed", disabled: true };
+    case "FAILED":
+      return { label: "Failed", style: "bg-rose-100 text-rose-800 cursor-not-allowed", disabled: true };
+    case "EXTRACTING":
+      return { label: "Extracting...", style: "bg-gray-100 text-gray-400 cursor-not-allowed", disabled: true };
     case "NONE":
     default:
       return null;
@@ -106,9 +114,10 @@ const ReportCard: React.FC<Props> = ({
           <button
             className={`flex-1 h-9 rounded-lg text-sm font-semibold inline-flex items-center justify-center gap-2 ${primary.style}`}
             onClick={handlePrimary}
+            disabled={primary.disabled}
           >
             {primary.label}
-            <FontAwesomeIcon icon={faArrowRight} />
+            {!primary.disabled && <FontAwesomeIcon icon={faArrowRight} />}
           </button>
         ) : (
           <button

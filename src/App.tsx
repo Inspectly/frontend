@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./App.css";
-import Home from "./pages/Home";
 import Preloader from "./components/Preloader";
-import Header from "./components/Header";
-import { SectionRefs, User } from "./types";
+import { User } from "./types";
 import Login from "./pages/Login";
 import Signup from "./pages/signup";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -78,15 +76,6 @@ function App() {
   const [userType, setUserType] = useState<string | null>(null);
   const [loadingUserType, setLoadingUserType] = useState(true);
 
-  const refs: SectionRefs = {
-    heroRef: useRef<HTMLDivElement>(null),
-    featuresRef: useRef<HTMLDivElement>(null),
-    howItWorksRef: useRef<HTMLDivElement>(null),
-    teamRef: useRef<HTMLDivElement>(null),
-    plansRef: useRef<HTMLDivElement>(null),
-    faqsRef: useRef<HTMLDivElement>(null),
-  };
-
   const plans = [
     {
       title: "Basic",
@@ -129,22 +118,6 @@ function App() {
       ],
     },
   ];
-
-  const scrollToSection = (
-    ref: React.RefObject<HTMLElement>,
-    offset: number = -50
-  ) => {
-    if (ref.current) {
-      const elementPosition =
-        ref.current.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = elementPosition + offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth", // Smooth scrolling to the adjusted position
-      });
-    }
-  };
 
   const handleLogout = async () => {
     try {

@@ -187,7 +187,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     setter((prev) => !prev);
   };
 
-  const handleStatusChange = (id: number, newStatus: string) => {
+  const handleStatusChange = (newStatus: string) => {
     // Backend expects simple format: "open", "in_progress", "review", "completed"
     updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id));
 
@@ -677,7 +677,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                                       className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` === issue.status ? "font-semibold bg-gray-50" : ""}`}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleStatusChange(issue.id, value);
+                                        handleStatusChange(value);
                                       }}
                                     >
                                       {label}

@@ -151,7 +151,7 @@ export const issuesApi = api.injectEndpoints({
         method: "POST",
         body: newIssue,
       }),
-      async onQueryStarted(newIssue, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
           dispatch(issuesApi.endpoints.getIssues.initiate(undefined, { forceRefetch: true }));
@@ -195,7 +195,7 @@ export const issuesApi = api.injectEndpoints({
         let patchDetail: { undo: () => void } | null = null;
         try {
           patchDetail = dispatch(
-            issuesApi.util.updateQueryData("getIssueById", id.toString(), (draft) => {
+            issuesApi.util.updateQueryData("getIssueById", id.toString(), () => {
               // no-op; if a component uses this cache it will refetch or unmount
               // we keep this so we can undo cleanly if needed
             })

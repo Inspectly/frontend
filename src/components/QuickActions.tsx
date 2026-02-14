@@ -1,6 +1,6 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { IconDefinition, faBolt, faDollarSign, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import { IconDefinition, faBolt } from '@fortawesome/free-solid-svg-icons';
 
 export interface QuickAction {
   id: string;
@@ -35,7 +35,6 @@ interface QuickActionsProps {
 
 const QuickActions: React.FC<QuickActionsProps> = ({
   actions,
-  userType,
   fileInputRef,
   onFileChange,
   onDrop

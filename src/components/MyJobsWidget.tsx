@@ -5,7 +5,6 @@ import {
   faBriefcase,
   faClock,
   faCheckCircle,
-  faExclamationCircle,
   IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueOffer, IssueOfferStatus, IssueType } from "../types";
@@ -63,7 +62,7 @@ const MyJobsWidget: React.FC<MyJobsWidgetProps> = ({ vendorOffers, issuesMap = {
     );
   };
 
-  const getIssueIcon = (type?: string): IconDefinition => {
+  const getIssueIcon = (): IconDefinition => {
     // Add icon mapping based on issue type if needed
     return faBriefcase;
   };
@@ -140,7 +139,7 @@ const MyJobsWidget: React.FC<MyJobsWidgetProps> = ({ vendorOffers, issuesMap = {
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <FontAwesomeIcon
-                      icon={getIssueIcon(issue?.type)}
+                      icon={getIssueIcon()}
                       className="w-4 h-4 text-gray-600 flex-shrink-0"
                     />
                     <span className="font-medium text-sm text-gray-900 truncate">

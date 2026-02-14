@@ -36,7 +36,6 @@ const Achievements: React.FC<AchievementsProps> = ({
   title = "Your Achievements",
   subtitle = "Track your success",
   statusBadge,
-  userType
 }) => {
   // Don't render if no achievements
   if (!achievements || achievements.length === 0) {

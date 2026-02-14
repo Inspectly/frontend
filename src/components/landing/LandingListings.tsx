@@ -1,4 +1,4 @@
-import { MapPin, DollarSign, Star, Wrench, Paintbrush, Zap, Droplets, Home, TreeDeciduous } from "lucide-react";
+import { MapPin, Star, Wrench, Paintbrush, Zap, Droplets, Home, TreeDeciduous } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useScrollAnimation } from "@/components/hooks/useScrollAnimation";
