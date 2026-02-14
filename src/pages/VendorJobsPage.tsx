@@ -62,7 +62,7 @@ const VendorJobsPage: React.FC = () => {
   useGetVendorByVendorUserIdQuery(String(user?.id), {
     skip: !user?.id,
   });
-  
+
   // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const { data: vendorOffers = [], isLoading } = useGetOffersByVendorIdQuery(
     Number(user?.id),  // Use user.id, not vendor.id
@@ -337,6 +337,7 @@ const VendorJobsPage: React.FC = () => {
       totalOffers: vendorOffers.length,
     };
   }, [vendorOffers, issuesMap]);
+
 
   const getOfferStatusBadge = (offer: IssueOffer, issueStatus?: string) => {
     // Determine the appropriate status based on offer and issue status
@@ -712,7 +713,7 @@ const VendorJobsPage: React.FC = () => {
               
               {/* Issue Details Component */}
               <div className="p-6">
-                <IssueDetails issue={selectedIssue} listing={selectedIssueListing} defaultTab="details" />
+                <IssueDetails issue={selectedIssue} listing={selectedIssueListing ?? undefined} defaultTab="details" />
               </div>
             </div>
           </div>

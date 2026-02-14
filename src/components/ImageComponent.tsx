@@ -9,7 +9,9 @@ const ImageComponent: React.FC<{
   src: string | undefined | null;
   fallback: string;
   className?: string;
-}> = ({ src, fallback, className = "" }) => {
+  alt?: string;
+  onClick?: () => void;
+}> = ({ src, fallback, className = "", alt, onClick }) => {
   // Use fallback if src is undefined, null, empty, or "None"
   const [imgSrc, setImgSrc] = useState(isValidSrc(src) ? src! : fallback);
 
@@ -21,9 +23,10 @@ const ImageComponent: React.FC<{
   return (
     <img
       src={imgSrc}
-      alt="Dynamic Image"
+      alt={alt || "Dynamic Image"}
       onError={() => setImgSrc(fallback)}
       className={`${className}`}
+      onClick={onClick}
     />
   );
 };

@@ -8,6 +8,7 @@ import {
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
+
 import VendorName from "./VendorName";
 import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
@@ -123,7 +124,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
       [field]: value === "all" ? "" : value,
     }));
   };
-
 
   const handleActiveChange = async (id: number, newActive: boolean) => {
     try {
