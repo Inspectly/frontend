@@ -74,14 +74,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  // Queries - all real data
+  // Queries - all real data (poll every 20s so client sees updates when vendor submits work, etc.)
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const { data: issues } = useGetIssuesQuery();
+  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
   useGetClientsQuery();
 
   const { data: assessments = [], refetch: refetchAssessments } =
-    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id });
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 20000 });
   const { data: allVendors = [] } = useGetVendorsQuery();
 
   const [createListing] = useCreateListingMutation();
@@ -247,6 +247,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
 
   // Fetch offers for user's issues
+  // Polling tick to refetch offers periodically (client sees new offers when vendor creates them)
+  const [pollTick, setPollTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setPollTick((t) => t + 1), 20000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const run = async () => {
       try {
@@ -262,7 +269,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
         const allIssueIds = filteredIssuesByUser.map((i) => i.id);
         const offerResults = await Promise.all(
-          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id)))
+          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id, { forceRefetch: true })))
         );
         setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
       } catch (err) {
@@ -271,7 +278,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
 
     if (issueIds.length || vendorIds.length || filteredIssuesByUser.length) run();
-  }, [dispatch, issueIds, vendorIds, filteredIssuesByUser]);
+  }, [dispatch, issueIds, vendorIds, filteredIssuesByUser, pollTick]);
 
   // Auto-rotate properties slideshow (cycles through pages of 2)
   useEffect(() => {
@@ -425,11 +432,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return filteredIssuesByUser.filter(i => i.status === "Status.REVIEW");
   }, [filteredIssuesByUser]);
 
-  // Get items with pending quotes
+  // Get items with pending quotes (no offer accepted yet - client still needs to choose)
   const quoteItems = useMemo(() => {
     return filteredIssuesByUser.filter(i => {
       const offers = offersByIssueId[i.id] || [];
-      return offers.some(o => o.status === IssueOfferStatus.RECEIVED);
+      const hasPendingOffer = offers.some(o => o.status === IssueOfferStatus.RECEIVED);
+      const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED) || !!i.vendor_id;
+      return hasPendingOffer && !hasAcceptedOffer;
     });
   }, [filteredIssuesByUser, offersByIssueId]);
 
@@ -505,9 +514,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 onClick={() => navigate("/offers")}
                 className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length + quoteItems.length}</div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
-                {(approvalItems.length + quoteItems.length) > 0 && (
+                {approvalItems.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
                     <span className="w-2 h-2 bg-gold rounded-full"></span>
                     Action needed

@@ -394,6 +394,15 @@ const VendorJobsPage: React.FC = () => {
     }
     
     if (offer.status === IssueOfferStatus.ACCEPTED) {
+      // Check if work is completed (client approved)
+      if (isIssueCompleted(issueStatus)) {
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">
+            <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
+            Completed
+          </span>
+        );
+      }
       // Check if awaiting approval (issue in review)
       if (issueStatus?.toUpperCase().includes("REVIEW")) {
         return (
@@ -747,7 +756,7 @@ const VendorJobsPage: React.FC = () => {
               
               {/* Issue Details Component */}
               <div className="p-6">
-                <IssueDetails issue={selectedIssue} listing={selectedIssueListing} />
+                <IssueDetails issue={selectedIssue} listing={selectedIssueListing} defaultTab="details" />
               </div>
             </div>
           </div>

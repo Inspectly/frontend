@@ -673,6 +673,7 @@ const Offers: React.FC = () => {
                 const pendingOffers = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
                 const acceptedOffer = offers.find((o) => o.status === IssueOfferStatus.ACCEPTED);
                 const isInReview = issue.status === "Status.REVIEW";
+                const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
                 const lowestPendingOffer = pendingOffers.length > 0 
                   ? pendingOffers.reduce((min, o) => (o.price || 0) < (min.price || 0) ? o : min, pendingOffers[0])
                   : null;
@@ -713,7 +714,12 @@ const Offers: React.FC = () => {
                     {/* Right side - Price, count, action */}
                     <div className="flex items-center gap-4 flex-shrink-0">
                       {/* Show price and quote count */}
-                      {isInReview && acceptedOffer ? (
+                      {isCompleted && acceptedOffer ? (
+                        <div className="text-right min-w-[80px]">
+                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
+                          <div className="text-xs text-emerald-600">Completed</div>
+                        </div>
+                      ) : isInReview && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
                           <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
                           <div className="text-xs text-gold">Work completed</div>
@@ -753,6 +759,16 @@ const Offers: React.FC = () => {
                           className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"
                         >
                           Accept
+                        </button>
+                      ) : acceptedOffer ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIssue({ issue, listing, defaultTab: "offers" });
+                          }}
+                          className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
+                        >
+                          View
                         </button>
                       ) : pendingOffers.length > 1 ? (
                         <button

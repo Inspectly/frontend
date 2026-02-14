@@ -56,6 +56,14 @@ export const issueOffersApi = api.injectEndpoints({
           method: "POST",
           body,
         }),
+        invalidatesTags: [{ type: "Offers", id: "LIST" }],
+        async onQueryStarted(body, { dispatch, queryFulfilled }) {
+          try {
+            await queryFulfilled;
+            if (body.issue_id) dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(body.issue_id, { forceRefetch: true }));
+            if (body.vendor_id) dispatch(issueOffersApi.endpoints.getOffersByVendorId.initiate(body.vendor_id, { forceRefetch: true }));
+          } catch {}
+        },
       }),
       updateOffer: builder.mutation({
         query: (body) => ({
@@ -67,6 +75,13 @@ export const issueOffersApi = api.injectEndpoints({
           { type: "Offers", id: body.id },
           { type: "Offers", id: "LIST" },
         ],
+        async onQueryStarted(body, { dispatch, queryFulfilled }) {
+          try {
+            await queryFulfilled;
+            if (body.issue_id) dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(body.issue_id, { forceRefetch: true }));
+            if (body.vendor_id) dispatch(issueOffersApi.endpoints.getOffersByVendorId.initiate(body.vendor_id, { forceRefetch: true }));
+          } catch {}
+        },
       }),
       deleteOffer: builder.mutation({
         query: ({ id, issue_id }) => ({

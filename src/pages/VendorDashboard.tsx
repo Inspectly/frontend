@@ -106,16 +106,16 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Modal state for issue details
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
 
-  // Real data queries
+  // Real data queries (poll every 20s so vendor sees updates when client accepts/rejects offers, approves work, etc.)
   const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
-  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
-  const { data: issues, error: issuesError } = useGetIssuesQuery();
+  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id, pollingInterval: 20000 });
+  const { data: issues, error: issuesError } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
   const { data: listings = [] } = useGetListingsQuery();
   
   // Vendor assessments - use user.id since that's what's stored in the assessment records
   const { data: vendorAssessments = [], refetch: refetchAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useGetAssessmentsByUserIdQuery(
     user.id,
-    { skip: !user?.id }
+    { skip: !user?.id, pollingInterval: 20000 }
   );
   const [updateAssessment] = useUpdateAssessmentMutation();
   const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
