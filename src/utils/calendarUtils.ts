@@ -1,10 +1,15 @@
 /**
- * Helper to parse time strings as UTC.
- * Backend may strip the Z suffix, so we append it if missing.
+ * Parse assessment time strings. Times are stored in local time (from toLocalISOString)
+ * without timezone - e.g. "2025-02-15T18:00:00" means 6pm in the user's local timezone.
+ * Only append "Z" (interpret as UTC) when the string already has explicit UTC marker.
  */
 export const parseAsUTC = (timeStr: string): Date => {
   if (!timeStr) return new Date();
-  return new Date(timeStr.endsWith("Z") ? timeStr : timeStr + "Z");
+  // Has timezone (Z or ±offset)? Parse as-is. Otherwise parse as local (no Z appendix).
+  if (timeStr.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(timeStr)) {
+    return new Date(timeStr);
+  }
+  return new Date(timeStr); // No TZ = local time
 };
 
 export function generateCalendarLinks(assessment: {

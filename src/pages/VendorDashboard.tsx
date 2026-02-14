@@ -76,8 +76,8 @@ function getRelativeTime(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Today';
+
+  if (diffMs < 0 || diffDays === 0) return 'Today';
   if (diffDays === 1) return '1d ago';
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
@@ -131,6 +131,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Stable key for the interaction IDs
   const interactionIdsKey = uniqueInteractionIds.join(",");
 
+  // Poll tick to re-fetch assessments periodically (catches client proposals without refresh)
+  const [assessmentsPollTick, setAssessmentsPollTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setAssessmentsPollTick(t => t + 1), 20000);
+    return () => clearInterval(id);
+  }, []);
+
   // Fetch all assessments for the vendor's interaction IDs (to include client counter-proposals)
   useEffect(() => {
     let isMounted = true;
@@ -142,9 +149,9 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       }
       
       try {
-        // Fetch ALL assessments for each interaction ID
+        // Fetch ALL assessments for each interaction ID (preferCacheValue: false to get client proposals)
         const results = await Promise.all(
-          uniqueInteractionIds.map(id => fetchAssessmentsByInteraction(id).unwrap())
+          uniqueInteractionIds.map(id => fetchAssessmentsByInteraction(id, false).unwrap())
         );
         
         if (!isMounted) return;
@@ -169,7 +176,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interactionIdsKey]);
+  }, [interactionIdsKey, vendorAssessments, assessmentsPollTick]);
 
   // Listings map for lookups
   const listingsMap = useMemo(() => {

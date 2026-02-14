@@ -102,7 +102,7 @@ const Offers: React.FC = () => {
             }
           }
           
-          toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
+          toast.success(`Offer accepted for: ${issue?.summary || "issue"}`);
           localStorage.removeItem("pending_offer_payment");
           refetchIssues();
         } catch {

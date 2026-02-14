@@ -218,8 +218,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       return acc;
     }, {} as Record<number, Vendor>);
     
+    // Include RECEIVED (pending) assessments regardless of time - client needs to respond
+    // Include ACCEPTED/others only if start_time is in the future
     return assessments
-      .filter((a) => parseAsUTC(a.start_time) > new Date())
+      .filter((a) => {
+        const status = String(a.status || "").toLowerCase();
+        const isReceived = status === "received" || status.includes("received");
+        return isReceived || parseAsUTC(a.start_time) > new Date();
+      })
       .map((a) => {
         const issue = issuesMap[a.issue_id];
         const report = issue ? reportsMap[issue.report_id] : undefined;
@@ -307,9 +313,26 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const isNewUser = realMetrics.totalListings === 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
   
-  // Separate pending vs confirmed assessments
-  const pendingAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.RECEIVED);
-  const confirmedAssessments = calendarEvents.filter(e => e.status === IssueAssessmentStatus.ACCEPTED);
+  // Separate pending vs confirmed assessments (use flexible status check - backend may return "received", "Assessment_Status.RECEIVED", etc.)
+  const isReceivedStatus = (s: string) => {
+    if (!s) return false;
+    const lower = String(s).toLowerCase();
+    return lower === "received" || lower.includes("received");
+  };
+  const isAcceptedStatus = (s: string) => {
+    if (!s) return false;
+    const lower = String(s).toLowerCase();
+    return lower === "accepted" || lower.includes("accepted");
+  };
+  const pendingAssessments = useMemo(() => {
+    const pending = calendarEvents.filter(e => isReceivedStatus(e.status as string));
+    return [...pending].sort((a, b) => {
+      const aTime = (a as any).created_at ? new Date((a as any).created_at).getTime() : a.start.getTime();
+      const bTime = (b as any).created_at ? new Date((b as any).created_at).getTime() : b.start.getTime();
+      return bTime - aTime; // Latest first
+    });
+  }, [calendarEvents]);
+  const confirmedAssessments = calendarEvents.filter(e => isAcceptedStatus(e.status as string));
 
   // Handle accepting an assessment
   const handleAcceptAssessment = async (assessment: CalendarReadyAssessment) => {
@@ -972,19 +995,21 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                         </button>
                                       </>
                                     ) : (
-                                      // Vendor's proposal - show accept/propose options
+                                      // Vendor's proposal - show accept/propose options (hide Accept if proposed time is in the past)
                                       <>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleAcceptAssessment(event);
-                                          }}
-                                          disabled={isUpdatingAssessment}
-                                          className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
-                                        >
-                                          <FontAwesomeIcon icon={faCheck} />
-                                          {isUpdatingAssessment ? "Accepting..." : "Accept"}
-                                        </button>
+                                        {event.start >= new Date() && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleAcceptAssessment(event);
+                                            }}
+                                            disabled={isUpdatingAssessment}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
+                                          >
+                                            <FontAwesomeIcon icon={faCheck} />
+                                            {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                                          </button>
+                                        )}
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -1186,17 +1211,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       ></div>
                     </div>
                   </div>
-
-                  {/* Next Visit */}
-                  {calendarEvents.length > 0 && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Next Visit</div>
-                      <div className="text-sm font-bold text-gray-900">
-                        {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="text-xs text-gray-500">{calendarEvents[0]?.title}</div>
-                    </div>
-                  )}
 
                   {/* Quick Stats */}
                   <div className="grid grid-cols-3 gap-3">
@@ -1516,16 +1530,18 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                   </button>
                                 </>
                               ) : (
-                                // Vendor's proposal
+                                // Vendor's proposal (hide Accept if proposed time is in the past)
                                 <>
-                                  <button
-                                    onClick={() => handleAcceptAssessment(event)}
-                                    disabled={isUpdatingAssessment}
-                                    className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                  >
-                                    <FontAwesomeIcon icon={faCheck} />
-                                    {isUpdatingAssessment ? "Accepting..." : "Accept"}
-                                  </button>
+                                  {event.start >= new Date() && (
+                                    <button
+                                      onClick={() => handleAcceptAssessment(event)}
+                                      disabled={isUpdatingAssessment}
+                                      className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                      <FontAwesomeIcon icon={faCheck} />
+                                      {isUpdatingAssessment ? "Accepting..." : "Accept"}
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => {
                                       setShowScheduleModal(false);

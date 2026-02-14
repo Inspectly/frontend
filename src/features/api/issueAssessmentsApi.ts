@@ -76,12 +76,16 @@ export const issueAssessmentsApi = api.injectEndpoints({
           if (body.issue_id) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByIssueId.initiate(body.issue_id, { forceRefetch: true }));
           const interactionId = (body as any).users_interaction_id ?? (body as any).interaction_id;
           if (interactionId && typeof interactionId === "string") {
+            dispatch(issueAssessmentsApi.endpoints.getAssessmentsByUsersInteractionId.initiate(interactionId, { forceRefetch: true }));
             const parts = interactionId.split("_");
             if (parts.length >= 3) {
               const clientId = Number(parts[0]);
               const vendorId = Number(parts[1]);
               if (!isNaN(clientId)) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByClientIdUsersInteractionId.initiate(clientId, { forceRefetch: true }));
-              if (!isNaN(vendorId)) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByVendorIdUsersInteractionId.initiate(vendorId, { forceRefetch: true }));
+              if (!isNaN(vendorId)) {
+                dispatch(issueAssessmentsApi.endpoints.getAssessmentsByVendorIdUsersInteractionId.initiate(vendorId, { forceRefetch: true }));
+                dispatch(issueAssessmentsApi.endpoints.getAssessmentsByUserId.initiate(vendorId, { forceRefetch: true })); // Vendor dashboard uses this
+              }
             }
           }
           const userId = (body as any).user_id;
