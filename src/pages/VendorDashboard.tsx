@@ -1211,7 +1211,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                           {listing?.image_url ? (
                             <ImageComponent
                               src={listing.image_url}
-                              alt={listing.address || "Project"}
+                              fallback="/images/property_card_holder.jpg"
                               className="w-full h-full object-cover"
                             />
                           ) : (
