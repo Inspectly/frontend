@@ -1318,7 +1318,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             </button>
             <HomeownerIssueCard
               key={`${selectedIssueForModal.id}-${modalDefaultTab}`}
-              issue={selectedIssueForModal}
+              issue={(issues || []).find(i => i.id === selectedIssueForModal.id) ?? selectedIssueForModal}
               listing={selectedListingForModal}
               onClose={() => setSelectedIssueForModal(null)}
               defaultTab={modalDefaultTab}

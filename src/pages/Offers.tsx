@@ -39,6 +39,7 @@ import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalize
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
+import confetti from "canvas-confetti";
 
 type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review";
 type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
@@ -101,7 +102,7 @@ const Offers: React.FC = () => {
             }
           }
           
-          toast.success("Payment successful! Offer accepted.");
+          toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
           localStorage.removeItem("pending_offer_payment");
           refetchIssues();
         } catch {
@@ -392,7 +393,8 @@ const Offers: React.FC = () => {
       }, selectedIssueForAction.listing?.id)).unwrap();
       setShowApproveModal(false);
       setSelectedIssueForAction(null);
-      toast.success("Work approved successfully!");
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      toast.success(`Work approved for ${selectedIssueForAction.issue.summary || "issue"}!`);
     } catch (err) {
       console.error("Failed to approve work", err);
       toast.error("Failed to approve work. Please try again.");
@@ -915,7 +917,7 @@ const Offers: React.FC = () => {
             </button>
             <HomeownerIssueCard
               key={`${selectedIssue.issue.id}-${selectedIssue.defaultTab}`}
-              issue={selectedIssue.issue}
+              issue={(issues || []).find(i => i.id === selectedIssue.issue.id) ?? selectedIssue.issue}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
               defaultTab={selectedIssue.defaultTab || "details"}

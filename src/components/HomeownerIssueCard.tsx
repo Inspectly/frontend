@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
+import confetti from "canvas-confetti";
 import {
   IssueAssessment,
   IssueOffer,
@@ -888,6 +889,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                       review_status: "completed",
                     }, listing?.id)).unwrap();
                     setShowApproveModal(false);
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                    toast.success(`Work approved for ${issue.summary || "issue"}!`);
                   } catch (err) {
                     console.error("Failed to approve work", err);
                   }
