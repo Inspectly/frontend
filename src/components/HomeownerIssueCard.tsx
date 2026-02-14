@@ -425,13 +425,11 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div className="grid lg:grid-cols-3 gap-6">
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-6">
-              <div>
+              <div onClick={() => setSelectedImage(issue.image_url)}>
                 <ImageComponent
-                  src={issue.image_urls}
+                  src={issue.image_url}
                   fallback="/images/property_card_holder.jpg"
-                  alt="Issue"
                   className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
-                  onClick={() => setSelectedImage(issue.image_urls)}
                 />
               </div>
 

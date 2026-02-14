@@ -34,7 +34,7 @@ import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { issueOffersApi, useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
-import { IssueOffer, IssueOfferStatus, IssueType, Listing, Report } from "../types";
+import { IssueOffer, IssueOfferStatus, IssueType, Listing, ReportType } from "../types";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { shallowEqual } from "react-redux";
@@ -47,7 +47,7 @@ type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
 interface IssueWithOffers {
   issue: IssueType;
   offers: IssueOffer[];
-  report?: Report;
+  report?: ReportType;
   listing?: Listing;
 }
 

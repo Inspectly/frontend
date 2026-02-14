@@ -217,7 +217,7 @@ const VendorJobsPage: React.FC = () => {
   // Selected issue for modal
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
   const selectedIssueReport = selectedIssue ? reportsMap[selectedIssue.report_id] : null;
-  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : null;
+  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : undefined;
 
   // Modal functions
   const openIssueModal = (issueId: number) => {
