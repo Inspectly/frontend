@@ -42,7 +42,6 @@ import { faCalendarAlt } from "@fortawesome/free-regular-svg-icons";
 import ImageComponent from "../components/ImageComponent";
 import IssueDetails from "../components/IssueDetails";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
-
 import { parseAsUTC } from "../utils/calendarUtils";
 
 type TabType = "all" | "active" | "completed" | "pending" | "rejected";
@@ -90,7 +89,7 @@ const VendorJobsPage: React.FC = () => {
   // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const { data: vendorOffers = [], isLoading } = useGetOffersByVendorIdQuery(
     Number(user?.id),  // Use user.id, not vendor.id
-    { skip: !user?.id }
+    { skip: !user?.id, pollingInterval: 20000 }
   );
   const { data: issues = [] } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();

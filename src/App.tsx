@@ -36,6 +36,7 @@ import MarketplaceIssue from "./pages/MarketplaceIssue";
 
 import ReportReviewPage from "./pages/ReportReviewPage";
 import Offers from "./pages/Offers";
+import VendorCelebrationListener from "./components/VendorCelebrationListener";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
 import Footer from "./components/Footer";
@@ -250,6 +251,9 @@ function App() {
   return (
     <>
       <ToastContainer />
+      {authenticated && userType === "vendor" && userInfo && (
+        <VendorCelebrationListener userId={userInfo.id} />
+      )}
       {authenticated ? (
         <div className="flex min-h-screen w-screen overflow-x-hidden">
           <DashboardSidebar
