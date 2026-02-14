@@ -25,19 +25,18 @@ import {
   faRocket,
   faSearch,
   faSnowflake,
-  faStar,
   faTimes,
   faTint,
   faTrophy,
   faWind,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment, IssueAssessmentStatus } from "../types";
+import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment } from "../types";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetAssessmentsByUserIdQuery, useUpdateAssessmentMutation, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
 import ImageComponent from "../components/ImageComponent";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
@@ -113,11 +112,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: listings = [] } = useGetListingsQuery();
   
   // Vendor assessments - use user.id since that's what's stored in the assessment records
-  const { data: vendorAssessments = [], refetch: refetchAssessments, isLoading: assessmentsLoading, error: assessmentsError } = useGetAssessmentsByUserIdQuery(
+  const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
     user.id,
     { skip: !user?.id, pollingInterval: 20000 }
   );
-  const [updateAssessment] = useUpdateAssessmentMutation();
   const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
 
   // State to hold ALL assessments for vendor's interactions (including client counter-proposals)
@@ -446,7 +444,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     vendorOffers
       .filter(o => o.status === IssueOfferStatus.ACCEPTED)
       .slice(0, 3)
-      .forEach((offer, idx) => {
+      .forEach((offer) => {
         const issue = issuesMap[offer.issue_id];
         if (issue) {
           activities.push({
@@ -932,7 +930,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 {activeTab === "visits" ? (
                   // Visits Tab Rendering
                   getPriorityItems().length > 0 ? (
-                    (getPriorityItems() as typeof processedVisits).map((visit, index) => (
+                    (getPriorityItems() as typeof processedVisits).map((visit) => (
                       <div key={`visit-${visit.issueId}`}>
                         <div 
                           onClick={() => openIssueModal(visit.issueId, "assessments")}

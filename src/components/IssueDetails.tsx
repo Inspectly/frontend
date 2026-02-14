@@ -24,7 +24,6 @@ import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
 import ImageComponent from "./ImageComponent";
-import MapComponent from "./MapComponent";
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
 import { useNavigate } from "react-router-dom";
@@ -134,18 +133,15 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     isFetching: assessmentsFetching,
   } = assessmentsData;
 
-  const [coords, setCoords] = useState<Coordinates | null>(null);
+  const [, setCoords] = useState<Coordinates | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const [imageOpen, setImageOpen] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(true);
-  const [descriptionOpen, setDescriptionOpen] = useState(true);
-  const [locationOpen, setLocationOpen] = useState(true);
   const [peopleOpen, setPeopleOpen] = useState(true);
   const [datesOpen, setDatesOpen] = useState(true);
 
   const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
-  const [locationError, setLocationError] = useState(false);
+  const [, setLocationError] = useState(false);
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
@@ -586,9 +582,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
         {activeTab === "details" && (
           <div id="default-details" role="tabpanel">
             {/* Property Image - Full Width */}
-            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url)}>
+            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_url || listing?.image_url || null)}>
               <ImageComponent
-                src={issue.image_urls || listing?.image_url}
+                src={issue.image_url || listing?.image_url}
                 fallback="/images/property_card_holder.jpg"
                 className="rounded-xl w-full h-[280px] object-cover shadow-sm"
               />

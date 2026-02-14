@@ -131,23 +131,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   // Don't sync on issue.active changes to avoid race condition during updates
   useEffect(() => setIsActive(issue.active), [issue.id]);
 
-  const handleStatusChange = async (newStatus: string) => {
-    // If status is moving to completed, trigger review modal
-    const isCompleted = newStatus === "completed" || newStatus === "Status.COMPLETED";
-
-    if (isCompleted && issue.vendor_id && issue.review_status !== "completed") {
-      setPendingStatusChange(newStatus);
-      setIsReviewModalOpen(true);
-      return;
-    }
-
-    try {
-      await updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id)).unwrap();
-    } catch (error) {
-      console.error("Failed to update status", error);
-    }
-  };
-
   const handleReviewSubmit = async (rating: number, review: string) => {
     if (!issue.vendor_id || !userId) return;
 
@@ -442,13 +425,11 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div className="grid lg:grid-cols-3 gap-6">
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-6">
-              <div>
+              <div onClick={() => setSelectedImage(issue.image_url)}>
                 <ImageComponent
-                  src={issue.image_urls}
+                  src={issue.image_url}
                   fallback="/images/property_card_holder.jpg"
-                  alt="Issue"
                   className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
-                  onClick={() => setSelectedImage(issue.image_urls)}
                 />
               </div>
 

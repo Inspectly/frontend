@@ -314,7 +314,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       <h3 className="text-lg font-medium text-gray-900 mb-3">Image</h3>
                       <div className="rounded-lg overflow-hidden">
                         <ImageComponent
-                          src={currentIssue.image_urls || "/images/property_card_holder.jpg"}
+                          src={currentIssue.image_url || "/images/property_card_holder.jpg"}
                           fallback="/images/property_card_holder.jpg"
                           className="w-full h-64 object-cover"
                         />

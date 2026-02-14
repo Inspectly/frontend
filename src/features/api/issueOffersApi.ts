@@ -71,7 +71,7 @@ export const issueOffersApi = api.injectEndpoints({
           method: "PUT",
           body,
         }),
-        invalidatesTags: (result, error, body) => [
+        invalidatesTags: (_result, _error, body) => [
           { type: "Offers", id: body.id },
           { type: "Offers", id: "LIST" },
         ],
@@ -89,7 +89,7 @@ export const issueOffersApi = api.injectEndpoints({
           method: "DELETE",
           body: { issue_id },
         }),
-        invalidatesTags: (result, error, { id }) => [
+        invalidatesTags: (_result, _error, { id }) => [
           { type: "Offers", id },
           { type: "Offers", id: "LIST" },
         ],
