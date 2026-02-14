@@ -83,7 +83,7 @@ const Issue: React.FC = () => {
           }).unwrap();
           
           setPendingIssueUpdate({ vendor_id: pendingPayment.vendor_id });
-          toast.success(`Offer accepted for: ${issue?.summary || "issue"}`);
+          toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
           localStorage.removeItem("pending_offer_payment");
         } catch {
           toast.error("Payment completed but offer update failed. Please refresh.");

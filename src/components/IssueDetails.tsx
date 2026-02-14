@@ -48,6 +48,7 @@ import {
   useGetVendorByVendorUserIdQuery,
   useGetVendorsQuery,
 } from "../features/api/vendorsApi";
+import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
 import OffersTabVendor from "./OffersTabVendor";
@@ -81,6 +82,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     skip: !issue?.id,
   });
   const { data: allVendors = [] } = useGetVendorsQuery();
+  const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), {
+    skip: !userId || userType !== "client",
+  });
 
   const { data: report } = useGetReportByIdQuery(issue.report_id, {
     skip: !issue.report_id,
@@ -844,7 +848,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                           }));
                           
                           const response = await createCheckoutSession({
-                            client_id: userId,
+                            client_id: (client?.id ?? userId)!,
                             vendor_id: acceptedOffer.vendor_id,
                             offer_id: acceptedOffer.id,
                           }).unwrap();
@@ -854,7 +858,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                           localStorage.removeItem("pending_offer_payment");
                           const errorDetail = err?.data?.detail || "";
                           if (errorDetail.includes("Stripe Information not found")) {
-                            toast.error("Payment setup required. Please add a payment method in Settings before accepting offers.");
+                            toast.error("Payment setup required. Add a payment method in Settings (gear icon → Payment Settings), or the vendor may need to complete Stripe setup.");
                           } else {
                             toast.error("Could not start payment session. Please try again.");
                           }

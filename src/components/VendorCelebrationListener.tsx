@@ -48,36 +48,6 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
   const prevCompletedIssueIdsRef = useRef<Set<number>>(new Set());
   const isInitialLoadRef = useRef(true);
 
-  const STORAGE_KEY_OFFERS = "vendor_celebrated_offer_ids";
-  const STORAGE_KEY_ISSUES = "vendor_celebrated_completed_issue_ids";
-
-  const getCelebratedOfferIds = (): Set<number> => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY_OFFERS);
-      return raw ? new Set(JSON.parse(raw).map(Number)) : new Set();
-    } catch {
-      return new Set();
-    }
-  };
-  const getCelebratedIssueIds = (): Set<number> => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY_ISSUES);
-      return raw ? new Set(JSON.parse(raw).map(Number)) : new Set();
-    } catch {
-      return new Set();
-    }
-  };
-  const markOfferCelebrated = (id: number) => {
-    const set = getCelebratedOfferIds();
-    set.add(id);
-    sessionStorage.setItem(STORAGE_KEY_OFFERS, JSON.stringify([...set]));
-  };
-  const markIssueCelebrated = (id: number) => {
-    const set = getCelebratedIssueIds();
-    set.add(id);
-    sessionStorage.setItem(STORAGE_KEY_ISSUES, JSON.stringify([...set]));
-  };
-
   useEffect(() => {
     const acceptedOffers = vendorOffers.filter(
       (o) => o.status === IssueOfferStatus.ACCEPTED
@@ -85,7 +55,6 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
     const vendorIssueIds = new Set(acceptedOffers.map((o) => o.issue_id));
 
     if (isInitialLoadRef.current) {
-      if (vendorOffers.length === 0) return;
       isInitialLoadRef.current = false;
       prevAcceptedOfferIdsRef.current = new Set(acceptedOffers.map((o) => o.id));
       prevCompletedIssueIdsRef.current = new Set(
@@ -94,40 +63,27 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
           return issue && isIssueCompleted(issue.status);
         })
       );
-      // Seed sessionStorage so we don't celebrate these on refresh
-      acceptedOffers.forEach((o) => markOfferCelebrated(o.id));
-      [...vendorIssueIds].forEach((id) => {
-        const issue = issuesMap[id];
-        if (issue && isIssueCompleted(issue.status)) markIssueCelebrated(id);
-      });
       return;
     }
 
-    const celebratedOffers = getCelebratedOfferIds();
-    const celebratedIssues = getCelebratedIssueIds();
-
-    // Offer accepted: only celebrate if newly accepted AND not yet celebrated
+    // Offer accepted: newly accepted offers
     acceptedOffers.forEach((offer) => {
       if (prevAcceptedOfferIdsRef.current.has(offer.id)) return;
-      if (celebratedOffers.has(offer.id)) return;
       const issue = issuesMap[offer.issue_id];
       const summary = issue?.summary || "issue";
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      toast.success(`Offer accepted for: ${summary}`);
-      markOfferCelebrated(offer.id);
+      toast.success(`Offer accepted for ${summary}!`);
     });
     prevAcceptedOfferIdsRef.current = new Set(acceptedOffers.map((o) => o.id));
 
-    // Work approved: only celebrate if newly completed AND not yet celebrated
+    // Work approved: vendor's issue newly became completed
     vendorIssueIds.forEach((issueId) => {
       const issue = issuesMap[issueId];
       if (!issue || !isIssueCompleted(issue.status)) return;
       if (prevCompletedIssueIdsRef.current.has(issueId)) return;
-      if (celebratedIssues.has(issueId)) return;
       const summary = issue.summary || "issue";
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       toast.success(`Work approved for ${summary}!`);
-      markIssueCelebrated(issueId);
     });
     prevCompletedIssueIdsRef.current = new Set(
       [...vendorIssueIds].filter((id) => {
