@@ -11,7 +11,7 @@ import {
   faMapMarkerAlt,
   faWrench,
 } from "@fortawesome/free-solid-svg-icons";
-import { BUTTON_HOVER, CARD_HOVER } from "../styles/shared";
+import { BUTTON_HOVER } from "../styles/shared";
 import {
   useGetAddressesByIssueIdsMutation,
   useGetPaginatedIssuesQuery,
@@ -204,7 +204,7 @@ const Marketplace: React.FC = () => {
   // Get addresses for issues
   const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
   const [addresses, setAddresses] = useState<IssueAddress[]>([]);
-  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
+  const [, setIsLoadingAddresses] = useState(true);
 
 
   // Use prefetched data if available, otherwise use API data

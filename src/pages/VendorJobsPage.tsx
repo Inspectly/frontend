@@ -5,21 +5,9 @@ import { RootState } from "../store/store";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBriefcase,
-  faClock,
   faCheckCircle,
   faTimesCircle,
   faSearch,
-  faBolt,
-  faTint,
-  faWind,
-  faHouse,
-  faHammer,
-  faPaintRoller,
-  faBroom,
-  faBuilding,
-  faSnowflake,
-  faLeaf,
-  faWrench,
   faEnvelope,
   faStar,
   faChevronDown,
@@ -28,7 +16,6 @@ import {
   faPaperPlane,
   faHourglass,
   faTimes,
-  IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { IssueOffer, IssueOfferStatus, IssueType, Listing } from "../types";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
@@ -55,16 +42,6 @@ const isIssueCompleted = (issueStatus?: string): boolean => {
   return normalizedStatus === "COMPLETED" || normalizedStatus === "STATUS.COMPLETED";
 };
 
-// Helper function to check if issue is active (in progress or under review)
-const isIssueActive = (issueStatus?: string): boolean => {
-  if (!issueStatus) return false;
-  const normalizedStatus = issueStatus.toUpperCase();
-  return normalizedStatus === "IN_PROGRESS" || 
-         normalizedStatus === "STATUS.IN_PROGRESS" ||
-         normalizedStatus === "REVIEW" || 
-         normalizedStatus === "STATUS.REVIEW";
-};
-
 const VendorJobsPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -82,7 +59,7 @@ const VendorJobsPage: React.FC = () => {
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
 
   // Queries
-  const { data: vendor } = useGetVendorByVendorUserIdQuery(String(user?.id), {
+  useGetVendorByVendorUserIdQuery(String(user?.id), {
     skip: !user?.id,
   });
   
@@ -240,7 +217,7 @@ const VendorJobsPage: React.FC = () => {
   // Selected issue for modal
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
   const selectedIssueReport = selectedIssue ? reportsMap[selectedIssue.report_id] : null;
-  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : null;
+  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : undefined;
 
   // Modal functions
   const openIssueModal = (issueId: number) => {
@@ -360,26 +337,6 @@ const VendorJobsPage: React.FC = () => {
       totalOffers: vendorOffers.length,
     };
   }, [vendorOffers, issuesMap]);
-
-  // Icon mapping for issue types
-  const getIssueIcon = (type?: string): IconDefinition => {
-    const typeMap: Record<string, IconDefinition> = {
-      electrical: faBolt,
-      plumbing: faTint,
-      plumber: faTint,
-      hvac: faWind,
-      roofing: faHouse,
-      structural: faHammer,
-      painting: faPaintRoller,
-      painter: faPaintRoller,
-      flooring: faBroom,
-      windows: faBuilding,
-      doors: faBuilding,
-      insulation: faSnowflake,
-      landscaping: faLeaf,
-    };
-    return typeMap[type?.toLowerCase() || ""] || faWrench;
-  };
 
   const getOfferStatusBadge = (offer: IssueOffer, issueStatus?: string) => {
     // Determine the appropriate status based on offer and issue status

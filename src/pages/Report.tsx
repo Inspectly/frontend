@@ -8,7 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useParams } from "react-router-dom";
 
-import { IssueOfferStatus, IssueStatus, IssueType } from "../types";
+import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
@@ -46,7 +46,7 @@ const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
 };
 
 const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
-  const { reportId } = useParams<{
+  const { reportId, listingId } = useParams<{
     listingId: string;
     reportId: string;
   }>();

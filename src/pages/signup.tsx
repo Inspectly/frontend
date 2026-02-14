@@ -19,13 +19,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faBuilding,
-  faEnvelope,
   faEye,
   faMap,
   faUser,
-  faFileLines
 } from "@fortawesome/free-regular-svg-icons";
-import { faGoogle } from "@fortawesome/free-brands-svg-icons";
 
 import {
   getUserByFirebaseId,
@@ -54,7 +51,6 @@ type VendorStep = 0 | 1 | 2;
 const GOLD_BG = "bg-[rgb(212_160_23_/_var(--tw-bg-opacity,_1))]";
 const GOLD_TEXT = "text-[rgb(212_160_23_/_1)]";
 const GOLD_BORDER = "border-[rgb(212_160_23_/_1)]";
-const GOLD_RING_SOFT = "ring-[rgb(212_160_23_/_0.20)]";
 const GOLD_RING_FOCUS = "focus-within:ring-[rgb(212_160_23_/_0.35)]";
 const GOLD_BG_SOFT_16 = "bg-[rgb(212_160_23_/_0.16)]";
 const GOLD_BG_SOFT_18 = "bg-[rgb(212_160_23_/_0.18)]";

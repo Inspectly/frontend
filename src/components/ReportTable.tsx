@@ -1,21 +1,17 @@
 // src/components/ReportTable.tsx
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
   faArrowRight,
-  faChevronDown,
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { Link, useParams } from "react-router-dom";
-import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
-
 import VendorName from "./VendorName";
-import { IssueOfferStatus, IssueStatus, IssueType } from "../types";
+import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
-import Dropdown from "./Dropdown";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
@@ -68,8 +64,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Open the modal on mount if parent requested it
@@ -108,7 +102,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   }, [isModalOpen]);
 
   const [selectedFileName, setSelectedFileName] = useState("");
-  const tableDropdownButtonRefs = useRef(new Map());
 
   const statusMapping: Record<IssueStatus, string> = {
     "Status.OPEN": "open",
@@ -131,20 +124,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
     }));
   };
 
-  const handleProgressChange = async (id: number, newProgress: string) => {
-    try {
-      const issueToUpdate = issues?.find((issue) => issue.id === id);
-      if (!issueToUpdate) {
-        console.error("Issue not found:", id);
-        return;
-      }
-      await updateIssue(buildIssueUpdateBody(issueToUpdate, { status: newProgress }, listingId ? Number(listingId) : undefined)).unwrap();
-      refetch();
-      setDropdownOpen(null);
-    } catch (error) {
-      console.error("Error updating issue:", error);
-    }
-  };
 
   const handleActiveChange = async (id: number, newActive: boolean) => {
     try {

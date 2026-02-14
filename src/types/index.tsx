@@ -112,6 +112,8 @@ export type Vendor = {
   postal_code: string;
   rating: string;
   review: string;
+  profile_image_url?: string;
+  company_name?: string;
   created_at: string;
   updated_at: string;
 };
