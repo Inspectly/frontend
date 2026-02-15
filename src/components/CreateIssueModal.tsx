@@ -3,7 +3,7 @@ import React, { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
-import type { IssueStatus } from "../types";
+import type { IssueStatus, IssueType } from "../types";
 import { toast } from "react-hot-toast";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
@@ -12,7 +12,7 @@ type IssueCollection = { id: number; listing_id: number; name: string };
 type Props = {
   open: boolean;
   onClose: () => void;
-  onCreated?: () => void;
+  onCreated?: (issue: IssueType) => void;
   issueCollections: IssueCollection[];
 };
 
@@ -35,7 +35,6 @@ const CreateIssueModal: React.FC<Props> = ({
     severity: string;
     status: IssueStatus | string;
     active: boolean;
-    image_url: string;
   }>({
     report_id: undefined,
     listing_id: undefined,
@@ -43,13 +42,13 @@ const CreateIssueModal: React.FC<Props> = ({
     description: "",
     summary: "",
     severity: "",
-    status: "open",           // ✅ default to "open"
+    status: "open",
     active: true,
-    image_url: "",
   });
 
-
-  const [selectedFileName, setSelectedFileName] = useState("");
+  // Store actual File objects and lightweight blob URLs for preview (not base64)
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!open) return null;
@@ -75,19 +74,28 @@ const CreateIssueModal: React.FC<Props> = ({
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (reader.result) {
-        setFormData((prev) => ({
-          ...prev,
-          image_url: reader.result as string, // base64 preview only
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+    const newFiles = Array.from(files);
+    const newPreviewUrls = newFiles.map((f) => URL.createObjectURL(f));
+
+    setImageFiles((prev) => [...prev, ...newFiles]);
+    setImagePreviewUrls((prev) => [...prev, ...newPreviewUrls]);
+  };
+
+  // Convert File objects to base64 only at submit time
+  const filesToBase64 = (files: File[]): Promise<string[]> => {
+    return Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
   };
 
   const canSubmit =
@@ -108,7 +116,10 @@ const CreateIssueModal: React.FC<Props> = ({
         medium: "Medium",
         high: "High",
       };
-      await createIssue({
+      // Convert files to base64 only now (at submit time)
+      const base64Images = await filesToBase64(imageFiles);
+
+      const submittedData = {
         report_id: formData.report_id,
         listing_id: formData.listing_id,
         type: formData.type,
@@ -117,11 +128,32 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
-        image_urls: formData.image_url ? [formData.image_url] : [],
-      }).unwrap();
+        image_urls: base64Images,
+      };
+      const apiResponse = await createIssue(submittedData).unwrap();
+
+      // Normalize status to frontend format (e.g. "open" -> "Status.OPEN")
+      const rawStatus = (apiResponse.status || "open") as string;
+      const normalizedStatus = rawStatus.startsWith("Status.")
+        ? rawStatus
+        : `Status.${rawStatus.toUpperCase()}`;
+
+      // Use blob URLs for instant preview if backend didn't return image URLs
+      const effectiveImageUrls = apiResponse.image_urls
+        || (imagePreviewUrls.length === 1 ? imagePreviewUrls[0] : imagePreviewUrls.length > 1 ? JSON.stringify(imagePreviewUrls) : "");
+
+      const fullIssue: IssueType = {
+        ...submittedData,
+        ...apiResponse,
+        status: normalizedStatus as IssueStatus,
+        image_urls: effectiveImageUrls,
+      } as IssueType;
 
       toast.success("Issue created");
-      onCreated?.();
+      onCreated?.(fullIssue);
+
+      // Don't revoke blob URLs here — they're passed to the next page via navigation state
+      // They'll be freed when the browser navigates away or garbage collects
 
       // reset form & close
       setFormData({
@@ -133,9 +165,9 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: "",
         status: "open",
         active: true,
-        image_url: "",
       });
-      setSelectedFileName("");
+      setImageFiles([]);
+      setImagePreviewUrls([]);
       if (fileInputRef.current) fileInputRef.current.value = "";
       onClose();
     } catch (err: any) {
@@ -350,37 +382,61 @@ const CreateIssueModal: React.FC<Props> = ({
             </label>
           </div>
 
-          {/* Image Upload (optional) */}
+          {/* Image Upload (optional, multiple) */}
           <div className="col-span-12">
             <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-              Upload Image
+              Upload Images
             </label>
             <div className="flex w-full">
               <label
                 htmlFor="file-upload"
                 className="cursor-pointer bg-gray-800 text-white text-sm px-4 py-2 rounded-l-lg flex items-center whitespace-nowrap"
               >
-                Choose File
+                Choose Files
               </label>
-              <span className="border border-l-0 border-gray-300 bg-white text-base px-5 py-2.5 rounded-r-lg w-full flex items-center">
-                {selectedFileName || "No file chosen"}
+              <span className="border border-l-0 border-gray-300 bg-white text-sm px-5 py-2.5 rounded-r-lg w-full flex items-center truncate">
+                {imageFiles.length > 0
+                  ? `${imageFiles.length} file${imageFiles.length > 1 ? "s" : ""} selected`
+                  : "No files chosen"}
               </span>
               <input
                 id="file-upload"
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 ref={fileInputRef}
                 onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    setSelectedFileName(file.name);
-                    handleImageUpload(e);
-                  }
+                  handleImageUpload(e);
                 }}
                 disabled={isLoading}
               />
             </div>
+            {/* Image previews using lightweight blob URLs */}
+            {imagePreviewUrls.length > 0 && (
+              <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                {imagePreviewUrls.map((url, idx) => (
+                  <div key={idx} className="relative flex-shrink-0">
+                    <img
+                      src={url}
+                      alt={`Preview ${idx + 1}`}
+                      className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        URL.revokeObjectURL(url);
+                        setImageFiles((prev) => prev.filter((_, i) => i !== idx));
+                        setImagePreviewUrls((prev) => prev.filter((_, i) => i !== idx));
+                      }}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center hover:bg-red-600"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           </div>
         </div>

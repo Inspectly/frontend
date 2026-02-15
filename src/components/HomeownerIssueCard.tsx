@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
+import { saveIssueImages } from "../utils/issueImageStore";
+import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
@@ -12,7 +14,7 @@ import {
   statusOptions,
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import Attachments from "./Attachments";
@@ -104,6 +106,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   });
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<
     "details" | "offers" | "assessments"
   >(defaultTab);
@@ -230,18 +233,17 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
 
-  const handleToggleVisibility = async () => {
-    if (isUpdatingVisibility) return;
-
+  const handleToggleVisibility = () => {
     const next = !isActive;
-    setIsActive(next);
+    setIsActive(next); // Move toggle instantly
 
-    try {
-      await updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id)).unwrap();
-    } catch (e) {
-      setIsActive(!next); // rollback
-      console.error("Failed to update visibility", e);
-    }
+    // Fire API call in background — don't block or await
+    updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id))
+      .unwrap()
+      .catch((e) => {
+        setIsActive(!next); // rollback on error
+        console.error("Failed to update visibility", e);
+      });
   };
 
   const handleOpenOfferModal = (counterOffer: IssueOffer) => {
@@ -343,7 +345,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <h2 className="text-xl font-semibold text-gray-800 leading-snug">
             {issue.summary || "No Title Found"}
           </h2>
-          {listing && (
+          {listing && issue.vendor_id && (
             <p className="text-sm text-gray-500 mt-1">
               {listing.address}, {listing.city}, {listing.state}
             </p>
@@ -425,14 +427,75 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div className="grid lg:grid-cols-3 gap-6">
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-6">
-              <div onClick={() => setSelectedImage(issue.image_urls)}>
-                <ImageComponent
-                  src={issue.image_urls}
-                  fallback="/images/property_card_holder.jpg"
-                  className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
-                />
-              </div>
+              {/* Images with scroll for multiple */}
+              {(() => {
+                let imageList: string[] = [];
+                const raw = issue.image_urls;
+                if (Array.isArray(raw)) {
+                  imageList = raw.filter(Boolean);
+                } else if (typeof raw === "string" && raw.startsWith("[")) {
+                  try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
+                } else if (raw) {
+                  imageList = [raw];
+                }
+                if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 
+                return (
+                  <div>
+                    {/* Main image with scroll arrows */}
+                    <div className="relative group/img rounded-lg overflow-hidden">
+                      <img
+                        src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
+                        alt="Issue"
+                        className="w-full h-[260px] object-cover cursor-pointer"
+                        onClick={() => setSelectedImage(imageList[currentImageIndex] || null)}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/property_card_holder.jpg"; }}
+                      />
+
+                      {/* Left/Right arrows */}
+                      {imageList.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : imageList.length - 1)); }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                          >
+                            <FontAwesomeIcon icon={faChevronLeft} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < imageList.length - 1 ? prev + 1 : 0)); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                          >
+                            <FontAwesomeIcon icon={faChevronRight} />
+                          </button>
+                          {/* Counter */}
+                          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium shadow-lg">
+                            {currentImageIndex + 1} / {imageList.length}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Thumbnail strip */}
+                    {imageList.length > 1 && (
+                      <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                        {imageList.map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={`Image ${idx + 1}`}
+                            className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition-colors flex-shrink-0 ${
+                              idx === currentImageIndex ? "border-blue-500" : "border-transparent hover:border-blue-300"
+                            }`}
+                            onClick={() => setCurrentImageIndex(idx)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Description */}
               <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">
                   Description
@@ -493,52 +556,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     </p>
                   </div>
 
-                  {/* Marketplace Visibility Toggle - disabled once an offer is accepted */}
-                  {(() => {
-                    const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
-                    const isDisabled = isUpdatingVisibility || hasAcceptedOffer || offersLoading;
-                    return (
-                      <div className="flex justify-between items-center gap-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase text-gray-800">
-                            Marketplace
-                          </p>
-                          <p className="text-[0.65rem] text-gray-500">
-                            {isActive
-                              ? "Visible in marketplace"
-                              : "Hidden from marketplace"}
-                          </p>
-                        </div>
-                        <div className="relative group">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!hasAcceptedOffer && !offersLoading) {
-                                handleToggleVisibility();
-                              }
-                            }}
-                            disabled={isDisabled}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                              hasAcceptedOffer
-                                ? "bg-gray-200 cursor-not-allowed"
-                                : isActive ? "bg-gold" : "bg-gray-300"
-                            } ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"}`}
-                            />
-                          </button>
-                          {hasAcceptedOffer && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                              <div className="text-gray-300">Cannot hide issue after an offer has been accepted</div>
-                              <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   <div className="flex justify-between items-center gap-4">
                     <p className="text-xs font-bold uppercase text-gray-800">
                       Status
@@ -562,35 +579,75 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     </span>
                   </div>
 
+                  {/* Marketplace Visibility Toggle - disabled only when an offer is accepted */}
+                  {(() => {
+                    const isLocked = !!issue.vendor_id; // Locked when vendor assigned
+                    const effectiveActive = isLocked ? false : isActive;
+                    return (
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase text-gray-800">
+                            Marketplace
+                          </p>
+                          <p className="text-[0.65rem] text-gray-500">
+                            {effectiveActive
+                              ? "Visible in marketplace"
+                              : "Hidden from marketplace"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isLocked) {
+                              handleToggleVisibility();
+                            }
+                          }}
+                          disabled={isLocked}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            isLocked
+                              ? "bg-gray-200 opacity-60 cursor-not-allowed"
+                              : effectiveActive ? "bg-gold cursor-pointer" : "bg-gray-300 cursor-pointer"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${effectiveActive ? "translate-x-4" : "translate-x-1"}`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   <div className="h-px bg-gray-100 my-2" />
 
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Cost
-                    </p>
-                    <p className="text-sm font-semibold text-gray-500">
-                      {issue.cost != null
-                        ? `$${Number(issue.cost).toFixed(2)}`
-                        : "N/A"}
-                    </p>
-                  </div>
+                  {/* Cost - only show when vendor is assigned */}
+                  {issue.vendor_id && (
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">
+                        Cost
+                      </p>
+                      <p className="text-sm font-semibold text-gray-500">
+                        {issue.cost != null
+                          ? `$${Number(issue.cost).toFixed(2)}`
+                          : "N/A"}
+                      </p>
+                    </div>
+                  )}
 
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Vendor
-                    </p>
-                    <p className="text-sm font-semibold text-gray-500">
-                      {issue.vendor_id ? (
+                  {/* Vendor - only show when assigned */}
+                  {issue.vendor_id && (
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">
+                        Vendor
+                      </p>
+                      <p className="text-sm font-semibold text-gray-500">
                         <VendorName
                           vendorId={issue.vendor_id}
                           isVendorId={false}
                           showRating
                         />
-                      ) : (
-                        "Not assigned"
-                      )}
-                    </p>
-                  </div>
+                      </p>
+                    </div>
+                  )}
 
                   <div className="h-px bg-gray-100 my-2" />
 
@@ -643,11 +700,22 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                           price: acceptedOffer.price,
                           comment_vendor: acceptedOffer.comment_vendor || "",
                           comment_client: acceptedOffer.comment_client || "",
+                          issue: JSON.parse(JSON.stringify(issue)),
+                          listing: listing ? JSON.parse(JSON.stringify(listing)) : null,
                         }));
+
+                        // Save issue images to IndexedDB in background (don't block Stripe)
+                        const imageUrls = getIssueImageUrls(issue.image_urls);
+                        if (imageUrls.length > 0) {
+                          saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
+                        }
+
+                        const successUrl = `${window.location.origin}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
                         const response = await createCheckoutSession({
                           client_id: (client?.id ?? userId)!,
                           vendor_id: acceptedOffer.vendor_id,
                           offer_id: acceptedOffer.id,
+                          success_url: successUrl,
                         }).unwrap();
                         window.location.href = response.session_url;
                       } catch (err: any) {

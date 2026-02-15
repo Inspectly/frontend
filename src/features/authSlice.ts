@@ -37,6 +37,7 @@ export const checkAuthState = createAsyncThunk(
         if (!firebaseUser) {
           console.warn("Firebase user is null, logging out.");
           dispatch(logout());
+          dispatch(setLoading(false));
           resolve();
           return;
         }
@@ -51,6 +52,7 @@ export const checkAuthState = createAsyncThunk(
           if (!backendUser) {
             console.warn("Backend user not found, logging out.");
             dispatch(logout());
+            dispatch(setLoading(false));
             resolve();
             return;
           }
@@ -64,6 +66,7 @@ export const checkAuthState = createAsyncThunk(
           if (!sessionData) {
             console.warn("User session not found, logging out.");
             dispatch(logout());
+            dispatch(setLoading(false));
           } else {
             dispatch(login(backendUser));
           }

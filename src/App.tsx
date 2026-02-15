@@ -193,6 +193,17 @@ function App() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
+  // Global Stripe redirect handler: if returning from Stripe on ANY page, redirect to /offers
+  useEffect(() => {
+    if (location.pathname === "/offers") return; // Already on offers, let Offers page handle it
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get("session_id");
+    const pendingPayment = localStorage.getItem("pending_offer_payment");
+    if (sessionId && pendingPayment) {
+      navigate(`/offers?session_id=${sessionId}&filter=accepted&payment=success`, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
+
   // Fetch user type based on user ID
   useEffect(() => {
     const fetchUserType = async () => {
