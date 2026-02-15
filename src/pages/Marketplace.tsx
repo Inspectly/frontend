@@ -208,8 +208,17 @@ const Marketplace: React.FC = () => {
 
 
   // Use prefetched data if available, otherwise use API data
+  // Filter to only show open, unassigned issues on the marketplace
   const rawIssues = useMemo(() => {
-    return prefetchedData?.issues || data?.issues || [];
+    const issues = prefetchedData?.issues || data?.issues || [];
+    return issues.filter((issue: IssueType) => {
+      // Only show open issues (status check)
+      const status = (issue.status || "").toLowerCase().replace("status.", "");
+      if (status !== "open") return false;
+      // Only show unassigned issues (no vendor assigned)
+      if (issue.vendor_id) return false;
+      return true;
+    });
   }, [prefetchedData?.issues, data?.issues]);
 
   // Apply client-side type filtering for better matching with smart fallbacks

@@ -152,8 +152,8 @@ const Reports: React.FC = () => {
     }
   };
 
-  if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Error loading issue collections</p>;
+  if (isLoading && !reports) return <p>Loading...</p>;
+  if (error && !reports) return <p>Error loading issue collections</p>;
 
   const noCollections = listingReports.length === 0;
 
@@ -327,9 +327,13 @@ const Reports: React.FC = () => {
           listing_id: r.listing_id,
           name: r.name ?? `Collection #${r.id}`,
         }))}
-        onCreated={() => {
+        onCreated={(createdIssue) => {
           setIsCreateIssueOpen(false);
           refetch();
+          navigate(
+            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
+            { state: { openIssue: createdIssue } }
+          );
         }}
       />
     </div>

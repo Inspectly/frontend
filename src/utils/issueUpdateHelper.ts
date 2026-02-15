@@ -32,6 +32,7 @@ export const buildIssueUpdateBody = (
   status: patch.status || statusMapping[issue.status as IssueStatus] || "open",
   active: patch.active !== undefined ? patch.active : (issue.active ?? true),
   image_url: issue.image_urls || "",
+  image_urls: issue.image_urls || "",
   cost: issue.cost || "0",
   review_status: patch.review_status || issue.review_status || "not_reviewed",
 });

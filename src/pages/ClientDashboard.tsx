@@ -11,7 +11,7 @@ const getGlobalSubscriptions = (): Map<number, any> => {
   }
   return w[SUBS_KEY];
 };
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -52,7 +52,7 @@ import {
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
-import { useGetClientsQuery } from "../features/api/clientsApi";
+// useGetClientsQuery removed — was fetching all clients but result was never used
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
@@ -73,15 +73,30 @@ interface DashboardProps {
 const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Queries - all real data (poll every 20s so client sees updates when vendor submits work, etc.)
+  // If returning from Stripe on the dashboard, redirect to Offers page which handles payment
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const paymentStatus = searchParams.get("payment");
+    const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
+    if ((sessionId || paymentStatus === "success") && pendingPaymentStr) {
+      const params = new URLSearchParams();
+      if (sessionId) params.set("session_id", sessionId);
+      params.set("payment", "success");
+      params.set("filter", "accepted");
+      navigate(`/offers?${params.toString()}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
-  useGetClientsQuery();
+  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 30000 });
+  // useGetClientsQuery() removed — result was never used
 
   const { data: assessments = [], refetch: refetchAssessments } =
-    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 20000 });
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 30000 });
   const { data: allVendors = [] } = useGetVendorsQuery();
 
   const [createListing] = useCreateListingMutation();
@@ -246,39 +261,56 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing; vendor?: Vendor })[];
   }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
 
-  // Fetch offers for user's issues
-  // Polling tick to refetch offers periodically (client sees new offers when vendor creates them)
-  const [pollTick, setPollTick] = useState(0);
+  // Fetch offers progressively — don't block the dashboard waiting for all of them
+  // Each offer loads independently and updates the state as it arrives
+  // Also polls every 20s so new vendor offers show up without manual refresh
+  const [offerPollTick, setOfferPollTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setPollTick((t) => t + 1), 20000);
+    const id = setInterval(() => setOfferPollTick((t) => t + 1), 30000);
     return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
-    const run = async () => {
-      try {
-        const issueResults = await Promise.all(
-          issueIds.map((id) => dispatch(getIssueById.initiate(String(id))))
-        );
-        const vendorResults = await Promise.all(
-          vendorIds.map((id) => dispatch(getVendorById.initiate(String(id))))
-        );
+    if (filteredIssuesByUser.length === 0) return;
 
-        setIssueMap(Object.fromEntries(issueResults.map((res, i) => [issueIds[i], res.data as IssueType])));
-        setVendorMap(Object.fromEntries(vendorResults.map((res, i) => [vendorIds[i], res.data as Vendor])));
+    // Always force refetch to keep offers fresh (acts as prefetch for Offers page)
 
-        const allIssueIds = filteredIssuesByUser.map((i) => i.id);
-        const offerResults = await Promise.all(
-          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id, { forceRefetch: true })))
-        );
-        setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
-      } catch (err) {
-        console.error("Error fetching data:", err);
-      }
-    };
+    filteredIssuesByUser.forEach((issue) => {
+      dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: true }))
+        .then((res) => {
+          if (res.data) {
+            setOffersByIssueId((prev) => ({
+              ...prev,
+              [issue.id]: res.data as IssueOffer[],
+            }));
+          }
+        })
+        .catch(() => { /* ignore individual failures */ });
+    });
+  }, [dispatch, filteredIssuesByUser, offerPollTick]);
 
-    if (issueIds.length || vendorIds.length || filteredIssuesByUser.length) run();
-  }, [dispatch, issueIds, vendorIds, filteredIssuesByUser, pollTick]);
+  // Fetch issue and vendor details for calendar assessments
+  // Polls on same tick as offers so visit requests / approvals stay fresh
+  useEffect(() => {
+    if (issueIds.length > 0) {
+      issueIds.forEach((id) => {
+        dispatch(getIssueById.initiate(String(id), { forceRefetch: offerPollTick > 0 })).then((res) => {
+          if (res.data) {
+            setIssueMap((prev) => ({ ...prev, [id]: res.data as IssueType }));
+          }
+        });
+      });
+    }
+    if (vendorIds.length > 0) {
+      vendorIds.forEach((id) => {
+        dispatch(getVendorById.initiate(String(id), { forceRefetch: offerPollTick > 0 })).then((res) => {
+          if (res.data) {
+            setVendorMap((prev) => ({ ...prev, [id]: res.data as Vendor }));
+          }
+        });
+      });
+    }
+  }, [dispatch, issueIds, vendorIds, offerPollTick]);
 
   // Auto-rotate properties slideshow (cycles through pages of 2)
   useEffect(() => {
@@ -1287,8 +1319,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       <CreateIssueModal
         open={isCreateIssueModalOpen}
         onClose={() => setIsCreateIssueModalOpen(false)}
-        onCreated={() => {
-          // Optionally refetch issues or show success
+        onCreated={(createdIssue) => {
+          setIsCreateIssueModalOpen(false);
+          navigate(
+            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
+            { state: { openIssue: createdIssue } }
+          );
         }}
         issueCollections={issueCollections}
       />

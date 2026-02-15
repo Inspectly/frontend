@@ -169,14 +169,12 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
           </div>
         </div>
 
-        {/* Bottom Row: Address, Severity, Rating */}
+        {/* Bottom Row: City, Severity, Rating */}
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1 text-gray-600">
               <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
-              <span>
-                {address.city}
-              </span>
+              <span>{address.city}</span>
             </div>
             <div className="flex items-center gap-1">
               <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
