@@ -158,6 +158,18 @@ function App() {
     dispatch(checkAuthState());
   }, [dispatch]);
 
+  // Safeguard: unblock UI if auth/loading hangs (e.g. Firebase or backend unreachable)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loadingAuthState || loadingUserType) {
+        console.warn("Auth loading timeout - unblocking UI");
+        dispatch(setLoading(false));
+        setLoadingUserType(false);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [loadingAuthState, loadingUserType, dispatch]);
+
   // Handle marketplace prefetching - trigger when user is on dashboard
   useEffect(() => {
     if (authenticated && user?.id && user?.user_type && userInfo && !loadingUserType) {
