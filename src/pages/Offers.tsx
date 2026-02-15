@@ -234,20 +234,9 @@ const Offers: React.FC = () => {
     return offersMap;
   }, shallowEqual); // Use shallowEqual to prevent unnecessary rerenders
 
-  // Check if any offers are still loading
-  const loadingStates = useSelector((state: RootState) => {
-    return userIssues.map((issue) => {
-      const select = issueOffersApi.endpoints.getOffersByIssueId.select(issue.id);
-      const result = select(state);
-      return result.isLoading;
-    });
-  }, shallowEqual);
-  
-  const isFetchingOffers = loadingStates.some(loading => loading);
-  // Only show loading on first load when we have NO data at all
-  // If we have cached offers from dashboard prefetch, show them immediately
-  const hasAnyCachedOffers = Object.keys(offersByIssueId).length > 0;
-  const isLoading = (isLoadingIssues && issues.length === 0) || (isLoadingReports && reports.length === 0) || (isFetchingOffers && !hasAnyCachedOffers);
+  // Show loading only when we have NO issues/reports data at all (first ever load)
+  // Offers load progressively from dashboard prefetch — don't block on them
+  const isLoading = (isLoadingIssues && issues.length === 0) || (isLoadingReports && reports.length === 0);
 
   // Combine issues with their offers, reports, and listings
   const issuesWithOffers: IssueWithOffers[] = useMemo(() => {

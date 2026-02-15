@@ -273,11 +273,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   useEffect(() => {
     if (filteredIssuesByUser.length === 0) return;
 
-    // On first load use cache; on poll ticks force refetch to pick up new offers
-    const shouldForce = offerPollTick > 0;
+    // Always force refetch to keep offers fresh (acts as prefetch for Offers page)
 
     filteredIssuesByUser.forEach((issue) => {
-      dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: shouldForce }))
+      dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: true }))
         .then((res) => {
           if (res.data) {
             setOffersByIssueId((prev) => ({
