@@ -49,7 +49,7 @@ function App() {
       '/': 'Dashboard',
       '/dashboard': 'Dashboard',
       '/marketplace': 'Marketplace',
-      '/listings': 'Listings',
+      '/listings': 'Properties',
       '/offers': 'Offers',
       '/reports': 'Reports',
       '/issues': 'Issues',

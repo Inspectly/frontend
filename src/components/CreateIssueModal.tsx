@@ -1,33 +1,37 @@
 // src/components/CreateIssueModal.tsx
 import React, { useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { useCreateIssueMutation } from "../features/api/issuesApi";
+import { useCreateReportMutation } from "../features/api/reportsApi";
+import { useCreateListingMutation } from "../features/api/listingsApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
-import type { IssueStatus, IssueType } from "../types";
+import { useSelector } from "react-redux";
+import { RootState } from "../store/store";
+import type { IssueStatus, IssueType, Listing, ReportType } from "../types";
 import { toast } from "react-hot-toast";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
-
-type IssueCollection = { id: number; listing_id: number; name: string };
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onCreated?: (issue: IssueType) => void;
-  issueCollections: IssueCollection[];
+  listings: Listing[];
+  reports: ReportType[];
 };
 
 const CreateIssueModal: React.FC<Props> = ({
   open,
   onClose,
   onCreated,
-  issueCollections,
+  listings,
+  reports,
 }) => {
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
   const [createIssue, { isLoading }] = useCreateIssueMutation();
+  const [createReport] = useCreateReportMutation();
+  const [createListing] = useCreateListingMutation();
+  const user = useSelector((state: RootState) => state.auth.user);
 
-  // NOTE: no default auto-select; user must choose a collection
   const [formData, setFormData] = useState<{
-    report_id?: number;
     listing_id?: number;
     type: string;
     description: string;
@@ -36,7 +40,6 @@ const CreateIssueModal: React.FC<Props> = ({
     status: IssueStatus | string;
     active: boolean;
   }>({
-    report_id: undefined,
     listing_id: undefined,
     type: "",
     description: "",
@@ -45,6 +48,12 @@ const CreateIssueModal: React.FC<Props> = ({
     status: "open",
     active: true,
   });
+
+  // "Add new address" inline form
+  const [showNewAddress, setShowNewAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({ address: "", city: "", state: "", country: "Canada", postal_code: "" });
+  const [isCreatingListing, setIsCreatingListing] = useState(false);
+  const [localListings, setLocalListings] = useState<Listing[]>([]); // Newly created listings not yet in parent prop
 
   // Store actual File objects and lightweight blob URLs for preview (not base64)
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -61,13 +70,14 @@ const CreateIssueModal: React.FC<Props> = ({
     const { name, value, type, checked } = e.target as HTMLInputElement;
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
-    } else if (name === "report_id") {
-      const selectedCollection = issueCollections.find(c => c.id === Number(value));
-      setFormData((prev) => ({
-        ...prev,
-        report_id: value ? Number(value) : undefined,
-        listing_id: selectedCollection?.listing_id,
-      }));
+    } else if (name === "listing_id") {
+      if (value === "__new__") {
+        setShowNewAddress(true);
+        setFormData((prev) => ({ ...prev, listing_id: undefined }));
+      } else {
+        setShowNewAddress(false);
+        setFormData((prev) => ({ ...prev, listing_id: value ? Number(value) : undefined }));
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -98,8 +108,73 @@ const CreateIssueModal: React.FC<Props> = ({
     );
   };
 
+  // Find or create a "My Posted Jobs" report for manual issue creation
+  // Never assign manual issues to extraction reports
+  const getOrCreateReportId = async (listingId: number): Promise<number> => {
+    // Look specifically for a "My Posted Jobs" or "Jobs" report
+    const jobsReport = reports.find((r) => {
+      if (r.listing_id !== listingId) return false;
+      const name = (r.name || "").toLowerCase();
+      return name === "my posted jobs" || name === "jobs";
+    });
+    if (jobsReport) return jobsReport.id;
+
+    // None found — create a new "My Posted Jobs" collection
+    const listing = listings.find((l) => l.id === listingId) || localListings.find((l) => l.id === listingId);
+    const newReport = await createReport({
+      listing_id: listingId,
+      user_id: listing?.user_id,
+      name: "My Posted Jobs",
+    }).unwrap();
+    return newReport.id;
+  };
+
+  // Create a new listing from inline address form
+  const handleCreateNewListing = async () => {
+    if (!newAddress.address.trim() || !newAddress.city.trim() || !newAddress.state.trim()) {
+      toast.error("Please fill in address, city, and province/state");
+      return;
+    }
+    // Show saving state but don't block — save optimistically
+    setIsCreatingListing(true);
+    const savedAddress = { ...newAddress };
+    setShowNewAddress(false);
+    setNewAddress({ address: "", city: "", state: "", country: "Canada", postal_code: "" });
+
+    try {
+      const created = await createListing({
+        ...savedAddress,
+        user_id: user?.id,
+      }).unwrap();
+      if (created?.id) {
+        const fullListing: Listing = {
+          id: created.id,
+          user_id: user?.id || 0,
+          address: savedAddress.address,
+          city: savedAddress.city,
+          state: savedAddress.state,
+          country: savedAddress.country,
+          postal_code: savedAddress.postal_code,
+          image_url: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setLocalListings((prev) => [...prev, fullListing]);
+        setFormData((prev) => ({ ...prev, listing_id: created.id }));
+        toast.success("Property added!");
+      }
+    } catch (e) {
+      console.error("Failed to create listing:", e);
+      toast.error("Failed to add property. Please try again.");
+      setShowNewAddress(true);
+      setNewAddress(savedAddress);
+    } finally {
+      setIsCreatingListing(false);
+    }
+  };
+
   const canSubmit =
-    !!formData.report_id &&
+    !!formData.listing_id &&
     !!formData.type &&
     !!formData.summary &&
     !!formData.description &&
@@ -108,7 +183,7 @@ const CreateIssueModal: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit || !formData.report_id) return;
+    if (!canSubmit || !formData.listing_id) return;
 
     try {
       const severityMap: Record<string, string> = {
@@ -116,11 +191,15 @@ const CreateIssueModal: React.FC<Props> = ({
         medium: "Medium",
         high: "High",
       };
+
+      // Auto-find or create a "My Posted Jobs" report for this listing
+      const reportId = await getOrCreateReportId(formData.listing_id);
+
       // Convert files to base64 only now (at submit time)
       const base64Images = await filesToBase64(imageFiles);
 
-      const submittedData = {
-        report_id: formData.report_id,
+      const submittedData: any = {
+        report_id: reportId,
         listing_id: formData.listing_id,
         type: formData.type,
         summary: formData.summary,
@@ -128,11 +207,11 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
-        image_urls: base64Images.length > 0 ? base64Images[0] : "",
+        image_urls: base64Images as any, // Backend expects array
       };
       const apiResponse = await createIssue(submittedData).unwrap();
 
-      // Normalize status to frontend format (e.g. "open" -> "Status.OPEN")
+      // Normalize status to frontend format
       const rawStatus = (apiResponse.status || "open") as string;
       const normalizedStatus = rawStatus.startsWith("Status.")
         ? rawStatus
@@ -152,12 +231,8 @@ const CreateIssueModal: React.FC<Props> = ({
       toast.success("Issue created");
       onCreated?.(fullIssue);
 
-      // Don't revoke blob URLs here — they're passed to the next page via navigation state
-      // They'll be freed when the browser navigates away or garbage collects
-
       // reset form & close
       setFormData({
-        report_id: undefined,
         listing_id: undefined,
         type: "",
         description: "",
@@ -177,58 +252,11 @@ const CreateIssueModal: React.FC<Props> = ({
     }
   };
 
-  // Empty state - no listings/collections available
-  if (issueCollections.length === 0) {
-    return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden">
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
-            <h6 className="text-lg font-semibold">Create New Issue</h6>
-            <button
-              onClick={onClose}
-              className="text-2xl font-light text-gray-600 hover:text-gray-800 leading-none"
-              aria-label="Close"
-              type="button"
-            >
-              &times;
-            </button>
-          </div>
-          <div className="p-6 text-center">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Add a Property First</h3>
-            <p className="text-gray-600 mb-6">
-              Before you can post a job, you need to add a property listing. This helps vendors understand where the work needs to be done.
-            </p>
-            <div className="flex justify-center gap-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <Link
-                to="/listings?action=add"
-                onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Add Property
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white w-full max-w-xl max-h-[calc(100vh-2rem)] rounded-xl shadow-lg flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h6 className="text-lg font-semibold">Create New Issue</h6>
+          <h6 className="text-lg font-semibold">Post a Job</h6>
           <button
             onClick={onClose}
             className="text-2xl font-light text-gray-600 hover:text-gray-800 leading-none"
@@ -241,37 +269,98 @@ const CreateIssueModal: React.FC<Props> = ({
 
         <div className="flex-1 min-h-0 overflow-y-auto p-4">
           <div className="grid grid-cols-12 gap-4">
-          {/* Issue Collection (no auto-select) */}
+          {/* Property Address (required) */}
           <div className="relative col-span-12">
             <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-              Issue Collection
+              Property
             </label>
-            <select
-              name="report_id"
-              className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none"
-              value={formData.report_id ?? ""}
-              onChange={handleFieldChange}
-              required
-              disabled={isLoading}
-            >
-              <option value="" disabled>
-                Select Issue Collection
-              </option>
-              {issueCollections.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
-              <svg
-                className="w-5 h-5 text-gray-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
+            {!showNewAddress ? (
+              <>
+                <select
+                  name="listing_id"
+                  className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none"
+                  value={formData.listing_id ?? ""}
+                  onChange={handleFieldChange}
+                  required
+                  disabled={isLoading}
+                >
+                  <option value="" disabled>
+                    Select a property
+                  </option>
+                  {/* Existing + locally created listings */}
+                  {[...listings, ...localListings.filter((ll) => !listings.find((l) => l.id === ll.id))].map((listing) => (
+                    <option key={listing.id} value={listing.id}>
+                      {listing.address}, {listing.city}, {listing.state}
+                    </option>
+                  ))}
+                  <option value="__new__">+ Add new address</option>
+                </select>
+                <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                <input
+                  type="text"
+                  placeholder="Street address"
+                  value={newAddress.address}
+                  onChange={(e) => setNewAddress((p) => ({ ...p, address: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="City"
+                    value={newAddress.city}
+                    onChange={(e) => setNewAddress((p) => ({ ...p, city: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Province / State"
+                    value={newAddress.state}
+                    onChange={(e) => setNewAddress((p) => ({ ...p, state: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Postal code"
+                    value={newAddress.postal_code}
+                    onChange={(e) => setNewAddress((p) => ({ ...p, postal_code: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Country"
+                    value={newAddress.country}
+                    onChange={(e) => setNewAddress((p) => ({ ...p, country: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateNewListing}
+                    disabled={isCreatingListing}
+                    className="px-3 py-1.5 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    {isCreatingListing ? "Saving..." : "Save Address"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewAddress(false); setNewAddress({ address: "", city: "", state: "", country: "Canada", postal_code: "" }); }}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-900"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Type */}

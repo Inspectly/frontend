@@ -322,18 +322,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(interval);
   }, [_listings]);
 
-  // Issue collections for CreateIssueModal (reports the user can add issues to)
-  const issueCollections = useMemo(() => {
-    if (!reports || !_listings) return [];
-    return reports.map((report) => {
-      const listing = _listings.find((l) => l.id === report.listing_id);
-      return {
-        id: report.id,
-        listing_id: report.listing_id,
-        name: `${listing?.address || 'Unknown Property'} - ${report.name || 'Report'}`
-      };
-    });
-  }, [reports, _listings]);
+  // User's listings for CreateIssueModal (simplified — just pick address)
+  const userListings = useMemo(() => {
+    return (_listings || []).filter((l) => l.user_id === user.id);
+  }, [_listings, user.id]);
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
@@ -1322,11 +1314,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         onCreated={(createdIssue) => {
           setIsCreateIssueModalOpen(false);
           navigate(
-            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
+            `/listings/${createdIssue.listing_id}`,
             { state: { openIssue: createdIssue } }
           );
         }}
-        issueCollections={issueCollections}
+        listings={userListings}
+        reports={reports || []}
       />
 
       {/* Issue Detail Modal */}
