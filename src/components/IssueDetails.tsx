@@ -563,9 +563,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
         {activeTab === "details" && (
           <div id="default-details" role="tabpanel">
             {/* Property Image - Full Width */}
-            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url || null)}>
+            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls?.[0] || listing?.image_url || null)}>
               <ImageComponent
-                src={issue.image_urls || listing?.image_url}
+                src={issue.image_urls?.[0] || listing?.image_url}
                 fallback="/images/property_card_holder.jpg"
                 className="rounded-xl w-full h-[280px] object-cover shadow-sm"
               />
