@@ -117,7 +117,7 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
-        image_urls: formData.image_url ? [formData.image_url] : [],
+        image_urls: formData.image_url || "",
       }).unwrap();
 
       toast.success("Issue created");

@@ -39,7 +39,7 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
           acc[i.id] = i;
           return acc;
         },
-        {} as Record<number, { id: number; summary?: string; status?: string }>
+        {} as Record<number, { id: number; summary?: string; status?: string; updated_at?: string }>
       ),
     [issues]
   );
