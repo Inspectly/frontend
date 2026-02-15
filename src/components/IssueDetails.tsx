@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { saveIssueImages } from "../utils/issueImageStore";
+import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
-  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -16,14 +17,15 @@ import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-regular-svg-icons";
 import {
-  faChevronUp,
   faChevronDown,
+  faChevronLeft,
+  faChevronRight,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
-import ImageComponent from "./ImageComponent";
+
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
 import { useNavigate } from "react-router-dom";
@@ -133,10 +135,13 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
   } = assessmentsData;
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isActive, setIsActive] = useState<boolean>(issue.active);
 
-  const [detailsOpen, setDetailsOpen] = useState(true);
-  const [peopleOpen, setPeopleOpen] = useState(true);
-  const [datesOpen, setDatesOpen] = useState(true);
+  // Sync isActive when a different issue is loaded
+  useEffect(() => setIsActive(issue.active), [issue.id]);
+
+  // Collapsible section states removed - using HomeownerIssueCard-style layout
 
   const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
 
@@ -178,11 +183,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     setIsOfferModalOpen(true);
   };
 
-  const toggleSection = (
-    setter: React.Dispatch<React.SetStateAction<boolean>>
-  ) => {
-    setter((prev) => !prev);
-  };
+  // toggleSection removed - using HomeownerIssueCard-style layout
 
   const handleStatusChange = (newStatus: string) => {
     // Backend expects simple format: "open", "in_progress", "review", "completed"
@@ -463,36 +464,33 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               </>
             )}
 
-            {/* Visibility Toggle */}
-            {(() => {
-              const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
+            {/* Visibility Toggle - hidden for vendors, locked when vendor assigned */}
+            {userType !== "vendor" && (() => {
+              const isLocked = !!issue.vendor_id;
+              const effectiveActive = isLocked ? false : isActive;
               return (
-                <div className="relative group">
-                  <button
-                    onClick={() => {
-                      if (!hasAcceptedOffer) {
-                        updateIssue(buildIssueUpdateBody(issue, { active: !issue.active }, listing?.id));
-                      }
-                    }}
-                    disabled={hasAcceptedOffer}
-                    className={`w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors ${
-                      hasAcceptedOffer 
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-                        : "bg-gray-100 hover:bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    <FontAwesomeIcon
-                      icon={issue.active ? faEye : faEyeSlash}
-                      className="text-sm"
-                    />
-                  </button>
-                  {hasAcceptedOffer && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 shadow-lg">
-                      <div className="text-gray-300">Cannot hide after offer accepted</div>
-                      <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={() => {
+                    if (!isLocked) {
+                      const next = !isActive;
+                      setIsActive(next);
+                      updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id))
+                        .unwrap()
+                        .catch(() => setIsActive(!next));
+                    }
+                  }}
+                  disabled={isLocked}
+                  className={`w-9 h-9 rounded-full inline-flex items-center justify-center transition-colors ${
+                    isLocked 
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 cursor-pointer"
+                  }`}
+                >
+                  <FontAwesomeIcon
+                    icon={effectiveActive ? faEye : faEyeSlash}
+                    className="text-sm"
+                  />
+                </button>
               );
             })()}
           </div>
@@ -562,14 +560,76 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {activeTab === "details" && (
           <div id="default-details" role="tabpanel">
-            {/* Property Image - Full Width */}
-            <div className="mb-6 cursor-pointer" onClick={() => setSelectedImage(issue.image_urls || listing?.image_url || null)}>
-              <ImageComponent
-                src={issue.image_urls || listing?.image_url}
-                fallback="/images/property_card_holder.jpg"
-                className="rounded-xl w-full h-[280px] object-cover shadow-sm"
-              />
-            </div>
+            {/* Property Images - Full Width with gallery for multiple */}
+            {(() => {
+              // Parse image_urls which may be a JSON array string, an array, or a single string
+              let imageList: string[] = [];
+              const raw = issue.image_urls;
+              if (Array.isArray(raw)) {
+                imageList = raw.filter(Boolean);
+              } else if (typeof raw === "string" && raw.startsWith("[")) {
+                try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
+              } else if (raw) {
+                imageList = [raw];
+              }
+              if (imageList.length === 0 && listing?.image_url) {
+                imageList = [listing.image_url];
+              }
+
+              return (
+                <div className="mb-6">
+                  {/* Main image with scroll arrows */}
+                  <div className="relative group/img rounded-xl overflow-hidden">
+                    <img
+                      src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
+                      alt="Issue"
+                      className="w-full h-[280px] object-cover cursor-pointer"
+                      onClick={() => setSelectedImage(imageList[currentImageIndex] || null)}
+                      onError={(e) => { (e.target as HTMLImageElement).src = "/images/property_card_holder.jpg"; }}
+                    />
+
+                    {/* Left/Right arrows */}
+                    {imageList.length > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : imageList.length - 1)); }}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                        >
+                          <FontAwesomeIcon icon={faChevronLeft} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < imageList.length - 1 ? prev + 1 : 0)); }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                        >
+                          <FontAwesomeIcon icon={faChevronRight} />
+                        </button>
+                        {/* Counter */}
+                        <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium shadow-lg">
+                          {currentImageIndex + 1} / {imageList.length}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Thumbnail strip */}
+                  {imageList.length > 1 && (
+                    <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                      {imageList.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`Image ${idx + 1}`}
+                          className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition-colors flex-shrink-0 ${
+                            idx === currentImageIndex ? "border-blue-500" : "border-transparent hover:border-blue-300"
+                          }`}
+                          onClick={() => { setCurrentImageIndex(idx); }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Image Lightbox Modal */}
             {selectedImage && (
@@ -590,209 +650,171 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               </div>
             )}
 
-            {/* Two Column Layout */}
-            <div className="flex flex-col lg:flex-row gap-8">
-              {/* Left Column */}
-              <div className="flex-1 space-y-6">
-                {/* Details Section */}
-                <div>
-                  <button
-                    className="flex items-center gap-2 mb-4"
-                    onClick={() => toggleSection(setDetailsOpen)}
-                  >
-                    <FontAwesomeIcon
-                      icon={detailsOpen ? faChevronUp : faChevronDown}
-                      className="w-3 h-3 text-gray-500"
-                    />
-                    <h3 className="text-base font-semibold text-gray-900">Details</h3>
-                  </button>
-                  {detailsOpen && (
-                    <div className="space-y-4 pl-5">
-                      {/* Type and Priority Badges */}
-                      <div>
-                        <p className="text-sm text-gray-500 mb-2">Type</p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg border border-gray-200">
-                            {normalizeAndCapitalize(issue.type)}
-                          </span>
-                          {issue.severity === "High" && (
-                            <span className="px-3 py-1.5 bg-gold-100 text-gold-700 text-sm font-medium rounded-lg flex items-center gap-1.5">
-                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              High Priority
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {/* Status */}
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Status</p>
-                        {(userType === "vendor" && issue.vendor_id === currentVendor?.id) ? (
-                          <div className="relative inline-block">
-                            <button
-                              className="text-sm font-medium text-gray-900 flex items-center gap-1 hover:text-gold transition-colors"
-                              ref={progressDropdownButtonRef}
-                              onClick={() =>
-                                setProgressDropdownOpen((prev) =>
-                                  prev === issue.id ? null : issue.id
-                                )
-                              }
-                            >
-                              {statusOptions.find(
-                                (option) =>
-                                  option.value ===
-                                  statusMapping[issue.status as IssueStatus]
-                              )?.label || "Unknown"}
-                              <FontAwesomeIcon icon={faChevronDown} className="w-2.5 h-2.5" />
-                            </button>
-                            {Number(progressDropdownOpen) === issue.id && (
-                              <Dropdown
-                                buttonRef={progressDropdownButtonRef}
-                                onClose={() => setProgressDropdownOpen(null)}
-                              >
-                                <div className="py-1">
-                                  {statusOptions.map(({ value, label }) => (
-                                    <button
-                                      key={value}
-                                      className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` === issue.status ? "font-semibold bg-gray-50" : ""}`}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleStatusChange(value);
-                                      }}
-                                    >
-                                      {label}
-                                    </button>
-                                  ))}
-                                </div>
-                              </Dropdown>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm font-medium text-gray-900">
-                            {statusOptions.find(
-                              (option) =>
-                                option.value === statusMapping[issue.status as IssueStatus]
-                            )?.label || "Unknown"}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Severity */}
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Severity</p>
-                        <p className={`text-sm font-medium ${
-                          issue.severity === "High" ? "text-red-600" 
-                          : issue.severity === "Medium" ? "text-gold-600" 
-                          : "text-green-600"
-                        }`}>
-                          {issue.severity}
-                        </p>
-                      </div>
-
-                      {/* Description */}
-                      <div className="col-span-2 pt-2">
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {issue.description || "No description available."}
-                        </p>
-                      </div>
-
-                      {/* Cost/Price Range */}
-                      <div className="col-span-2 pt-2">
-                        <p className="text-lg font-semibold text-gray-900">
-                          {issue.cost || "Price TBD"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+            {/* Two Column Layout - matches HomeownerIssueCard structure */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              {/* LEFT - 2/3 width */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Description */}
+                <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                    Description
+                  </h3>
+                  <p className="text-sm text-gray-700 leading-relaxed">
+                    {issue.description || "No description available."}
+                  </p>
                 </div>
 
                 {/* Attachments Section */}
-                <div className="pt-4 border-t border-gray-100">
+                <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Attachments
+                  </h3>
                   <Attachments issueId={issue.id} userType={userType} />
                 </div>
 
                 {/* Comments Section - Client only */}
                 {userType !== "vendor" && (
-                  <div className="pt-4 border-t border-gray-100">
-                    <Comments issueId={issue.id} userId={userId} />
+                  <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                      Comments
+                    </h3>
+                    <div className="max-h-[360px] overflow-y-auto pr-1">
+                      <Comments issueId={issue.id} userId={userId} />
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Right Column */}
-              <div className="lg:w-72 space-y-6">
-                {/* People Section */}
-                <div>
-                  <button
-                    className="flex items-center gap-2 mb-4"
-                    onClick={() => toggleSection(setPeopleOpen)}
-                  >
-                    <FontAwesomeIcon
-                      icon={peopleOpen ? faChevronUp : faChevronDown}
-                      className="w-3 h-3 text-gray-500"
-                    />
-                    <h3 className="text-base font-semibold text-gray-900">People</h3>
-                  </button>
-                  {peopleOpen && (
-                    <div className="space-y-4 pl-5">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Vendor</p>
-                        <div className="text-sm font-medium text-gray-900">
-                          {issue.vendor_id ? (
-                            <VendorName
-                              vendorId={issue.vendor_id}
-                              isVendorId={false}
-                              showRating
-                            />
-                          ) : (
-                            <span className="text-gray-500">No vendor assigned</span>
+              {/* RIGHT - 1/3 width: Details card */}
+              <div className="space-y-4">
+                <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-4">
+                    Details
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">Type</p>
+                      <p className="text-sm font-semibold text-gray-500">
+                        {normalizeAndCapitalize(issue.type)}
+                      </p>
+                    </div>
+
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">Severity</p>
+                      <p className={`text-sm font-semibold ${
+                        issue.severity === "High" ? "text-red-600"
+                        : issue.severity === "Medium" ? "text-yellow-600"
+                        : "text-green-600"
+                      }`}>
+                        {issue.severity || "Medium"}
+                      </p>
+                    </div>
+
+                    <div className="flex justify-between items-center gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">Status</p>
+                      {(userType === "vendor" && issue.vendor_id === currentVendor?.id) ? (
+                        <div className="relative inline-block">
+                          <button
+                            className="inline-flex px-2.5 py-1.5 rounded text-xs font-medium bg-gold-100 text-gold-700 items-center gap-1 hover:bg-gold-200 transition-colors"
+                            ref={progressDropdownButtonRef}
+                            onClick={() =>
+                              setProgressDropdownOpen((prev) =>
+                                prev === issue.id ? null : issue.id
+                              )
+                            }
+                          >
+                            {statusOptions.find(
+                              (option) =>
+                                option.value ===
+                                statusMapping[issue.status as IssueStatus]
+                            )?.label || "Unknown"}
+                            <FontAwesomeIcon icon={faChevronDown} className="w-2.5 h-2.5" />
+                          </button>
+                          {Number(progressDropdownOpen) === issue.id && (
+                            <Dropdown
+                              buttonRef={progressDropdownButtonRef}
+                              onClose={() => setProgressDropdownOpen(null)}
+                            >
+                              <div className="py-1">
+                                {statusOptions.map(({ value, label }) => (
+                                  <button
+                                    key={value}
+                                    className={`block px-4 py-2 text-sm hover:bg-gray-100 w-full text-left ${`Status.${value.toUpperCase()}` === issue.status ? "font-semibold bg-gray-50" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusChange(value);
+                                    }}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </Dropdown>
                           )}
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Realtor</p>
-                        <p className="text-sm font-medium text-gray-500">
-                          No Realtor assigned
-                        </p>
-                      </div>
+                      ) : (
+                        <span className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium ${
+                          statusMapping[issue.status as IssueStatus] === "open"
+                            ? "bg-gray-100 text-gray-700"
+                            : statusMapping[issue.status as IssueStatus] === "in_progress"
+                              ? "bg-gold-100 text-gold-700"
+                              : statusMapping[issue.status as IssueStatus] === "review"
+                                ? "bg-gold-100 text-gold-700"
+                                : statusMapping[issue.status as IssueStatus] === "completed"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {statusOptions.find(
+                            (option) =>
+                              option.value === statusMapping[issue.status as IssueStatus]
+                          )?.label || "Unknown"}
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Dates Section */}
-                <div className="pt-6">
-                  <button
-                    className="flex items-center gap-2 mb-4"
-                    onClick={() => toggleSection(setDatesOpen)}
-                  >
-                    <FontAwesomeIcon
-                      icon={datesOpen ? faChevronUp : faChevronDown}
-                      className="w-3 h-3 text-gray-500"
-                    />
-                    <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      Dates
-                    </h3>
-                  </button>
-                  {datesOpen && (
-                    <div className="space-y-4 pl-5">
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Date Created</p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatDate(issue.created_at)}
+                    <div className="h-px bg-gray-100 my-2" />
+
+                    {/* Cost - only show when vendor is assigned */}
+                    {issue.vendor_id && (
+                      <div className="flex justify-between gap-4">
+                        <p className="text-xs font-bold uppercase text-gray-800">Cost</p>
+                        <p className="text-sm font-semibold text-gray-500">
+                          {issue.cost != null && issue.cost !== "0"
+                            ? `$${Number(issue.cost).toFixed(2)}`
+                            : "N/A"}
                         </p>
                       </div>
-                      <div>
-                        <p className="text-sm text-gray-500 mb-1">Last Updated</p>
-                        <p className="text-sm font-medium text-gray-900">
-                          {formatDate(issue.updated_at)}
+                    )}
+
+                    {/* Vendor - only show when assigned */}
+                    {issue.vendor_id && (
+                      <div className="flex justify-between gap-4">
+                        <p className="text-xs font-bold uppercase text-gray-800">Vendor</p>
+                        <p className="text-sm font-semibold text-gray-500">
+                          <VendorName
+                            vendorId={issue.vendor_id}
+                            isVendorId={false}
+                            showRating
+                          />
                         </p>
                       </div>
+                    )}
+
+                    <div className="h-px bg-gray-100 my-2" />
+
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-gray-800">Date Created</p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(issue.created_at)}
+                      </p>
                     </div>
-                  )}
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold uppercase text-gray-800">Date Updated</p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(issue.updated_at)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -822,12 +844,22 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                             price: acceptedOffer.price,
                             comment_vendor: acceptedOffer.comment_vendor || "",
                             comment_client: acceptedOffer.comment_client || "",
+                            issue: JSON.parse(JSON.stringify(issue)),
+                            listing: listing ? JSON.parse(JSON.stringify(listing)) : null,
                           }));
-                          
+
+                          // Save issue images to IndexedDB in background (don't block Stripe)
+                          const imageUrls = getIssueImageUrls(issue.image_urls);
+                          if (imageUrls.length > 0) {
+                            saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
+                          }
+
+                          const successUrl = `${window.location.origin}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
                           const response = await createCheckoutSession({
                             client_id: (client?.id ?? userId)!,
                             vendor_id: acceptedOffer.vendor_id,
                             offer_id: acceptedOffer.id,
+                            success_url: successUrl,
                           }).unwrap();
                           window.location.href = response.session_url;
                         } catch (err: any) {

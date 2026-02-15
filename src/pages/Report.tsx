@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -6,7 +6,7 @@ import {
   faMagnifyingGlass,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 
 import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
@@ -15,7 +15,10 @@ import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
   useCreateIssueMutation,
+  issuesApi,
 } from "../features/api/issuesApi";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "../store/store";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
 import VendorName from "../components/VendorName";
@@ -46,12 +49,13 @@ const CostCell: React.FC<{ issueId: number }> = ({ issueId }) => {
 };
 
 const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
+  const dispatch = useDispatch<AppDispatch>();
   const { listingId, reportId } = useParams<{
     listingId: string;
     reportId: string;
   }>();
 
-  const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
+  const { data: issues, error, isLoading } = useGetIssuesQuery();
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
 
   const [updateIssue] = useUpdateIssueMutation();
@@ -70,6 +74,42 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
 
   // ⬇️ NEW: which issue is currently opened in the card
   const [selectedIssue, setSelectedIssue] = useState<any | null>(null);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Track whether the modal was opened from a freshly created issue
+  const [wasCreatedIssue, setWasCreatedIssue] = useState(false);
+
+  // Auto-open issue detail modal when navigated with the created issue
+  useEffect(() => {
+    const openIssue = (location.state as any)?.openIssue;
+    if (openIssue) {
+      setSelectedIssue(openIssue);
+      setWasCreatedIssue(true);
+      setLocalCreatedIssue(openIssue); // Show in table immediately via local state
+
+      // Also try adding to RTK cache (works if cache exists)
+      dispatch(
+        issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
+          if (!draft.find((i) => i.id === openIssue.id)) {
+            draft.push(openIssue);
+          }
+        })
+      );
+
+      // Clear navigation state so it doesn't re-open on back/refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname, dispatch]);
+
+  const handleCloseIssueModal = () => {
+    setSelectedIssue(null);
+    if (wasCreatedIssue) {
+      setWasCreatedIssue(false);
+    }
+    // No refetch needed — updateIssue mutation already optimistically updates the cache
+  };
 
   // Open the modal on mount if parent requested it
   useEffect(() => {
@@ -137,7 +177,6 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
         return;
       }
       await updateIssue(buildIssueUpdateBody(issueToUpdate, { active: newActive }, listingId ? Number(listingId) : undefined)).unwrap();
-      refetch();
     } catch (error) {
       console.error("Error updating issue:", error);
     }
@@ -165,7 +204,6 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: formData.status as IssueStatus,
       }).unwrap();
-      refetch();
       setIsModalOpen(false);
     } catch (err) {
       console.error("Failed to create issue:", err);
@@ -202,8 +240,17 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
     reader.readAsDataURL(file);
   };
 
-  const reportIssues =
-    issues?.filter((issue) => issue.report_id.toString() === reportId) || [];
+  // Merge API issues with any locally created issue that hasn't appeared in cache yet
+  const [localCreatedIssue, setLocalCreatedIssue] = useState<any | null>(null);
+
+  const reportIssues = useMemo(() => {
+    const apiIssues = issues?.filter((issue) => issue.report_id.toString() === reportId) || [];
+    // If we have a locally created issue that isn't in the API list yet, include it
+    if (localCreatedIssue && !apiIssues.find(i => i.id === localCreatedIssue.id)) {
+      return [...apiIssues, localCreatedIssue];
+    }
+    return apiIssues;
+  }, [issues, reportId, localCreatedIssue]);
 
   const filteredIssues = reportIssues.filter((issue) => {
     const q = searchQuery.toLowerCase();
@@ -263,8 +310,8 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
       : `${month}/${day}/${year}`;
   };
 
-  if (isLoading) return <p>Loading...</p>;
-  if (error) return <p>Error loading issues</p>;
+  if (isLoading && !issues) return <p>Loading...</p>;
+  if (error && !issues) return <p>Error loading issues</p>;
 
   return (
     // ⬇️ wrap in flex so we can show table + card
@@ -414,7 +461,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
                         {issue.vendor_id ? (
                           <VendorName vendorId={issue.vendor_id} isVendorId={false} />
                         ) : (
-                          "No vendor assigned"
+                          <span className="text-gray-400">—</span>
                         )}
                       </td>
 
@@ -457,14 +504,17 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
                       </td>
 
                       <td className="text-center border-b border-gray-200 px-4 py-3">
-                        <label className="inline-flex items-center cursor-pointer">
+                        <label className={`inline-flex items-center ${issue.vendor_id ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
                           <input
                             type="checkbox"
                             className="sr-only peer"
-                            checked={issue.active}
-                            onChange={() =>
-                              handleActiveChange(issue.id, !issue.active)
-                            }
+                            checked={issue.vendor_id ? false : issue.active}
+                            disabled={!!issue.vendor_id}
+                            onChange={() => {
+                              if (!issue.vendor_id) {
+                                handleActiveChange(issue.id, !issue.active);
+                              }
+                            }}
                           />
                           <span
                             className="relative w-11 h-6 bg-gray-400 peer-focus:outline-none rounded-full peer dark:bg-gray-500 
@@ -766,7 +816,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
           <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
             {/* close button */}
             <button
-              onClick={() => setSelectedIssue(null)}
+              onClick={handleCloseIssueModal}
               className="absolute -top-10 right-0 text-white text-3xl leading-none px-2"
             >
               &times;
@@ -775,7 +825,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
             <HomeownerIssueCard
               issue={selectedIssue}
               listing={undefined}
-              onClose={() => setSelectedIssue(null)}
+              onClose={handleCloseIssueModal}
             />
 
           </div>

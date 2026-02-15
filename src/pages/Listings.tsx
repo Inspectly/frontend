@@ -79,7 +79,7 @@ const Listings: React.FC = () => {
     setCurrentPage(1);
   };
 
-  if (isLoading) return <p>Loading...</p>;
+  if (isLoading && !listings) return <p>Loading...</p>;
   if (error) return <p>Error loading listings</p>;
 
   return (
