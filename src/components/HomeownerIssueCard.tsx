@@ -6,7 +6,6 @@ import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
-  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -41,7 +40,6 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 import AssessmentReviewTab from "./AssessmentReviewTab";
 import VendorReviewModal from "./VendorReviewModal";
 import { useCreateVendorReviewMutation } from "../features/api/vendorReviewsApi";
-import ImageComponent from "./ImageComponent";
 import { BUTTON_HOVER } from "../styles/shared";
 
 export interface HomeownerIssueCardProps {
@@ -91,8 +89,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     return `${clientUserId}_${vendorId}_${issue.id}`;
   };
 
-  const [updateIssue, { isLoading: isUpdatingVisibility }] =
-    useUpdateIssueMutation();
+  const [updateIssue] = useUpdateIssueMutation();
   const [updateAssessmentStatus] = useUpdateAssessmentMutation();
   const [createCheckoutSession] = useCreateCheckoutSessionMutation();
 

@@ -375,7 +375,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       setMarketplaceJobs(jobsWithoutBids);
 
       // Fetch bid counts in background (non-blocking, progressive)
-      top20.forEach((issue, idx) => {
+      top20.forEach((issue) => {
         store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
           .then((result) => {
             const bidCount = result.data?.length || 0;

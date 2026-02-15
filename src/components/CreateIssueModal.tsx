@@ -128,7 +128,7 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
-        image_urls: base64Images,
+        image_urls: base64Images as any, // Backend expects array; IssueType has string but API accepts list
       };
       const apiResponse = await createIssue(submittedData).unwrap();
 
