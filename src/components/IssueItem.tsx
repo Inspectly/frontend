@@ -30,7 +30,7 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
 
   // Parse image_urls into an array
   const imageList = useMemo(() => {
-    const raw = issue.image_urls;
+    const raw = issue.image_urls as string | string[];
     if (Array.isArray(raw)) return raw.filter(Boolean);
     if (typeof raw === "string" && raw.startsWith("[")) {
       try { const parsed = JSON.parse(raw); if (Array.isArray(parsed)) return parsed.filter(Boolean); } catch { /* ignore */ }

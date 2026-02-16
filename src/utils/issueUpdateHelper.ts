@@ -31,7 +31,7 @@ export const buildIssueUpdateBody = (
   severity: formatSeverity(issue.severity),
   status: patch.status || statusMapping[issue.status as IssueStatus] || "open",
   active: patch.active !== undefined ? patch.active : (issue.active ?? true),
-  image_url: (typeof issue.image_urls === "string" ? issue.image_urls : (Array.isArray(issue.image_urls) ? issue.image_urls[0] : "")) || issue.image_url || "",
+  image_url: (typeof issue.image_urls === "string" ? issue.image_urls : (Array.isArray(issue.image_urls) ? issue.image_urls[0] : "")) || "",
   cost: issue.cost || "0",
   review_status: patch.review_status || issue.review_status || "not_reviewed",
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
-import { saveIssueImages } from "../utils/issueImageStore";
+import { getIssueImages, saveIssueImages } from "../utils/issueImageStore";
 import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
@@ -104,6 +104,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [storedImages, setStoredImages] = useState<string[] | null>(null);
   const [activeTab, setActiveTab] = useState<
     "details" | "offers" | "assessments"
   >(defaultTab);
@@ -126,6 +127,19 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
+
+  // Persist issue images to IndexedDB when we have them (so they survive refetch after posting offer)
+  useEffect(() => {
+    if (!issue?.id) return;
+    const urls = getIssueImageUrls(issue.image_urls);
+    if (urls.length > 0) saveIssueImages(issue.id, urls).catch(() => {});
+  }, [issue?.id, issue?.image_urls]);
+
+  // Restore images from IndexedDB when issue from cache has none
+  useEffect(() => {
+    if (!issue?.id) return;
+    getIssueImages(issue.id).then(setStoredImages);
+  }, [issue?.id]);
 
   // Only sync isActive from props when issue.id changes (new issue loaded)
   // Don't sync on issue.active changes to avoid race condition during updates
@@ -427,13 +441,17 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               {/* Images with scroll for multiple */}
               {(() => {
                 let imageList: string[] = [];
-                const raw = issue.image_urls;
+                const raw = issue.image_urls as string | string[];
                 if (Array.isArray(raw)) {
                   imageList = raw.filter(Boolean);
                 } else if (typeof raw === "string" && raw.startsWith("[")) {
                   try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
                 } else if (raw) {
                   imageList = [raw];
+                }
+                // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
+                if (imageList.length === 0 && storedImages && storedImages.length > 0) {
+                  imageList = storedImages;
                 }
                 if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 

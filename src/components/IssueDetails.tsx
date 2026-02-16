@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { saveIssueImages } from "../utils/issueImageStore";
+import { getIssueImages, saveIssueImages } from "../utils/issueImageStore";
 import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
@@ -136,10 +136,24 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [storedImages, setStoredImages] = useState<string[] | null>(null);
   const [isActive, setIsActive] = useState<boolean>(issue.active);
 
   // Sync isActive when a different issue is loaded
   useEffect(() => setIsActive(issue.active), [issue.id]);
+
+  // Persist issue images to IndexedDB when we have them (so they survive refetch after posting offer)
+  useEffect(() => {
+    if (!issue?.id) return;
+    const urls = getIssueImageUrls(issue.image_urls);
+    if (urls.length > 0) saveIssueImages(issue.id, urls).catch(() => {});
+  }, [issue?.id, issue?.image_urls]);
+
+  // Restore images from IndexedDB when issue from cache has none
+  useEffect(() => {
+    if (!issue?.id) return;
+    getIssueImages(issue.id).then(setStoredImages);
+  }, [issue?.id]);
 
   // Collapsible section states removed - using HomeownerIssueCard-style layout
 
@@ -564,13 +578,17 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
             {(() => {
               // Parse image_urls which may be a JSON array string, an array, or a single string
               let imageList: string[] = [];
-              const raw = issue.image_urls;
+              const raw = issue.image_urls as string | string[];
               if (Array.isArray(raw)) {
                 imageList = raw.filter(Boolean);
               } else if (typeof raw === "string" && raw.startsWith("[")) {
                 try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
               } else if (raw) {
                 imageList = [raw];
+              }
+              // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
+              if (imageList.length === 0 && storedImages && storedImages.length > 0) {
+                imageList = storedImages;
               }
               if (imageList.length === 0 && listing?.image_url) {
                 imageList = [listing.image_url];

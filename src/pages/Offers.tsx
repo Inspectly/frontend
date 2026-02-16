@@ -938,7 +938,13 @@ const Offers: React.FC = () => {
             </button>
             <HomeownerIssueCard
               key={`${selectedIssue.issue.id}-${selectedIssue.defaultTab}`}
-              issue={(issues || []).find(i => i.id === selectedIssue.issue.id) ?? selectedIssue.issue}
+              issue={(() => {
+                const fromCache = (issues || []).find(i => i.id === selectedIssue.issue.id) ?? selectedIssue.issue;
+                const cacheHasImages = getIssueImageUrls(fromCache.image_urls).length > 0;
+                const selectedHasImages = getIssueImageUrls(selectedIssue.issue.image_urls).length > 0;
+                if (!cacheHasImages && selectedHasImages) return { ...fromCache, image_urls: selectedIssue.issue.image_urls };
+                return fromCache;
+              })()}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
               defaultTab={selectedIssue.defaultTab || "details"}

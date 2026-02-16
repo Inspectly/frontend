@@ -327,7 +327,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                     {/* Issue Images - with scroll for multiple */}
                     {(() => {
                       let imageList: string[] = [];
-                      const raw = currentIssue.image_urls;
+                      const raw = currentIssue.image_urls as string | string[];
                       if (Array.isArray(raw)) {
                         imageList = raw.filter(Boolean);
                       } else if (typeof raw === "string" && raw.startsWith("[")) {
