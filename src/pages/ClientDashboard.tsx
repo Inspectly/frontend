@@ -92,11 +92,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 30000 });
+  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
   // useGetClientsQuery() removed — result was never used
 
   const { data: assessments = [], refetch: refetchAssessments } =
-    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 30000 });
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 20000 });
   const { data: allVendors = [] } = useGetVendorsQuery();
 
   const [createListing] = useCreateListingMutation();
@@ -261,56 +261,39 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing; vendor?: Vendor })[];
   }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
 
-  // Fetch offers progressively — don't block the dashboard waiting for all of them
-  // Each offer loads independently and updates the state as it arrives
-  // Also polls every 20s so new vendor offers show up without manual refresh
-  const [offerPollTick, setOfferPollTick] = useState(0);
+  // Fetch offers for user's issues
+  // Polling tick to refetch offers periodically (client sees new offers when vendor creates them)
+  const [pollTick, setPollTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setOfferPollTick((t) => t + 1), 30000);
+    const id = setInterval(() => setPollTick((t) => t + 1), 20000);
     return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
-    if (filteredIssuesByUser.length === 0) return;
+    const run = async () => {
+      try {
+        const issueResults = await Promise.all(
+          issueIds.map((id) => dispatch(getIssueById.initiate(String(id))))
+        );
+        const vendorResults = await Promise.all(
+          vendorIds.map((id) => dispatch(getVendorById.initiate(String(id))))
+        );
 
-    // Always force refetch to keep offers fresh (acts as prefetch for Offers page)
+        setIssueMap(Object.fromEntries(issueResults.map((res, i) => [issueIds[i], res.data as IssueType])));
+        setVendorMap(Object.fromEntries(vendorResults.map((res, i) => [vendorIds[i], res.data as Vendor])));
 
-    filteredIssuesByUser.forEach((issue) => {
-      dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: true }))
-        .then((res) => {
-          if (res.data) {
-            setOffersByIssueId((prev) => ({
-              ...prev,
-              [issue.id]: res.data as IssueOffer[],
-            }));
-          }
-        })
-        .catch(() => { /* ignore individual failures */ });
-    });
-  }, [dispatch, filteredIssuesByUser, offerPollTick]);
+        const allIssueIds = filteredIssuesByUser.map((i) => i.id);
+        const offerResults = await Promise.all(
+          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id, { forceRefetch: true })))
+        );
+        setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
 
-  // Fetch issue and vendor details for calendar assessments
-  // Polls on same tick as offers so visit requests / approvals stay fresh
-  useEffect(() => {
-    if (issueIds.length > 0) {
-      issueIds.forEach((id) => {
-        dispatch(getIssueById.initiate(String(id), { forceRefetch: offerPollTick > 0 })).then((res) => {
-          if (res.data) {
-            setIssueMap((prev) => ({ ...prev, [id]: res.data as IssueType }));
-          }
-        });
-      });
-    }
-    if (vendorIds.length > 0) {
-      vendorIds.forEach((id) => {
-        dispatch(getVendorById.initiate(String(id), { forceRefetch: offerPollTick > 0 })).then((res) => {
-          if (res.data) {
-            setVendorMap((prev) => ({ ...prev, [id]: res.data as Vendor }));
-          }
-        });
-      });
-    }
-  }, [dispatch, issueIds, vendorIds, offerPollTick]);
+    if (issueIds.length || vendorIds.length || filteredIssuesByUser.length) run();
+  }, [dispatch, issueIds, vendorIds, filteredIssuesByUser, pollTick]);
 
   // Auto-rotate properties slideshow (cycles through pages of 2)
   useEffect(() => {
