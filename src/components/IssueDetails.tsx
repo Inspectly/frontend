@@ -855,6 +855,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                       issueVendorId={issue.vendor_id}
                       onOfferAccepted={async (acceptedOffer) => {
                         try {
+                          // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
+                          const slimIssue = { ...issue, image_urls: [] };
+                          const slimListing = listing ? { ...listing } : null;
                           localStorage.setItem("pending_offer_payment", JSON.stringify({
                             offer_id: acceptedOffer.id,
                             issue_id: acceptedOffer.issue_id,
@@ -862,8 +865,8 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                             price: acceptedOffer.price,
                             comment_vendor: acceptedOffer.comment_vendor || "",
                             comment_client: acceptedOffer.comment_client || "",
-                            issue: JSON.parse(JSON.stringify(issue)),
-                            listing: listing ? JSON.parse(JSON.stringify(listing)) : null,
+                            issue: slimIssue,
+                            listing: slimListing,
                           }));
 
                           // Save issue images to IndexedDB in background (don't block Stripe)

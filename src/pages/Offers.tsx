@@ -364,6 +364,9 @@ const Offers: React.FC = () => {
       const issue = issues.find(i => i.id === offer.issue_id);
       const report = issue ? reports.find(r => r.id === issue.report_id) : null;
       const listing = report ? listings.find(l => l.id === report.listing_id) : undefined;
+      // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
+      const slimIssue = issue ? { ...issue, image_urls: [] } : null;
+      const slimListing = listing ? { ...listing } : null;
       const pendingData = {
         offer_id: offer.id,
         issue_id: offer.issue_id,
@@ -371,9 +374,8 @@ const Offers: React.FC = () => {
         price: offer.price,
         comment_vendor: offer.comment_vendor || "",
         comment_client: offer.comment_client || "",
-        // Store issue/listing so we can open modal immediately on return
-        issue: issue ? JSON.parse(JSON.stringify(issue)) : null,
-        listing: listing ? JSON.parse(JSON.stringify(listing)) : null,
+        issue: slimIssue,
+        listing: slimListing,
       };
       localStorage.setItem("pending_offer_payment", JSON.stringify(pendingData));
 
