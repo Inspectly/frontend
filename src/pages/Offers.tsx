@@ -135,6 +135,12 @@ const Offers: React.FC = () => {
             } catch {
               // Offer accepted, issue update failed silently
             }
+
+            // Update modal to show issue with restored images (savedIssue is slim and has no image_urls)
+            if (restoredImages && restoredImages.length > 0) {
+              const displayIssue = { ...issue, image_urls: restoredImages };
+              setSelectedIssue(prev => prev && prev.issue?.id === issueId ? { ...prev, issue: displayIssue } : prev);
+            }
           }
 
           // Clean up

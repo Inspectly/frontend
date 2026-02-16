@@ -141,6 +141,20 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     getIssueImages(issue.id).then(setStoredImages);
   }, [issue?.id]);
 
+  // Effective image list: from issue first, else from IndexedDB (so status updates don't send empty image_url)
+  const effectiveImageUrls = useMemo(() => {
+    const fromIssue = getIssueImageUrls(issue?.image_urls);
+    if (fromIssue.length > 0) return fromIssue;
+    return storedImages || [];
+  }, [issue?.image_urls, storedImages]);
+
+  /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
+  const getIssueForUpdate = async (): Promise<IssueType> => {
+    if (!issue) return issue;
+    const urls = effectiveImageUrls.length > 0 ? effectiveImageUrls : (await getIssueImages(issue.id)) || [];
+    return urls.length > 0 ? { ...issue, image_urls: urls } : issue;
+  };
+
   // Only sync isActive from props when issue.id changes (new issue loaded)
   // Don't sync on issue.active changes to avoid race condition during updates
   useEffect(() => setIsActive(issue.active), [issue.id]);
@@ -156,8 +170,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
         review,
       }).unwrap();
 
-      // Complete the status change and mark review as completed
-      await updateIssue(buildIssueUpdateBody(issue, { 
+      // Complete the status change and mark review as completed (ensure images from Idb so we don't clear on server)
+      const issueForUpdate = await getIssueForUpdate();
+      await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
         status: pendingStatusChange || "completed",
         review_status: "completed",
       }, listing?.id)).unwrap();
@@ -244,12 +259,12 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
 
-  const handleToggleVisibility = () => {
+  const handleToggleVisibility = async () => {
     const next = !isActive;
     setIsActive(next); // Move toggle instantly
 
-    // Fire API call in background — don't block or await
-    updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id))
+    const issueForUpdate = await getIssueForUpdate();
+    updateIssue(buildIssueUpdateBody(issueForUpdate, { active: next }, listing?.id))
       .unwrap()
       .catch((e) => {
         setIsActive(!next); // rollback on error
@@ -954,7 +969,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={async () => {
                   try {
-                    await updateIssue(buildIssueUpdateBody(issue, { 
+                    const issueForUpdate = await getIssueForUpdate();
+                    await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
                       status: "completed",
                       review_status: "completed",
                     }, listing?.id)).unwrap();
@@ -1014,8 +1030,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 disabled={!changeRequestMessage.trim()}
                 onClick={async () => {
                   try {
-                    // TODO: Add change request message to issue or create a comment
-                    await updateIssue(buildIssueUpdateBody(issue, { status: "in_progress" }, listing?.id)).unwrap();
+                    const issueForUpdate = await getIssueForUpdate();
+                    await updateIssue(buildIssueUpdateBody(issueForUpdate, { status: "in_progress" }, listing?.id)).unwrap();
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
                   } catch (err) {

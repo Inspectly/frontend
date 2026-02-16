@@ -155,6 +155,20 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     getIssueImages(issue.id).then(setStoredImages);
   }, [issue?.id]);
 
+  // Effective image list: from issue first, else from IndexedDB (so status updates don't send empty image_url)
+  const effectiveImageUrls = useMemo(() => {
+    const fromIssue = getIssueImageUrls(issue?.image_urls);
+    if (fromIssue.length > 0) return fromIssue;
+    return storedImages || [];
+  }, [issue?.image_urls, storedImages]);
+
+  /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
+  const getIssueForUpdate = async (): Promise<IssueType> => {
+    if (!issue) return issue;
+    const urls = effectiveImageUrls.length > 0 ? effectiveImageUrls : (await getIssueImages(issue.id)) || [];
+    return urls.length > 0 ? { ...issue, image_urls: urls } : issue;
+  };
+
   // Collapsible section states removed - using HomeownerIssueCard-style layout
 
   const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
@@ -199,13 +213,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
 
   // toggleSection removed - using HomeownerIssueCard-style layout
 
-  const handleStatusChange = (newStatus: string) => {
-    // Backend expects simple format: "open", "in_progress", "review", "completed"
-    updateIssue(buildIssueUpdateBody(issue, { status: newStatus }, listing?.id));
-
-    setTimeout(() => {
-      setProgressDropdownOpen(null); // Delay closing to let the event register
-    });
+  const handleStatusChange = async (newStatus: string) => {
+    const issueForUpdate = await getIssueForUpdate();
+    updateIssue(buildIssueUpdateBody(issueForUpdate, { status: newStatus }, listing?.id));
+    setProgressDropdownOpen(null);
   };
 
   const formatDate = (isoString: string) => {
@@ -484,11 +495,12 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               const effectiveActive = isLocked ? false : isActive;
               return (
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!isLocked) {
                       const next = !isActive;
                       setIsActive(next);
-                      updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id))
+                      const issueForUpdate = await getIssueForUpdate();
+                      updateIssue(buildIssueUpdateBody(issueForUpdate, { active: next }, listing?.id))
                         .unwrap()
                         .catch(() => setIsActive(!next));
                     }
@@ -902,8 +914,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                     offers={offers}
                     vendorId={currentVendor?.id}
                     onOpenOfferModal={handleEditOfferModal}
-                    onOfferAccepted={(acceptedOffer) => {
-                      updateIssue(buildIssueUpdateBody(issue, { vendor_id: acceptedOffer.vendor_id }, listing?.id));
+                    onOfferAccepted={async (acceptedOffer) => {
+                      const issueForUpdate = await getIssueForUpdate();
+                      updateIssue(buildIssueUpdateBody(issueForUpdate, { vendor_id: acceptedOffer.vendor_id }, listing?.id));
                     }}
                   />
                 )}
@@ -1079,8 +1092,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               </button>
               <button
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gray-900 ${BUTTON_HOVER}`}
-                onClick={() => {
-                  updateIssue(buildIssueUpdateBody(issue, { status: "review" }, listing?.id));
+                onClick={async () => {
+                  const issueForUpdate = await getIssueForUpdate();
+                  updateIssue(buildIssueUpdateBody(issueForUpdate, { status: "review" }, listing?.id));
                   setShowMarkCompleteModal(false);
                 }}
               >
@@ -1126,8 +1140,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               </button>
               <button
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
-                onClick={() => {
-                  updateIssue(buildIssueUpdateBody(issue, { 
+                onClick={async () => {
+                  const issueForUpdate = await getIssueForUpdate();
+                  updateIssue(buildIssueUpdateBody(issueForUpdate, { 
                     status: "completed",
                     review_status: "completed",
                   }, listing?.id));
@@ -1190,11 +1205,10 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               <button
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-gold ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={!changeRequestMessage.trim()}
-                onClick={() => {
+                onClick={async () => {
                   if (changeRequestMessage.trim()) {
-                    // TODO: Post this as a comment with special "Change Request" flag
-                    // TODO: Send notification to vendor
-                    updateIssue(buildIssueUpdateBody(issue, { status: "in_progress" }, listing?.id));
+                    const issueForUpdate = await getIssueForUpdate();
+                    updateIssue(buildIssueUpdateBody(issueForUpdate, { status: "in_progress" }, listing?.id));
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
                     toast.success("Changes requested! The vendor will be notified.");

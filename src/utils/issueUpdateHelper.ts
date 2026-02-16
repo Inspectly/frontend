@@ -1,4 +1,5 @@
 import { IssueType, IssueStatus, statusMapping } from "../types";
+import { getIssueImageUrls, serializeImageUrlsForBackend } from "./issueImageUtils";
 
 /**
  * Format severity for backend (expects capitalized: "Low", "Medium", "High", "None")
@@ -31,7 +32,7 @@ export const buildIssueUpdateBody = (
   severity: formatSeverity(issue.severity),
   status: patch.status || statusMapping[issue.status as IssueStatus] || "open",
   active: patch.active !== undefined ? patch.active : (issue.active ?? true),
-  image_url: (typeof issue.image_urls === "string" ? issue.image_urls : (Array.isArray(issue.image_urls) ? issue.image_urls[0] : "")) || "",
+  image_url: serializeImageUrlsForBackend(getIssueImageUrls(issue.image_urls)),
   cost: issue.cost || "0",
   review_status: patch.review_status || issue.review_status || "not_reviewed",
 });
