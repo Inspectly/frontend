@@ -117,7 +117,8 @@ export const issuesApi = api.injectEndpoints({
           issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
             const index = draft.findIndex((issue) => issue.id === updatedIssue.id);
             if (index !== -1) {
-              Object.assign(draft[index], optimisticIssue);
+              // Replace the entire object so React detects the change
+              draft[index] = { ...draft[index], ...optimisticIssue };
             }
           })
         );
@@ -133,16 +134,15 @@ export const issuesApi = api.injectEndpoints({
 
         try {
           await queryFulfilled;
-          dispatch(issuesApi.endpoints.getIssues.initiate(undefined, { forceRefetch: true }));
-          dispatch(issuesApi.endpoints.getIssueById.initiate(updatedIssue.id.toString(), { forceRefetch: true }));
-          dispatch(issuesApi.endpoints.getPaginatedIssues.initiate({ offset: 0, limit: 50000, search: "", type: "", city: "", state: "", vendor_assigned: false }, { forceRefetch: true }));
+          // No forceRefetch needed — optimistic update already applied above
+          // invalidatesTags handles background sync
         } catch {
           patchResult.undo();
           patchIssuesList.undo();
           patchPaginatedIssues.undo();
         }
       },
-      invalidatesTags: ["Issues"],
+      // No invalidatesTags — optimistic cache update handles sync instantly
     }),
 
     createIssue: builder.mutation<IssueType, Partial<IssueType>>({
@@ -151,16 +151,31 @@ export const issuesApi = api.injectEndpoints({
         method: "POST",
         body: newIssue,
       }),
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+      async onQueryStarted(newIssue, { dispatch, queryFulfilled }) {
         try {
-          await queryFulfilled;
-          dispatch(issuesApi.endpoints.getIssues.initiate(undefined, { forceRefetch: true }));
-          dispatch(issuesApi.endpoints.getPaginatedIssues.initiate({ offset: 0, limit: 50000, search: "", type: "", city: "", state: "", vendor_assigned: false }, { forceRefetch: true }));
+          const { data: createdIssue } = await queryFulfilled;
+          // Add to cache without heavy base64 image data (backend returns proper URLs)
+          const { image_urls: _submittedImages, ...newIssueWithoutImages } = newIssue as any;
+          const normalizedIssue = {
+            ...newIssueWithoutImages,
+            ...createdIssue,
+            status: (createdIssue.status?.startsWith('Status.')
+              ? createdIssue.status
+              : `Status.${(createdIssue.status || 'OPEN').toUpperCase()}`) as IssueStatus,
+          };
+          dispatch(
+            issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
+              if (!draft.find((i) => i.id === normalizedIssue.id)) {
+                draft.push(normalizedIssue as IssueType);
+              }
+            })
+          );
         } catch {
           // Error is handled by the component
         }
       },
-      invalidatesTags: ["Issues"],
+      // No invalidatesTags here — we handle cache update optimistically above
+      // invalidatesTags would wipe the cache and force a slow full refetch
     }),
 
     /** ---------- DELETE (optimistic removal) ---------- */

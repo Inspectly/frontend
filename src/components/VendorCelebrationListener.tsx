@@ -39,14 +39,15 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
           acc[i.id] = i;
           return acc;
         },
-        {} as Record<number, { id: number; summary?: string; status?: string }>
+        {} as Record<number, { id: number; summary?: string; status?: string; updated_at?: string }>
       ),
     [issues]
   );
 
   const prevAcceptedOfferIdsRef = useRef<Set<number>>(new Set());
   const prevCompletedIssueIdsRef = useRef<Set<number>>(new Set());
-  const isInitialLoadRef = useRef(true);
+  const hasSeededRef = useRef(false);
+  const sessionStartMsRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const acceptedOffers = vendorOffers.filter(
@@ -54,8 +55,11 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
     );
     const vendorIssueIds = new Set(acceptedOffers.map((o) => o.issue_id));
 
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
+    // Wait for data to arrive, then seed refs without firing. Never fire on page load/refresh.
+    if (!hasSeededRef.current) {
+      const hasData = vendorOffers.length > 0 || Object.keys(issuesMap).length > 0;
+      if (!hasData) return;
+      hasSeededRef.current = true;
       prevAcceptedOfferIdsRef.current = new Set(acceptedOffers.map((o) => o.id));
       prevCompletedIssueIdsRef.current = new Set(
         [...vendorIssueIds].filter((id) => {
@@ -66,9 +70,13 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
       return;
     }
 
-    // Offer accepted: newly accepted offers
+    const sessionStart = sessionStartMsRef.current;
+
+    // Offer accepted: newly accepted offers - only if accepted AFTER user's session start
     acceptedOffers.forEach((offer) => {
       if (prevAcceptedOfferIdsRef.current.has(offer.id)) return;
+      const updatedAtMs = offer.updated_at ? new Date(offer.updated_at).getTime() : 0;
+      if (updatedAtMs < sessionStart) return;
       const issue = issuesMap[offer.issue_id];
       const summary = issue?.summary || "issue";
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
@@ -76,11 +84,13 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
     });
     prevAcceptedOfferIdsRef.current = new Set(acceptedOffers.map((o) => o.id));
 
-    // Work approved: vendor's issue newly became completed
+    // Work approved: vendor's issue newly completed - only if completed AFTER session start
     vendorIssueIds.forEach((issueId) => {
       const issue = issuesMap[issueId];
       if (!issue || !isIssueCompleted(issue.status)) return;
       if (prevCompletedIssueIdsRef.current.has(issueId)) return;
+      const updatedAtMs = issue.updated_at ? new Date(issue.updated_at).getTime() : 0;
+      if (updatedAtMs < sessionStart) return;
       const summary = issue.summary || "issue";
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       toast.success(`Work approved for ${summary}!`);

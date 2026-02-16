@@ -600,7 +600,7 @@ const VendorJobsPage: React.FC = () => {
                   {/* Property Thumbnail */}
                   <div className="w-24 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     <ImageComponent
-                      src={listing?.image_url}
+                      src={issue?.image_urls || listing?.image_url}
                       fallback="/images/property_card_holder.jpg"
                       className="w-full h-full object-cover"
                     />

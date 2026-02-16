@@ -158,6 +158,18 @@ function App() {
     dispatch(checkAuthState());
   }, [dispatch]);
 
+  // Safeguard: unblock UI if auth/loading hangs (e.g. Firebase or backend unreachable)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loadingAuthState || loadingUserType) {
+        console.warn("Auth loading timeout - unblocking UI");
+        dispatch(setLoading(false));
+        setLoadingUserType(false);
+      }
+    }, 10000);
+    return () => clearTimeout(timeout);
+  }, [loadingAuthState, loadingUserType, dispatch]);
+
   // Handle marketplace prefetching - trigger when user is on dashboard
   useEffect(() => {
     if (authenticated && user?.id && user?.user_type && userInfo && !loadingUserType) {
@@ -192,6 +204,17 @@ function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [location.pathname]);
+
+  // Global Stripe redirect handler: if returning from Stripe on ANY page, redirect to /offers
+  useEffect(() => {
+    if (location.pathname === "/offers") return; // Already on offers, let Offers page handle it
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get("session_id");
+    const pendingPayment = localStorage.getItem("pending_offer_payment");
+    if (sessionId && pendingPayment) {
+      navigate(`/offers?session_id=${sessionId}&filter=accepted&payment=success`, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate]);
 
   // Fetch user type based on user ID
   useEffect(() => {

@@ -357,30 +357,39 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                (severityOrder[b.severity as keyof typeof severityOrder] || 2);
       });
 
-      const jobsWithBids = await Promise.all(
-        sortedBySeverity.slice(0, 20).map(async (issue) => {
-          let bidCount = 0;
-          try {
-            const result = await store.dispatch(getOffersByIssueId.initiate(issue.id));
-            bidCount = result.data?.length || 0;
-          } catch {}
-          
-          const listing = listingsMap[issue.listing_id];
-          
-          return {
-            id: issue.id,
-            type: issue.type || "General",
-            summary: issue.summary || "View details",
-            severity: issue.severity,
-            bidCount,
-            listing,
-            isHot: issue.severity === 'high' || bidCount === 0,
-            created_at: issue.created_at,
-          };
-        })
-      );
+      // Show jobs immediately without waiting for bid counts
+      const top20 = sortedBySeverity.slice(0, 20);
+      const jobsWithoutBids = top20.map((issue) => {
+        const listing = listingsMap[issue.listing_id];
+        return {
+          id: issue.id,
+          type: issue.type || "General",
+          summary: issue.summary || "View details",
+          severity: issue.severity,
+          bidCount: 0,
+          listing,
+          isHot: issue.severity === 'high',
+          created_at: issue.created_at,
+        };
+      });
+      setMarketplaceJobs(jobsWithoutBids);
 
-      setMarketplaceJobs(jobsWithBids);
+      // Fetch bid counts in background (non-blocking, progressive)
+      top20.forEach((issue) => {
+        store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
+          .then((result) => {
+            const bidCount = result.data?.length || 0;
+            setMarketplaceJobs((prev) => {
+              const updated = [...prev];
+              const jobIdx = updated.findIndex(j => j.id === issue.id);
+              if (jobIdx !== -1) {
+                updated[jobIdx] = { ...updated[jobIdx], bidCount, isHot: issue.severity === 'high' || bidCount === 0 };
+              }
+              return updated;
+            });
+          })
+          .catch(() => {});
+      });
     };
 
     fetchOpportunities();

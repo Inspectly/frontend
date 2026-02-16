@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
+import { getIssueImages, saveIssueImages } from "../utils/issueImageStore";
+import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
-  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -12,7 +13,7 @@ import {
   statusOptions,
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import Attachments from "./Attachments";
@@ -39,7 +40,6 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 import AssessmentReviewTab from "./AssessmentReviewTab";
 import VendorReviewModal from "./VendorReviewModal";
 import { useCreateVendorReviewMutation } from "../features/api/vendorReviewsApi";
-import ImageComponent from "./ImageComponent";
 import { BUTTON_HOVER } from "../styles/shared";
 
 export interface HomeownerIssueCardProps {
@@ -89,8 +89,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     return `${clientUserId}_${vendorId}_${issue.id}`;
   };
 
-  const [updateIssue, { isLoading: isUpdatingVisibility }] =
-    useUpdateIssueMutation();
+  const [updateIssue] = useUpdateIssueMutation();
   const [updateAssessmentStatus] = useUpdateAssessmentMutation();
   const [createCheckoutSession] = useCreateCheckoutSessionMutation();
 
@@ -104,6 +103,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   });
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [storedImages, setStoredImages] = useState<string[] | null>(null);
   const [activeTab, setActiveTab] = useState<
     "details" | "offers" | "assessments"
   >(defaultTab);
@@ -127,6 +128,33 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
 
+  // Persist issue images to IndexedDB when we have them (so they survive refetch after posting offer)
+  useEffect(() => {
+    if (!issue?.id) return;
+    const urls = getIssueImageUrls(issue.image_urls);
+    if (urls.length > 0) saveIssueImages(issue.id, urls).catch(() => {});
+  }, [issue?.id, issue?.image_urls]);
+
+  // Restore images from IndexedDB when issue from cache has none
+  useEffect(() => {
+    if (!issue?.id) return;
+    getIssueImages(issue.id).then(setStoredImages);
+  }, [issue?.id]);
+
+  // Effective image list: from issue first, else from IndexedDB (so status updates don't send empty image_url)
+  const effectiveImageUrls = useMemo(() => {
+    const fromIssue = getIssueImageUrls(issue?.image_urls);
+    if (fromIssue.length > 0) return fromIssue;
+    return storedImages || [];
+  }, [issue?.image_urls, storedImages]);
+
+  /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
+  const getIssueForUpdate = async (): Promise<IssueType> => {
+    if (!issue) return issue;
+    const urls = effectiveImageUrls.length > 0 ? effectiveImageUrls : (await getIssueImages(issue.id)) || [];
+    return urls.length > 0 ? { ...issue, image_urls: urls } : issue;
+  };
+
   // Only sync isActive from props when issue.id changes (new issue loaded)
   // Don't sync on issue.active changes to avoid race condition during updates
   useEffect(() => setIsActive(issue.active), [issue.id]);
@@ -142,8 +170,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
         review,
       }).unwrap();
 
-      // Complete the status change and mark review as completed
-      await updateIssue(buildIssueUpdateBody(issue, { 
+      // Complete the status change and mark review as completed (ensure images from Idb so we don't clear on server)
+      const issueForUpdate = await getIssueForUpdate();
+      await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
         status: pendingStatusChange || "completed",
         review_status: "completed",
       }, listing?.id)).unwrap();
@@ -231,17 +260,16 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
   const handleToggleVisibility = async () => {
-    if (isUpdatingVisibility) return;
-
     const next = !isActive;
-    setIsActive(next);
+    setIsActive(next); // Move toggle instantly
 
-    try {
-      await updateIssue(buildIssueUpdateBody(issue, { active: next }, listing?.id)).unwrap();
-    } catch (e) {
-      setIsActive(!next); // rollback
-      console.error("Failed to update visibility", e);
-    }
+    const issueForUpdate = await getIssueForUpdate();
+    updateIssue(buildIssueUpdateBody(issueForUpdate, { active: next }, listing?.id))
+      .unwrap()
+      .catch((e) => {
+        setIsActive(!next); // rollback on error
+        console.error("Failed to update visibility", e);
+      });
   };
 
   const handleOpenOfferModal = (counterOffer: IssueOffer) => {
@@ -343,7 +371,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <h2 className="text-xl font-semibold text-gray-800 leading-snug">
             {issue.summary || "No Title Found"}
           </h2>
-          {listing && (
+          {listing && issue.vendor_id && (
             <p className="text-sm text-gray-500 mt-1">
               {listing.address}, {listing.city}, {listing.state}
             </p>
@@ -425,14 +453,79 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div className="grid lg:grid-cols-3 gap-6">
             {/* LEFT */}
             <div className="lg:col-span-2 space-y-6">
-              <div onClick={() => setSelectedImage(issue.image_urls?.[0] || null)}>
-                <ImageComponent
-                  src={issue.image_urls?.[0]}
-                  fallback="/images/property_card_holder.jpg"
-                  className="w-full h-[260px] rounded-lg object-cover cursor-pointer"
-                />
-              </div>
+              {/* Images with scroll for multiple */}
+              {(() => {
+                let imageList: string[] = [];
+                const raw = issue.image_urls as string | string[];
+                if (Array.isArray(raw)) {
+                  imageList = raw.filter(Boolean);
+                } else if (typeof raw === "string" && raw.startsWith("[")) {
+                  try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
+                } else if (raw) {
+                  imageList = [raw];
+                }
+                // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
+                if (imageList.length === 0 && storedImages && storedImages.length > 0) {
+                  imageList = storedImages;
+                }
+                if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 
+                return (
+                  <div>
+                    {/* Main image with scroll arrows */}
+                    <div className="relative group/img rounded-lg overflow-hidden">
+                      <img
+                        src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
+                        alt="Issue"
+                        className="w-full h-[260px] object-cover cursor-pointer"
+                        onClick={() => setSelectedImage(imageList[currentImageIndex] || null)}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/property_card_holder.jpg"; }}
+                      />
+
+                      {/* Left/Right arrows */}
+                      {imageList.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : imageList.length - 1)); }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                          >
+                            <FontAwesomeIcon icon={faChevronLeft} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < imageList.length - 1 ? prev + 1 : 0)); }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+                          >
+                            <FontAwesomeIcon icon={faChevronRight} />
+                          </button>
+                          {/* Counter */}
+                          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium shadow-lg">
+                            {currentImageIndex + 1} / {imageList.length}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Thumbnail strip */}
+                    {imageList.length > 1 && (
+                      <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                        {imageList.map((url, idx) => (
+                          <img
+                            key={idx}
+                            src={url}
+                            alt={`Image ${idx + 1}`}
+                            className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition-colors flex-shrink-0 ${
+                              idx === currentImageIndex ? "border-blue-500" : "border-transparent hover:border-blue-300"
+                            }`}
+                            onClick={() => setCurrentImageIndex(idx)}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Description */}
               <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-gray-700 mb-2">
                   Description
@@ -493,52 +586,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     </p>
                   </div>
 
-                  {/* Marketplace Visibility Toggle - disabled once an offer is accepted */}
-                  {(() => {
-                    const hasAcceptedOffer = offers.some(o => o.status === IssueOfferStatus.ACCEPTED);
-                    const isDisabled = isUpdatingVisibility || hasAcceptedOffer || offersLoading;
-                    return (
-                      <div className="flex justify-between items-center gap-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase text-gray-800">
-                            Marketplace
-                          </p>
-                          <p className="text-[0.65rem] text-gray-500">
-                            {isActive
-                              ? "Visible in marketplace"
-                              : "Hidden from marketplace"}
-                          </p>
-                        </div>
-                        <div className="relative group">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (!hasAcceptedOffer && !offersLoading) {
-                                handleToggleVisibility();
-                              }
-                            }}
-                            disabled={isDisabled}
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                              hasAcceptedOffer
-                                ? "bg-gray-200 cursor-not-allowed"
-                                : isActive ? "bg-gold" : "bg-gray-300"
-                            } ${isDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4" : "translate-x-1"}`}
-                            />
-                          </button>
-                          {hasAcceptedOffer && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 shadow-lg">
-                              <div className="text-gray-300">Cannot hide issue after an offer has been accepted</div>
-                              <div className="absolute -top-1 right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   <div className="flex justify-between items-center gap-4">
                     <p className="text-xs font-bold uppercase text-gray-800">
                       Status
@@ -562,35 +609,75 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     </span>
                   </div>
 
+                  {/* Marketplace Visibility Toggle - disabled only when an offer is accepted */}
+                  {(() => {
+                    const isLocked = !!issue.vendor_id; // Locked when vendor assigned
+                    const effectiveActive = isLocked ? false : isActive;
+                    return (
+                      <div className="flex justify-between items-center gap-4">
+                        <div>
+                          <p className="text-xs font-bold uppercase text-gray-800">
+                            Marketplace
+                          </p>
+                          <p className="text-[0.65rem] text-gray-500">
+                            {effectiveActive
+                              ? "Visible in marketplace"
+                              : "Hidden from marketplace"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isLocked) {
+                              handleToggleVisibility();
+                            }
+                          }}
+                          disabled={isLocked}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                            isLocked
+                              ? "bg-gray-200 opacity-60 cursor-not-allowed"
+                              : effectiveActive ? "bg-gold cursor-pointer" : "bg-gray-300 cursor-pointer"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${effectiveActive ? "translate-x-4" : "translate-x-1"}`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })()}
+
                   <div className="h-px bg-gray-100 my-2" />
 
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Cost
-                    </p>
-                    <p className="text-sm font-semibold text-gray-500">
-                      {issue.cost != null
-                        ? `$${Number(issue.cost).toFixed(2)}`
-                        : "N/A"}
-                    </p>
-                  </div>
+                  {/* Cost - only show when vendor is assigned */}
+                  {issue.vendor_id && (
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">
+                        Cost
+                      </p>
+                      <p className="text-sm font-semibold text-gray-500">
+                        {issue.cost != null
+                          ? `$${Number(issue.cost).toFixed(2)}`
+                          : "N/A"}
+                      </p>
+                    </div>
+                  )}
 
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Vendor
-                    </p>
-                    <p className="text-sm font-semibold text-gray-500">
-                      {issue.vendor_id ? (
+                  {/* Vendor - only show when assigned */}
+                  {issue.vendor_id && (
+                    <div className="flex justify-between gap-4">
+                      <p className="text-xs font-bold uppercase text-gray-800">
+                        Vendor
+                      </p>
+                      <p className="text-sm font-semibold text-gray-500">
                         <VendorName
                           vendorId={issue.vendor_id}
                           isVendorId={false}
                           showRating
                         />
-                      ) : (
-                        "Not assigned"
-                      )}
-                    </p>
-                  </div>
+                      </p>
+                    </div>
+                  )}
 
                   <div className="h-px bg-gray-100 my-2" />
 
@@ -636,6 +723,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     issueVendorId={issue.vendor_id}
                     onOfferAccepted={async (acceptedOffer) => {
                       try {
+                        // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
+                        const slimIssue = issue ? { ...issue, image_urls: [] } : null;
+                        const slimListing = listing ? { ...listing } : null;
                         localStorage.setItem("pending_offer_payment", JSON.stringify({
                           offer_id: acceptedOffer.id,
                           issue_id: acceptedOffer.issue_id,
@@ -643,11 +733,22 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                           price: acceptedOffer.price,
                           comment_vendor: acceptedOffer.comment_vendor || "",
                           comment_client: acceptedOffer.comment_client || "",
+                          issue: slimIssue,
+                          listing: slimListing,
                         }));
+
+                        // Save issue images to IndexedDB in background (don't block Stripe)
+                        const imageUrls = getIssueImageUrls(issue.image_urls);
+                        if (imageUrls.length > 0) {
+                          saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
+                        }
+
+                        const successUrl = `${window.location.origin}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
                         const response = await createCheckoutSession({
                           client_id: (client?.id ?? userId)!,
                           vendor_id: acceptedOffer.vendor_id,
                           offer_id: acceptedOffer.id,
+                          success_url: successUrl,
                         }).unwrap();
                         window.location.href = response.session_url;
                       } catch (err: any) {
@@ -868,7 +969,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 className={`px-4 py-2 rounded-lg text-white text-sm font-semibold bg-emerald-600 ${BUTTON_HOVER}`}
                 onClick={async () => {
                   try {
-                    await updateIssue(buildIssueUpdateBody(issue, { 
+                    const issueForUpdate = await getIssueForUpdate();
+                    await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
                       status: "completed",
                       review_status: "completed",
                     }, listing?.id)).unwrap();
@@ -928,8 +1030,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 disabled={!changeRequestMessage.trim()}
                 onClick={async () => {
                   try {
-                    // TODO: Add change request message to issue or create a comment
-                    await updateIssue(buildIssueUpdateBody(issue, { status: "in_progress" }, listing?.id)).unwrap();
+                    const issueForUpdate = await getIssueForUpdate();
+                    await updateIssue(buildIssueUpdateBody(issueForUpdate, { status: "in_progress" }, listing?.id)).unwrap();
                     setShowRequestChangesModal(false);
                     setChangeRequestMessage("");
                   } catch (err) {

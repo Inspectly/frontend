@@ -11,7 +11,7 @@ const getGlobalSubscriptions = (): Map<number, any> => {
   }
   return w[SUBS_KEY];
 };
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -52,7 +52,7 @@ import {
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
-import { useGetClientsQuery } from "../features/api/clientsApi";
+// useGetClientsQuery removed — was fetching all clients but result was never used
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
 import { useDispatch } from "react-redux";
@@ -73,12 +73,27 @@ interface DashboardProps {
 const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  // Queries - all real data (poll every 20s so client sees updates when vendor submits work, etc.)
+  // If returning from Stripe on the dashboard, redirect to Offers page which handles payment
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const paymentStatus = searchParams.get("payment");
+    const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
+    if ((sessionId || paymentStatus === "success") && pendingPaymentStr) {
+      const params = new URLSearchParams();
+      if (sessionId) params.set("session_id", sessionId);
+      params.set("payment", "success");
+      params.set("filter", "accepted");
+      navigate(`/offers?${params.toString()}`, { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
-  useGetClientsQuery();
+  // useGetClientsQuery() removed — result was never used
 
   const { data: assessments = [], refetch: refetchAssessments } =
     useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 20000 });
@@ -1187,17 +1202,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     </div>
                   </div>
 
-                  {/* Next Visit */}
-                  {calendarEvents.length > 0 && (
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Next Visit</div>
-                      <div className="text-sm font-bold text-gray-900">
-                        {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                      <div className="text-xs text-gray-500">{calendarEvents[0]?.title}</div>
-                    </div>
-                  )}
-
                   {/* Quick Stats */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center p-3 bg-gray-50 rounded-lg">
@@ -1217,59 +1221,57 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
 
-            {/* UPCOMING VISITS CARD - Only confirmed visits (informational) */}
-            {confirmedAssessments.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                  <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-emerald-600" />
-                      </div>
-                      <h2 className="text-lg font-bold text-gray-900">Upcoming Visits</h2>
-                    </div>
-                    {confirmedAssessments.length > 3 && (
-                      <button
-                        onClick={() => setShowScheduleModal(true)}
-                        className="text-sm text-gray-500 hover:text-gray-700"
-                      >
-                        View all
-                      </button>
-                    )}
+            {/* UPCOMING VISITS CARD - Confirmed upcoming assessments, max 5, closest at top */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <FontAwesomeIcon icon={faCalendarAlt} className="text-emerald-600" />
                   </div>
-                  <div className="p-4">
-                    <div className="space-y-2">
-                      {confirmedAssessments.slice(0, 3).map((event) => (
-                        <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                          <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <FontAwesomeIcon 
-                              icon={getIssueTypeIcon(event.issue?.type)} 
-                              className="text-gray-600 text-sm" 
-                            />
+                  <h2 className="text-lg font-bold text-gray-900">Upcoming Visits</h2>
+                </div>
+                {confirmedAssessments.length > 5 && (
+                  <button
+                    onClick={() => setShowScheduleModal(true)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    View all
+                  </button>
+                )}
+              </div>
+              <div className="p-4">
+                {confirmedAssessments.length > 0 ? (
+                  <div className="space-y-2">
+                    {confirmedAssessments.slice(0, 5).map((event) => (
+                      <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FontAwesomeIcon 
+                            icon={getIssueTypeIcon(event.issue?.type)} 
+                            className="text-gray-600 text-sm" 
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {event.title}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-gray-900 truncate">
-                              {event.title}
-                            </div>
-                            <div className="text-xs text-gray-500 truncate">
-                              {event.listing?.address?.split(',')[0] || 'Property'}
-                              {' · '}
-                              {event.start.toLocaleDateString("en-US", { weekday: 'short' })}
-                              {' '}
-                              {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                            </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {event.listing?.address?.split(',')[0] || 'Property'}
+                            {' · '}
+                            {event.start.toLocaleDateString("en-US", { weekday: 'short' })}
+                            {' '}
+                            {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                           </div>
                         </div>
-                      ))}
-                    </div>
-                    
-                    {confirmedAssessments.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        No confirmed visits scheduled
                       </div>
-                    )}
+                    ))}
                   </div>
-                </div>
-            )}
+                ) : (
+                  <div className="text-center py-6 text-gray-500 text-sm">
+                    No confirmed visits scheduled
+                  </div>
+                )}
+              </div>
+            </div>
 
             </div> {/* End RIGHT COLUMN */}
           </div>
@@ -1300,8 +1302,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       <CreateIssueModal
         open={isCreateIssueModalOpen}
         onClose={() => setIsCreateIssueModalOpen(false)}
-        onCreated={() => {
-          // Optionally refetch issues or show success
+        onCreated={(createdIssue) => {
+          setIsCreateIssueModalOpen(false);
+          navigate(
+            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
+            { state: { openIssue: createdIssue } }
+          );
         }}
         issueCollections={issueCollections}
       />

@@ -4,6 +4,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store/store";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { saveIssueImages, getIssueImages, deleteIssueImages } from "../utils/issueImageStore";
+import { getIssueImageUrls } from "../utils/issueImageUtils";
 
 // Use a unique key to avoid any conflicts
 const SUBS_KEY = '__INSPECTLY_OFFER_SUBS__';
@@ -69,12 +71,26 @@ const Offers: React.FC = () => {
   const [paymentVerified, setPaymentVerified] = useState(false);
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
+    const paymentParam = searchParams.get("payment");
+    const filterParam = searchParams.get("filter");
     const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
     const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
     
-    if (sessionId && !paymentVerified && pendingPayment) {
+    // Trigger on session_id OR payment=success with pending payment data
+    const shouldVerify = (sessionId || (paymentParam === "success" && filterParam === "accepted")) && pendingPayment;
+    
+    if (shouldVerify && !paymentVerified) {
       setPaymentVerified(true);
+
+      // Open the modal IMMEDIATELY using saved issue/listing data (no API wait)
+      const savedIssue = pendingPayment.issue;
+      const savedListing = pendingPayment.listing;
+      if (savedIssue) {
+        setSelectedIssue({ issue: savedIssue, listing: savedListing || undefined, defaultTab: "offers" });
+        setFilterStatus("accepted");
+      }
       
+      // Process payment verification in background
       (async () => {
         try {
           await updateOffer({
@@ -89,19 +105,46 @@ const Offers: React.FC = () => {
           }).unwrap();
           
           const issueId = Number(pendingPayment.issue_id);
-          const issue = issues.find(i => i.id === issueId);
+          const issue = savedIssue || issues.find(i => i.id === issueId);
+
+          // Restore images from IndexedDB (saved before Stripe redirect)
+          let restoredImages: string[] | null = null;
+          try {
+            restoredImages = await getIssueImages(issueId);
+          } catch { /* ignore */ }
+
           if (issue) {
             const report = reports.find(r => r.id === issue.report_id);
-            const listing = listings.find(l => l.id === report?.listing_id);
+            const listing = savedListing || listings.find(l => l.id === report?.listing_id);
+            
+            let imageUrlsForUpdate = issue.image_urls || "";
+            if (restoredImages && restoredImages.length > 0) {
+              const realUrls = restoredImages.filter((url: string) => !url.startsWith("data:"));
+              if (realUrls.length > 0) {
+                imageUrlsForUpdate = realUrls.length === 1 ? realUrls[0] : JSON.stringify(realUrls);
+              }
+            }
+            
+            const issueWithImages = { ...issue, image_urls: imageUrlsForUpdate };
             try {
-              await updateIssue(buildIssueUpdateBody(issue, { 
+              await updateIssue(buildIssueUpdateBody(issueWithImages, { 
                 vendor_id: pendingPayment.vendor_id,
-                status: "in_progress"
+                status: "in_progress",
+                active: false,
               }, listing?.id)).unwrap();
             } catch {
               // Offer accepted, issue update failed silently
             }
+
+            // Update modal to show issue with restored images (savedIssue is slim and has no image_urls)
+            if (restoredImages && restoredImages.length > 0) {
+              const displayIssue = { ...issue, image_urls: restoredImages };
+              setSelectedIssue(prev => prev && prev.issue?.id === issueId ? { ...prev, issue: displayIssue } : prev);
+            }
           }
+
+          // Clean up
+          try { await deleteIssueImages(issueId); } catch { /* ignore */ }
           
           toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
           localStorage.removeItem("pending_offer_payment");
@@ -111,6 +154,7 @@ const Offers: React.FC = () => {
         }
         
         searchParams.delete("session_id");
+        searchParams.delete("payment");
         setSearchParams(searchParams, { replace: true });
       })();
     }
@@ -196,17 +240,9 @@ const Offers: React.FC = () => {
     return offersMap;
   }, shallowEqual); // Use shallowEqual to prevent unnecessary rerenders
 
-  // Check if any offers are still loading
-  const loadingStates = useSelector((state: RootState) => {
-    return userIssues.map((issue) => {
-      const select = issueOffersApi.endpoints.getOffersByIssueId.select(issue.id);
-      const result = select(state);
-      return result.isLoading;
-    });
-  }, shallowEqual);
-  
-  const isFetchingOffers = loadingStates.some(loading => loading);
-  const isLoading = isLoadingIssues || isLoadingReports || isFetchingOffers;
+  // Show loading only when we have NO issues/reports data at all (first ever load)
+  // Offers load progressively from dashboard prefetch — don't block on them
+  const isLoading = (isLoadingIssues && issues.length === 0) || (isLoadingReports && reports.length === 0);
 
   // Combine issues with their offers, reports, and listings
   const issuesWithOffers: IssueWithOffers[] = useMemo(() => {
@@ -331,6 +367,12 @@ const Offers: React.FC = () => {
 
   const handleAcceptOffer = async (offer: IssueOffer) => {
     try {
+      const issue = issues.find(i => i.id === offer.issue_id);
+      const report = issue ? reports.find(r => r.id === issue.report_id) : null;
+      const listing = report ? listings.find(l => l.id === report.listing_id) : undefined;
+      // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
+      const slimIssue = issue ? { ...issue, image_urls: [] } : null;
+      const slimListing = listing ? { ...listing } : null;
       const pendingData = {
         offer_id: offer.id,
         issue_id: offer.issue_id,
@@ -338,13 +380,25 @@ const Offers: React.FC = () => {
         price: offer.price,
         comment_vendor: offer.comment_vendor || "",
         comment_client: offer.comment_client || "",
+        issue: slimIssue,
+        listing: slimListing,
       };
       localStorage.setItem("pending_offer_payment", JSON.stringify(pendingData));
-      
+
+      // Save issue images to IndexedDB in background (don't block Stripe)
+      if (issue) {
+        const imageUrls = getIssueImageUrls(issue.image_urls);
+        if (imageUrls.length > 0) {
+          saveIssueImages(offer.issue_id, imageUrls).catch(() => {});
+        }
+      }
+
+      const successUrl = `${window.location.origin}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
       const response = await createCheckoutSession({
         client_id: (client?.id ?? userId)!,
         vendor_id: offer.vendor_id,
         offer_id: offer.id,
+        success_url: successUrl,
       }).unwrap();
       window.location.href = response.session_url;
     } catch (err: any) {
@@ -679,7 +733,7 @@ const Offers: React.FC = () => {
                         <div className="font-semibold text-gray-900 truncate">
                           {issue.summary || `${normalizeAndCapitalize(issue.type)} Issue`}
                         </div>
-                        {listing && (
+                        {listing && issue.vendor_id && (
                           <div className="flex items-center gap-1 text-sm text-gray-500">
                             <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
                             <span className="truncate">{listing.address}</span>
@@ -892,7 +946,13 @@ const Offers: React.FC = () => {
             </button>
             <HomeownerIssueCard
               key={`${selectedIssue.issue.id}-${selectedIssue.defaultTab}`}
-              issue={(issues || []).find(i => i.id === selectedIssue.issue.id) ?? selectedIssue.issue}
+              issue={(() => {
+                const fromCache = (issues || []).find(i => i.id === selectedIssue.issue.id) ?? selectedIssue.issue;
+                const cacheHasImages = getIssueImageUrls(fromCache.image_urls).length > 0;
+                const selectedHasImages = getIssueImageUrls(selectedIssue.issue.image_urls).length > 0;
+                if (!cacheHasImages && selectedHasImages) return { ...fromCache, image_urls: selectedIssue.issue.image_urls };
+                return fromCache;
+              })()}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
               defaultTab={selectedIssue.defaultTab || "details"}

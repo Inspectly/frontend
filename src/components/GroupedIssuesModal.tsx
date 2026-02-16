@@ -165,13 +165,28 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b rounded-t">
             <div>
-              <h3 className="text-2xl font-semibold text-gray-900">
-                Issues on {getStreetName(address.address)}
-              </h3>
-              <p className="text-gray-600 mt-1">
-                <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
-                {address.city}, {address.state}
-              </p>
+              {/* Show address only when at least one issue has a vendor assigned */}
+              {issues.some(i => i.vendor_id) ? (
+                <>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    Issues on {getStreetName(address.address)}
+                  </h3>
+                  <p className="text-gray-600 mt-1">
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
+                    {address.city}, {address.state}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-semibold text-gray-900">
+                    Issues at this Property
+                  </h3>
+                  <p className="text-gray-400 mt-1 italic">
+                    <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
+                    Address visible after offer accepted
+                  </p>
+                </>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -309,19 +324,50 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       </h2>
                     </div>
 
-                    {/* Issue Image */}
-                    <div className="mb-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">Image</h3>
-                      <div className="rounded-lg overflow-hidden">
-                        <ImageComponent
-                          src={currentIssue.image_urls?.[0] || "/images/property_card_holder.jpg"}
-                          fallback="/images/property_card_holder.jpg"
-                          className="w-full h-64 object-cover"
-                        />
-                      </div>
-                    </div>
+                    {/* Issue Images - with scroll for multiple */}
+                    {(() => {
+                      let imageList: string[] = [];
+                      const raw = currentIssue.image_urls as string | string[];
+                      if (Array.isArray(raw)) {
+                        imageList = raw.filter(Boolean);
+                      } else if (typeof raw === "string" && raw.startsWith("[")) {
+                        try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
+                      } else if (raw) {
+                        imageList = [raw];
+                      }
+                      if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 
-                    {/* Issue Description */}
+                      return (
+                        <div className="mb-6">
+                          <div className="rounded-lg overflow-hidden">
+                            <ImageComponent
+                              src={imageList[0]}
+                              fallback="/images/property_card_holder.jpg"
+                              className="w-full h-64 object-cover"
+                            />
+                          </div>
+                          {imageList.length > 1 && (
+                            <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                              {imageList.map((url, idx) => (
+                                <img
+                                  key={idx}
+                                  src={url}
+                                  alt={`Image ${idx + 1}`}
+                                  className="w-16 h-16 rounded-lg object-cover cursor-pointer border-2 border-transparent hover:border-blue-500 transition-colors flex-shrink-0"
+                                  onClick={() => {
+                                    // Swap clicked image to main display
+                                    const el = document.querySelector('.grouped-main-image') as HTMLImageElement;
+                                    if (el) el.src = url;
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Issue Description - moved above details grid */}
                     <div className="mb-6">
                       <h3 className="text-lg font-medium text-gray-900 mb-3">Description</h3>
                       <p className="text-gray-700 leading-relaxed">
@@ -329,23 +375,32 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       </p>
                     </div>
 
-                    {/* Issue Details Grid */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-1">Status</h4>
-                        <p className="text-gray-700 capitalize">{currentIssue.status}</p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-1">Cost Estimate</h4>
-                        <p className="text-gray-700">{currentIssue.cost || 'Not specified'}</p>
-                      </div>
+                    {/* Issue Details Grid - status, severity, type as compact badges */}
+                    <div className="flex items-center gap-2 flex-wrap mb-4">
+                      <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg border border-gray-200">
+                        {normalizeAndCapitalize(currentIssue.type)}
+                      </span>
+                      <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200 capitalize">
+                        {currentIssue.status?.replace("Status.", "").replace(/_/g, " ").toLowerCase() || "open"}
+                      </span>
+                      <span className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
+                        currentIssue.severity === "High" ? "bg-red-50 text-red-700 border-red-200"
+                        : currentIssue.severity === "Medium" ? "bg-orange-50 text-orange-700 border-orange-200"
+                        : "bg-green-50 text-green-700 border-green-200"
+                      }`}>
+                        {currentIssue.severity || "Medium"}
+                      </span>
+                    </div>
+                    <div className={`grid ${currentIssue.vendor_id ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-6`}>
+                      {currentIssue.vendor_id && (
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-gray-900 mb-1">Cost Estimate</h4>
+                          <p className="text-gray-700">{currentIssue.cost || 'Not specified'}</p>
+                        </div>
+                      )}
                       <div className="bg-gray-50 p-4 rounded-lg">
                         <h4 className="font-medium text-gray-900 mb-1">Created</h4>
                         <p className="text-gray-700">{new Date(currentIssue.created_at).toLocaleDateString()}</p>
-                      </div>
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-1">Last Updated</h4>
-                        <p className="text-gray-700">{new Date(currentIssue.updated_at).toLocaleDateString()}</p>
                       </div>
                     </div>
                   </div>
