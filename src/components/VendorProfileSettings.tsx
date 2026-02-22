@@ -155,13 +155,13 @@ const VendorProfileSettings: React.FC = () => {
       <form onSubmit={handleSubmit}>
         <div className="mb-5">
           <label htmlFor="businessName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Name <span className="text-red-600">*</span>
+            Company Name <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
             id="businessName"
             className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter business name"
+            placeholder="Enter company name"
             value={formData.name}
             onChange={handleChange}
           />
