@@ -5,8 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useScrollAnimation } from "@/components/hooks/useScrollAnimation";
-import Navbar from "@/components/landing/LandingNavbar";
-import Footer from "@/components/Footer";
 
 const ContactHero = () => {
     const { ref, isVisible } = useScrollAnimation();
