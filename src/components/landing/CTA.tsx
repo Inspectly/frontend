@@ -39,7 +39,7 @@ const CTA = () => {
               Get Started Free
               <ArrowRight className="w-5 h-5" />
             </Button>
-            <Button variant="outline" size="lg" className="text-base h-12 px-8" onClick={() => navigate("/signup")}>
+            <Button variant="outline" size="lg" className="text-base h-12 px-8" onClick={() => navigate("/contact")}>
               Contact Us
             </Button>
           </div>
