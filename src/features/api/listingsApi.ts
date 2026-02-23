@@ -6,6 +6,7 @@ export const listingsApi = api.injectEndpoints({
     getListings: builder.query<Listing[], void>({
       query: () => "listings/",
       providesTags: ["Listings"],
+      transformResponse: (response: { items: Listing[] }) => response.items,
     }),
     getListingById: builder.query<Listing, number>({
       query: (id) => `listings/${id}`,

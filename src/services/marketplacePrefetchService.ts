@@ -65,13 +65,13 @@ class MarketplacePrefetchService {
       const groupedCacheKey = this.getGroupedCacheKey({});
 
       this.setCache(ungroupedCacheKey, {
-        issues,
-        total_filtered: { count: expectedTotal }
+        items: issues,
+        total: expectedTotal
       }, expectedTotal);
 
       this.setCache(groupedCacheKey, {
-        issues,
-        total_filtered: { count: expectedTotal }
+        items: issues,
+        total: expectedTotal
       }, expectedTotal);
 
     } catch (error) {
@@ -109,17 +109,17 @@ class MarketplacePrefetchService {
   private async fetchAllIssues(): Promise<{ issues: any[], expectedTotal: number }> {
     if (!this.dispatch) throw new Error('Dispatch not initialized');
 
-    const limit = 500; // Fetch in chunks
+    const pageSize = 500; // Fetch in chunks
     const MAX_PREFETCH_ISSUES = 10000; // Reasonable limit for prefetch performance
-    let offset = 0;
+    let currentPage = 1;
     let allIssues: any[] = [];
     let expectedTotal = 0;
 
     // Fetch first page to get total count
     const firstPageResult = await this.dispatch(
       issuesApi.endpoints.getPaginatedIssues.initiate({
-        offset: 0,
-        limit,
+        page: 1,
+        size: pageSize,
         search: '',
         type: '',
         city: '',
@@ -133,21 +133,21 @@ class MarketplacePrefetchService {
     }
 
     // Create a mutable copy - RTK Query returns frozen/immutable data
-    allIssues = [...(firstPageResult.data.issues || [])];
-    expectedTotal = firstPageResult.data.total_filtered?.count || firstPageResult.data.total?.count || 0;
+    allIssues = [...(firstPageResult.data.items || [])];
+    expectedTotal = firstPageResult.data.total || 0;
 
     // Fetch remaining pages if needed
-    while (allIssues.length < expectedTotal && 
-           allIssues.length < MAX_PREFETCH_ISSUES && 
-           offset + limit < expectedTotal) {
+    while (allIssues.length < expectedTotal &&
+           allIssues.length < MAX_PREFETCH_ISSUES &&
+           currentPage < (firstPageResult.data.pages || 1)) {
       if (this.abortController?.signal.aborted) break;
 
-      offset += limit;
-      
+      currentPage += 1;
+
       const pageResult = await this.dispatch(
         issuesApi.endpoints.getPaginatedIssues.initiate({
-          offset,
-          limit,
+          page: currentPage,
+          size: pageSize,
           search: '',
           type: '',
           city: '',
@@ -156,8 +156,8 @@ class MarketplacePrefetchService {
         })
       );
 
-      if (pageResult.data?.issues) {
-        allIssues.push(...pageResult.data.issues);
+      if (pageResult.data?.items) {
+        allIssues.push(...pageResult.data.items);
       }
     }
 
@@ -223,7 +223,7 @@ class MarketplacePrefetchService {
         const key = sessionStorage.key(i);
         if (key && key.startsWith(prefix)) {
           const cachedData = this.getCache(key);
-          if (cachedData && cachedData.issues && cachedData.issues.length > 0) {
+          if (cachedData && cachedData.items && cachedData.items.length > 0) {
             return cachedData;
           }
         }

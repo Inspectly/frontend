@@ -154,8 +154,8 @@ const Marketplace: React.FC = () => {
   // Determine API parameters - fetch all available data when grouping or type filtering
   const apiParams = useMemo(() => {
     return {
-      offset: (groupByAddress || selectedType) ? 0 : (currentPage - 1) * itemsPerPage,
-      limit: (groupByAddress || selectedType) ? maxFetchLimit : itemsPerPage, // Use configurable limit for grouping
+      page: (groupByAddress || selectedType) ? 1 : currentPage,
+      size: (groupByAddress || selectedType) ? maxFetchLimit : itemsPerPage, // Use configurable limit for grouping
       search: searchTerm.trim(),
       type: "", // Don't send type to API, we'll filter client-side for better matching
     city: selectedCity,
@@ -186,8 +186,8 @@ const Marketplace: React.FC = () => {
 
   // Query for unassigned issues (for display and filtering)
   const allUnassignedQueryParams = {
-    offset: 0,
-    limit: maxFetchLimit,
+    page: 1,
+    size: maxFetchLimit,
     search: "",
     type: "",
     city: "",
@@ -210,7 +210,7 @@ const Marketplace: React.FC = () => {
   // Use prefetched data if available, otherwise use API data
   // Filter to only show open, unassigned issues on the marketplace
   const rawIssues = useMemo(() => {
-    const issues = prefetchedData?.issues || data?.issues || [];
+    const issues = prefetchedData?.items || data?.items || [];
     return issues.filter((issue: IssueType) => {
       // Only show open issues (status check)
       const status = (issue.status || "").toLowerCase().replace("status.", "");
@@ -219,7 +219,7 @@ const Marketplace: React.FC = () => {
       if (issue.vendor_id) return false;
       return true;
     });
-  }, [prefetchedData?.issues, data?.issues]);
+  }, [prefetchedData?.items, data?.items]);
 
   // Apply client-side type filtering for better matching with smart fallbacks
   const { filteredIssues, currentFilterMode } = useMemo(() => {
@@ -298,7 +298,7 @@ const Marketplace: React.FC = () => {
     if (!groupByAddress) {
       // Only do client-side pagination when we have prefetched data or type filtering
       // Otherwise, the API already sent us the correct page
-      if (prefetchedData?.issues || selectedType) {
+      if (prefetchedData?.items || selectedType) {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return filteredIssues.slice(startIndex, endIndex);
@@ -307,12 +307,12 @@ const Marketplace: React.FC = () => {
       return filteredIssues;
     }
     return filteredIssues;
-  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.issues, selectedType]);
+  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.items, selectedType]);
   
   // Calculate total items based on filtering
-  const totalItems = selectedType 
+  const totalItems = selectedType
     ? filteredIssues.length  // Use filtered count when type filtering is applied
-    : (prefetchedData?.total_filtered?.count || data?.total_filtered?.count || 0);
+    : (prefetchedData?.total || data?.total || 0);
 
   // Create address map for easy lookup
   const addressMap = useMemo(() => {
@@ -324,9 +324,9 @@ const Marketplace: React.FC = () => {
 
   // Fetch addresses for displayed issues (for showing location info on cards)
   useEffect(() => {
-    if (allUnassignedData?.issues && allUnassignedData.issues.length > 0) {
+    if (allUnassignedData?.items && allUnassignedData.items.length > 0) {
       setIsLoadingAddresses(true);
-      const issueIds = allUnassignedData.issues.map((issue) => issue.id);
+      const issueIds = allUnassignedData.items.map((issue) => issue.id);
       getAddressesByIssueIds(issueIds)
         .unwrap()
         .then((fetchedAddresses) => {
@@ -337,10 +337,10 @@ const Marketplace: React.FC = () => {
           console.error("Error fetching addresses:", err);
           setIsLoadingAddresses(false);
         });
-    } else if (!isLoadingAllUnassigned && (!allUnassignedData?.issues || allUnassignedData.issues.length === 0)) {
+    } else if (!isLoadingAllUnassigned && (!allUnassignedData?.items || allUnassignedData.items.length === 0)) {
       setIsLoadingAddresses(false);
     }
-  }, [allUnassignedData?.issues, getAddressesByIssueIds, isLoadingAllUnassigned]);
+  }, [allUnassignedData?.items, getAddressesByIssueIds, isLoadingAllUnassigned]);
 
 
   // Extract unique cities and states from ALL listings (shows all available locations)
