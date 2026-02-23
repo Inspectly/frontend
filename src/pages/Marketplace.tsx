@@ -72,7 +72,7 @@ const Marketplace: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const itemsPerPage = 12;
-  const maxFetchLimit = 50000; // Configurable limit for grouping - can be adjusted based on system capacity
+  const maxFetchLimit = 100; // Backend max page size is 100
 
   // Initialize filters from URL params on mount
   useEffect(() => {

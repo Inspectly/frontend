@@ -109,7 +109,7 @@ class MarketplacePrefetchService {
   private async fetchAllIssues(): Promise<{ issues: any[], expectedTotal: number }> {
     if (!this.dispatch) throw new Error('Dispatch not initialized');
 
-    const pageSize = 500; // Fetch in chunks
+    const pageSize = 100; // Backend max page size is 100
     const MAX_PREFETCH_ISSUES = 10000; // Reasonable limit for prefetch performance
     let currentPage = 1;
     let allIssues: any[] = [];
