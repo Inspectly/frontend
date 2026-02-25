@@ -527,7 +527,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               {/* Approvals Needed */}
               <div 
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
@@ -542,7 +542,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               {/* Quotes to Compare */}
               <div 
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
               >
                 <div className="text-3xl font-bold text-gray-900 mb-1">{quoteItems.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Quotes to Compare</div>
@@ -555,7 +555,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
 
               {/* Visit Scheduled */}
-              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
                 <div className="text-3xl font-bold text-gray-900 mb-1">{calendarEvents.length}</div>
                 <div className="text-sm font-semibold text-gray-900">Visit Scheduled</div>
                 {calendarEvents.length > 0 && (
@@ -566,7 +566,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
 
               {/* Budget / Spend */}
-              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="w-9 h-9 bg-gold-200 rounded-lg flex items-center justify-center">
                     <span className="text-gold font-bold">$</span>
@@ -590,7 +590,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         {isNewUser && (
           <div className="mb-6">
             {/* Hero Welcome Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10 shadow-lg">
               {/* Decorative elements */}
               <div className="absolute top-0 right-0 w-96 h-96 bg-gold/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-gold/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
@@ -650,7 +650,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             
             {/* Quick Start Steps */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl p-5 border border-gray-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
+              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                    onClick={() => setIsCreateIssueModalOpen(true)}>
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-gold transition-colors">
@@ -663,7 +663,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
               
-              <div className="bg-white rounded-xl p-5 border border-gray-200 opacity-60">
+              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg opacity-60">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-gray-400 font-bold">2</span>
@@ -675,7 +675,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
               </div>
               
-              <div className="bg-white rounded-xl p-5 border border-gray-200 opacity-60">
+              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg opacity-60">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <span className="text-gray-400 font-bold">3</span>
@@ -699,7 +699,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             
             {/* PRIORITY INBOX - Main Card */}
             <div className="min-w-0">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 {/* Header with icon and tabs */}
                 <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between mb-4">
@@ -1035,7 +1035,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
 
             {/* ACTIVE PROPERTIES - Inside left column */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1095,7 +1095,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             <div
                               key={listing.id}
                               onClick={() => navigate(`/listings/${listing.id}`)}
-                              className="group rounded-xl overflow-hidden cursor-pointer bg-white border border-gray-200 hover:shadow-xl transition-all duration-300"
+                              className="group rounded-xl overflow-hidden cursor-pointer bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300"
                             >
                               {/* Large Image */}
                               <div className="h-44 bg-gray-200 relative overflow-hidden">
@@ -1176,7 +1176,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
             {/* RIGHT COLUMN - Project Health + Schedule stacked */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+              <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -1222,7 +1222,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
 
             {/* UPCOMING VISITS CARD - Confirmed upcoming assessments, max 5, closest at top */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
