@@ -352,7 +352,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   };
 
   return (
-    <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
       {onClose && (
         <button
           onClick={onClose}

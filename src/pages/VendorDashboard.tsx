@@ -742,7 +742,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* New Job Alert */}
           <div 
             onClick={() => { setActiveTab("new"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-4xl font-bold text-gold">{availableCount}</span>
@@ -764,7 +764,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Active Jobs */}
           <div 
             onClick={() => navigate("/vendor/jobs?tab=active")}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-4xl font-bold text-gray-900">
@@ -784,7 +784,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Jobs Bidding */}
           <div 
             onClick={() => { setActiveTab("bidding"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-4xl font-bold text-gray-900">
@@ -803,7 +803,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
 
           {/* Earnings & Performance - Dark Card */}
-          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl p-5 text-white">
+          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl p-5 text-white shadow-lg">
             <div className="text-sm font-medium text-gray-400 mb-3">Earnings & Performance</div>
             {vendorMetrics.totalEarnings === 0 && vendorMetrics.thisMonthEarnings === 0 && vendorMetrics.outstandingBids === 0 ? (
               // New vendor - show encouraging message
@@ -841,7 +841,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           
           {/* Left Column - Priority List */}
           <div className="col-span-12 lg:col-span-8">
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
               {/* Priority List Header with Tabs */}
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center justify-between flex-wrap gap-4">
@@ -1161,7 +1161,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
 
             {/* Active Projects Slideshow - Inside left column */}
-            <div className="bg-white rounded-xl overflow-hidden mt-6">
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg mt-6">
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -1210,7 +1210,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                     {activeJobs.slice(projectSlide, projectSlide + 2).map(({ offer, issue, listing }) => (
                       <div 
                         key={offer.id}
-                        className="rounded-xl overflow-hidden border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                        className="rounded-xl overflow-hidden border border-gray-200  shadow-lg hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => issue?.id && openIssueModal(issue.id, "details")}
                       >
                         {/* Project Image */}
@@ -1286,7 +1286,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Right Column - Sidebar (Performance + Recent Activity) */}
           <div className="col-span-12 lg:col-span-4 space-y-6">
             {/* Performance Card */}
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
@@ -1339,7 +1339,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
 
             {/* Recent Activity */}
-            <div className="bg-white rounded-xl overflow-hidden">
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
               <div className="px-5 py-4 border-b border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
