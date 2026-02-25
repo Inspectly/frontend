@@ -20,7 +20,7 @@ import Attachments from "./Attachments";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
 import { useNavigate } from "react-router-dom";
-import { useUpdateIssueMutation } from "../features/api/issuesApi";
+import { useUpdateIssueMutation, useGetIssueByIdQuery } from "../features/api/issuesApi";
 import {
   useCreateOfferMutation,
   useGetOffersByIssueIdQuery,
@@ -60,6 +60,9 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const userType = useSelector(
     (state: RootState) => state.auth.user?.user_type
   );
+
+  // Fetch full issue data so image_urls are available without page refresh
+  const { data: fetchedIssue } = useGetIssueByIdQuery(String(issue?.id), { skip: !issue?.id });
 
   const {
     data: offers = [],
@@ -141,12 +144,14 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     getIssueImages(issue.id).then(setStoredImages);
   }, [issue?.id]);
 
-  // Effective image list: from issue first, else from IndexedDB (so status updates don't send empty image_url)
+  // Effective image list: prefer fetched issue (has image_urls from server), then prop, then IndexedDB
   const effectiveImageUrls = useMemo(() => {
+    const fromFetched = getIssueImageUrls(fetchedIssue?.image_urls);
+    if (fromFetched.length > 0) return fromFetched;
     const fromIssue = getIssueImageUrls(issue?.image_urls);
     if (fromIssue.length > 0) return fromIssue;
     return storedImages || [];
-  }, [issue?.image_urls, storedImages]);
+  }, [fetchedIssue?.image_urls, issue?.image_urls, storedImages]);
 
   /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
   const getIssueForUpdate = async (): Promise<IssueType> => {
@@ -455,19 +460,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             <div className="lg:col-span-2 space-y-6">
               {/* Images with scroll for multiple */}
               {(() => {
-                let imageList: string[] = [];
-                const raw = issue.image_urls as string | string[];
-                if (Array.isArray(raw)) {
-                  imageList = raw.filter(Boolean);
-                } else if (typeof raw === "string" && raw.startsWith("[")) {
-                  try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
-                } else if (raw) {
-                  imageList = [raw];
-                }
-                // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
-                if (imageList.length === 0 && storedImages && storedImages.length > 0) {
-                  imageList = storedImages;
-                }
+                let imageList: string[] = effectiveImageUrls;
                 if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 
                 return (

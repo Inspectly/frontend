@@ -20,6 +20,7 @@ import {
 } from "../features/api/issuesApi";
 import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
+import { uploadFileToImageUrl } from "../utils/imageUpload";
 
 /* ---------------- types & small helpers ---------------- */
 
@@ -103,6 +104,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   }, [isModalOpen]);
 
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const statusMapping: Record<IssueStatus, string> = {
     "Status.OPEN": "open",
@@ -154,12 +156,21 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
         medium: "Medium",
         high: "High",
       };
+
+      let uploadedImageUrls: string[] = [];
+      if (imageFile) {
+        const url = await uploadFileToImageUrl(imageFile);
+        uploadedImageUrls = [url];
+      }
+
+      const { image_url: _ignored, ...issueFields } = formData;
       await createIssue({
         report_id: Number(reportId),
         listing_id: Number(listingId),
-        ...formData,
+        ...issueFields,
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: formData.status as IssueStatus,
+        image_urls: uploadedImageUrls,
       }).unwrap();
       refetch();
       setIsModalOpen(false);
@@ -180,23 +191,15 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
       image_url: "",
     });
     setSelectedFileName("");
+    setImageFile(null);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // For now use base64 preview (replace with real upload later)
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (reader.result) {
-        setFormData((prev) => ({
-          ...prev,
-          image_url: reader.result as string,
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+    setSelectedFileName(file.name);
+    setImageFile(file);
   };
 
   const reportIssues =

@@ -6,6 +6,7 @@ import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import type { IssueStatus, IssueType } from "../types";
 import { toast } from "react-hot-toast";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
+import { uploadFilesToImageUrls } from "../utils/imageUpload";
 
 type IssueCollection = { id: number; listing_id: number; name: string };
 
@@ -51,6 +52,25 @@ const CreateIssueModal: React.FC<Props> = ({
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Reset form when modal opens
+  React.useEffect(() => {
+    if (open) {
+      setFormData({
+        report_id: undefined,
+        listing_id: undefined,
+        type: "",
+        description: "",
+        summary: "",
+        severity: "",
+        status: "open",
+        active: true,
+      });
+      setImageFiles([]);
+      setImagePreviewUrls([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [open]);
+
   if (!open) return null;
 
   const handleFieldChange = (
@@ -84,20 +104,6 @@ const CreateIssueModal: React.FC<Props> = ({
     setImagePreviewUrls((prev) => [...prev, ...newPreviewUrls]);
   };
 
-  // Convert File objects to base64 only at submit time
-  const filesToBase64 = (files: File[]): Promise<string[]> => {
-    return Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          })
-      )
-    );
-  };
-
   const canSubmit =
     !!formData.report_id &&
     !!formData.type &&
@@ -116,8 +122,16 @@ const CreateIssueModal: React.FC<Props> = ({
         medium: "Medium",
         high: "High",
       };
-      // Convert files to base64 only now (at submit time)
-      const base64Images = await filesToBase64(imageFiles);
+
+      let uploadedImageUrls: string[] = [];
+      if (imageFiles.length > 0) {
+        try {
+          uploadedImageUrls = await uploadFilesToImageUrls(imageFiles);
+        } catch (error) {
+          console.error("Failed to upload images:", error);
+          return;
+        }
+      }
 
       const submittedData = {
         report_id: formData.report_id,
@@ -128,7 +142,7 @@ const CreateIssueModal: React.FC<Props> = ({
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: "open" as IssueStatus,
         active: formData.active,
-        image_urls: base64Images,
+        image_urls: uploadedImageUrls,
       };
       const apiResponse = await createIssue(submittedData).unwrap();
 
@@ -138,15 +152,11 @@ const CreateIssueModal: React.FC<Props> = ({
         ? rawStatus
         : `Status.${rawStatus.toUpperCase()}`;
 
-      // Use blob URLs for instant preview if backend didn't return image URLs
-      const effectiveImageUrls = apiResponse.image_urls
-        || (imagePreviewUrls.length === 1 ? imagePreviewUrls[0] : imagePreviewUrls.length > 1 ? JSON.stringify(imagePreviewUrls) : "");
-
       const fullIssue: IssueType = {
         ...submittedData,
         ...apiResponse,
         status: normalizedStatus as IssueStatus,
-        image_urls: effectiveImageUrls,
+        image_urls: apiResponse.image_urls || uploadedImageUrls,
       } as IssueType;
 
       toast.success("Issue created");
