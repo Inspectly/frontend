@@ -43,7 +43,7 @@ import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
 
-type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review";
+type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review" | "completed";
 type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
 
 interface IssueWithOffers {
@@ -166,6 +166,7 @@ const Offers: React.FC = () => {
     if (param === "review" || param === "in-review") return "in-review";
     if (param === "pending") return "pending";
     if (param === "accepted") return "accepted";
+    if (param === "completed") return "completed";
     if (param === "rejected") return "rejected";
     return "all";
   };
@@ -287,6 +288,9 @@ const Offers: React.FC = () => {
         // Handle "in-review" filter separately (it's an issue status, not offer status)
         if (filterStatus === "in-review") {
           if (issue.status !== "Status.REVIEW") return false;
+        } else if (filterStatus === "completed") {
+          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
+          if (!isCompleted) return false;
         } else {
           // Map filter status to actual enum values
           const statusMap: Record<string, string> = {
@@ -297,6 +301,10 @@ const Offers: React.FC = () => {
           const targetStatus = statusMap[filterStatus];
           const hasMatchingStatus = offers.some((o) => o.status === targetStatus);
           if (!hasMatchingStatus) return false;
+          if (filterStatus === "accepted") {
+            const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
+            if (isCompleted) return false;
+          }
         }
       }
 
@@ -356,17 +364,24 @@ const Offers: React.FC = () => {
     let pendingOffers = 0;
     let acceptedOffers = 0;
     let inReviewCount = 0;
+    let completedCount = 0;
 
     issuesWithOffers.forEach(({ issue, offers }) => {
+      const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
       totalOffers += offers.length;
       pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
-      acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
+      if (!isCompleted) {
+        acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
+      }
       if (issue.status === "Status.REVIEW") {
         inReviewCount++;
       }
+      if (isCompleted) {
+        completedCount++;
+      }
     });
 
-    return { totalOffers, pendingOffers, acceptedOffers, inReviewCount };
+    return { totalOffers, pendingOffers, acceptedOffers, inReviewCount, completedCount };
   }, [issuesWithOffers]);
 
   const handleAcceptOffer = async (offer: IssueOffer) => {
@@ -520,6 +535,7 @@ const Offers: React.FC = () => {
                 { value: 'in-review', label: 'In Review', count: stats.inReviewCount },
                 { value: 'pending', label: 'Pending', count: stats.pendingOffers },
                 { value: 'accepted', label: 'Accepted', count: stats.acceptedOffers },
+                { value: 'completed', label: 'Completed', count: stats.completedCount },
                 { value: 'rejected', label: 'Rejected' },
               ].map((tab) => (
                 <button
@@ -752,7 +768,6 @@ const Offers: React.FC = () => {
                       {isCompleted && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
                           <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                          <div className="text-xs text-emerald-600">Completed</div>
                         </div>
                       ) : isInReview && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
