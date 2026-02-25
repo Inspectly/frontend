@@ -122,9 +122,18 @@ export const issueDisputesApi = api.injectEndpoints({
           }),
         });
 
-        return result.data
-          ? { data: result.data }
-          : { error: result.error as any };
+        if (result.error) {
+          return { error: result.error as any };
+        }
+
+        const data = result.data as { id?: number } | undefined;
+        if (!data || typeof data.id !== "number") {
+          return {
+            error: { status: "CUSTOM_ERROR", error: "Invalid attachment response." },
+          };
+        }
+
+        return { data: { id: data.id } };
       },
       invalidatesTags: (_result, _error, { issueOfferId }) => [
         { type: "Disputes", id: `details-${issueOfferId}` },

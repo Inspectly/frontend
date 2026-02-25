@@ -64,10 +64,21 @@ export interface IssueDetailsProps {
   autoOpenDispute?: boolean;
 }
 
+type IssueDetailsTab = "details" | "offers" | "assessments" | "dispute";
+const ISSUE_DETAILS_TABS: IssueDetailsTab[] = [
+  "details",
+  "offers",
+  "assessments",
+  "dispute",
+];
+
 // Extract tab from URL (default to "details")
-const getTabFromURL = () => {
+const getTabFromURL = (): IssueDetailsTab => {
   const params = new URLSearchParams(location.search);
-  return params.get("tab") || "details"; // Default tab
+  const tab = params.get("tab") || "details";
+  return ISSUE_DETAILS_TABS.includes(tab as IssueDetailsTab)
+    ? (tab as IssueDetailsTab)
+    : "details";
 };
 
 
@@ -107,10 +118,6 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   const [updateAssessmentStatus] = useUpdateAssessmentMutation();
 
   const isVendor = userType === "vendor";
-  const statusNormalized =
-    statusMapping[issue.status as IssueStatus] ??
-    String(issue.status || "").toLowerCase();
-  const isCompleted = statusNormalized === "completed";
   const acceptedOffer = useMemo(() => {
     const byStatus = offers.find(
       (offer) => offer.status === IssueOfferStatus.ACCEPTED
@@ -240,9 +247,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
 
   // Collapsible section states removed - using HomeownerIssueCard-style layout
 
-  const [activeTab, setActiveTab] = useState<
-    "details" | "offers" | "assessments" | "dispute"
-  >(defaultTab ?? (getTabFromURL() as "details" | "offers" | "assessments" | "dispute"));
+  const [activeTab, setActiveTab] = useState<IssueDetailsTab>(
+    defaultTab ?? getTabFromURL()
+  );
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
