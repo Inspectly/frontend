@@ -460,10 +460,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // State for issue detail modal
   const [selectedIssueForModal, setSelectedIssueForModal] = useState<IssueType | null>(null);
   const [selectedListingForModal, setSelectedListingForModal] = useState<any>(null);
-  const [modalDefaultTab, setModalDefaultTab] = useState<"details" | "offers" | "assessments">("details");
+  const [modalDefaultTab, setModalDefaultTab] = useState<
+    "details" | "offers" | "assessments" | "dispute"
+  >("details");
 
   // Helper to open issue in modal
-  const openIssueModal = (issue: IssueType, defaultTab: "details" | "offers" | "assessments" = "details") => {
+  const openIssueModal = (
+    issue: IssueType,
+    defaultTab: "details" | "offers" | "assessments" | "dispute" = "details"
+  ) => {
     const report = reports?.find((r) => r.id === issue.report_id);
     const listing = _listings?.find((l) => l.id === report?.listing_id);
     setSelectedIssueForModal(issue);
@@ -1314,8 +1319,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {/* Issue Detail Modal */}
       {selectedIssueForModal && (
-        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
-          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center"
+          onClick={() => setSelectedIssueForModal(null)}
+        >
+          <div
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setSelectedIssueForModal(null)}
               className="absolute -top-10 right-0 text-white text-3xl leading-none px-2 hover:text-gray-300 transition-colors"

@@ -820,8 +820,16 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
       </div>
 
       {selectedIssue && (
-        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
-          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+        <div className="fixed inset-0 z-[70] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={handleCloseIssueModal} />
+          <div
+            className="relative min-h-screen flex items-start justify-center p-4 pt-16"
+            onClick={handleCloseIssueModal}
+          >
+            <div
+              className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* close button */}
             <button
               onClick={handleCloseIssueModal}
@@ -834,8 +842,10 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
               issue={selectedIssue}
               listing={undefined}
               onClose={handleCloseIssueModal}
+              autoOpenDispute={false}
             />
 
+            </div>
           </div>
         </div>
       )}

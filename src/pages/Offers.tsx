@@ -177,7 +177,11 @@ const Offers: React.FC = () => {
   const [visibleCount, setVisibleCount] = useState(10); // Show 10 issues at a time
 
   // Modal state for issue details
-  const [selectedIssue, setSelectedIssue] = useState<{ issue: IssueType; listing?: Listing; defaultTab?: "details" | "offers" | "assessments" } | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<{
+    issue: IssueType;
+    listing?: Listing;
+    defaultTab?: "details" | "offers" | "assessments" | "dispute";
+  } | null>(null);
 
   // Modal state for approve/request changes
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -770,7 +774,28 @@ const Offers: React.FC = () => {
                       ) : null}
 
                       {/* Action button - only positive actions */}
-                      {isInReview && acceptedOffer ? (
+                      {isCompleted ? (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIssue({ issue, listing, defaultTab: "offers" });
+                            }}
+                            className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIssue({ issue, listing, defaultTab: "dispute" });
+                            }}
+                            className="min-w-[90px] px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors text-center uppercase tracking-widest"
+                          >
+                            Dispute
+                          </button>
+                        </>
+                      ) : isInReview && acceptedOffer ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -936,8 +961,14 @@ const Offers: React.FC = () => {
 
       {/* Issue Details Modal */}
       {selectedIssue && (
-        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
-          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center"
+          onClick={() => setSelectedIssue(null)}
+        >
+          <div
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setSelectedIssue(null)}
               className="absolute -top-10 right-0 text-white text-3xl leading-none px-2"
@@ -955,7 +986,8 @@ const Offers: React.FC = () => {
               })()}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
-              defaultTab={selectedIssue.defaultTab || "details"}
+              defaultTab={selectedIssue.defaultTab || "offers"}
+              autoOpenDispute={false}
             />
           </div>
         </div>

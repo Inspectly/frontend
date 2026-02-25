@@ -71,6 +71,7 @@ const ReportCard: React.FC<Props> = ({
 }) => {
   const badge = extractionBadge(extractionStatus);
   const primary = primaryForMode(mode);
+  const isClickable = !!primary && !primary.disabled;
 
   const handlePrimary = () => {
     if (mode === "VIEW") onOpen();
@@ -83,7 +84,22 @@ const ReportCard: React.FC<Props> = ({
         "group relative rounded-2xl overflow-hidden border border-neutral-200 bg-white",
         "shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5",
         "flex flex-col",
+        isClickable ? "cursor-pointer" : "",
       ].join(" ")}
+      onClick={(e) => {
+        if (!isClickable) return;
+        if ((e.target as HTMLElement).closest("button")) return;
+        handlePrimary();
+      }}
+      onKeyDown={(e) => {
+        if (!isClickable) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handlePrimary();
+        }
+      }}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       {/* Thumbnail / hero area (keeps your older look w/ visual) */}
       <div className="relative h-32 w-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">

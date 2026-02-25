@@ -191,7 +191,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const selectedIssueListing = selectedIssue ? listingsMap[selectedIssue.listing_id] : undefined;
   
   // Open issue modal
-  const openIssueModal = (issueId: number, defaultTab: "details" | "offers" | "assessments" = "details") => {
+  const openIssueModal = (
+    issueId: number,
+    defaultTab: "details" | "offers" | "assessments" | "dispute" = "details"
+  ) => {
     setSelectedIssueId(issueId);
     // Update URL to set the tab for IssueDetails
     navigate(`?tab=${defaultTab}`, { replace: true });

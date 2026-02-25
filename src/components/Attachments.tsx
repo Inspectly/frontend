@@ -23,9 +23,18 @@ import { RootState } from "../store/store";
 interface AttachmentsProps {
   issueId: number;
   userType: string;
+  onCountChange?: (count: number) => void;
+  onUploadComplete?: (attachment: Attachment) => void;
+  onDeleteComplete?: (attachment: Attachment) => void;
 }
 
-const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
+const Attachments: React.FC<AttachmentsProps> = ({
+  issueId,
+  userType,
+  onCountChange,
+  onUploadComplete,
+  onDeleteComplete,
+}) => {
   const {
     data: attachments,
     error,
@@ -41,6 +50,9 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
       attachments?.filter((attachment) => attachment.issue_id === issueId) || []
     );
   }, [attachments, issueId]);
+  useEffect(() => {
+    onCountChange?.(issueAttachments.length);
+  }, [issueAttachments.length, onCountChange]);
 
   const userId = useSelector((state: RootState) => state.auth.user?.id);
 
@@ -75,7 +87,8 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
     setUploadStatus("loading");
 
     try {
-      await createAttachment({ issueId, file, userId: 48 }).unwrap();
+      const createdAttachment = await createAttachment({ issueId, file, userId: 48 }).unwrap();
+      onUploadComplete?.(createdAttachment);
       setUploadStatus("success");
     } catch (error) {
       console.log(error);
@@ -105,6 +118,8 @@ const Attachments: React.FC<AttachmentsProps> = ({ issueId, userType }) => {
       setUploadStatus("loading");
 
       await refetch(); // Refetch after successful deletion
+
+      onDeleteComplete?.(attachmentToDelete);
 
       setUploadStatus("idle");
     } catch (error) {

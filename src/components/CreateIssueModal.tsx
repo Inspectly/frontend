@@ -190,8 +190,14 @@ const CreateIssueModal: React.FC<Props> = ({
   // Empty state - no listings/collections available
   if (issueCollections.length === 0) {
     return (
-      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-        <div className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden">
+      <div
+        className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white w-full max-w-md rounded-xl shadow-lg overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center justify-between p-4 border-b border-gray-100">
             <h6 className="text-lg font-semibold">Create New Issue</h6>
             <button
@@ -235,8 +241,14 @@ const CreateIssueModal: React.FC<Props> = ({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white w-full max-w-xl max-h-[calc(100vh-2rem)] rounded-xl shadow-lg flex flex-col overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-xl max-h-[calc(100vh-2rem)] rounded-xl shadow-lg flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <h6 className="text-lg font-semibold">Create New Issue</h6>
           <button

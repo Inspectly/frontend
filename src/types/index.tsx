@@ -309,6 +309,53 @@ export interface Attachment {
   created_at: string;
 }
 
+export type DisputeStatus = string;
+
+export interface IssueDispute {
+  id: number;
+  issue_offer_id: number;
+  status: DisputeStatus;
+  status_message?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IssueDisputeMessage {
+  id: number;
+  issue_dispute_id: number;
+  message: string;
+  user_type: string;
+  created_at: string;
+}
+
+export interface IssueDisputeAttachment {
+  id: number;
+  issue_dispute_id: number;
+  attachment_url: string;
+  user_type: string;
+  created_at: string;
+}
+
+export type DisputeDetailItem =
+  | {
+      type: "message";
+      user_type: string;
+      message: string;
+      created_at: string;
+    }
+  | {
+      type: "attachment";
+      user_type: string;
+      attachment_url: string;
+      created_at: string;
+    };
+
+export interface DisputeDetails {
+  status: DisputeStatus;
+  status_message?: string | null;
+  items: DisputeDetailItem[];
+}
+
 export interface EventSlot {
   id: string;
   title: string;
