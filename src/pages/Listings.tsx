@@ -7,7 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ImageComponent from "../components/ImageComponent";
-import { useGetListingsQuery, useCreateListingMutation } from "../features/api/listingsApi";
+import { useGetListingByUserIdQuery, useCreateListingMutation } from "../features/api/listingsApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useSelector } from "react-redux";
@@ -17,10 +17,10 @@ import { Listing } from "../types";
 import { BUTTON_HOVER } from "../styles/shared";
 
 const Listings: React.FC = () => {
-  const { data: listings, error, isLoading } = useGetListingsQuery();
+  const user = useSelector((state: RootState) => state.auth.user);
+  const { data: listings, error, isLoading } = useGetListingByUserIdQuery(user?.id ?? 0, { skip: !user?.id });
   const { data: allIssues } = useGetIssuesQuery();
   const [createListing] = useCreateListingMutation();
-  const user = useSelector((state: RootState) => state.auth.user);
   const { data: reports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
 
   const navigate = useNavigate();
@@ -38,10 +38,10 @@ const Listings: React.FC = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  // User's report IDs
+  // User's report IDs (ensure numbers for consistent matching)
   const userReportIds = useMemo(() => {
     if (!reports) return new Set<number>();
-    return new Set(reports.map((r) => r.id));
+    return new Set(reports.map((r) => Number(r.id)));
   }, [reports]);
 
   // Report -> listing mapping
@@ -52,10 +52,11 @@ const Listings: React.FC = () => {
     return map;
   }, [reports]);
 
-  // User's issues only
+  // User's issues only (match by report id, normalize number/string)
   const userIssues = useMemo(() => {
     if (!allIssues) return [];
-    return allIssues.filter((issue) => userReportIds.has(issue.report_id));
+    const reportIdSet = new Set(userReportIds);
+    return allIssues.filter((issue) => reportIdSet.has(Number(issue.report_id)));
   }, [allIssues, userReportIds]);
 
   // Issue count per listing (merged for duplicate addresses)
@@ -68,9 +69,9 @@ const Listings: React.FC = () => {
     return map;
   }, [userIssues, reportToListing]);
 
-  // User's listings, deduplicated by address
+  // User's listings (from user-specific API), deduplicated by address
   const userListings = useMemo(() => {
-    const all = (listings || []).filter((l) => l.user_id === user?.id);
+    const all = Array.isArray(listings) ? listings : (listings && typeof listings === "object" && Array.isArray((listings as any).listings) ? (listings as any).listings : []);
     const seen = new Map<string, Listing>();
     const mergedCounts = new Map<string, number>();
 
@@ -97,7 +98,7 @@ const Listings: React.FC = () => {
     }
 
     return result;
-  }, [listings, user?.id, searchQuery, issueCountByListing]);
+  }, [listings, searchQuery, issueCountByListing]);
 
   if (isLoading && !listings) return <p>Loading...</p>;
   if (error) return <p>Error loading properties</p>;

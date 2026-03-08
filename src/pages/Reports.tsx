@@ -75,7 +75,14 @@ const Reports: React.FC = () => {
 
   const { data: allReports, error, isLoading, refetch } = useGetReportsQuery();
   const { data: userReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const reports = allReports || userReports || [];
+  // Prefer user's reports when viewing a property so issues show (same source as Listings count & dashboard/Offers)
+  const reports = useMemo(() => {
+    const r = (user?.id != null ? userReports : null) ?? allReports;
+    if (Array.isArray(r)) return r;
+    if (r && typeof r === "object" && Array.isArray((r as any).reports)) return (r as any).reports;
+    if (r && typeof r === "object" && Array.isArray((r as any).results)) return (r as any).results;
+    return [];
+  }, [user?.id, userReports, allReports]);
   const { data: allIssues } = useGetIssuesQuery();
   const [updateReport] = useUpdateReportMutation();
   const [updateIssue] = useUpdateIssueMutation();
@@ -98,8 +105,15 @@ const Reports: React.FC = () => {
 
   const location = useLocation();
 
-  // All user listings for finding duplicates by address
-  const { data: allListings } = useGetListingsQuery();
+  // All user listings for finding duplicates by address (normalize in case API returns object)
+  const { data: allListingsRaw } = useGetListingsQuery();
+  const allListings = useMemo(() => {
+    const r = allListingsRaw;
+    if (Array.isArray(r)) return r;
+    if (r && typeof r === "object" && Array.isArray((r as any).listings)) return (r as any).listings;
+    if (r && typeof r === "object" && Array.isArray((r as any).results)) return (r as any).results;
+    return [];
+  }, [allListingsRaw]);
 
   useEffect(() => {
     const state = location.state as any;
@@ -113,35 +127,37 @@ const Reports: React.FC = () => {
     }
   }, [location.state]);
 
-  // Find all listing IDs that share the same address (merge duplicates)
+  // Find all listing IDs that share the same address (merge duplicates); use numbers for consistent Set.has()
   const relatedListingIds = useMemo(() => {
-    if (!listing || !allListings) return new Set([Number(listingId)]);
+    if (!listing) return new Set([Number(listingId)]);
+    const list = Array.isArray(allListings) ? allListings : [];
+    if (list.length === 0) return new Set([Number(listingId)]);
     const normalizedAddr = (listing.address || "").trim().toLowerCase();
     const ids = new Set<number>();
-    allListings.forEach((l) => {
-      if ((l.address || "").trim().toLowerCase() === normalizedAddr && l.user_id === user?.id) {
-        ids.add(l.id);
+    ids.add(Number(listingId));
+    list.forEach((l) => {
+      if ((l.address || "").trim().toLowerCase() === normalizedAddr && Number(l.user_id) === Number(user?.id)) {
+        ids.add(Number(l.id));
       }
     });
-    if (ids.size === 0) ids.add(Number(listingId));
     return ids;
   }, [listing, allListings, listingId, user?.id]);
 
-  // Reports for this listing (and any duplicates)
+  // Reports for this listing (and any duplicates); match listing_id as number
   const listingReports = useMemo(() => {
     return (reports ?? [])
-      .filter((r) => relatedListingIds.has(r.listing_id))
+      .filter((r) => relatedListingIds.has(Number(r.listing_id)))
       .map((r) => ({
         ...r,
         review_status: normalizeReviewStatus(r.review_status),
       }));
   }, [reports, relatedListingIds]);
 
-  // All issues for this listing (via reports)
+  // All issues for this listing (via reports); normalize report_id for matching
   const listingIssues = useMemo(() => {
     if (!allIssues) return [];
-    const reportIds = new Set(listingReports.map((r) => r.id));
-    return allIssues.filter((issue) => reportIds.has(issue.report_id));
+    const reportIds = new Set(listingReports.map((r) => Number(r.id)));
+    return allIssues.filter((issue) => reportIds.has(Number(issue.report_id)));
   }, [allIssues, listingReports]);
 
   // Unique issue types for filter dropdown
@@ -167,8 +183,8 @@ const Reports: React.FC = () => {
 
     // Source filter
     if (filterSource === "manual") {
-      const manualReportIds = new Set(listingReports.filter((r) => isManualReport(r)).map((r) => r.id));
-      result = result.filter((i) => manualReportIds.has(i.report_id));
+      const manualReportIds = new Set(listingReports.filter((r) => isManualReport(r)).map((r) => Number(r.id)));
+      result = result.filter((i) => manualReportIds.has(Number(i.report_id)));
     } else if (filterSource !== "all") {
       result = result.filter((i) => String(i.report_id) === filterSource);
     }
