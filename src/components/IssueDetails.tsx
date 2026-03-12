@@ -143,7 +143,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   const hasOpenDispute = disputeList.some(
     (dispute) => normalizeDisputeStatus(dispute.status) === "open"
   );
-  const showDisputeTab = userType !== "vendor" && hasDispute;
+  const showDisputeTab = hasDispute;
 
   const { data: currentVendor } = useGetVendorByVendorUserIdQuery(userId, {
     skip: !isVendor || !userId,
@@ -935,7 +935,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                     </div>
                   </div>
                 </div>
-                {showDisputeTab && (
+                {showDisputeTab && userType !== "vendor" && (
                   <button
                     type="button"
                     onClick={() => handleTabChange("dispute")}
@@ -1062,7 +1062,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
             )}
           </div>
         )}
-        {activeTab === "dispute" && userType !== "vendor" && (
+        {activeTab === "dispute" && (
           <div id="default-dispute" role="tabpanel">
             <DisputeTab
               issueOfferId={acceptedOffer?.id}

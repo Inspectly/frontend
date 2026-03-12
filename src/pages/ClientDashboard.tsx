@@ -92,11 +92,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const { data: issues } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
+  const { data: issues } = useGetIssuesQuery();
   // useGetClientsQuery() removed — result was never used
 
   const { data: assessments = [], refetch: refetchAssessments } =
-    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id, pollingInterval: 20000 });
+    useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id });
   const { data: allVendors = [] } = useGetVendorsQuery();
 
   const [createListing] = useCreateListingMutation();

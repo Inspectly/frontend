@@ -144,6 +144,7 @@ export const issueDisputesApi = api.injectEndpoints({
 
 export const {
   useGetDisputesByIssueOfferIdQuery,
+  useLazyGetDisputesByIssueOfferIdQuery,
   useGetOpenDisputesByIssueOfferIdQuery,
   useGetDisputeDetailsByIssueOfferIdQuery,
   useCreateDisputeMutation,

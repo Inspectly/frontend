@@ -25,11 +25,10 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
 }) => {
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(
     Number(userId),
-    { skip: !userId, pollingInterval: 20000 }
+    { skip: !userId }
   );
   const { data: issues = [] } = useGetIssuesQuery(undefined, {
     skip: !userId,
-    pollingInterval: 20000,
   });
 
   const issuesMap = React.useMemo(

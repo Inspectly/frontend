@@ -301,10 +301,9 @@ const Offers: React.FC = () => {
           const targetStatus = statusMap[filterStatus];
           const hasMatchingStatus = offers.some((o) => o.status === targetStatus);
           if (!hasMatchingStatus) return false;
-          if (filterStatus === "accepted") {
-            const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
-            if (isCompleted) return false;
-          }
+          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
+          if (filterStatus === "accepted" && isCompleted) return false;
+          if (filterStatus === "pending" && isCompleted) return false;
         }
       }
 
@@ -369,7 +368,9 @@ const Offers: React.FC = () => {
     issuesWithOffers.forEach(({ issue, offers }) => {
       const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
       totalOffers += offers.length;
-      pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+      if (!isCompleted) {
+        pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+      }
       if (!isCompleted) {
         acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
       }

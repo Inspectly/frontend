@@ -180,7 +180,6 @@ const Marketplace: React.FC = () => {
   // API query - skip if we have valid prefetched data; poll every 20s so vendors see new issues
   const { data, error, isLoading } = useGetPaginatedIssuesQuery(apiParams, {
     skip: shouldUsePrefetch && !!prefetchedData,
-    pollingInterval: 20000,
   });
 
 
@@ -195,7 +194,7 @@ const Marketplace: React.FC = () => {
     vendor_assigned: false, // Only unassigned issues
   };
   
-  const { data: allUnassignedData, isLoading: isLoadingAllUnassigned } = useGetPaginatedIssuesQuery(allUnassignedQueryParams, { pollingInterval: 20000 });
+  const { data: allUnassignedData, isLoading: isLoadingAllUnassigned } = useGetPaginatedIssuesQuery(allUnassignedQueryParams);
 
   // Fetch ALL listings to get all available cities/states for dropdowns
   // This shows all locations where properties exist, regardless of issues
