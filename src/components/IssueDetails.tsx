@@ -5,6 +5,7 @@ import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
+  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -25,6 +26,7 @@ import {
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import Dropdown from "./Dropdown";
+import DisputeTab from "./DisputeTab";
 
 import VendorName from "./VendorName";
 import { BUTTON_HOVER } from "../styles/shared";
@@ -35,6 +37,7 @@ import {
   useGetOffersByIssueIdQuery,
   useUpdateOfferMutation,
 } from "../features/api/issueOffersApi";
+import { useGetDisputesByIssueOfferIdQuery } from "../features/api/issueDisputesApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import {
@@ -57,16 +60,34 @@ import { useCreateCheckoutSessionMutation } from "../features/api/stripePayments
 export interface IssueDetailsProps {
   issue: IssueType;
   listing?: Listing;
-  defaultTab?: "details" | "offers" | "assessments";
+  defaultTab?: "details" | "offers" | "assessments" | "dispute";
+  autoOpenDispute?: boolean;
 }
 
+type IssueDetailsTab = "details" | "offers" | "assessments" | "dispute";
+const ISSUE_DETAILS_TABS: IssueDetailsTab[] = [
+  "details",
+  "offers",
+  "assessments",
+  "dispute",
+];
+
 // Extract tab from URL (default to "details")
-const getTabFromURL = () => {
+const getTabFromURL = (): IssueDetailsTab => {
   const params = new URLSearchParams(location.search);
-  return params.get("tab") || "details"; // Default tab
+  const tab = params.get("tab") || "details";
+  return ISSUE_DETAILS_TABS.includes(tab as IssueDetailsTab)
+    ? (tab as IssueDetailsTab)
+    : "details";
 };
 
-const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab }) => {
+
+const IssueDetails: React.FC<IssueDetailsProps> = ({
+  issue,
+  listing,
+  defaultTab,
+  autoOpenDispute = true,
+}) => {
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const userType = useSelector(
@@ -97,6 +118,32 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
   const [updateAssessmentStatus] = useUpdateAssessmentMutation();
 
   const isVendor = userType === "vendor";
+  const acceptedOffer = useMemo(() => {
+    const byStatus = offers.find(
+      (offer) => offer.status === IssueOfferStatus.ACCEPTED
+    );
+    if (byStatus) return byStatus;
+    if (issue?.vendor_id) {
+      return offers.find((offer) => offer.vendor_id === issue.vendor_id);
+    }
+    return undefined;
+  }, [offers, issue?.vendor_id]);
+
+  const { data: disputeList = [] } = useGetDisputesByIssueOfferIdQuery(
+    acceptedOffer?.id ?? 0,
+    { skip: !acceptedOffer?.id }
+  );
+  const normalizeDisputeStatus = (status?: string) =>
+    status
+      ?.toLowerCase()
+      .replace("dispute_status.", "")
+      .replace("status.", "")
+      .trim();
+  const hasDispute = disputeList.length > 0;
+  const hasOpenDispute = disputeList.some(
+    (dispute) => normalizeDisputeStatus(dispute.status) === "open"
+  );
+  const showDisputeTab = hasDispute;
 
   const { data: currentVendor } = useGetVendorByVendorUserIdQuery(userId, {
     skip: !isVendor || !userId,
@@ -137,10 +184,25 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [storedImages, setStoredImages] = useState<string[] | null>(null);
+  const [stableImageUrls, setStableImageUrls] = useState<string[]>([]);
   const [isActive, setIsActive] = useState<boolean>(issue.active);
 
   // Sync isActive when a different issue is loaded
   useEffect(() => setIsActive(issue.active), [issue.id]);
+  useEffect(() => {
+    setStableImageUrls([]);
+    setCurrentImageIndex(0);
+  }, [issue.id]);
+
+  useEffect(() => {
+    if (!autoOpenDispute) return;
+    if (!hasOpenDispute || !showDisputeTab) return;
+    setActiveTab((prev) => {
+      if (prev === "dispute") return prev;
+      navigate("?tab=dispute");
+      return "dispute";
+    });
+  }, [autoOpenDispute, hasOpenDispute, navigate, showDisputeTab]);
 
   // Persist issue images to IndexedDB when we have them (so they survive refetch after posting offer)
   useEffect(() => {
@@ -161,6 +223,20 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
     if (fromIssue.length > 0) return fromIssue;
     return storedImages || [];
   }, [issue?.image_urls, storedImages]);
+  const displayImageUrls = useMemo(
+    () => (stableImageUrls.length > 0 ? stableImageUrls : effectiveImageUrls),
+    [effectiveImageUrls, stableImageUrls]
+  );
+  useEffect(() => {
+    if (effectiveImageUrls.length > 0) {
+      setStableImageUrls(effectiveImageUrls);
+    }
+  }, [effectiveImageUrls]);
+  useEffect(() => {
+    if (displayImageUrls.length > 0 && currentImageIndex >= displayImageUrls.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [currentImageIndex, displayImageUrls.length]);
 
   /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
   const getIssueForUpdate = async (): Promise<IssueType> => {
@@ -171,7 +247,9 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
 
   // Collapsible section states removed - using HomeownerIssueCard-style layout
 
-  const [activeTab, setActiveTab] = useState(defaultTab ?? getTabFromURL());
+  const [activeTab, setActiveTab] = useState<IssueDetailsTab>(
+    defaultTab ?? getTabFromURL()
+  );
 
   const [progressDropdownOpen, setProgressDropdownOpen] = useState<
     number | null
@@ -234,7 +312,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
   };
 
   // Handle tab change
-  const handleTabChange = (tab: string) => {
+  const handleTabChange = (tab: "details" | "offers" | "assessments" | "dispute") => {
     setActiveTab(tab);
     navigate(`?tab=${tab}`); // Update URL
   };
@@ -402,12 +480,19 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
 
   // Sync tab state: use defaultTab when provided (e.g. modal), otherwise URL
   useEffect(() => {
+    if (autoOpenDispute && showDisputeTab && hasOpenDispute) return;
     if (defaultTab) {
       setActiveTab(defaultTab);
     } else {
       setActiveTab(getTabFromURL());
     }
-  }, [defaultTab, issue?.id, location.search]);
+  }, [autoOpenDispute, defaultTab, hasOpenDispute, issue?.id, location.search, showDisputeTab]);
+  useEffect(() => {
+    const allowDisputeComposer = defaultTab === "dispute";
+    if (!showDisputeTab && activeTab === "dispute" && !allowDisputeComposer) {
+      setActiveTab("details");
+    }
+  }, [activeTab, defaultTab, showDisputeTab]);
 
 
   useEffect(() => {
@@ -580,6 +665,23 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
               )}
             </button>
           </li>
+          {showDisputeTab && (
+            <li role="presentation">
+              <button
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === "dispute"
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-foreground hover:text-background"
+                  }`}
+                type="button"
+                role="tab"
+                aria-controls="default-dispute"
+                aria-selected={activeTab === "dispute"}
+                onClick={() => handleTabChange("dispute")}
+              >
+                Dispute
+              </button>
+            </li>
+          )}
         </ul>
       </div>
 
@@ -588,20 +690,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
           <div id="default-details" role="tabpanel">
             {/* Property Images - Full Width with gallery for multiple */}
             {(() => {
-              // Parse image_urls which may be a JSON array string, an array, or a single string
-              let imageList: string[] = [];
-              const raw = issue.image_urls as string | string[];
-              if (Array.isArray(raw)) {
-                imageList = raw.filter(Boolean);
-              } else if (typeof raw === "string" && raw.startsWith("[")) {
-                try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
-              } else if (raw) {
-                imageList = [raw];
-              }
-              // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
-              if (imageList.length === 0 && storedImages && storedImages.length > 0) {
-                imageList = storedImages;
-              }
+              let imageList: string[] = displayImageUrls.length > 0 ? displayImageUrls : [];
               if (imageList.length === 0 && listing?.image_url) {
                 imageList = [listing.image_url];
               }
@@ -846,6 +935,15 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                     </div>
                   </div>
                 </div>
+                {showDisputeTab && userType !== "vendor" && (
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange("dispute")}
+                    className="w-full rounded-lg bg-red-600 text-white text-xs font-bold uppercase tracking-widest py-2.5 hover:bg-red-700 transition-colors"
+                  >
+                    Dispute
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -962,6 +1060,16 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({ issue, listing, defaultTab 
                 assessmentsLoading={assessmentsLoading || assessmentsFetching}
               />
             )}
+          </div>
+        )}
+        {activeTab === "dispute" && (
+          <div id="default-dispute" role="tabpanel">
+            <DisputeTab
+              issueOfferId={acceptedOffer?.id}
+              userType={userType}
+              isOfferLoading={offersLoading}
+              className="w-full"
+            />
           </div>
         )}
       </div>

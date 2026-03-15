@@ -8,7 +8,7 @@ export const attachmentsApi = api.injectEndpoints({
       query: () => "attachments/",
       providesTags: [{ type: "Attachments", id: "LIST" }],
     }),
-    createAttachment: builder.mutation<any, { issueId: number; file: File; userId: number }>({
+    createAttachment: builder.mutation<Attachment, { issueId: number; file: File; userId: number }>({
       async queryFn({ issueId, file, userId }, _queryApi, _extraOptions, baseQuery) {
         let uploadedUrl: string;
         try {
@@ -32,7 +32,22 @@ export const attachmentsApi = api.injectEndpoints({
           }),
         });
 
-        return result.data ? { data: result.data } : { error: result.error as any };
+        if (result.data) {
+          const data = result.data as Partial<Attachment>;
+          return {
+            data: {
+              id: data.id ?? -1,
+              issue_id: data.issue_id ?? issueId,
+              name: data.name ?? file.name,
+              type: data.type ?? type,
+              url: data.url ?? uploadedUrl,
+              user_id: data.user_id ?? String(userId),
+              created_at: data.created_at ?? new Date().toISOString(),
+            },
+          };
+        }
+
+        return { error: result.error as any };
       },
       invalidatesTags: ["Attachments"],
     }),

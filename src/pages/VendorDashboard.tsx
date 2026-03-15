@@ -107,14 +107,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Real data queries (poll every 20s so vendor sees updates when client accepts/rejects offers, approves work, etc.)
   const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
-  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id, pollingInterval: 20000 });
-  const { data: issues, error: issuesError } = useGetIssuesQuery(undefined, { pollingInterval: 20000 });
+  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
+  const { data: issues, error: issuesError } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
   
   // Vendor assessments - use user.id since that's what's stored in the assessment records
   const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
     user.id,
-    { skip: !user?.id, pollingInterval: 20000 }
+    { skip: !user?.id }
   );
   const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
 
@@ -191,7 +191,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const selectedIssueListing = selectedIssue ? listingsMap[selectedIssue.listing_id] : undefined;
   
   // Open issue modal
-  const openIssueModal = (issueId: number, defaultTab: "details" | "offers" | "assessments" = "details") => {
+  const openIssueModal = (
+    issueId: number,
+    defaultTab: "details" | "offers" | "assessments" | "dispute" = "details"
+  ) => {
     setSelectedIssueId(issueId);
     // Update URL to set the tab for IssueDetails
     navigate(`?tab=${defaultTab}`, { replace: true });

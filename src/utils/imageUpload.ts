@@ -22,7 +22,6 @@ const buildImagesEndpoint = (baseUrl: string) => {
 };
 
 const IMAGES_ENDPOINT = buildImagesEndpoint(BASE_URL);
-console.log("IMAGES_ENDPOINT:", IMAGES_ENDPOINT, "BASE_URL:", BASE_URL);
 
 type ImageUploadResponse = {
   url?: string;
