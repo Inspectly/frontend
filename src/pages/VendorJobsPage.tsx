@@ -271,7 +271,7 @@ const VendorJobsPage: React.FC = () => {
   const selectedIssueOffer = selectedIssueId
     ? vendorOffers.find((o) => o.issue_id === selectedIssueId && o.status === IssueOfferStatus.ACCEPTED)
     : null;
-  const selectedIssueIsDisputed = selectedIssueOffer ? disputedOfferIds.has(selectedIssueOffer.id) : false;
+
 
   // Modal functions
   const openIssueModal = (issueId: number) => {
