@@ -268,10 +268,6 @@ const VendorJobsPage: React.FC = () => {
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
   const selectedIssueReport = selectedIssue ? reportsMap[selectedIssue.report_id] : null;
   const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : undefined;
-  const selectedIssueOffer = selectedIssueId
-    ? vendorOffers.find((o) => o.issue_id === selectedIssueId && o.status === IssueOfferStatus.ACCEPTED)
-    : null;
-
 
   // Modal functions
   const openIssueModal = (issueId: number) => {
