@@ -112,7 +112,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               }`}
             >
               <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
-              <span>Listings</span>
+              <span>Properties</span>
             </Link>
           </li>
 

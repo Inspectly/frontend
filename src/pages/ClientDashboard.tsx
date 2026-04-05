@@ -60,7 +60,7 @@ import { AppDispatch } from "../store/store";
 import { getVendorById, useGetVendorsQuery } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
-import CreateIssueModal from "../components/CreateIssueModal";
+import PostJobWizard from "../components/PostJobWizard";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
 import { BUTTON_HOVER } from "../styles/shared";
 import { toast } from "react-hot-toast";
@@ -304,19 +304,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     }, 5000); // Rotate every 5 seconds
     return () => clearInterval(interval);
   }, [_listings]);
-
-  // Issue collections for CreateIssueModal (reports the user can add issues to)
-  const issueCollections = useMemo(() => {
-    if (!reports || !_listings) return [];
-    return reports.map((report) => {
-      const listing = _listings.find((l) => l.id === report.listing_id);
-      return {
-        id: report.id,
-        listing_id: report.listing_id,
-        name: `${listing?.address || 'Unknown Property'} - ${report.name || 'Report'}`
-      };
-    });
-  }, [reports, _listings]);
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
@@ -1303,18 +1290,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         }}
       />
 
-      {/* Create Issue Modal (Post a Job) */}
-      <CreateIssueModal
+      {/* Post a Job Wizard */}
+      <PostJobWizard
         open={isCreateIssueModalOpen}
         onClose={() => setIsCreateIssueModalOpen(false)}
-        onCreated={(createdIssue) => {
-          setIsCreateIssueModalOpen(false);
-          navigate(
-            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
-            { state: { openIssue: createdIssue } }
-          );
-        }}
-        issueCollections={issueCollections}
+        listings={Array.isArray(_listings) ? _listings : []}
+        reports={Array.isArray(reports) ? reports : []}
       />
 
       {/* Issue Detail Modal */}
