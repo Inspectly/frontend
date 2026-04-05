@@ -23,6 +23,8 @@ import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
 import VendorName from "../components/VendorName";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
+import { uploadFileToImageUrl } from "../utils/imageUpload";
+import toast from "react-hot-toast";
 
 /* ---------------- types & small helpers ---------------- */
 
@@ -147,6 +149,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
   }, [isModalOpen]);
 
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const statusMapping: Record<IssueStatus, string> = {
     "Status.OPEN": "open",
@@ -191,22 +194,34 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const severityMap: Record<string, string> = {
+      low: "Low",
+      medium: "Medium",
+      high: "High",
+    };
+
+    const creatingToastId = toast.loading("Creating issue...");
     try {
-      const severityMap: Record<string, string> = {
-        low: "Low",
-        medium: "Medium", 
-        high: "High",
-      };
+      let uploadedImageUrls: string[] = [];
+      if (imageFile) {
+        const url = await uploadFileToImageUrl(imageFile);
+        uploadedImageUrls = [url];
+      }
+
+      const { image_url: _ignored, ...issueFields } = formData;
       await createIssue({
         report_id: Number(reportId),
         listing_id: Number(listingId),
-        ...formData,
+        ...issueFields,
         severity: severityMap[formData.severity.toLowerCase()] || "None",
         status: formData.status as IssueStatus,
+        image_urls: uploadedImageUrls,
       }).unwrap();
+      toast.success("Issue created", { id: creatingToastId });
       setIsModalOpen(false);
-    } catch (err) {
-      console.error("Failed to create issue:", err);
+    } catch (error) {
+      console.error("Failed to create issue:", error);
+      toast.error("Failed to create issue", { id: creatingToastId });
     }
   };
 
@@ -222,22 +237,15 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
       image_url: "",
     });
     setSelectedFileName("");
+    setImageFile(null);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (reader.result) {
-        setFormData((prev) => ({
-          ...prev,
-          image_url: reader.result as string,
-        }));
-      }
-    };
-    reader.readAsDataURL(file);
+    setSelectedFileName(file.name);
+    setImageFile(file);
   };
 
   // Merge API issues with any locally created issue that hasn't appeared in cache yet
@@ -812,8 +820,16 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
       </div>
 
       {selectedIssue && (
-        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
-          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+        <div className="fixed inset-0 z-[70] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/40" onClick={handleCloseIssueModal} />
+          <div
+            className="relative min-h-screen flex items-start justify-center p-4 pt-16"
+            onClick={handleCloseIssueModal}
+          >
+            <div
+              className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+              onClick={(e) => e.stopPropagation()}
+            >
             {/* close button */}
             <button
               onClick={handleCloseIssueModal}
@@ -826,8 +842,10 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
               issue={selectedIssue}
               listing={undefined}
               onClose={handleCloseIssueModal}
+              autoOpenDispute={false}
             />
 
+            </div>
           </div>
         </div>
       )}

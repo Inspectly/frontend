@@ -6,7 +6,7 @@ const Footer = () => {
   const navigate = useNavigate();
   const mainLinks = [
     { label: "About Us", action: () => navigate("/about") },
-    { label: "FAQ", action: () => navigate("/signup") },
+    { label: "FAQ", action: () => navigate("/faq") },
     { label: "Contact", action: () => navigate("/contact") },
   ];
 

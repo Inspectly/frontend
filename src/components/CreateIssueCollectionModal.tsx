@@ -328,8 +328,16 @@ const CreateIssueCollectionModal: React.FC<Props> = ({
 
   /* ----------------- render ----------------- */
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-2xl md:max-w-3xl rounded-xl shadow-lg p-6 relative">
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={() => {
+        if (!busy) handleClose();
+      }}
+    >
+      <div
+        className="bg-white w-full max-w-2xl md:max-w-3xl rounded-xl shadow-lg p-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={handleClose}
           className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"

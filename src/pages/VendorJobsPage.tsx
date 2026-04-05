@@ -24,14 +24,15 @@ import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
-import { IssueAssessment } from "../types";
+import { useLazyGetDisputesByIssueOfferIdQuery } from "../features/api/issueDisputesApi";
+import { IssueAssessment, IssueDispute } from "../types";
 import { faCalendarAlt } from "@fortawesome/free-regular-svg-icons";
 import ImageComponent from "../components/ImageComponent";
 import IssueDetails from "../components/IssueDetails";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 
-type TabType = "all" | "active" | "completed" | "pending" | "rejected";
+type TabType = "all" | "active" | "completed" | "pending" | "rejected" | "disputed";
 type SortBy = "date" | "price" | "status";
 
 // Helper function to check if issue is completed (handles both FE and BE status formats)
@@ -50,7 +51,7 @@ const VendorJobsPage: React.FC = () => {
   // State - initialize tab from URL if provided
   const initialTab = (searchParams.get("tab") as TabType) || "all";
   const [activeTab, setActiveTab] = useState<TabType>(
-    ["all", "active", "completed", "pending", "rejected"].includes(initialTab) ? initialTab : "all"
+    ["all", "active", "completed", "pending", "rejected", "disputed"].includes(initialTab) ? initialTab : "all"
   );
   const [sortBy, setSortBy] = useState<SortBy>("date");
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,7 +67,7 @@ const VendorJobsPage: React.FC = () => {
   // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const { data: vendorOffers = [], isLoading } = useGetOffersByVendorIdQuery(
     Number(user?.id),  // Use user.id, not vendor.id
-    { skip: !user?.id, pollingInterval: 20000 }
+    { skip: !user?.id }
   );
   const { data: issues = [] } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
@@ -76,9 +77,13 @@ const VendorJobsPage: React.FC = () => {
     { skip: !user?.id }
   );
   const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
+  const [fetchDisputesByOfferId] = useLazyGetDisputesByIssueOfferIdQuery();
 
   // State to hold ALL assessments (including client counter-proposals)
   const [allAssessments, setAllAssessments] = useState<IssueAssessment[]>([]);
+
+  // Track which offer IDs have disputes
+  const [disputedOfferIds, setDisputedOfferIds] = useState<Set<number>>(new Set());
 
   // Get unique interaction IDs from vendor's assessments
   const uniqueInteractionIds = useMemo(() => {
@@ -122,6 +127,51 @@ const VendorJobsPage: React.FC = () => {
     // Note: fetchAssessmentsByInteraction is a stable RTK Query hook, not included to prevent infinite loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactionIdsKey]);
+
+  // Fetch disputes for all offers to identify disputed jobs
+  const allOfferIds = useMemo(() => {
+    return vendorOffers.map((o) => o.id);
+  }, [vendorOffers]);
+
+  const allOfferIdsKey = allOfferIds.join(",");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchDisputes = async () => {
+      if (allOfferIds.length === 0) {
+        if (isMounted) setDisputedOfferIds(new Set());
+        return;
+      }
+
+      try {
+        const results = await Promise.all(
+          allOfferIds.map((id) =>
+            fetchDisputesByOfferId(id)
+              .unwrap()
+              .then((disputes) => ({ offerId: id, disputes }))
+              .catch(() => ({ offerId: id, disputes: [] as IssueDispute[] }))
+          )
+        );
+
+        if (!isMounted) return;
+
+        const idsWithDisputes = new Set(
+          results
+            .filter((r) => r.disputes.length > 0)
+            .map((r) => r.offerId)
+        );
+        setDisputedOfferIds(idsWithDisputes);
+      } catch {
+        if (isMounted) setDisputedOfferIds(new Set());
+      }
+    };
+
+    fetchDisputes();
+
+    return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allOfferIdsKey]);
 
   // Create maps for quick lookups
   const issuesMap = useMemo(() => {
@@ -241,16 +291,21 @@ const VendorJobsPage: React.FC = () => {
         return !isIssueCompleted(issue?.status);
       });
     } else if (activeTab === "completed") {
-      // Completed: Accepted offers where issue is completed
+      // Completed: any offer where the issue is completed, excluding disputed
       filtered = filtered.filter((offer) => {
-        if (offer.status !== IssueOfferStatus.ACCEPTED) return false;
         const issue = issuesMap[offer.issue_id];
-        return isIssueCompleted(issue?.status);
+        return isIssueCompleted(issue?.status) && !disputedOfferIds.has(offer.id);
       });
     } else if (activeTab === "pending") {
-      filtered = filtered.filter((offer) => offer.status === IssueOfferStatus.RECEIVED);
+      filtered = filtered.filter((offer) => {
+        if (offer.status !== IssueOfferStatus.RECEIVED) return false;
+        const issue = issuesMap[offer.issue_id];
+        return !isIssueCompleted(issue?.status);
+      });
     } else if (activeTab === "rejected") {
       filtered = filtered.filter((offer) => offer.status === IssueOfferStatus.REJECTED);
+    } else if (activeTab === "disputed") {
+      filtered = filtered.filter((offer) => disputedOfferIds.has(offer.id));
     }
 
     // Filter by search query
@@ -301,7 +356,7 @@ const VendorJobsPage: React.FC = () => {
     });
 
     return filtered;
-  }, [vendorOffers, activeTab, searchQuery, sortBy, issuesMap]);
+  }, [vendorOffers, activeTab, searchQuery, sortBy, issuesMap, disputedOfferIds]);
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -313,14 +368,19 @@ const VendorJobsPage: React.FC = () => {
       return !isIssueCompleted(issue?.status);
     });
     
-    const completed = acceptedOffers.filter((offer) => {
+    const completed = vendorOffers.filter((offer) => {
       const issue = issuesMap[offer.issue_id];
-      return isIssueCompleted(issue?.status);
+      return isIssueCompleted(issue?.status) && !disputedOfferIds.has(offer.id);
     });
     
-    const pending = vendorOffers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
+    const pending = vendorOffers.filter((o) => {
+      if (o.status !== IssueOfferStatus.RECEIVED) return false;
+      const issue = issuesMap[o.issue_id];
+      return !isIssueCompleted(issue?.status);
+    });
     const rejected = vendorOffers.filter((o) => o.status === IssueOfferStatus.REJECTED);
-    
+    const disputed = vendorOffers.filter((o) => disputedOfferIds.has(o.id));
+
     const activeRevenue = active.reduce((sum, offer) => sum + (offer.price || 0), 0);
     const completedRevenue = completed.reduce((sum, offer) => sum + (offer.price || 0), 0);
     const potentialRevenue = pending.reduce((sum, offer) => sum + (offer.price || 0), 0);
@@ -330,16 +390,27 @@ const VendorJobsPage: React.FC = () => {
       completedCount: completed.length,
       pendingCount: pending.length,
       rejectedCount: rejected.length,
+      disputedCount: disputed.length,
       activeRevenue,
       completedRevenue,
       totalRevenue: activeRevenue + completedRevenue,
       potentialRevenue,
       totalOffers: vendorOffers.length,
     };
-  }, [vendorOffers, issuesMap]);
+  }, [vendorOffers, issuesMap, disputedOfferIds]);
 
 
   const getOfferStatusBadge = (offer: IssueOffer, issueStatus?: string) => {
+    // Show disputed badge if offer has a dispute
+    if (disputedOfferIds.has(offer.id)) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-full bg-orange-50 text-orange-600 border border-orange-200">
+          <FontAwesomeIcon icon={faTimesCircle} className="w-3 h-3" />
+          Disputed
+        </span>
+      );
+    }
+
     // Determine the appropriate status based on offer and issue status
     if (offer.status === IssueOfferStatus.REJECTED) {
       return (
@@ -498,11 +569,12 @@ const VendorJobsPage: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-6">
         {/* Tabs */}
         <div className="flex gap-1 flex-wrap">
-          {(["all", "active", "completed", "pending", "rejected"] as TabType[]).map((tab) => {
+          {(["all", "active", "completed", "pending", "rejected", "disputed"] as TabType[]).map((tab) => {
             const count = tab === "active" ? stats.activeCount
               : tab === "completed" ? stats.completedCount
               : tab === "pending" ? stats.pendingCount
               : tab === "rejected" ? stats.rejectedCount
+              : tab === "disputed" ? stats.disputedCount
               : null;
             
             return (
@@ -713,7 +785,7 @@ const VendorJobsPage: React.FC = () => {
               
               {/* Issue Details Component */}
               <div className="p-6">
-                <IssueDetails issue={selectedIssue} listing={selectedIssueListing ?? undefined} defaultTab="details" />
+                <IssueDetails issue={selectedIssue} listing={selectedIssueListing ?? undefined} defaultTab="details" autoOpenDispute={false} />
               </div>
             </div>
           </div>

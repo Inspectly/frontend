@@ -41,6 +41,9 @@ import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
+import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
+import About from "./pages/About";
 
 function App() {
   const location = useLocation();
@@ -333,6 +336,9 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/about" element={<About />} />
           </Routes>
           <Footer />
         </>

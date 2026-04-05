@@ -6,22 +6,22 @@ export const issuesApi = api.injectEndpoints({
     getIssues: builder.query<IssueType[], void>({
       query: () => "issues/",
       providesTags: ["Issues"],
-      transformResponse: (response: IssueType[]) => {
-        // Transform status from backend format to frontend format
-        return response.map(issue => ({
+      transformResponse: (response: { items: IssueType[] }) => {
+        // Unwrap paginated response and transform status
+        return response.items.map(issue => ({
           ...issue,
-          status: issue.status?.startsWith('Status.') 
-            ? issue.status 
+          status: issue.status?.startsWith('Status.')
+            ? issue.status
             : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
         }));
       },
     }),
 
     getPaginatedIssues: builder.query<
-      { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} },
+      { items: IssueType[]; total: number; page: number; size: number; pages: number },
       {
-        offset: number;
-        limit: number;
+        page: number;
+        size: number;
         search?: string;
         type?: string;
         city?: string;
@@ -30,12 +30,12 @@ export const issuesApi = api.injectEndpoints({
       }
     >({
       providesTags: ["Issues"],
-      query: ({ offset, limit, search = "", type = "", city = "", state = "", vendor_assigned }) => {
+      query: ({ page, size, search = "", type = "", city = "", state = "", vendor_assigned }) => {
         const params = new URLSearchParams({
-          offset: offset.toString(),
-          limit: limit.toString(),
+          page: page.toString(),
+          size: size.toString(),
         });
-    
+
         // Only add vendor_assigned if explicitly set (not undefined)
         if (vendor_assigned !== undefined) {
           params.append("vendor_assigned", vendor_assigned ? "true" : "false");
@@ -44,17 +44,17 @@ export const issuesApi = api.injectEndpoints({
         if (type) params.append("type", type);
         if (city) params.append("city", city);
         if (state) params.append("state", state);
-    
+
         return `/issues/filter?${params.toString()}`;
       },
-      transformResponse: (response: { issues: IssueType[]; total: { count: number }, total_filtered?: { count: number} }) => {
+      transformResponse: (response: { items: IssueType[]; total: number; page: number; size: number; pages: number }) => {
         // Transform status from backend format to frontend format
         return {
           ...response,
-          issues: response.issues.map(issue => ({
+          items: response.items.map(issue => ({
             ...issue,
-            status: issue.status?.startsWith('Status.') 
-              ? issue.status 
+            status: issue.status?.startsWith('Status.')
+              ? issue.status
               : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
           }))
         };
@@ -125,9 +125,9 @@ export const issuesApi = api.injectEndpoints({
 
         const patchPaginatedIssues = dispatch(
           issuesApi.util.updateQueryData("getPaginatedIssues", {} as any, (draft) => {
-            const index = draft.issues.findIndex((issue) => issue.id === updatedIssue.id);
+            const index = draft.items.findIndex((issue) => issue.id === updatedIssue.id);
             if (index !== -1) {
-              Object.assign(draft.issues[index], optimisticIssue);
+              Object.assign(draft.items[index], optimisticIssue);
             }
           })
         );
@@ -196,11 +196,11 @@ export const issuesApi = api.injectEndpoints({
         // Remove from paginated issues and update count
         const patchPaginatedList = dispatch(
           issuesApi.util.updateQueryData("getPaginatedIssues", {} as any, (draft) => {
-            const idx = draft.issues.findIndex((i) => i.id === id);
+            const idx = draft.items.findIndex((i) => i.id === id);
             if (idx !== -1) {
-              draft.issues.splice(idx, 1);
+              draft.items.splice(idx, 1);
               if (draft.total) {
-                draft.total.count -= 1;
+                draft.total -= 1;
               }
             }
           })

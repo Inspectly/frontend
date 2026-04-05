@@ -106,11 +106,10 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
       <div className="container mx-auto sm:pt-16 sm:pb-4 px-4 md:px-8 xl:px-16 2xl:px-32">
         <div className="max-w-xl mx-auto mb-16 text-center" ref={priceRef}>
           <div
-            className={`transition-all duration-700 ${
-              isPriceInView
+            className={`transition-all duration-700 ${isPriceInView
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 translate-y-10"
-            }`}
+              }`}
           >
             <h2 className="text-3xl md:text-4xl mt-2 mb-4 font-bold font-heading">
               Start saving time today and{" "}
@@ -118,11 +117,10 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
             </h2>
           </div>
           <div
-            className={`transition-all duration-1000 delay-500 ${
-              isPriceInView
+            className={`transition-all duration-1000 delay-500 ${isPriceInView
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 -translate-y-10"
-            }`}
+              }`}
           >
             <p className="text-gray-400 leading-loose">
               Experience seamless inspections with flexible pricing tailored to
@@ -137,11 +135,10 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
             <div
               key={index}
               className={`w-full lg:w-1/3 md:w-1/2 px-3 mb-6 transition-all duration-700 
-               ${
-                 hasAnimatedCards
-                   ? "opacity-100 translate-y-0"
-                   : "opacity-0 translate-y-40"
-               }`}
+               ${hasAnimatedCards
+                  ? "opacity-100 translate-y-0"
+                  : "opacity-0 translate-y-40"
+                }`}
               style={{
                 transition: "transform 1s ease, opacity 1s ease",
                 transitionDelay: `${index * 0.2}s`,
@@ -202,11 +199,10 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
           {/* Enterprise Plan */}
           <div
             ref={enterpriseRef}
-            className={`flex w-full lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${
-              hasAnimatedEnterprise
+            className={`flex w-full lg:w-1/3 px-3 mb-6 justify-center items-center transition-all duration-1000 ${hasAnimatedEnterprise
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-20"
-            }`}
+              }`}
           >
             <div className="lg:text-center text-center">
               <h3 className="mb-6 md:text-3xl text-2xl md:leading-normal leading-normal font-semibold">
@@ -218,7 +214,7 @@ const PriceSection: React.FC<PriceProps> = ({ plans }) => {
               </p>
               <div className="mt-6">
                 <button
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate("/contact")}
                   className="py-2 px-5 inline-block font-semibold tracking-wide border align-middle duration-500 text-base text-center bg-blue-400 hover:bg-blue-500 text-white rounded-md me-2 mt-2"
                 >
                   Contact Us

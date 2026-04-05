@@ -43,7 +43,7 @@ import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
 
-type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review";
+type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review" | "completed";
 type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
 
 interface IssueWithOffers {
@@ -166,6 +166,7 @@ const Offers: React.FC = () => {
     if (param === "review" || param === "in-review") return "in-review";
     if (param === "pending") return "pending";
     if (param === "accepted") return "accepted";
+    if (param === "completed") return "completed";
     if (param === "rejected") return "rejected";
     return "all";
   };
@@ -177,7 +178,11 @@ const Offers: React.FC = () => {
   const [visibleCount, setVisibleCount] = useState(10); // Show 10 issues at a time
 
   // Modal state for issue details
-  const [selectedIssue, setSelectedIssue] = useState<{ issue: IssueType; listing?: Listing; defaultTab?: "details" | "offers" | "assessments" } | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<{
+    issue: IssueType;
+    listing?: Listing;
+    defaultTab?: "details" | "offers" | "assessments" | "dispute";
+  } | null>(null);
 
   // Modal state for approve/request changes
   const [showApproveModal, setShowApproveModal] = useState(false);
@@ -283,6 +288,9 @@ const Offers: React.FC = () => {
         // Handle "in-review" filter separately (it's an issue status, not offer status)
         if (filterStatus === "in-review") {
           if (issue.status !== "Status.REVIEW") return false;
+        } else if (filterStatus === "completed") {
+          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
+          if (!isCompleted) return false;
         } else {
           // Map filter status to actual enum values
           const statusMap: Record<string, string> = {
@@ -293,6 +301,9 @@ const Offers: React.FC = () => {
           const targetStatus = statusMap[filterStatus];
           const hasMatchingStatus = offers.some((o) => o.status === targetStatus);
           if (!hasMatchingStatus) return false;
+          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
+          if (filterStatus === "accepted" && isCompleted) return false;
+          if (filterStatus === "pending" && isCompleted) return false;
         }
       }
 
@@ -352,17 +363,26 @@ const Offers: React.FC = () => {
     let pendingOffers = 0;
     let acceptedOffers = 0;
     let inReviewCount = 0;
+    let completedCount = 0;
 
     issuesWithOffers.forEach(({ issue, offers }) => {
+      const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
       totalOffers += offers.length;
-      pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
-      acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
+      if (!isCompleted) {
+        pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+      }
+      if (!isCompleted) {
+        acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
+      }
       if (issue.status === "Status.REVIEW") {
         inReviewCount++;
       }
+      if (isCompleted) {
+        completedCount++;
+      }
     });
 
-    return { totalOffers, pendingOffers, acceptedOffers, inReviewCount };
+    return { totalOffers, pendingOffers, acceptedOffers, inReviewCount, completedCount };
   }, [issuesWithOffers]);
 
   const handleAcceptOffer = async (offer: IssueOffer) => {
@@ -517,6 +537,7 @@ const Offers: React.FC = () => {
                 { value: 'in-review', label: 'In Review', count: stats.inReviewCount },
                 { value: 'pending', label: 'Pending', count: stats.pendingOffers },
                 { value: 'accepted', label: 'Accepted', count: stats.acceptedOffers },
+                { value: 'completed', label: 'Completed', count: stats.completedCount },
                 { value: 'rejected', label: 'Rejected' },
               ].map((tab) => (
                 <button
@@ -749,7 +770,6 @@ const Offers: React.FC = () => {
                       {isCompleted && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
                           <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                          <div className="text-xs text-emerald-600">Completed</div>
                         </div>
                       ) : isInReview && acceptedOffer ? (
                         <div className="text-right min-w-[80px]">
@@ -771,7 +791,28 @@ const Offers: React.FC = () => {
                       ) : null}
 
                       {/* Action button - only positive actions */}
-                      {isInReview && acceptedOffer ? (
+                      {isCompleted ? (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIssue({ issue, listing, defaultTab: "offers" });
+                            }}
+                            className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedIssue({ issue, listing, defaultTab: "dispute" });
+                            }}
+                            className="min-w-[90px] px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors text-center uppercase tracking-widest"
+                          >
+                            Dispute
+                          </button>
+                        </>
+                      ) : isInReview && acceptedOffer ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -937,8 +978,14 @@ const Offers: React.FC = () => {
 
       {/* Issue Details Modal */}
       {selectedIssue && (
-        <div className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center">
-          <div className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white">
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center"
+          onClick={() => setSelectedIssue(null)}
+        >
+          <div
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setSelectedIssue(null)}
               className="absolute -top-10 right-0 text-white text-3xl leading-none px-2"
@@ -956,7 +1003,8 @@ const Offers: React.FC = () => {
               })()}
               listing={selectedIssue.listing}
               onClose={() => setSelectedIssue(null)}
-              defaultTab={selectedIssue.defaultTab || "details"}
+              defaultTab={selectedIssue.defaultTab || "offers"}
+              autoOpenDispute={false}
             />
           </div>
         </div>

@@ -6,6 +6,7 @@ import { getIssueImageUrls } from "../utils/issueImageUtils";
 import {
   IssueAssessment,
   IssueOffer,
+  IssueOfferStatus,
   IssueStatus,
   IssueType,
   Listing,
@@ -19,13 +20,15 @@ import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import Attachments from "./Attachments";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
+import DisputeTab from "./DisputeTab";
 import { useNavigate } from "react-router-dom";
-import { useUpdateIssueMutation } from "../features/api/issuesApi";
+import { useUpdateIssueMutation, useGetIssueByIdQuery } from "../features/api/issuesApi";
 import {
   useCreateOfferMutation,
   useGetOffersByIssueIdQuery,
   useUpdateOfferMutation,
 } from "../features/api/issueOffersApi";
+import { useGetDisputesByIssueOfferIdQuery } from "../features/api/issueDisputesApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import {
@@ -46,7 +49,8 @@ export interface HomeownerIssueCardProps {
   issue: IssueType;
   listing?: Listing;
   onClose?: () => void;
-  defaultTab?: "details" | "offers" | "assessments";
+  defaultTab?: "details" | "offers" | "assessments" | "dispute";
+  autoOpenDispute?: boolean;
 }
 
 const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
@@ -54,12 +58,21 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   listing,
   onClose,
   defaultTab = "details",
+  autoOpenDispute = true,
 }) => {
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const userType = useSelector(
     (state: RootState) => state.auth.user?.user_type
   );
+  const statusNormalized =
+    statusMapping[issue.status as IssueStatus] ??
+    String(issue.status || "").toLowerCase();
+  const isCompleted = statusNormalized === "completed";
+  const showDisputeButton = userType !== "vendor" && isCompleted;
+
+  // Fetch full issue data so image_urls are available without page refresh
+  const { data: fetchedIssue } = useGetIssueByIdQuery(String(issue?.id), { skip: !issue?.id });
 
   const {
     data: offers = [],
@@ -67,6 +80,33 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     error: offersError,
     refetch: refetchOffers,
   } = useGetOffersByIssueIdQuery(issue?.id, { skip: !issue?.id });
+
+  const acceptedOffer = useMemo(() => {
+    const byStatus = offers.find(
+      (offer) => offer.status === IssueOfferStatus.ACCEPTED
+    );
+    if (byStatus) return byStatus;
+    if (issue?.vendor_id) {
+      return offers.find((offer) => offer.vendor_id === issue.vendor_id);
+    }
+    return undefined;
+  }, [offers, issue?.vendor_id]);
+
+  const { data: disputeList = [] } = useGetDisputesByIssueOfferIdQuery(
+    acceptedOffer?.id ?? 0,
+    { skip: !acceptedOffer?.id }
+  );
+  const normalizeDisputeStatus = (status?: string) =>
+    status
+      ?.toLowerCase()
+      .replace("dispute_status.", "")
+      .replace("status.", "")
+      .trim();
+  const hasDispute = disputeList.length > 0;
+  const hasOpenDispute = disputeList.some(
+    (dispute) => normalizeDisputeStatus(dispute.status) === "open"
+  );
+  const showDisputeTab = userType !== "vendor" && hasDispute;
 
   const [createOffer] = useCreateOfferMutation();
   const [updateOffer] = useUpdateOfferMutation();
@@ -105,9 +145,13 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [storedImages, setStoredImages] = useState<string[] | null>(null);
+  const [stableImageUrls, setStableImageUrls] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<
-    "details" | "offers" | "assessments"
+    "details" | "offers" | "assessments" | "dispute"
   >(defaultTab);
+  const [allowDisputeComposer, setAllowDisputeComposer] = useState(
+    defaultTab === "dispute"
+  );
   const [isActive, setIsActive] = useState<boolean>(issue.active);
 
   const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
@@ -141,12 +185,18 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     getIssueImages(issue.id).then(setStoredImages);
   }, [issue?.id]);
 
-  // Effective image list: from issue first, else from IndexedDB (so status updates don't send empty image_url)
+  // Effective image list: prefer fetched issue (has image_urls from server), then prop, then IndexedDB
   const effectiveImageUrls = useMemo(() => {
+    const fromFetched = getIssueImageUrls(fetchedIssue?.image_urls);
+    if (fromFetched.length > 0) return fromFetched;
     const fromIssue = getIssueImageUrls(issue?.image_urls);
     if (fromIssue.length > 0) return fromIssue;
     return storedImages || [];
-  }, [issue?.image_urls, storedImages]);
+  }, [fetchedIssue?.image_urls, issue?.image_urls, storedImages]);
+  const displayImageUrls = useMemo(
+    () => (stableImageUrls.length > 0 ? stableImageUrls : effectiveImageUrls),
+    [effectiveImageUrls, stableImageUrls]
+  );
 
   /** Ensure we have images (from Idb if needed) before sending update — prevents clearing on server when cache has none */
   const getIssueForUpdate = async (): Promise<IssueType> => {
@@ -158,6 +208,29 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   // Only sync isActive from props when issue.id changes (new issue loaded)
   // Don't sync on issue.active changes to avoid race condition during updates
   useEffect(() => setIsActive(issue.active), [issue.id]);
+  useEffect(() => {
+    setStableImageUrls([]);
+    setCurrentImageIndex(0);
+  }, [issue.id]);
+
+  useEffect(() => {
+    setAllowDisputeComposer(defaultTab === "dispute");
+  }, [defaultTab, issue?.id]);
+  useEffect(() => {
+    if (!autoOpenDispute) return;
+    if (!hasOpenDispute || !showDisputeTab) return;
+    setActiveTab((prev) => (prev === "dispute" ? prev : "dispute"));
+  }, [autoOpenDispute, hasOpenDispute, showDisputeTab]);
+  useEffect(() => {
+    if (effectiveImageUrls.length > 0) {
+      setStableImageUrls(effectiveImageUrls);
+    }
+  }, [effectiveImageUrls]);
+  useEffect(() => {
+    if (displayImageUrls.length > 0 && currentImageIndex >= displayImageUrls.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [currentImageIndex, displayImageUrls.length]);
 
   const handleReviewSubmit = async (rating: number, review: string) => {
     if (!issue.vendor_id || !userId) return;
@@ -188,9 +261,16 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
 
   useEffect(() => {
+    if (allowDisputeComposer) return;
+    if (autoOpenDispute && showDisputeTab && hasOpenDispute) return;
     setActiveTab(defaultTab);
     navigate(`?tab=${defaultTab}`, { replace: true });
-  }, [issue?.id, defaultTab, navigate]);
+  }, [allowDisputeComposer, autoOpenDispute, defaultTab, hasOpenDispute, issue?.id, navigate, showDisputeTab]);
+  useEffect(() => {
+    if (!showDisputeTab && activeTab === "dispute" && !allowDisputeComposer) {
+      setActiveTab("details");
+    }
+  }, [activeTab, allowDisputeComposer, showDisputeTab]);
 
   const vendorIdToName = useMemo(() => {
     const map: Record<number, string> = {};
@@ -211,9 +291,14 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       hour12: true,
     });
 
-  const handleTabChange = (tab: "details" | "offers" | "assessments") => {
+  const handleTabChange = (tab: "details" | "offers" | "assessments" | "dispute") => {
     setActiveTab(tab);
     navigate(`?tab=${tab}`);
+  };
+
+  const handleOpenDisputeComposer = () => {
+    setAllowDisputeComposer(true);
+    handleTabChange("dispute");
   };
 
   const handleAcceptAssessment = async (
@@ -352,7 +437,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   };
 
   return (
-    <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
       {onClose && (
         <button
           onClick={onClose}
@@ -381,12 +466,18 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
       {/* tabs */}
       <div className="flex gap-1 px-6 pt-4 border-b bg-white">
-        {["details", "offers", "assessments"].map((tab) => (
+        {(() => {
+          const tabs: Array<"details" | "offers" | "assessments" | "dispute"> = [
+            "details",
+            "offers",
+            "assessments",
+          ];
+          if (showDisputeTab || allowDisputeComposer) tabs.push("dispute");
+          return tabs;
+        })().map((tab) => (
           <button
             key={tab}
-            onClick={() =>
-              handleTabChange(tab as "details" | "offers" | "assessments")
-            }
+            onClick={() => handleTabChange(tab)}
             className={`px-4 py-2 text-sm font-medium rounded-lg relative transition-colors ${activeTab === tab
               ? "bg-gray-900 text-white"
               : "text-gray-600 hover:bg-foreground hover:text-background"
@@ -455,19 +546,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
             <div className="lg:col-span-2 space-y-6">
               {/* Images with scroll for multiple */}
               {(() => {
-                let imageList: string[] = [];
-                const raw = issue.image_urls as string | string[];
-                if (Array.isArray(raw)) {
-                  imageList = raw.filter(Boolean);
-                } else if (typeof raw === "string" && raw.startsWith("[")) {
-                  try { imageList = JSON.parse(raw).filter(Boolean); } catch { if (raw) imageList = [raw]; }
-                } else if (raw) {
-                  imageList = [raw];
-                }
-                // After posting offer, parent may pass issue from cache with empty image_urls; restore from IndexedDB
-                if (imageList.length === 0 && storedImages && storedImages.length > 0) {
-                  imageList = storedImages;
-                }
+                let imageList: string[] = displayImageUrls;
                 if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
 
                 return (
@@ -699,6 +778,15 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                   </div>
                 </div>
               </div>
+              {showDisputeButton && (
+                <button
+                  type="button"
+                  onClick={handleOpenDisputeComposer}
+                  className="w-full rounded-lg bg-red-600 text-white text-xs font-bold uppercase tracking-widest py-2.5 hover:bg-red-700 transition-colors"
+                >
+                  Dispute
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -795,6 +883,14 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               />
             )}
           </div>
+        )}
+        {activeTab === "dispute" && userType !== "vendor" && (
+          <DisputeTab
+            issueOfferId={acceptedOffer?.id}
+            userType={userType}
+            isOfferLoading={offersLoading}
+            className="w-full"
+          />
         )}
       </div>
 

@@ -6,6 +6,7 @@ export const reportsApi = api.injectEndpoints({
     getReports: builder.query<ReportType[], void>({
       query: () => "reports/",
       providesTags: ["Reports"],
+      transformResponse: (response: { items: ReportType[] }) => response.items,
     }),
     getReportById: builder.query<ReportType, number>({
       query: (id) => `reports/${id}`,
