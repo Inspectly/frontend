@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Users, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "../ui/button";
 import { useNavigate } from "react-router-dom";
 
@@ -18,56 +17,85 @@ const Hero = () => {
         setIsAnimating(false);
       }, 300);
     }, 3000);
-
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <section id="hero" className="relative pt-32 pb-12 lg:pt-40 lg:pb-16 overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-20 right-0 w-72 h-72 bg-gold-light rounded-full blur-3xl opacity-30" />
-        <div className="absolute bottom-0 left-0 w-56 h-56 bg-gold-light rounded-full blur-3xl opacity-20" />
-      </div>
+    <section id="hero" className="relative bg-[#0d1117] pt-28 pb-14 lg:pt-36 lg:pb-20 overflow-hidden">
+      <div className="container mx-auto px-4 lg:px-8 max-w-6xl">
+        <div className="grid lg:grid-cols-2 gap-10 items-center">
+          {/* Left copy */}
+          <div className="animate-fade-up">
+            <h1 className="text-3xl md:text-4xl lg:text-6xl font-display font-bold text-white leading-tight mb-6">
+              Find Trusted Contractors for{" "}
+              <span className="inline-block">Every Home</span>
+              <br />
+              <span
+                className={`text-primary inline-block transition-all duration-300 ${
+                  isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
+                }`}
+              >
+                {words[currentIndex]}
+              </span>
+            </h1>
 
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-gold-light/50 border shadow-lg border-gold-muted mb-6 animate-fade-up hover:shadow-xl">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-medium text-foreground">AI-Powered Marketplace</span>
+            <p
+              className="text-base md:text-lg text-gray-400 max-w-md mb-8 animate-fade-up"
+              style={{ animationDelay: "0.15s" }}
+            >
+              Connect with vetted professionals for repairs, renovations, and maintenance — fast, fair, and transparent.
+            </p>
+
+            <div
+              className="flex flex-col sm:flex-row items-start gap-3 mb-8 animate-fade-up"
+              style={{ animationDelay: "0.25s" }}
+            >
+              <Button onClick={() => navigate("/signup")} variant="gold" className="w-full sm:w-auto shadow-md hover:shadow-2xl transition-all duration-300">
+                Post Your Project
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={() => navigate("/signup")}
+                variant="outline"
+                className="w-full sm:w-auto shadow-md hover:shadow-2xl transition-all duration-300 border-white/20 text-white hover:bg-white/10 hover:text-white"
+              >
+                Browse Contractors
+              </Button>
+            </div>
+
+            <div
+              className="flex items-center gap-6 text-sm text-gray-400 animate-fade-up"
+              style={{ animationDelay: "0.35s" }}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-primary" />
+                2,400+ projects completed
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-primary" />
+                100% verified pros
+              </span>
+            </div>
           </div>
 
-          {/* Main headline with animated word */}
-          <h1 className="text-3xl md:text-4xl lg:text-7xl font-display font-bold text-foreground leading-tight mb-10 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            Find Trusted Contractors for{" "}
-            <span className="inline-block">
-              Every Home{" "}
-            </span>
-            <br />
-            <p
-              className={`text-primary inline-block transition-all duration-300 min-w-[260px] text-left ${isAnimating ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-                }`}
-            >
-              {words[currentIndex]}
-            </p>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto mb-8 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-            Connect with vetted professionals for repairs, renovations, and maintenance — fast, fair, and transparent.
-          </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-up" style={{ animationDelay: "0.3s" }}>
-            <Button onClick={() => navigate("/signup")} variant="gold" className="w-full sm:w-auto shadow-md hover:shadow-2xl transition-all duration-300">
-              Post Your Project
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button onClick={() => navigate("/signup")} variant="outline" className="w-full sm:w-auto shadow-md hover:shadow-2xl transition-all duration-300">
-              Browse Contractors
-            </Button>
-
+          {/* Right image + floating card */}
+          <div className="relative animate-fade-up" style={{ animationDelay: "0.15s" }}>
+            <div className="rounded-2xl overflow-hidden shadow-2xl">
+              <img
+                src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=700&q=80"
+                alt="Homeowner meeting contractor"
+                className="w-full h-[320px] lg:h-[400px] object-cover"
+              />
+            </div>
+            <div className="absolute -bottom-5 right-4 md:right-8 bg-white rounded-xl shadow-xl px-5 py-3 flex items-center gap-3 max-w-xs">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Average time to first quote</p>
+                <p className="text-sm font-semibold text-gray-900">Under 4 hours</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

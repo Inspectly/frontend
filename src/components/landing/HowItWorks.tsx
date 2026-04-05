@@ -1,4 +1,4 @@
-import { Upload, Lightbulb, Users, CheckCircle } from "lucide-react";
+import { Upload, Search, Users, CheckCircle } from "lucide-react";
 import { useScrollAnimation } from "../hooks/useScrollAnimation";
 
 const HowItWorks = () => {
@@ -7,27 +7,31 @@ const HowItWorks = () => {
   const steps = [
     {
       icon: Upload,
-      number: "1",
-      title: "Post Your Project",
-      description: "Describe your home repair or renovation needs in minutes.",
+      number: "01",
+      title: "Post Your Job",
+      description: "Describe your repair or renovation — or upload your home inspection report and we'll extract the issues for you.",
+      image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop",
     },
     {
-      icon: Lightbulb,
-      number: "2",
-      title: "AI Matches Instantly",
-      description: "Our AI analyzes your project and finds the best-suited contractors.",
+      icon: Search,
+      number: "02",
+      title: "Contractors Find You",
+      description: "Your project goes live on our marketplace. Licensed, vetted contractors in your area review it and send you quotes.",
+      image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&h=300&fit=crop",
     },
     {
       icon: Users,
-      number: "3",
-      title: "Get Matched with Pros",
-      description: "Receive quotes from vetted, licensed professionals near you.",
+      number: "03",
+      title: "Choose & Get Matched",
+      description: "Compare bids, reviews, and timelines side-by-side. Accept the contractor that fits and get matched instantly.",
+      image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&h=300&fit=crop",
     },
     {
       icon: CheckCircle,
-      number: "4",
-      title: "Complete Your Project",
-      description: "Track progress and pay securely through our platform.",
+      number: "04",
+      title: "Complete & Pay Securely",
+      description: "Track milestones, message your contractor, and pay securely — all within the platform.",
+      image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&h=300&fit=crop",
     },
   ];
 
@@ -35,16 +39,23 @@ const HowItWorks = () => {
     <section
       id="how-it-works"
       ref={ref as React.RefObject<HTMLElement>}
-      className={`py-14 border-b border-border lg:py-20 bg-white section-animate ${isVisible ? 'visible' : ''}`}
+      className={`py-14 lg:py-20 relative overflow-hidden bg-white section-animate ${isVisible ? "visible" : ""}`}
     >
+      {/* Soft radial background tint */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-[-15%] bg-[radial-gradient(ellipse_at_center,_#fdf6e8_0%,_#ffffff_65%)]" />
+      </div>
+      {/* Gold background splash */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-gradient-to-r from-primary/10 to-gold-light/20 rounded-full blur-3xl" />
+      </div>
       <div className="container mx-auto px-4 lg:px-8 max-w-5xl">
-        {/* Section header */}
         <div
           className="text-center mb-12"
           style={{
             opacity: isVisible ? 1 : 0,
-            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
-            transition: 'all 0.6s ease-out'
+            transform: isVisible ? "translateY(0)" : "translateY(20px)",
+            transition: "all 0.6s ease-out",
           }}
         >
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold text-foreground mb-3">
@@ -52,11 +63,7 @@ const HowItWorks = () => {
           </h2>
           <p className="text-muted-foreground text-base">Get started in four simple steps</p>
         </div>
-        {/* Subtle background decoration */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary/5 to-muted rounded-full blur-3xl" />
-        </div>
-        {/* Steps - horizontal flow */}
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-4">
           {steps.map((step, index) => (
             <div
@@ -64,33 +71,32 @@ const HowItWorks = () => {
               className="relative group"
               style={{
                 opacity: isVisible ? 1 : 0,
-                transform: isVisible ? 'translateY(0)' : 'translateY(30px)',
-                transition: `all 0.6s ease-out ${0.2 + index * 0.1}s`
+                transform: isVisible ? "translateY(0)" : "translateY(30px)",
+                transition: `all 0.6s ease-out ${0.2 + index * 0.1}s`,
               }}
             >
-              {/* Connector line */}
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-6 left-[60%] w-full h-px bg-gradient-to-r from-border to-transparent" />
-              )}
-
-              <div className="relative bg-card rounded-2xl p-6 border border-border hover:border-primary/40 transition-all duration-500 shadow-xl hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1">
-                {/* Icon - top right */}
-                <div className="flex justify-between items-start mb-5">
-                  <span className="text-xs font-mono text-muted-foreground tracking-wider">
-                    {step.number}
-                  </span>
-                  <div className="w-11 h-11 rounded-xl bg-foreground group-hover:bg-primary flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3">
-                    <step.icon className="w-5 h-5 text-background" />
+              <div className="relative bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/40 transition-all duration-500 shadow-xl hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-1 h-full flex flex-col">
+                {/* Image with number badge */}
+                <div className="relative h-36 overflow-hidden">
+                  <img
+                    src={step.image}
+                    alt={step.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-foreground text-background text-xs font-bold shadow-lg">
+                      {step.number}
+                    </span>
                   </div>
                 </div>
 
-                {/* Content */}
-                <h3 className="text-base font-semibold text-foreground mb-2">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
+                <div className="p-5 flex-1">
+                  <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center mb-3 group-hover:bg-primary group-hover:scale-110 group-hover:rotate-3 transition-all duration-500">
+                    <step.icon className="w-4 h-4 text-foreground group-hover:text-primary-foreground transition-colors duration-300" />
+                  </div>
+                  <h3 className="text-base font-semibold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{step.description}</p>
+                </div>
               </div>
             </div>
           ))}
