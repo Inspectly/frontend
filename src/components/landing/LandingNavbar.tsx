@@ -14,8 +14,6 @@ const LandingNavbar = () => {
     { label: "How It Works", href: "/#how-it-works" },
     { label: "Features", href: "/#features" },
     { label: "Testimonials", href: "/#testimonials" },
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "/contact" },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
