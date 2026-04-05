@@ -8,15 +8,15 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ImageComponent from "../components/ImageComponent";
-import { useGetListingsQuery, useCreateListingMutation } from "../features/api/listingsApi";
+import { useGetListingByUserIdQuery, useCreateListingMutation } from "../features/api/listingsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import AddListingOnlyModal from "../components/AddListingOnlyModal";
 
 const Listings: React.FC = () => {
-  const { data: listings, error, isLoading } = useGetListingsQuery();
-  const [createListing] = useCreateListingMutation();
   const user = useSelector((state: RootState) => state.auth.user);
+  const { data: listings, error, isLoading } = useGetListingByUserIdQuery(user?.id ?? 0, { skip: !user?.id });
+  const [createListing] = useCreateListingMutation();
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -110,7 +110,7 @@ const Listings: React.FC = () => {
             onClick={() => setIsAddListingModalOpen(true)}
           >
             <span className="font-semibold text-[14px] leading-[21px]">
-              Add New Listing
+              Add New Property
             </span>
             <FontAwesomeIcon icon={faPlus} />
           </button>

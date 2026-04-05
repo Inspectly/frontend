@@ -17,7 +17,7 @@ import {
 } from "../features/api/reportsApi";
 import ReportCardWithStatus from "../components/ReportCardWithStatus";
 import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
-import CreateIssueModal from "../components/CreateIssueModal";
+import PostJobWizard from "../components/PostJobWizard";
 import type { ReportType, ReviewStatus } from "../types";
 
 /** Normalize backend string to our strict union; default to "not_reviewed". */
@@ -319,22 +319,12 @@ const Reports: React.FC = () => {
         }}
       />
 
-      <CreateIssueModal
+      <PostJobWizard
         open={isCreateIssueOpen}
-        onClose={() => setIsCreateIssueOpen(false)}
-        issueCollections={listingReports.map((r) => ({
-          id: r.id,
-          listing_id: r.listing_id,
-          name: r.name ?? `Collection #${r.id}`,
-        }))}
-        onCreated={(createdIssue) => {
-          setIsCreateIssueOpen(false);
-          refetch();
-          navigate(
-            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
-            { state: { openIssue: createdIssue } }
-          );
-        }}
+        onClose={() => { setIsCreateIssueOpen(false); refetch(); }}
+        listings={[]}
+        reports={listingReports as any[]}
+        currentListing={listing}
       />
     </div>
   );
