@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const Footer = () => {
   const navigate = useNavigate();
   const mainLinks = [
-    { label: "About Us", action: () => navigate("/signup") },
+    { label: "About Us", action: () => navigate("/about") },
     { label: "FAQ", action: () => navigate("/signup") },
     { label: "Contact", action: () => navigate("/signup") },
   ];

@@ -37,6 +37,7 @@ import Offers from "./pages/Offers";
 import VendorCelebrationListener from "./components/VendorCelebrationListener";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
+import AboutUs from "./pages/AboutUs";
 import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
 
@@ -326,6 +327,7 @@ function App() {
           <LandingNavbar />
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/about" element={<AboutUs />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
