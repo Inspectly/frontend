@@ -7,7 +7,7 @@ const Footer = () => {
   const mainLinks = [
     { label: "About Us", action: () => navigate("/about") },
     { label: "FAQ", action: () => navigate("/signup") },
-    { label: "Contact", action: () => navigate("/signup") },
+    { label: "Contact", action: () => navigate("/contact") },
   ];
 
   const authLinks = [

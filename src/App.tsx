@@ -38,6 +38,7 @@ import VendorCelebrationListener from "./components/VendorCelebrationListener";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
 import AboutUs from "./pages/AboutUs";
+import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
 
@@ -328,6 +329,7 @@ function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/about" element={<AboutUs />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
