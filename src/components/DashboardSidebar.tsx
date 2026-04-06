@@ -64,8 +64,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-gray-100">
-        <Link to="/dashboard" className="flex items-center">
+        <Link to="/dashboard" className="flex items-center gap-0.5">
           <img src={logo} alt="Inspectly" className="h-9 w-auto" />
+          <span className="text-base font-medium text-foreground -ml-1">InspectlyAI</span>
         </Link>
       </div>
 
