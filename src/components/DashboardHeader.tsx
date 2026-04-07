@@ -9,7 +9,6 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  faBars,
   faGear,
   faPowerOff,
   faTimes,

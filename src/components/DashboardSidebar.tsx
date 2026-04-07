@@ -22,7 +22,7 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
-  toggleSidebar,
+  toggleSidebar: _toggleSidebar,
 }) => {
   const location = useLocation();
   const activePage = location.pathname;
