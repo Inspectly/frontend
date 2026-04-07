@@ -486,9 +486,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
               <div>
                 <h1 className="text-2xl lg:text-3xl font-display font-bold text-gray-900">
-                  Welcome back{clientProfile?.first_name ? `, ${clientProfile.first_name}` : ""}
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const firstName = clientProfile?.first_name || "";
+                    if (hour >= 5 && hour < 12) return `Good morning${firstName ? `, ${firstName}` : ""}`;
+                    if (hour >= 12 && hour < 17) return `Good afternoon${firstName ? `, ${firstName}` : ""}`;
+                    if (hour >= 17 && hour < 21) return `Good evening${firstName ? `, ${firstName}` : ""}`;
+                    return `Hello${firstName ? `, ${firstName}` : ""}`;
+                  })()}
                 </h1>
-                <p className="text-sm text-gray-500">Here's what's happening with your properties</p>
+                <p className="text-sm text-gray-500">Here's what's happening today</p>
               </div>
             </div>
             
