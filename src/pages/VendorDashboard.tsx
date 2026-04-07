@@ -698,6 +698,30 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   return (
     <div className="min-h-screen w-full bg-gray-100">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-4 lg:px-6">
+
+        {/* Greeting Header */}
+        <div className="flex items-center gap-3 mb-6">
+          {vendor?.profile_image_url ? (
+            <img src={vendor.profile_image_url} alt={vendor.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
+              {(vendor?.name || "V")[0].toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-display font-bold text-gray-900">
+              {(() => {
+                const hour = new Date().getHours();
+                const firstName = vendor?.name?.split(/\s+/)[0] || "";
+                if (hour >= 5 && hour < 12) return `Good morning, ${firstName}`;
+                if (hour >= 12 && hour < 17) return `Good afternoon, ${firstName}`;
+                if (hour >= 17 && hour < 21) return `Good evening, ${firstName}`;
+                return `Hello, ${firstName}`;
+              })()}
+            </h1>
+            <p className="text-sm text-gray-500">Here's what's happening today</p>
+          </div>
+        </div>
         
         {/* New Vendor Welcome Banner */}
         {isNewVendor && showWelcomeBanner && (
