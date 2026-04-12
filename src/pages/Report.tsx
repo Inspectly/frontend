@@ -252,7 +252,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
   const [localCreatedIssue, setLocalCreatedIssue] = useState<any | null>(null);
 
   const reportIssues = useMemo(() => {
-    const apiIssues = issues?.filter((issue) => issue.report_id.toString() === reportId) || [];
+    const apiIssues = issues?.filter((issue) => String(issue.report_id) === String(reportId)) || [];
     // If we have a locally created issue that isn't in the API list yet, include it
     if (localCreatedIssue && !apiIssues.find(i => i.id === localCreatedIssue.id)) {
       return [...apiIssues, localCreatedIssue];
