@@ -530,18 +530,20 @@ export default function ReportReviewPage() {
             (it) => (it as any).review_status !== "completed"
           );
 
-          for (const it of pending) {
-            try {
-              const body = buildIssuePutBody(
-                it,
-                { review_status: "completed" } as any,
-                report?.listing_id ?? (listingId ? Number(listingId) : undefined)
-              );
-              await updateIssue(body as any).unwrap();
-              setCompleteCount((c) => c + 1);
-            } catch {
-              setCompleteErrors((e) => e + 1);
-            }
+          try {
+            await Promise.all(
+              pending.map(async (it) => {
+                const body = buildIssuePutBody(
+                  it,
+                  { review_status: "completed" } as any,
+                  report?.listing_id ?? (listingId ? Number(listingId) : undefined)
+                );
+                await updateIssue(body as any).unwrap();
+                setCompleteCount((c) => c + 1);
+              })
+            );
+          } catch (e) {
+            setCompleteErrors((errs) => errs + 1);
           }
 
           await refetch();
