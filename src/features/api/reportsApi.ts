@@ -39,10 +39,11 @@ export const reportsApi = api.injectEndpoints({
 
     updateReport: builder.mutation<ReportType, UpdateReportPutPayload>({
       query: ({ id, ...full }) => ({
-        url: `reports/${id}`, 
+        url: `reports/${id}`,
         method: "PUT",
         body: full,
       }),
+      invalidatesTags: (_, __, { id }) => [{ type: "Reports", id }, "Reports"],
     }),
   }),
 });
