@@ -201,7 +201,7 @@ export default function ReviewSidebar({
           ].join(" ")}
           title={allReviewed ? "Complete" : "Accept All"}
           onClick={allReviewed ? onCompleteClick : onAcceptAllClick}
-          disabled={issues.length === 0}
+          disabled={issues.length === 0 || isCompletingAll}
         >
           {allReviewed ? "Complete" : "Accept All"}
         </button>
