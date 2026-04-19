@@ -37,9 +37,10 @@ import Offers from "./pages/Offers";
 import VendorCelebrationListener from "./components/VendorCelebrationListener";
 import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
 import LandingPage from "./pages/LandingPage";
+import AboutUs from "./pages/AboutUs";
+import Contact from "./pages/Contact";
 import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
-import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
 
@@ -52,7 +53,7 @@ function App() {
       '/': 'Dashboard',
       '/dashboard': 'Dashboard',
       '/marketplace': 'Marketplace',
-      '/listings': 'Listings',
+      '/listings': 'Properties',
       '/offers': 'Offers',
       '/reports': 'Reports',
       '/issues': 'Issues',
@@ -329,6 +330,8 @@ function App() {
           <LandingNavbar />
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/about" element={<AboutUs />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />

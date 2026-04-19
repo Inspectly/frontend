@@ -831,7 +831,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                           saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
                         }
 
-                        const successUrl = `${window.location.origin}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
+                        const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+                        const successUrl = `${baseUrl}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
                         const response = await createCheckoutSession({
                           client_id: (client?.id ?? userId)!,
                           vendor_id: acceptedOffer.vendor_id,

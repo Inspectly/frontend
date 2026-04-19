@@ -16,11 +16,10 @@ import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
   useGetIssuesQuery,
   useUpdateIssueMutation,
-  useCreateIssueMutation,
 } from "../features/api/issuesApi";
-import { useGetVendorTypesQuery } from "../features/api/vendorTypesApi";
+import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { useGetOffersByIssueIdQuery } from "../features/api/issueOffersApi";
-import { uploadFileToImageUrl } from "../utils/imageUpload";
+import PostJobWizard from "./PostJobWizard";
 
 /* ---------------- types & small helpers ---------------- */
 
@@ -53,10 +52,9 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
   }>();
 
   const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
-  const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
 
   const [updateIssue] = useUpdateIssueMutation();
-  const [createIssue] = useCreateIssueMutation();
+  const { data: currentListing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
@@ -75,50 +73,12 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
     }
   }, [openAddIssueOnMount]);
 
-  // ✅ Default status to "open"
-  const [formData, setFormData] = useState<{
-    type: string;
-    description: string;
-    summary: string;
-    severity: string;
-    status: IssueStatus | string;
-    active: boolean;
-    image_url: string;
-  }>({
-    type: "",
-    description: "",
-    summary: "",
-    severity: "",
-    status: "open",
-    active: true,
-    image_url: "",
-  });
-
-  useEffect(() => {
-    if (isModalOpen) {
-      setFormData((prev) => ({
-        ...prev,
-        status: prev.status || "open",
-      }));
-    }
-  }, [isModalOpen]);
-
-  const [selectedFileName, setSelectedFileName] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-
   const statusMapping: Record<IssueStatus, string> = {
     "Status.OPEN": "open",
     "Status.IN_PROGRESS": "in_progress",
     "Status.REVIEW": "review",
     "Status.COMPLETED": "completed",
   };
-
-  const statusOptions = [
-    { value: "open", label: "Open" },
-    { value: "in_progress", label: "In-progress" },
-    { value: "review", label: "Review" },
-    { value: "completed", label: "Completed" },
-  ];
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters((prev) => ({
@@ -139,67 +99,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
     } catch (error) {
       console.error("Error updating issue:", error);
     }
-  };
-
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const severityMap: Record<string, string> = {
-        low: "Low",
-        medium: "Medium",
-        high: "High",
-      };
-
-      let uploadedImageUrls: string[] = [];
-      if (imageFile) {
-        const url = await uploadFileToImageUrl(imageFile);
-        uploadedImageUrls = [url];
-      }
-
-      const { image_url: _ignored, ...issueFields } = formData;
-      await createIssue({
-        report_id: Number(reportId),
-        listing_id: Number(listingId),
-        ...issueFields,
-        severity: severityMap[formData.severity.toLowerCase()] || "None",
-        status: formData.status as IssueStatus,
-        image_urls: uploadedImageUrls,
-      }).unwrap();
-      refetch();
-      setIsModalOpen(false);
-    } catch (err) {
-      console.error("Failed to create issue:", err);
-    }
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setFormData({
-      type: "",
-      description: "",
-      summary: "",
-      severity: "",
-      status: "open",
-      active: true,
-      image_url: "",
-    });
-    setSelectedFileName("");
-    setImageFile(null);
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFileName(file.name);
-    setImageFile(file);
   };
 
   const reportIssues =
@@ -508,214 +407,12 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
           </ul>
         </div>
 
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-            <div className="bg-white w-full max-w-xl rounded-xl shadow-lg p-6 relative">
-              <button
-                onClick={handleModalClose}
-                className="absolute top-2 right-4 text-3xl font-light text-gray-600 hover:text-gray-800"
-              >
-                &times;
-              </button>
-              <h6 className="text-lg font-semibold mb-4">Create New Issue</h6>
-
-              <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
-                {/* Type */}
-                <div className="relative col-span-12">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Type
-                  </label>
-                  <select
-                    name="type"
-                    className="w-full rounded-lg cursor-pointer border border-gray-300 bg-white px-5 py-2.5 appearance-none"
-                    value={formData.type}
-                    required
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, type: e.target.value }))
-                    }
-                  >
-                    <option value="" disabled hidden>
-                      Select an issue type
-                    </option>
-                    {fetchedVendorTypes?.map((option) => (
-                      <option key={option.id} value={option.vendor_type}>
-                        {option.vendor_type}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-gray-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Summary */}
-                <div className="col-span-12">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Summary
-                  </label>
-                  <input
-                    type="text"
-                    name="summary"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
-                    placeholder="Short summary"
-                    value={formData.summary}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="col-span-12">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Description
-                  </label>
-                  <textarea
-                    name="description"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5"
-                    placeholder="Detailed description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-
-                {/* Severity */}
-                <div className="relative col-span-6">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Severity
-                  </label>
-                  <select
-                    name="severity"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
-                    value={formData.severity}
-                    required
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, severity: e.target.value }))
-                    }
-                  >
-                    <option value="" disabled hidden>
-                      Select a severity
-                    </option>
-                    {["low", "medium", "high"].map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-gray-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Status (default = open) */}
-                <div className="relative col-span-6">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Status
-                  </label>
-                  <select
-                    name="status"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-5 py-2.5 cursor-pointer appearance-none"
-                    value={formData.status}
-                    required
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, status: e.target.value }))
-                    }
-                  >
-                    {/* No placeholder so "Open" shows immediately */}
-                    {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute inset-y-0 top-8 right-4 flex items-center pointer-events-none">
-                    <svg
-                      className="w-5 h-5 text-gray-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Active */}
-                <div className="col-span-12">
-                  <label className="inline-flex items-center space-x-2 text-sm leading-5 font-semibold text-gray-600">
-                    <input
-                      type="checkbox"
-                      name="active"
-                      checked={formData.active}
-                      onChange={(e) =>
-                        setFormData({ ...formData, active: e.target.checked })
-                      }
-                      className="form-checkbox h-4 w-4 text-blue-600"
-                    />
-                    <span>Active</span>
-                  </label>
-                </div>
-
-                {/* Image Upload (optional, preview) */}
-                <div className="col-span-12">
-                  <label className="mb-2 inline-block text-sm leading-5 font-semibold text-gray-600">
-                    Upload Image
-                  </label>
-                  <div className="flex w-full">
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer bg-gray-800 text-white text-sm px-4 py-2 rounded-l-lg flex items-center whitespace-nowrap"
-                    >
-                      Choose File
-                    </label>
-                    <span className="border border-l-0 border-gray-300 bg-white text-base px-5 py-2.5 rounded-r-lg w-full flex items-center">
-                      {selectedFileName || "No file chosen"}
-                    </span>
-                    <input
-                      id="file-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setSelectedFileName(file.name);
-                          handleImageUpload(e);
-                        }
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="col-span-12">
-                  <button
-                    type="submit"
-                    className="btn bg-blue-500 text-white py-2 px-6 rounded-lg hover:bg-blue-600"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+        <PostJobWizard
+          open={isModalOpen}
+          onClose={() => { setIsModalOpen(false); refetch(); }}
+          listings={[]}
+          currentListing={currentListing}
+        />
       </div>
     </div>
   );

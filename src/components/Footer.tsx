@@ -6,7 +6,7 @@ const Footer = () => {
   const navigate = useNavigate();
   const mainLinks = [
     { label: "About Us", action: () => navigate("/about") },
-    { label: "FAQ", action: () => navigate("/faq") },
+    { label: "FAQ", action: () => navigate("/signup") },
     { label: "Contact", action: () => navigate("/contact") },
   ];
 
@@ -32,7 +32,10 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           {/* Logo and description */}
           <div className="max-w-xs">
-            <img src={logo} alt="InspectlyAI" className="h-12 w-auto mb-4" />
+            <div className="flex items-center gap-0.5 mb-4">
+              <img src={logo} alt="InspectlyAI" className="h-12 w-auto" />
+              <span className="text-base font-medium text-foreground -ml-1">InspectlyAI</span>
+            </div>
             <p className="text-muted-foreground text-sm mb-4">
               Connecting homeowners with trusted contractors.
             </p>

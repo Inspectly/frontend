@@ -1,7 +1,6 @@
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
   faChalkboard,
-  faClose,
   faInfo,
   faListCheck,
   faShop,
@@ -23,7 +22,7 @@ interface DashboardSidebarProps {
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
-  toggleSidebar,
+  toggleSidebar: _toggleSidebar,
 }) => {
   const location = useLocation();
   const activePage = location.pathname;
@@ -53,19 +52,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       } w-[250px] h-screen z-30 bg-white border-r border-gray-200 transition-transform duration-300`}
     >
-      {/* Close button */}
-      <button
-        type="button"
-        className="absolute top-4 right-3 inline-flex items-center justify-center h-7 w-7 rounded-full hover:bg-gray-100 transition-colors z-10"
-        onClick={toggleSidebar}
-      >
-        <FontAwesomeIcon icon={faClose} className="text-sm text-gray-500" />
-      </button>
-
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-gray-100">
-        <Link to="/dashboard" className="flex items-center">
-          <img src={logo} alt="Inspectly" className="h-9 w-auto" />
+      <div className="h-16 flex items-center px-3 border-b border-gray-100">
+        <Link to="/dashboard" className="flex items-center gap-0.5 px-3">
+          <img src={logo} alt="Inspectly" className="h-16 w-auto" />
+          <span className="text-lg font-medium text-foreground -ml-1">InspectlyAI</span>
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary rounded">Pro</span>
         </Link>
       </div>
 
@@ -112,7 +104,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
               }`}
             >
               <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
-              <span>Listings</span>
+              <span>Properties</span>
             </Link>
           </li>
 

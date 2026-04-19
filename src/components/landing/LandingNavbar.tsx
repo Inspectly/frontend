@@ -14,8 +14,6 @@ const LandingNavbar = () => {
     { label: "How It Works", href: "/#how-it-works" },
     { label: "Features", href: "/#features" },
     { label: "Testimonials", href: "/#testimonials" },
-    { label: "About", href: "/about" },
-    { label: "Contact", href: "/contact" },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -39,8 +37,9 @@ const LandingNavbar = () => {
       <nav className="container mx-auto px-4 lg:px-8">
         <div className="flex items-center justify-between h-15 relative">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2">
+          <a href="/" className="flex items-center gap-0.5">
             <img src={logo} alt="InspectlyAI" className="h-16 w-auto" />
+            <span className="text-lg font-medium text-foreground -ml-1">InspectlyAI</span>
           </a>
 
           {/* Desktop Navigation */}

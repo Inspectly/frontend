@@ -52,6 +52,7 @@ import {
 import ImageComponent from "../components/ImageComponent";
 import { getIssueById, useGetIssuesQuery } from "../features/api/issuesApi";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
+import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 // useGetClientsQuery removed — was fetching all clients but result was never used
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
 import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
@@ -60,7 +61,7 @@ import { AppDispatch } from "../store/store";
 import { getVendorById, useGetVendorsQuery } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
-import CreateIssueModal from "../components/CreateIssueModal";
+import PostJobWizard from "../components/PostJobWizard";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
 import { BUTTON_HOVER } from "../styles/shared";
 import { toast } from "react-hot-toast";
@@ -93,7 +94,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: issues } = useGetIssuesQuery();
-  // useGetClientsQuery() removed — result was never used
+  const { data: clientProfile } = useGetClientByUserIdQuery(String(user?.id), { skip: !user?.id });
 
   const { data: assessments = [], refetch: refetchAssessments } =
     useGetAssessmentsByClientIdUsersInteractionIdQuery(user.id, { skip: !user?.id });
@@ -305,19 +306,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return () => clearInterval(interval);
   }, [_listings]);
 
-  // Issue collections for CreateIssueModal (reports the user can add issues to)
-  const issueCollections = useMemo(() => {
-    if (!reports || !_listings) return [];
-    return reports.map((report) => {
-      const listing = _listings.find((l) => l.id === report.listing_id);
-      return {
-        id: report.id,
-        listing_id: report.listing_id,
-        name: `${listing?.address || 'Unknown Property'} - ${report.name || 'Report'}`
-      };
-    });
-  }, [reports, _listings]);
-
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
   const resolutionRate = realMetrics.totalIssues > 0 ? Math.round((realMetrics.completedIssues / realMetrics.totalIssues) * 100) : 0;
@@ -447,6 +435,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     return filteredIssuesByUser.filter(i => i.status === "Status.REVIEW");
   }, [filteredIssuesByUser]);
 
+  // Vendors map for quick lookup by vendor_user_id
+  const globalVendorsMap = useMemo(() => {
+    return (Array.isArray(allVendors) ? allVendors : []).reduce((acc, v) => {
+      acc[v.vendor_user_id] = v;
+      acc[v.id] = v;
+      return acc;
+    }, {} as Record<number, Vendor>);
+  }, [allVendors]);
+
   // Get items with pending quotes (no offer accepted yet - client still needs to choose)
   const quoteItems = useMemo(() => {
     return filteredIssuesByUser.filter(i => {
@@ -480,12 +477,27 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     <div className="min-h-screen w-full bg-gray-100">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
         
-        {/* TODAY AT A GLANCE - Header Section */}
+        {/* Welcome Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between gap-4 mb-5">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-              Today at a glance
-            </h1>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
+                {clientProfile?.first_name?.[0]?.toUpperCase() || user?.id?.toString()?.[0] || "U"}
+              </div>
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-display font-bold text-gray-900">
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const firstName = clientProfile?.first_name || "";
+                    if (hour >= 5 && hour < 12) return `Good morning${firstName ? `, ${firstName}` : ""}`;
+                    if (hour >= 12 && hour < 17) return `Good afternoon${firstName ? `, ${firstName}` : ""}`;
+                    if (hour >= 17 && hour < 21) return `Good evening${firstName ? `, ${firstName}` : ""}`;
+                    return `Hello${firstName ? `, ${firstName}` : ""}`;
+                  })()}
+                </h1>
+                <p className="text-sm text-gray-500">Here's what's happening today</p>
+              </div>
+            </div>
             
             {/* Create Dropdown */}
             <div className="relative" ref={createDropdownRef}>
@@ -845,56 +857,70 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                         </div>
                       ) : (
                         <>
-                          {quoteItems.slice(0, 2).map((item) => {
+                          {quoteItems.slice(0, 4).flatMap((item) => {
                             const report = reports?.find((r) => r.id === item.report_id);
                             const listing = _listings?.find((l) => l.id === report?.listing_id);
                             const offers = offersByIssueId[item.id] || [];
                             const pendingOffers = offers.filter(o => o.status === IssueOfferStatus.RECEIVED);
-                            const lowestOffer = pendingOffers.length > 0 
-                              ? pendingOffers.reduce((min, o) => (o.price || 0) < (min.price || 0) ? o : min, pendingOffers[0])
-                              : null;
                             
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => openIssueModal(item, "offers")}
-                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                              >
-                                <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gold-100">
-                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-gold" />
+                            return pendingOffers.map((offer) => {
+                              const vendor = globalVendorsMap[offer.vendor_id];
+                              const vendorName = vendor?.company_name || vendor?.name || "Vendor";
+                              const vendorInitials = vendorName.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase() || "V";
+                              const vendorRating = vendor?.rating ? parseFloat(vendor.rating) : null;
+                              const address = listing?.address?.split(",")[0] || listing?.address || "Property";
+
+                              return (
+                                <div
+                                  key={offer.id}
+                                  className="flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                                  onClick={() => openIssueModal(item, "offers")}
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    {vendor?.profile_image_url ? (
+                                      <img
+                                        src={vendor.profile_image_url}
+                                        alt={vendorName}
+                                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                                      />
+                                    ) : null}
+                                    <div className={`w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary flex-shrink-0 ${vendor?.profile_image_url ? "hidden" : ""}`}>
+                                      {vendorInitials}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-gray-900 text-sm truncate">{vendorName}</span>
+                                        {vendorRating && vendorRating > 0 && (
+                                          <span className="flex items-center gap-0.5 text-xs text-amber-600">
+                                            <FontAwesomeIcon icon={faStar} className="text-[10px]" />
+                                            {vendorRating.toFixed(1)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-gray-500 truncate">
+                                        {item.summary || normalizeAndCapitalize(item.type)} · {address}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <div className="font-semibold text-gray-900">
-                                      {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
-                                    </div>
-                                    <div className="text-sm text-gray-500 flex items-center gap-1">
-                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
-                                      {listing?.address || "Property"}
-                                    </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                    <span className="text-lg font-bold text-gray-900">${offer.price?.toLocaleString()}</span>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); openIssueModal(item, "offers"); }}
+                                      className="px-3 py-1.5 text-xs font-semibold border-2 border-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                                    >
+                                      Decline
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); openIssueModal(item, "offers"); }}
+                                      className="px-3 py-1.5 text-xs font-semibold bg-gold text-white rounded-lg hover:bg-foreground hover:text-background transition-colors"
+                                    >
+                                      Accept
+                                    </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  {lowestOffer && (
-                                    <div className="text-right">
-                                      <span className="text-lg font-bold text-gray-900">${lowestOffer.price?.toLocaleString()}</span>
-                                      {pendingOffers.length > 1 && (
-                                        <div className="text-xs text-gray-500">{pendingOffers.length} quotes</div>
-                                      )}
-                                    </div>
-                                  )}
-                                  {pendingOffers.length === 1 ? (
-                                    <button className="px-4 py-2 bg-gold text-white font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors flex items-center gap-2">
-                                      Accept <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                                    </button>
-                                  ) : (
-                                    <button className="px-4 py-2 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors flex items-center gap-2">
-                                      Compare <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
+                              );
+                            });
                           })}
                           {quoteItems.length > 2 && (
                             <button
@@ -1303,18 +1329,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         }}
       />
 
-      {/* Create Issue Modal (Post a Job) */}
-      <CreateIssueModal
+      {/* Post a Job Wizard */}
+      <PostJobWizard
         open={isCreateIssueModalOpen}
         onClose={() => setIsCreateIssueModalOpen(false)}
-        onCreated={(createdIssue) => {
-          setIsCreateIssueModalOpen(false);
-          navigate(
-            `/listings/${createdIssue.listing_id}/reports/${createdIssue.report_id}`,
-            { state: { openIssue: createdIssue } }
-          );
-        }}
-        issueCollections={issueCollections}
+        listings={Array.isArray(_listings) ? _listings : []}
+        reports={Array.isArray(reports) ? reports : []}
       />
 
       {/* Issue Detail Modal */}
