@@ -140,9 +140,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           <li>
             <Link
-              to="/dashboard/termsandconditions"
+              to="/dashboard/terms"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/termsandconditions"
+                activePage === "/dashboard/terms"
                   ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}

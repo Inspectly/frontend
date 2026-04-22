@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link,useLocation, useNavigate } from "react-router-dom";
 import { auth } from "../../firebase";
 import {
   createUserWithEmailAndPassword,
@@ -1106,13 +1106,19 @@ const Signup: React.FC = () => {
                   />
                   <label htmlFor="terms" className="ml-2 text-sm text-gray-500">
                     I agree to the{" "}
-                    <a href="#" className="text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900">
-                      Terms of Service
-                    </a>{" "}
+                    <Link
+                      to="/terms"
+                      className="text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900"
+                    >
+                      Terms & Conditions
+                    </Link>{" "}
                     and{" "}
-                    <a href="#" className="text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900">
+                    <Link
+                      to="/terms"
+                      className="text-gray-900 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900"
+                    >
                       Privacy Policy
-                    </a>
+                    </Link>
                     .
                   </label>
                 </div>

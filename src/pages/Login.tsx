@@ -22,6 +22,7 @@ import { useCreateUserLoginMutation } from "../features/api/userLoginsApi";
 import { useDispatch } from "react-redux";
 import { login, logout, setLoading as setPageLoading } from "../features/authSlice";
 import { useGetUserByFirebaseIdQuery } from "../features/api/usersApi";
+import { Link } from "react-router-dom";
 
 // --- STYLE CONSTANTS ---
 const GOLD_BG = "bg-[rgb(212_160_23)]";
@@ -516,13 +517,13 @@ const Login: React.FC = () => {
                     />
                     <span className="ml-2">
                       I agree to{" "}
-                      <a href="#" className="underline hover:text-gray-800">
+                      <Link to="/terms" className="underline hover:text-gray-800">
                         Privacy Policy
-                      </a>{" "}
+                      </Link>{" "}
                       and{" "}
-                      <a href="#" className="underline hover:text-gray-800">
-                        Terms of Use
-                      </a>
+                      <Link to="/terms" className="underline hover:text-gray-800">
+                        Terms & Conditions
+                      </Link>
                     </span>
                   </label>
                 </div>
