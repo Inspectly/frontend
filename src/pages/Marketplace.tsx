@@ -483,11 +483,16 @@ const Marketplace: React.FC = () => {
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="container mx-auto px-4">
 
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-3xl lg:text-4xl font-display font-bold text-gray-900">Marketplace</h1>
+          <p className="text-sm text-gray-500 mt-1">Find the perfect jobs for your expertise</p>
+        </div>
+
         {/* Search and Filter Section */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
           <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filter</h2>
-            <p className="text-sm text-gray-600">Find the perfect jobs for your expertise</p>
+            <h2 className="text-lg font-semibold text-gray-900">Search & Filter</h2>
       </div>
 
           <div className="p-6">
