@@ -808,7 +808,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   </div>
                 )}
                 <button
-                  onClick={() => navigate("/vendor/jobs?tab=active")}
+                  onClick={() => navigate("/vendor/earnings")}
                   className="w-full mt-2 px-4 py-2.5 border-2 border-gray-900 text-gray-900 rounded-lg font-semibold text-sm hover:bg-gray-900 hover:text-white transition-colors"
                 >
                   View Earnings Details
