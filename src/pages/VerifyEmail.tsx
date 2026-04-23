@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../../firebase";
 import { useNavigate } from "react-router-dom";
+import { MailCheck, RefreshCw } from "lucide-react";
 import {
   useCreateUserSessionMutation,
   useGetUserSessionByUserIdQuery,
@@ -64,7 +65,11 @@ const VerifyEmail: React.FC = () => {
     const storedUserData = localStorage.getItem("signupUserData");
     const storedVendorTypes = localStorage.getItem("signupVendorTypes");
 
-    if (storedUserData) setFormData(JSON.parse(storedUserData));
+    if (storedUserData) {
+      setFormData(JSON.parse(storedUserData));
+    } else {
+      setError("Signup data not found");
+    }
     if (storedVendorTypes) setVendorTypes(JSON.parse(storedVendorTypes));
   }, []);
 
@@ -302,55 +307,67 @@ const VerifyEmail: React.FC = () => {
     if (userSession) setSessionExists(true);
   }, [userSession]);
 
+  const statusMessage = sessionExists
+    ? { text: "Account setup complete! Redirecting...", tone: "success" as const }
+    : backendUserExists
+      ? { text: "User created! Setting up your session...", tone: "info" as const }
+      : isVerified
+        ? { text: "Email verified! Creating your account...", tone: "info" as const }
+        : { text: "Waiting for verification...", tone: "pending" as const };
+
   return (
-    <div className="flex flex-col lg:flex-row mt-10">
-      <div className="max-w-lg m-auto p-8 bg-white rounded shadow text-center h-fit">
-        <h2 className="text-2xl font-bold mb-4">Verify Your Email</h2>
-        <p className="text-gray-600 mb-4">
-          A verification link has been sent to your email. Please verify your
-          email to continue.
+    <div className="min-h-[calc(100vh-200px)] flex items-center justify-center px-4 py-16 bg-neutral-50">
+      <div className="w-full max-w-xl bg-white rounded-2xl shadow-sm border border-neutral-100 p-10 text-center">
+        <div className="w-16 h-16 rounded-full bg-gold/15 flex items-center justify-center mx-auto mb-6">
+          <MailCheck className="w-7 h-7 text-gold" />
+        </div>
+
+        <h1 className="font-serif text-3xl text-neutral-900 mb-3">Check Your Email</h1>
+        <p className="text-neutral-500 mb-6 leading-relaxed">
+          We've sent a verification link to{" "}
+          {firebaseUser?.email ? (
+            <span className="font-medium text-neutral-800">{firebaseUser.email}</span>
+          ) : (
+            "your inbox"
+          )}
+          . Please verify your email to continue.
         </p>
-        {!isVerified && (
-          <p className="text-gray-500">Checking verification status...</p>
+
+        {error ? (
+          <p className="text-sm text-red-500 mb-8">{error}</p>
+        ) : (
+          <div
+            className={`flex items-center justify-center gap-2 text-sm mb-8 ${
+              statusMessage.tone === "success"
+                ? "text-green-600"
+                : statusMessage.tone === "info"
+                  ? "text-blue-600"
+                  : "text-neutral-500"
+            }`}
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${statusMessage.tone === "pending" ? "animate-spin" : ""}`}
+            />
+            <span>{statusMessage.text}</span>
+          </div>
         )}
-        {isVerified && !backendUserExists && (
-          <p className="text-blue-500">
-            Email verified! Creating backend user...
-          </p>
-        )}
-        {backendUserExists && !sessionExists && (
-          <p className="text-blue-500">
-            User created! Setting up your session...
-          </p>
-        )}
-        {sessionExists && (
-          <p className="text-green-600">
-            Account setup complete! Redirecting...
-          </p>
-        )}
+
+        <button
+          onClick={handleResendVerification}
+          disabled={resendDisabled}
+          className="w-full border-2 border-neutral-900 text-neutral-900 font-semibold py-3 rounded-xl hover:bg-neutral-900 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-900"
+        >
+          {resendDisabled ? `Resend in ${cooldown}s` : "Resend Verification Email"}
+        </button>
+
         {reauthNeeded && (
           <button
-            className="bg-red-500 text-white p-2 rounded mt-4"
+            className="mt-4 text-sm text-red-600 hover:text-red-700 underline"
             onClick={() => auth.signOut()}
           >
             Try to sign up again
           </button>
         )}
-        {error && <p className="text-red-500">{error}</p>}
-
-        <button
-          className={`mt-4 px-4 py-2 bg-blue-500 text-white font-bold rounded ${
-            resendDisabled
-              ? "opacity-50 cursor-not-allowed"
-              : "hover:bg-blue-700"
-          }`}
-          onClick={handleResendVerification}
-          disabled={resendDisabled}
-        >
-          {resendDisabled
-            ? `Resend in ${cooldown}s`
-            : "Resend Verification Email"}
-        </button>
       </div>
     </div>
   );

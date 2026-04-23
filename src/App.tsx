@@ -46,6 +46,7 @@ import LandingNavbar from "./components/landing/LandingNavbar";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
 import Terms from "./pages/Terms";
+import SettingsPage from "./pages/Settings";
 
 function App() {
   const location = useLocation();
@@ -64,6 +65,7 @@ function App() {
       '/vendor/jobs': 'Jobs',
       '/vendor/earnings': 'Earnings',
       '/vendor/reviews': 'Reviews',
+      '/settings': 'Settings',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -334,6 +336,10 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/review"
                 element={<PrivateRoute element={<ReportReviewPage />} />}
+              />
+              <Route
+                path="/settings"
+                element={<PrivateRoute element={<SettingsPage userType={userType} />} />}
               />
               <Route
                 path="*"
