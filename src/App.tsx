@@ -43,6 +43,7 @@ import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
+import Terms from "./pages/Terms";
 
 function App() {
   const location = useLocation();
@@ -277,6 +278,10 @@ function App() {
                 element={<PrivateRoute element={getDashboardComponent()} />}
               />
               <Route
+                path="/dashboard/terms"
+                element={<PrivateRoute element={<Terms />} />}
+              />
+              <Route
                 path="/pricing"
                 element={
                   <PrivateRoute element={<PriceSection plans={plans} />} />
@@ -337,6 +342,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path ="/terms" element={<Terms />} />
             <Route path="/about" element={<About />} />
           </Routes>
           <Footer />
