@@ -141,9 +141,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           <li>
             <Link
-              to="/dashboard/faqs"
+              to="/dashboard/faq"
               className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/faqs"
+                activePage === "/dashboard/faq"
                   ? "bg-gray-900 text-white"
                   : "text-gray-600 hover:bg-foreground hover:text-background"
               }`}
