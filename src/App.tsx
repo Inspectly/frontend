@@ -56,6 +56,8 @@ function App() {
     const pathMap: Record<string, string> = {
       '/': 'Dashboard',
       '/dashboard': 'Dashboard',
+      '/dashboard/faq': 'FAQs',
+      '/dashboard/terms': 'Terms & Conditions',
       '/marketplace': 'Marketplace',
       '/listings': 'Properties',
       '/offers': 'Offers',
@@ -342,6 +344,10 @@ function App() {
                 element={<PrivateRoute element={<SettingsPage userType={userType} />} />}
               />
               <Route
+                path="/dashboard/faq"
+                element={<PrivateRoute element={<FAQ />} />}
+              />
+              <Route
                 path="*"
                 element={<PrivateRoute element={getDashboardComponent()} />}
               />
@@ -358,9 +364,8 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/contact" element={<Contact />} />
             <Route path="/faq" element={<FAQ />} />
-            <Route path ="/terms" element={<Terms />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/about" element={<About />} />
           </Routes>
           <Footer />
