@@ -68,10 +68,10 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl bg-card overflow-hidden shadow-md hover-lift"
+      className="group cursor-pointer rounded-2xl bg-card overflow-hidden shadow-soft hover-lift"
     >
       {/* Image area */}
-      <div className="relative h-[190px] overflow-hidden bg-muted">
+      <div className="relative h-[var(--property-card-image-h)] overflow-hidden bg-muted">
         <ImageComponent
           src={listing.image_url}
           fallback="/images/property_card_holder.jpg"
@@ -134,7 +134,7 @@ const PropertyListRow: React.FC<PropertyCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer flex items-center gap-4 rounded-xl bg-card p-3 shadow-md hover-lift"
+      className="group cursor-pointer flex items-center gap-4 rounded-xl bg-card p-3 shadow-soft hover-lift"
     >
       {/* Thumbnail */}
       <div className="relative w-20 h-[3.75rem] rounded-lg overflow-hidden bg-muted shrink-0">
@@ -190,7 +190,7 @@ const CardSkeleton: React.FC<{ count?: number }> = ({ count = 4 }) => (
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-5">
     {Array.from({ length: count }).map((_, i) => (
       <div key={i} className="rounded-2xl border border-border overflow-hidden">
-        <div className="shimmer h-[190px] w-full" />
+        <div className="shimmer h-[var(--property-card-image-h)] w-full" />
         <div className="p-4 space-y-2">
           <div className="shimmer h-4 w-3/4 rounded" />
           <div className="shimmer h-3 w-1/2 rounded" />
@@ -360,7 +360,7 @@ const Listings: React.FC = () => {
             className={`h-10 w-10 flex items-center justify-center transition-colors ${
               viewMode === "grid"
                 ? "bg-gold-light text-gold"
-                : "bg-background text-muted-foreground hover:bg-gray-100 hover:text-gray-700"
+                : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
             onClick={() => setViewMode("grid")}
             title="Grid view"
@@ -371,7 +371,7 @@ const Listings: React.FC = () => {
             className={`h-10 w-10 flex items-center justify-center border-l border-border transition-colors ${
               viewMode === "list"
                 ? "bg-gold-light text-gold"
-                : "bg-background text-muted-foreground hover:bg-gray-100 hover:text-gray-700"
+                : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
             onClick={() => setViewMode("list")}
             title="List view"

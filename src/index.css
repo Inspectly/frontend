@@ -76,6 +76,9 @@
   --issue-resolved-color: var(--color-success);
   --issue-pending-color: var(--color-warning);
 
+  /* Property card dimensions — change here to update all cards */
+  --property-card-image-h: 190px;
+
   font-family: var(--font-display);
   line-height: 1.5;
   font-weight: 400;

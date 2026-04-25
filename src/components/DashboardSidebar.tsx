@@ -26,11 +26,11 @@ interface DashboardSidebarProps {
 const navItemBase =
   "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200";
 const navItemActive = "bg-gold-light text-gold";
-const navItemInactive = "text-gray-500 hover:bg-gray-100 hover:text-gray-900";
+const navItemInactive = "text-muted-foreground hover:bg-muted hover:text-foreground";
 
 const SectionLabel: React.FC<{ label: string }> = ({ label }) => (
   <li className="pt-4 pb-1 px-3">
-    <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">
+    <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60">
       {label}
     </span>
   </li>
@@ -69,10 +69,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
     <aside
       className={`fixed top-0 ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } w-[250px] h-screen z-30 bg-white border-r border-gray-100 transition-transform duration-300 flex flex-col`}
+      } w-[250px] h-screen z-30 bg-background border-r border-border transition-transform duration-300 flex flex-col`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-3 border-b border-gray-100 shrink-0">
+      <div className="h-16 flex items-center px-3 border-b border-border shrink-0">
         <Link to="/dashboard" className="flex items-center gap-0.5 px-3">
           <img src={logo} alt="Inspectly" className="h-16 w-auto" />
           <span className="text-lg font-medium text-foreground -ml-1">
@@ -85,7 +85,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-white px-3 py-2">
+      <nav className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-background px-3 py-2">
         <ul className="flex flex-col space-y-0.5">
           {/* ── MAIN ── */}
           <SectionLabel label="Main" />
@@ -188,7 +188,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             <li className="pt-3">
               <Link
                 to={marketplaceLink}
-                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-white hover:bg-gold-dark"
+                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-primary-foreground hover:bg-gold-dark"
               >
                 <FontAwesomeIcon icon={faShop} className="mr-2 w-4" />
                 <span>Marketplace</span>
@@ -200,10 +200,10 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
       {/* Log Out */}
       {handleLogout && (
-        <div className="px-3 py-4 border-t border-gray-100 shrink-0">
+        <div className="px-3 py-4 border-t border-border shrink-0">
           <button
             onClick={handleLogout}
-            className={`${navItemBase} w-full text-gray-500 hover:bg-gray-100 hover:text-gray-900`}
+            className={`${navItemBase} w-full ${navItemInactive}`}
           >
             <FontAwesomeIcon
               icon={faArrowRightFromBracket}
