@@ -70,6 +70,12 @@
   --border-subtle: #e4e4e7;
   --border-default: #d4d4d8;
 
+  /* Property / Issue Status Tokens — reusable across pages */
+  --issue-open-bg: var(--color-error);
+  --issue-open-foreground: #ffffff;
+  --issue-resolved-color: var(--color-success);
+  --issue-pending-color: var(--color-warning);
+
   font-family: var(--font-display);
   line-height: 1.5;
   font-weight: 400;
@@ -319,16 +325,16 @@ body {
 
 /* Gold Button */
 .btn-gold {
-  background: linear-gradient(135deg, #fde047 0%, #eab308 100%);
-  color: #09090b;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   font-weight: 600;
   border: none;
   transition: all 0.2s ease;
 }
 
 .btn-gold:hover {
-  background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%);
-  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.4);
+  background: hsl(var(--gold-dark));
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
 }
 
 /* Dark section */

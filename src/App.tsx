@@ -259,6 +259,7 @@ function App() {
           <DashboardSidebar
             isSidebarOpen={isSidebarOpen}
             toggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+            handleLogout={handleLogout}
           />
           <DashboardHeader
             handleLogout={handleLogout}

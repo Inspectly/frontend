@@ -6,6 +6,8 @@ import {
   faShop,
   faBriefcase,
   faFileInvoiceDollar,
+  faComments,
+  faArrowRightFromBracket,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useMemo } from "react";
@@ -18,11 +20,25 @@ import logo from "@/assets/logo.png";
 interface DashboardSidebarProps {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  handleLogout?: () => void;
 }
+
+const navItemBase =
+  "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200";
+const navItemActive = "bg-gold-light text-gold";
+const navItemInactive = "text-gray-500 hover:bg-gray-100 hover:text-gray-900";
+
+const SectionLabel: React.FC<{ label: string }> = ({ label }) => (
+  <li className="pt-4 pb-1 px-3">
+    <span className="text-[10px] font-semibold tracking-widest uppercase text-gray-400">
+      {label}
+    </span>
+  </li>
+);
 
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
-  toggleSidebar: _toggleSidebar,
+  handleLogout,
 }) => {
   const location = useLocation();
   const activePage = location.pathname;
@@ -39,38 +55,46 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   const marketplaceLink = useMemo(() => {
     if (user?.user_type === "vendor" && vendor) {
-      const type = vendor.vendor_types?.split(',')[0]?.trim() || '';
-      const city = vendor.city || '';
+      const type = vendor.vendor_types?.split(",")[0]?.trim() || "";
+      const city = vendor.city || "";
       return `/marketplace?type=${encodeURIComponent(type)}&city=${encodeURIComponent(city)}`;
     }
     return "/marketplace";
   }, [user, vendor]);
 
+  const isVendor = isAuthReady && user?.user_type === "vendor";
+  const isClient = isAuthReady && user?.user_type === "client";
+
   return (
     <aside
       className={`fixed top-0 ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } w-[250px] h-screen z-30 bg-white border-r border-gray-200 transition-transform duration-300`}
+      } w-[250px] h-screen z-30 bg-white border-r border-gray-100 transition-transform duration-300 flex flex-col`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-3 border-b border-gray-100">
+      <div className="h-16 flex items-center px-3 border-b border-gray-100 shrink-0">
         <Link to="/dashboard" className="flex items-center gap-0.5 px-3">
           <img src={logo} alt="Inspectly" className="h-16 w-auto" />
-          <span className="text-lg font-medium text-foreground -ml-1">InspectlyAI</span>
-          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary rounded">Pro</span>
+          <span className="text-lg font-medium text-foreground -ml-1">
+            InspectlyAI
+          </span>
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary rounded">
+            Pro
+          </span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <div className="h-[calc(100vh-64px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-white px-3 py-4">
-        <ul className="flex flex-col h-full space-y-1">
+      <nav className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-white px-3 py-2">
+        <ul className="flex flex-col space-y-0.5">
+          {/* ── MAIN ── */}
+          <SectionLabel label="Main" />
+
           <li>
             <Link
               to="/dashboard"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+              className={`${navItemBase} ${
+                activePage === "/dashboard" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faChalkboard} className="mr-3 w-4" />
@@ -78,14 +102,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           </li>
 
-          {isAuthReady && user?.user_type === "vendor" && (
+          {isVendor && (
             <li>
               <Link
                 to="/vendor/jobs"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage === "/vendor/jobs"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-foreground hover:text-background"
+                className={`${navItemBase} ${
+                  activePage === "/vendor/jobs" ? navItemActive : navItemInactive
                 }`}
               >
                 <FontAwesomeIcon icon={faBriefcase} className="mr-3 w-4" />
@@ -97,10 +119,8 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <li>
             <Link
               to="/listings"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/listings"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+              className={`${navItemBase} ${
+                activePage.startsWith("/listings") ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
@@ -108,14 +128,12 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           </li>
 
-          {user?.user_type === "client" && (
+          {isClient && (
             <li>
               <Link
                 to="/offers"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage === "/offers"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-foreground hover:text-background"
+                className={`${navItemBase} ${
+                  activePage === "/offers" ? navItemActive : navItemInactive
                 }`}
               >
                 <FontAwesomeIcon icon={faFileInvoiceDollar} className="mr-3 w-4" />
@@ -126,11 +144,24 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           <li>
             <Link
+              to="/chat"
+              className={`${navItemBase} ${
+                activePage === "/chat" ? navItemActive : navItemInactive
+              }`}
+            >
+              <FontAwesomeIcon icon={faComments} className="mr-3 w-4" />
+              <span>Chat</span>
+            </Link>
+          </li>
+
+          {/* ── SUPPORT ── */}
+          <SectionLabel label="Support" />
+
+          <li>
+            <Link
               to="/dashboard/faqs"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/faqs"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+              className={`${navItemBase} ${
+                activePage === "/dashboard/faqs" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faCircleQuestion} className="mr-3 w-4" />
@@ -141,26 +172,23 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <li>
             <Link
               to="/dashboard/termsandconditions"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+              className={`${navItemBase} ${
                 activePage === "/dashboard/termsandconditions"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+                  ? navItemActive
+                  : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />
-              <span>Terms & Conditions</span>
+              <span>Terms</span>
             </Link>
           </li>
 
-          {/* Spacer to push marketplace to bottom */}
-          <li className="flex-1" aria-hidden="true"></li>
-
-          {/* Marketplace button for vendors - gold accent */}
-          {isAuthReady && user?.user_type === "vendor" && (
-            <li className="pt-4">
+          {/* Vendor marketplace */}
+          {isVendor && (
+            <li className="pt-3">
               <Link
                 to={marketplaceLink}
-                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-white hover:bg-foreground hover:text-background"
+                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-white hover:bg-gold-dark"
               >
                 <FontAwesomeIcon icon={faShop} className="mr-2 w-4" />
                 <span>Marketplace</span>
@@ -168,7 +196,23 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </li>
           )}
         </ul>
-      </div>
+      </nav>
+
+      {/* Log Out */}
+      {handleLogout && (
+        <div className="px-3 py-4 border-t border-gray-100 shrink-0">
+          <button
+            onClick={handleLogout}
+            className={`${navItemBase} w-full text-gray-500 hover:bg-gray-100 hover:text-gray-900`}
+          >
+            <FontAwesomeIcon
+              icon={faArrowRightFromBracket}
+              className="mr-3 w-4"
+            />
+            <span>Log Out</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 };
