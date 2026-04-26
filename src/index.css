@@ -525,6 +525,15 @@ body {
   .animate-scale-in {
     animation: scaleIn 0.4s ease-out forwards;
   }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes float {

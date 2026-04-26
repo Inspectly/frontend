@@ -8,8 +8,6 @@ import {
   faCheckCircle,
   faTimesCircle,
   faSearch,
-  faEnvelope,
-  faStar,
   faChevronDown,
   faPlus,
   faChevronRight,
@@ -488,81 +486,6 @@ const VendorJobsPage: React.FC = () => {
           Find Jobs
           <FontAwesomeIcon icon={faChevronRight} className="w-3 h-3" />
         </button>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-        <div 
-          onClick={() => setActiveTab("active")}
-          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
-        >
-          <div className="absolute top-3 right-3">
-            <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-              <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 text-blue-500" />
-            </div>
-          </div>
-          <div className="text-sm font-medium text-gray-600 mb-1">Active</div>
-          <div className="text-3xl font-bold text-gray-900">{stats.activeCount}</div>
-          <div className="text-sm text-gray-500 mt-1">
-            ${stats.activeRevenue.toLocaleString()} Value
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setActiveTab("completed")}
-          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
-        >
-          <div className="absolute top-3 right-3">
-            <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center">
-              <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3 text-emerald-500" />
-            </div>
-          </div>
-          <div className="text-sm font-medium text-gray-600 mb-1">Completed</div>
-          <div className="text-3xl font-bold text-gray-900">{stats.completedCount}</div>
-          <div className="text-sm text-gray-500 mt-1">
-            ${stats.completedRevenue.toLocaleString()} Earned
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setActiveTab("pending")}
-          className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative"
-        >
-          <div className="absolute top-3 right-3">
-            <div className="w-6 h-6 rounded-full bg-gold-200 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-gold"></div>
-            </div>
-          </div>
-          <div className="text-sm font-medium text-gray-600 mb-1">Pending Offers</div>
-          <div className="text-3xl font-bold text-gray-900">{stats.pendingCount}</div>
-          <div className="text-sm text-gray-500 mt-1">
-            ${stats.potentialRevenue.toLocaleString()} Potential
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative">
-          <div className="absolute top-3 right-3">
-            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
-              <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-gray-500" />
-            </div>
-          </div>
-          <div className="text-sm font-medium text-gray-600 mb-1">Total Bids</div>
-          <div className="text-3xl font-bold text-gray-900">{stats.totalOffers}</div>
-          <div className="text-sm text-gray-500 mt-1">All Time</div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 relative">
-          <div className="absolute top-3 right-3">
-            <FontAwesomeIcon icon={faStar} className="w-5 h-5 text-gold" />
-          </div>
-          <div className="text-sm font-medium text-gray-600 mb-1">Win Rate</div>
-          <div className="text-3xl font-bold text-gray-900">
-            {stats.totalOffers > 0
-              ? Math.round(((stats.activeCount + stats.completedCount) / stats.totalOffers) * 100)
-              : 0}%
-          </div>
-          <div className="text-sm text-gray-500 mt-1">Success Rate</div>
-        </div>
       </div>
 
       {/* Filters and Search */}

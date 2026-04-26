@@ -28,6 +28,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import RealtorDashboard from "./pages/RealtorDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorJobsPage from "./pages/VendorJobsPage";
+import VendorEarnings from "./pages/VendorEarnings";
+import VendorReviews from "./pages/VendorReviews";
 import { getUserById } from "./features/api/usersApi";
 import Marketplace from "./pages/Marketplace";
 import MarketplaceIssue from "./pages/MarketplaceIssue";
@@ -43,6 +45,8 @@ import Footer from "./components/Footer";
 import LandingNavbar from "./components/landing/LandingNavbar";
 import FAQ from "./pages/FAQ";
 import About from "./pages/About";
+import Terms from "./pages/Terms";
+import SettingsPage from "./pages/Settings";
 
 function App() {
   const location = useLocation();
@@ -52,6 +56,8 @@ function App() {
     const pathMap: Record<string, string> = {
       '/': 'Dashboard',
       '/dashboard': 'Dashboard',
+      '/dashboard/faq': 'FAQs',
+      '/dashboard/terms': 'Terms & Conditions',
       '/marketplace': 'Marketplace',
       '/listings': 'Properties',
       '/offers': 'Offers',
@@ -59,6 +65,9 @@ function App() {
       '/issues': 'Issues',
       '/pricing': 'Pricing',
       '/vendor/jobs': 'Jobs',
+      '/vendor/earnings': 'Earnings',
+      '/vendor/reviews': 'Reviews',
+      '/settings': 'Settings',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -278,6 +287,10 @@ function App() {
                 element={<PrivateRoute element={getDashboardComponent()} />}
               />
               <Route
+                path="/dashboard/terms"
+                element={<PrivateRoute element={<Terms />} />}
+              />
+              <Route
                 path="/pricing"
                 element={
                   <PrivateRoute element={<PriceSection plans={plans} />} />
@@ -304,6 +317,14 @@ function App() {
                 element={<PrivateRoute element={<VendorJobsPage />} />}
               />
               <Route
+                path="/vendor/earnings"
+                element={<PrivateRoute element={<VendorEarnings />} />}
+              />
+              <Route
+                path="/vendor/reviews"
+                element={<PrivateRoute element={<VendorReviews />} />}
+              />
+              <Route
                 path="/listings/:listingId"
                 element={<PrivateRoute element={<Reports />} />}
               />
@@ -318,6 +339,14 @@ function App() {
               <Route
                 path="/listings/:listingId/reports/:reportId/review"
                 element={<PrivateRoute element={<ReportReviewPage />} />}
+              />
+              <Route
+                path="/settings"
+                element={<PrivateRoute element={<SettingsPage userType={userType} />} />}
+              />
+              <Route
+                path="/dashboard/faq"
+                element={<PrivateRoute element={<FAQ />} />}
               />
               <Route
                 path="*"
@@ -336,8 +365,8 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/contact" element={<Contact />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/terms" element={<Terms />} />
             <Route path="/about" element={<About />} />
           </Routes>
           <Footer />

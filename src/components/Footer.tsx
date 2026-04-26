@@ -6,7 +6,7 @@ const Footer = () => {
   const navigate = useNavigate();
   const mainLinks = [
     { label: "About Us", action: () => navigate("/about") },
-    { label: "FAQ", action: () => navigate("/signup") },
+    { label: "FAQ", action: () => navigate("/faq") },
     { label: "Contact", action: () => navigate("/contact") },
   ];
 
@@ -16,8 +16,8 @@ const Footer = () => {
   ];
 
   const legalLinks = [
-    { label: "Privacy Policy", action: () => navigate("/signup") },
-    { label: "Terms of Service", action: () => navigate("/signup") },
+    { label: "Privacy Policy", action: () => navigate("/terms") },
+    { label: "Terms & Conditions", action: () => navigate("/terms") },
   ];
 
   const socialLinks = [
