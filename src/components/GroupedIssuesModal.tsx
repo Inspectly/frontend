@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from "react";
+import { MapPin } from "lucide-react";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
   faXmark,
-  faMapMarkerAlt,
   faExclamationTriangle, 
   faExclamationCircle, 
   faInfoCircle,
@@ -161,28 +162,28 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
       aria-modal="true"
     >
       <div className="relative w-full max-w-7xl h-[90vh] p-4">
-        <div className="relative bg-white rounded-lg shadow-lg h-full flex flex-col">
+        <div className="relative bg-card rounded-lg shadow-lg h-full flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b rounded-t">
             <div>
               {/* Show address only when at least one issue has a vendor assigned */}
               {issues.some(i => i.vendor_id) ? (
                 <>
-                  <h3 className="text-2xl font-semibold text-gray-900">
+                  <h3 className="text-2xl font-semibold text-foreground">
                     Issues on {getStreetName(address.address)}
                   </h3>
-                  <p className="text-gray-600 mt-1">
-                    <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
+                  <p className="text-muted-foreground mt-1">
+                    <MapPin className="w-3.5 h-3.5 mr-1.5 inline flex-shrink-0" />
                     {address.city}, {address.state}
                   </p>
                 </>
               ) : (
                 <>
-                  <h3 className="text-2xl font-semibold text-gray-900">
+                  <h3 className="text-2xl font-semibold text-foreground">
                     Issues at this Property
                   </h3>
-                  <p className="text-gray-400 mt-1 italic">
-                    <FontAwesomeIcon icon={faMapMarkerAlt} className="mr-2" />
+                  <p className="text-muted-foreground mt-1 italic">
+                    <MapPin className="w-3.5 h-3.5 mr-1.5 inline flex-shrink-0" />
                     Address visible after offer accepted
                   </p>
                 </>
@@ -190,7 +191,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-900 rounded-lg text-sm w-8 h-8 flex items-center justify-center hover:bg-gray-200"
+              className="text-muted-foreground hover:text-foreground rounded-lg text-sm w-8 h-8 flex items-center justify-center hover:bg-muted"
             >
               <FontAwesomeIcon icon={faXmark} />
             </button>
@@ -199,11 +200,11 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
           {/* Main Content */}
           <div className="flex-1 flex overflow-hidden">
             {/* Left Panel - Issues List */}
-            <div className="w-1/3 border-r bg-gray-50 flex flex-col">
+            <div className="w-1/3 border-r border-border bg-muted/40 flex flex-col">
               {/* Issues List Header */}
-              <div className="p-4 border-b bg-white">
+              <div className="p-4 border-b border-border bg-card">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-lg font-medium text-gray-900">
+                  <h4 className="text-lg font-medium text-foreground">
                     Issues ({issues.length})
                   </h4>
                   <button
@@ -213,7 +214,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                     {selectedIssueIds.size === issues.length ? 'Deselect All' : 'Select All'}
                   </button>
                 </div>
-                <p className="text-sm text-gray-600 h-5">
+                <p className="text-sm text-muted-foreground h-5">
                   {selectedIssueIds.size > 0 
                     ? `${selectedIssueIds.size} issue${selectedIssueIds.size > 1 ? 's' : ''} selected`
                     : '\u00A0' /* Non-breaking space to maintain height */
@@ -234,7 +235,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       className={`p-4 border-b cursor-pointer transition-colors ${
                         isDisplayed 
                           ? 'bg-gold-50 border-l-4 border-l-gold' 
-                          : 'hover:bg-gray-100'
+                          : 'hover:bg-muted'
                       }`}
                       onClick={() => handleIssueClick(issue.id)}
                     >
@@ -248,7 +249,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                           className={`mt-1 w-5 h-5 border-2 rounded flex items-center justify-center transition-all ${
                             isSelected 
                               ? 'bg-gray-900 border-gray-900 text-white hover:bg-gray-800' 
-                              : 'border-gray-500 hover:border-gold bg-white'
+                              : 'border-border hover:border-gold bg-card'
                           }`}
                         >
                           {isSelected && (
@@ -266,17 +267,17 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                             </span>
                             <div className="flex items-center gap-1">
                               <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
-                              <span className="text-xs text-gray-600 capitalize">
+                              <span className="text-xs text-muted-foreground capitalize">
                                 {issue.severity || 'Medium'}
                               </span>
-                            </div>
+                          </div>
                           </div>
                           
-                          <h5 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2">
+                          <h5 className="font-medium text-foreground text-sm line-clamp-2 mb-2">
                             {issue.summary}
                           </h5>
                           
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <FontAwesomeIcon icon={faClock} />
                             <span>
                               {formatRelativeTime(issue.created_at)}
@@ -307,11 +308,11 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                             icon={getSeverityIcon(currentIssue.severity).icon} 
                             className={getSeverityIcon(currentIssue.severity).color} 
                           />
-                          <span className="text-sm text-gray-600 capitalize">
+                          <span className="text-sm text-muted-foreground capitalize">
                             {currentIssue.severity || 'Medium'} Severity
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <FontAwesomeIcon icon={faClock} />
                           <span>
                             {formatRelativeTime(currentIssue.created_at)}
@@ -319,7 +320,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                         </div>
                       </div>
                       
-                      <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                      <h2 className="text-xl font-semibold text-foreground mb-2">
                         {currentIssue.summary}
                       </h2>
                     </div>
@@ -335,14 +336,14 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                       } else if (raw) {
                         imageList = [raw];
                       }
-                      if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
+                      if (imageList.length === 0) imageList = [PROPERTY_FALLBACK_IMAGE];
 
                       return (
                         <div className="mb-6">
                           <div className="rounded-lg overflow-hidden">
                             <ImageComponent
                               src={imageList[0]}
-                              fallback="/images/property_card_holder.jpg"
+                              fallback={PROPERTY_FALLBACK_IMAGE}
                               className="w-full h-64 object-cover"
                             />
                           </div>
@@ -369,15 +370,15 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
 
                     {/* Issue Description - moved above details grid */}
                     <div className="mb-6">
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">Description</h3>
-                      <p className="text-gray-700 leading-relaxed">
+                      <h3 className="text-lg font-medium text-foreground mb-3">Description</h3>
+                      <p className="text-muted-foreground leading-relaxed">
                         {currentIssue.description || 'No description provided.'}
                       </p>
                     </div>
 
                     {/* Issue Details Grid - status, severity, type as compact badges */}
                     <div className="flex items-center gap-2 flex-wrap mb-4">
-                      <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg border border-gray-200">
+                      <span className="px-3 py-1.5 bg-muted text-muted-foreground text-xs font-medium rounded-lg border border-border">
                         {normalizeAndCapitalize(currentIssue.type)}
                       </span>
                       <span className="px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg border border-blue-200 capitalize">
@@ -393,22 +394,22 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                     </div>
                     <div className={`grid ${currentIssue.vendor_id ? 'grid-cols-2' : 'grid-cols-1'} gap-4 mb-6`}>
                       {currentIssue.vendor_id && (
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                          <h4 className="font-medium text-gray-900 mb-1">Cost Estimate</h4>
-                          <p className="text-gray-700">{currentIssue.cost || 'Not specified'}</p>
+                        <div className="bg-muted/40 p-4 rounded-lg">
+                          <h4 className="font-medium text-foreground mb-1">Cost Estimate</h4>
+                          <p className="text-muted-foreground">{currentIssue.cost || 'Not specified'}</p>
                         </div>
                       )}
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <h4 className="font-medium text-gray-900 mb-1">Created</h4>
-                        <p className="text-gray-700">{new Date(currentIssue.created_at).toLocaleDateString()}</p>
+                      <div className="bg-muted/40 p-4 rounded-lg">
+                        <h4 className="font-medium text-foreground mb-1">Created</h4>
+                        <p className="text-muted-foreground">{new Date(currentIssue.created_at).toLocaleDateString()}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="border-t bg-gray-50 p-6">
+                  <div className="border-t border-border bg-muted/40 p-6">
                     <div className="flex items-center justify-between">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         {selectedIssueIds.size > 0 ? (
                           <>Actions will be applied to {selectedIssueIds.size} selected issue{selectedIssueIds.size > 1 ? 's' : ''}</>
                         ) : (
@@ -445,13 +446,13 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
       {/* Offer Submission Modal */}
       {isOfferModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
+          <div className="bg-card p-6 rounded-lg shadow-md w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">
               Submit Offer for {selectedIssueIds.size} Issue{selectedIssueIds.size > 1 ? 's' : ''}
             </h2>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Offer Amount ($)
               </label>
               <input
@@ -464,19 +465,19 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                 min="1"
                 step="0.01"
                 placeholder="Enter your offer amount"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-gold focus:border-gold"
+                className="w-full border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:ring-2 focus:ring-gold focus:border-gold"
               />
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Comment (Optional)
               </label>
               <textarea
                 value={offerComment}
                 onChange={(e) => setOfferComment(e.target.value)}
                 placeholder="Add a comment for the client..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gold focus:border-gold"
+                className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:ring-2 focus:ring-gold focus:border-gold"
                 rows={3}
               />
             </div>
@@ -485,7 +486,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
               <p className="text-red-600 text-sm mb-4">{offerError}</p>
             )}
 
-            <div className="text-sm text-gray-600 mb-4">
+            <div className="text-sm text-muted-foreground mb-4">
               <p>You are submitting offers for:</p>
               <ul className="list-disc list-inside mt-1">
                 {Array.from(selectedIssueIds).map(issueId => {
@@ -507,7 +508,7 @@ const GroupedIssuesModal: React.FC<GroupedIssuesModalProps> = ({
                   setOfferComment("");
                   setOfferError("");
                 }}
-                className={`text-sm px-4 py-2 rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                className={`text-sm px-4 py-2 rounded-lg border border-border text-foreground ${BUTTON_HOVER}`}
               >
                 Cancel
               </button>

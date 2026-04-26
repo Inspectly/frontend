@@ -1,17 +1,22 @@
 import { faCircleQuestion } from "@fortawesome/free-regular-svg-icons";
 import {
+  faArrowRightFromBracket,
   faChalkboard,
+  faCommentDots,
+  faFileInvoiceDollar,
   faInfo,
+  faLayerGroup,
   faListCheck,
   faShop,
-  faBriefcase,
-  faFileInvoiceDollar,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useMemo } from "react";
-import { useSelector } from "react-redux";
-import { Link, useLocation } from "react-router-dom";
-import { RootState } from "../store/store";
+import { useDispatch, useSelector } from "react-redux";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { auth } from "../../firebase";
+import { signOut } from "firebase/auth";
+import { logout, setLoading } from "../features/authSlice";
+import { AppDispatch, RootState } from "../store/store";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import logo from "@/assets/logo.png";
 
@@ -20,57 +25,90 @@ interface DashboardSidebarProps {
   toggleSidebar: () => void;
 }
 
+const SectionLabel = ({ label }: { label: string }) => (
+  <li className="px-3 pt-4 pb-1">
+    <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground/60">
+      {label}
+    </span>
+  </li>
+);
+
 const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
   isSidebarOpen,
-  toggleSidebar: _toggleSidebar,
-}) => {
+}: DashboardSidebarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
   const activePage = location.pathname;
 
   const user = useSelector((state: RootState) => state.auth.user);
-  const isAuthReady = useSelector(
-    (state: RootState) => state.auth.authenticated
-  );
+  const isAuthReady = useSelector((state: RootState) => state.auth.authenticated);
+  const isVendor = user?.user_type === "vendor";
 
   const { data: vendor } = useGetVendorByVendorUserIdQuery(
     String(user?.id),
-    { skip: !user?.id || user?.user_type !== "vendor" }
+    { skip: !user?.id || !isVendor }
   );
 
   const marketplaceLink = useMemo(() => {
-    if (user?.user_type === "vendor" && vendor) {
-      const type = vendor.vendor_types?.split(',')[0]?.trim() || '';
-      const city = vendor.city || '';
+    if (isVendor && vendor) {
+      const type = vendor.vendor_types?.split(",")[0]?.trim() || "";
+      const city = vendor.city || "";
       return `/marketplace?type=${encodeURIComponent(type)}&city=${encodeURIComponent(city)}`;
     }
     return "/marketplace";
-  }, [user, vendor]);
+  }, [isVendor, vendor]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("firebase_id");
+      dispatch(logout());
+      dispatch(setLoading(false));
+      navigate("/login");
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
+
+  // Active/inactive nav item classes — unified for all roles
+  const navItemActive = "bg-gold-light text-gold";
+  const navItemInactive =
+    "text-muted-foreground hover:bg-muted hover:text-foreground";
+  const navItemBase =
+    "flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200";
 
   return (
     <aside
       className={`fixed top-0 ${
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } w-[250px] h-screen z-30 bg-white border-r border-gray-200 transition-transform duration-300`}
+      } w-[250px] h-screen z-30 bg-background border-r border-border transition-transform duration-300`}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-3 border-b border-gray-100">
+      <div className="h-16 flex items-center px-3 border-b border-border">
         <Link to="/dashboard" className="flex items-center gap-0.5 px-3">
           <img src={logo} alt="Inspectly" className="h-16 w-auto" />
-          <span className="text-lg font-medium text-foreground -ml-1">InspectlyAI</span>
-          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary rounded">Pro</span>
+          <span className="text-lg font-medium text-foreground -ml-1">
+            InspectlyAI
+          </span>
+          <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-primary/10 text-primary rounded">
+            Pro
+          </span>
         </Link>
       </div>
 
       {/* Navigation */}
-      <div className="h-[calc(100vh-64px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-white px-3 py-4">
-        <ul className="flex flex-col h-full space-y-1">
+      <div className="h-[calc(100vh-64px)] flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-background px-3 py-2">
+        <ul className="flex flex-col flex-1 space-y-0.5">
+          {/* MAIN section */}
+          <SectionLabel label="Main" />
+
           <li>
             <Link
               to="/dashboard"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+              className={`${navItemBase} ${
+                activePage === "/dashboard" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faChalkboard} className="mr-3 w-4" />
@@ -78,59 +116,86 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
             </Link>
           </li>
 
-          {isAuthReady && user?.user_type === "vendor" && (
-            <li>
-              <Link
-                to="/vendor/jobs"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage === "/vendor/jobs"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-foreground hover:text-background"
-                }`}
-              >
-                <FontAwesomeIcon icon={faBriefcase} className="mr-3 w-4" />
-                <span>Jobs</span>
-              </Link>
-            </li>
+          {isAuthReady && isVendor && (
+            <>
+              <li>
+                <Link
+                  to={marketplaceLink}
+                  className={`${navItemBase} ${
+                    activePage === "/marketplace" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faShop} className="mr-3 w-4" />
+                  <span>Find Jobs</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/vendor/jobs"
+                  className={`${navItemBase} ${
+                    activePage === "/vendor/jobs" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faLayerGroup} className="mr-3 w-4" />
+                  <span>My Projects</span>
+                </Link>
+              </li>
+            </>
           )}
 
-          <li>
-            <Link
-              to="/listings"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/listings"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
-              }`}
-            >
-              <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
-              <span>Properties</span>
-            </Link>
-          </li>
+          {!isVendor && (
+            <>
+              <li>
+                <Link
+                  to="/listings"
+                  className={`${navItemBase} ${
+                    activePage === "/listings" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
+                  <span>Properties</span>
+                </Link>
+              </li>
 
-          {user?.user_type === "client" && (
-            <li>
-              <Link
-                to="/offers"
-                className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  activePage === "/offers"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-foreground hover:text-background"
-                }`}
-              >
-                <FontAwesomeIcon icon={faFileInvoiceDollar} className="mr-3 w-4" />
-                <span>Offers</span>
-              </Link>
-            </li>
+              {user?.user_type === "client" && (
+                <li>
+                  <Link
+                    to="/offers"
+                    className={`${navItemBase} ${
+                      activePage === "/offers" ? navItemActive : navItemInactive
+                    }`}
+                  >
+                    <FontAwesomeIcon
+                      icon={faFileInvoiceDollar}
+                      className="mr-3 w-4"
+                    />
+                    <span>Offers</span>
+                  </Link>
+                </li>
+              )}
+
+              <li>
+                <Link
+                  to="/chat"
+                  className={`${navItemBase} ${
+                    activePage === "/chat" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faCommentDots} className="mr-3 w-4" />
+                  <span>Chat</span>
+                </Link>
+              </li>
+            </>
           )}
+
+          {/* SUPPORT section */}
+          <SectionLabel label="Support" />
 
           <li>
             <Link
               to="/dashboard/faqs"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                activePage === "/dashboard/faqs"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+              className={`${navItemBase} ${
+                activePage === "/dashboard/faqs" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faCircleQuestion} className="mr-3 w-4" />
@@ -141,32 +206,33 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
           <li>
             <Link
               to="/dashboard/termsandconditions"
-              className={`flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+              className={`${navItemBase} ${
                 activePage === "/dashboard/termsandconditions"
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-600 hover:bg-foreground hover:text-background"
+                  ? navItemActive
+                  : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />
-              <span>Terms & Conditions</span>
+              <span>Terms</span>
             </Link>
           </li>
 
-          {/* Spacer to push marketplace to bottom */}
-          <li className="flex-1" aria-hidden="true"></li>
+          {/* Spacer */}
+          <li className="flex-1" aria-hidden="true" />
 
-          {/* Marketplace button for vendors - gold accent */}
-          {isAuthReady && user?.user_type === "vendor" && (
-            <li className="pt-4">
-              <Link
-                to={marketplaceLink}
-                className="flex items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition-all duration-200 bg-gold text-white hover:bg-foreground hover:text-background"
-              >
-                <FontAwesomeIcon icon={faShop} className="mr-2 w-4" />
-                <span>Marketplace</span>
-              </Link>
-            </li>
-          )}
+          {/* Log Out */}
+          <li className="pb-2 border-t border-border pt-2">
+            <button
+              onClick={handleLogout}
+              className={`w-full ${navItemBase} ${navItemInactive}`}
+            >
+              <FontAwesomeIcon
+                icon={faArrowRightFromBracket}
+                className="mr-3 w-4"
+              />
+              <span>Log Out</span>
+            </button>
+          </li>
         </ul>
       </div>
     </aside>

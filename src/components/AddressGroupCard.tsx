@@ -1,9 +1,10 @@
 import React, { useState } from "react";
+import { MapPin } from "lucide-react";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
   faChevronLeft, 
-  faChevronRight, 
-  faMapMarkerAlt,
+  faChevronRight,
   faExclamationTriangle, 
   faExclamationCircle, 
   faInfoCircle,
@@ -60,13 +61,13 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
     <>
     <div
       onClick={handleCardClick}
-      className={`group cursor-pointer border border-gray-200 rounded-xl overflow-hidden bg-white h-[350px] ${CARD_HOVER.LIFT}`}
+      className={`group cursor-pointer border border-border rounded-xl overflow-hidden bg-card h-[350px] ${CARD_HOVER.LIFT}`}
     >
       {/* Image Section - Top 3/4 */}
       <div className="h-3/4 overflow-hidden relative">
           <ImageComponent
-            src={currentIssue.image_urls?.[0] || "/images/property_card_holder.jpg"}
-            fallback="/images/property_card_holder.jpg"
+            src={currentIssue.image_urls?.[0] || PROPERTY_FALLBACK_IMAGE}
+            fallback={PROPERTY_FALLBACK_IMAGE}
             className="w-full h-full object-cover"
           />
         
@@ -158,10 +159,10 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
       <div className="h-1/4 p-4 flex flex-col justify-between">
         {/* Top Row: Summary and Days aligned horizontally */}
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-medium text-gray-900 text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
+          <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
             {currentIssue.summary}
           </h3>
-          <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
             <FontAwesomeIcon icon={faClock} className="text-gray-400" />
             <span>
               {formatRelativeTime(currentIssue.created_at)}
@@ -172,20 +173,16 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
         {/* Bottom Row: City, Severity, Rating */}
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-gray-600">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
               <span>{address.city}</span>
             </div>
             <div className="flex items-center gap-1">
               <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
-              <span className="text-gray-600 capitalize">
+              <span className="text-muted-foreground capitalize">
                 {currentIssue.severity || 'Medium'}
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-yellow-500">★</span>
-            <span className="font-medium text-gray-700">4.97</span>
           </div>
         </div>
       </div>

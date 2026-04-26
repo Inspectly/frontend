@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { MapPin } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store/store";
@@ -23,7 +24,6 @@ import {
   faSort,
   faCheckCircle,
   faClipboardList,
-  faMapMarkerAlt,
   faRocket,
   faArrowRight,
   faHome,
@@ -757,7 +757,7 @@ const Offers: React.FC = () => {
                         </div>
                         {listing && issue.vendor_id && (
                           <div className="flex items-center gap-1 text-sm text-gray-500">
-                            <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
                             <span className="truncate">{listing.address}</span>
                           </div>
                         )}

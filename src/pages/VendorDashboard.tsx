@@ -3,33 +3,10 @@ import { useNavigate, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
-  faBolt,
-  faBriefcase,
-  faBuilding,
-  faBroom,
-  faCalendarCheck,
-  faCheck,
-  faCheckCircle,
-  faChevronLeft,
   faChevronRight,
-  faClock,
-  faFire,
-  faGripLines,
-  faHammer,
-  faHouse,
-  faLayerGroup,
-  faLeaf,
-  faListUl,
-  faPaintRoller,
-  faQuestionCircle,
   faRocket,
   faSearch,
-  faSnowflake,
   faTimes,
-  faTint,
-  faTrophy,
-  faWind,
-  faWrench,
 } from "@fortawesome/free-solid-svg-icons";
 import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment } from "../types";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
@@ -38,50 +15,29 @@ import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
-import ImageComponent from "../components/ImageComponent";
+import DashboardStatCard from "../components/dashboard/DashboardStatCard";
+import CardSectionHeader from "../components/dashboard/CardSectionHeader";
+import PropertyThumbnail from "../components/dashboard/PropertyThumbnail";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
+import { getRelativeTime } from "../utils/dateUtils";
 import IssueDetails from "../components/IssueDetails";
-import { faCalendarAlt, faMapMarkerAlt } from "@fortawesome/free-solid-svg-icons";
+import { Briefcase, Calendar, CalendarCheck, MapPin, Star, TrendingUp, Zap } from "lucide-react";
 
-// Issue type icons mapping
-const issueIcons: Record<string, any> = {
-  general: faWrench,
-  structural: faBuilding,
-  electrician: faBolt,
-  electrical: faBolt,
-  plumber: faTint,
-  plumbing: faTint,
-  painter: faPaintRoller,
-  painting: faPaintRoller,
-  cleaner: faBroom,
-  hvac: faWind,
-  roofing: faHouse,
-  insulation: faSnowflake,
-  drywall: faGripLines,
-  plaster: faLayerGroup,
-  carpentry: faHammer,
-  landscaping: faLeaf,
-  other: faQuestionCircle,
+
+// Static lookup: vendor type → matching issue type keywords
+const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
+  electrician: ['electrical', 'electrician', 'electric', 'wiring'],
+  plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
+  painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
+  hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
+  roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
+  carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
+  landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
+  cleaner: ['cleaning', 'cleaner', 'janitorial'],
+  general: ['general', 'other', 'misc', 'interior', 'exterior'],
 };
 
-function pickIcon(type?: string) {
-  const key = String(type || "").toLowerCase();
-  return issueIcons[key] || faWrench;
-}
-
-// Helper to get relative time string
-function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return '1d ago';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
-}
 
 interface DashboardProps {
   user: User;
@@ -91,8 +47,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
   
   // UI State
-  const [activeTab, setActiveTab] = useState<"priority" | "new" | "bidding" | "visits">("priority");
-  const [projectSlide, setProjectSlide] = useState(0);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
     return localStorage.getItem('vendor_welcome_banner_dismissed') !== 'true';
   });
@@ -222,8 +176,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       return issue && issue.status !== "Status.COMPLETED";
     }).length;
 
-    // Calculate earnings this month
+    // Calculate earnings this month and this week
     const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
     const thisMonth = acceptedOffers
       .filter(o => {
         const issue = issuesMap[o.issue_id];
@@ -233,11 +189,21 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       })
       .reduce((sum, o) => sum + (o.price || 0), 0);
 
+    const thisWeek = acceptedOffers
+      .filter(o => {
+        const issue = issuesMap[o.issue_id];
+        if (!issue) return false;
+        const created = new Date(issue.created_at || '');
+        return created >= weekAgo;
+      })
+      .reduce((sum, o) => sum + (o.price || 0), 0);
+
     return {
       activeJobs,
       completedJobs,
       totalEarnings,
       thisMonthEarnings: thisMonth,
+      thisWeekEarnings: thisWeek,
       pendingBids: pendingOffers.length,
       totalBids: vendorOffers.length,
       acceptedCount: acceptedOffers.length,
@@ -245,18 +211,15 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     };
   }, [vendorOffers, issuesMap]);
 
-  // Mapping from vendor types to issue types they can handle
-  const vendorToIssueTypeMap: Record<string, string[]> = {
-    electrician: ['electrical', 'electrician', 'electric', 'wiring'],
-    plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
-    painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
-    hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
-    roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
-    carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
-    landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
-    cleaner: ['cleaning', 'cleaner', 'janitorial'],
-    general: ['general', 'other', 'misc', 'interior', 'exterior'],
-  };
+  // Marketplace link with vendor type/city pre-filled
+  const marketplaceLink = useMemo(() => {
+    if (vendor) {
+      const type = vendor.vendor_types?.split(",")[0]?.trim() || "";
+      const city = vendor.city || "";
+      return `/marketplace?type=${encodeURIComponent(type)}&city=${encodeURIComponent(city)}`;
+    }
+    return "/marketplace";
+  }, [vendor]);
 
   // Get vendor specialties for filtering
   const vendorSpecialties = useMemo(() => {
@@ -269,7 +232,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       // Add the original type
       expanded.add(type);
       // Add mapped issue types
-      const mappedTypes = vendorToIssueTypeMap[type] || [];
+      const mappedTypes = VENDOR_TO_ISSUE_TYPE_MAP[type] || [];
       mappedTypes.forEach(t => expanded.add(t));
     });
     
@@ -292,8 +255,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }>
   >([]);
   
-  // Track which filter mode is active for showing appropriate banner
-  const [filterMode, setFilterMode] = useState<"exact" | "specialty_only" | "city_only" | "all">("exact");
 
   // Helper to check if issue matches vendor specialty
   const matchesSpecialty = (issue: IssueType) => {
@@ -321,37 +282,31 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       
       // Try different filter combinations with fallbacks
       let filtered: IssueType[] = [];
-      let mode: "exact" | "specialty_only" | "city_only" | "all" = "exact";
       
       // 1. Best match: specialty + city
       const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
       
       if (exactMatch.length > 0) {
         filtered = exactMatch;
-        mode = "exact";
       } else {
         // 2. Fallback A: specialty only (any location)
         const specialtyOnly = available.filter((i) => matchesSpecialty(i));
         
         if (specialtyOnly.length > 0) {
           filtered = specialtyOnly;
-          mode = "specialty_only";
         } else {
           // 3. Fallback B: city only (any specialty)
           const cityOnly = available.filter((i) => matchesCity(i));
           
           if (cityOnly.length > 0) {
             filtered = cityOnly;
-            mode = "city_only";
           } else {
             // 4. Fallback C: show all available
             filtered = available;
-            mode = "all";
           }
         }
       }
       
-      setFilterMode(mode);
       
       // Sort by severity for Priority List (high → medium → low)
       const sortedBySeverity = [...filtered].sort((a, b) => {
@@ -410,19 +365,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       .filter((j) => j.issue && j.issue.status !== "Status.COMPLETED");
   }, [vendorOffers, issuesMap, listingsMap]);
 
-  // Pending bids
-  const pendingBids = useMemo(() => {
-    return vendorOffers
-      .filter((o) => o.status === IssueOfferStatus.RECEIVED)
-      .map((o) => {
-        const issue = issuesMap[o.issue_id];
-        const listing = issue ? listingsMap[issue.listing_id] : undefined;
-        return { offer: o, issue, listing };
-      })
-      .filter((b) => b.issue);
-  }, [vendorOffers, issuesMap, listingsMap]);
-
-
   // Count available jobs matching vendor specialty
   const availableCount = useMemo(() => {
     if (!issues) return 0;
@@ -445,41 +387,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     return new Set(vendorOffers.map(o => o.issue_id));
   }, [vendorOffers]);
 
-  // Pending bids count (we don't have expiry dates currently)
-  const pendingBidsCount = pendingBids.length;
-
-  // Recent activity - derived from actual offers/jobs data
-  const recentActivity = useMemo(() => {
-    const activities: Array<{ id: number; action: string; category: string; time: string }> = [];
-    
-    // Add accepted offers as activity
-    vendorOffers
-      .filter(o => o.status === IssueOfferStatus.ACCEPTED)
-      .slice(0, 3)
-      .forEach((offer) => {
-        const issue = issuesMap[offer.issue_id];
-        if (issue) {
-          activities.push({
-            id: offer.id,
-            action: `Quote accepted for ${issue.summary || normalizeAndCapitalize(issue.type || '')}`,
-            category: normalizeAndCapitalize(issue.type || 'Job'),
-            time: offer.updated_at ? getRelativeTime(new Date(offer.updated_at)) : 'Recently',
-          });
-        }
-      });
-    
-    return activities;
-  }, [vendorOffers, issuesMap]);
-
-  // Project slideshow auto-rotate (sliding window - shows 2 items, slides by 1)
-  useEffect(() => {
-    if (activeJobs.length <= 2) return;
-    const maxSlide = activeJobs.length - 2;
-    const timer = setInterval(() => {
-      setProjectSlide((prev) => (prev >= maxSlide ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [activeJobs.length]);
 
   // Process ALL assessments (including client counter-proposals) into categorized visits - GROUPED BY ISSUE
   // NOTE: This useMemo must be BEFORE any early returns to comply with Rules of Hooks
@@ -593,23 +500,37 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   }, [allAssessments, issuesMap, listingsMap, user.id]);
 
   // Count issues with visits needing action (not individual assessments)
-  const actionRequiredCount = processedVisits.filter(v => v.category === "action_required").length;
-  const confirmedVisitsCount = processedVisits.filter(v => v.category === "confirmed").length;
+
+  // Today's confirmed schedule
+  const todaysSchedule = useMemo(() => {
+    const today = new Date();
+    return processedVisits
+      .filter(v => {
+        if (v.category !== "confirmed") return false;
+        const d = v.startTime;
+        return (
+          d.getDate() === today.getDate() &&
+          d.getMonth() === today.getMonth() &&
+          d.getFullYear() === today.getFullYear()
+        );
+      })
+      .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
+  }, [processedVisits]);
 
   // Loading/Error states - AFTER all hooks
   if (issuesError) return <p>Error loading dashboard data</p>;
   if (isVendorLoading) {
     return (
-      <div className="min-h-screen w-full bg-gray-100 p-6">
+      <div className="min-h-screen w-full bg-background p-6">
         <div className="w-full max-w-[1800px] mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-16 bg-gray-200 rounded-xl w-full"></div>
+            <div className="h-16 bg-muted rounded-xl w-full"></div>
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-28 bg-gray-200 rounded-xl"></div>
+                <div key={i} className="h-28 bg-muted rounded-xl"></div>
               ))}
             </div>
-            <div className="h-96 bg-gray-200 rounded-xl"></div>
+            <div className="h-96 bg-muted rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -619,108 +540,48 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   if (!vendor) return <p>Vendor not found.</p>;
 
   // Priority scoring for jobs (higher = more priority)
-  const getPriorityScore = (job: typeof marketplaceJobs[0]) => {
-    let score = 0;
-    
-    // High severity is more urgent
-    if (job.severity === 'high') score += 100;
-    else if (job.severity === 'medium') score += 50;
-    
-    // Fewer bids = better opportunity
-    if (job.bidCount === 0) score += 80; // Hot - be first!
-    else if (job.bidCount === 1) score += 40;
-    else if (job.bidCount === 2) score += 20;
-    // 3+ bids = harder to win, lower priority
-    
-    return score;
-  };
 
-  // Priority list items based on active tab
-  const getPriorityItems = () => {
-    switch (activeTab) {
-      case "new":
-        // Jobs created in the last 7 days, vendor hasn't bid on yet, sorted by newest
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        return marketplaceJobs
-          .filter(j => !alreadyBidOnIds.has(j.id)) // Haven't bid yet
-          .filter(j => {
-            if (!j.created_at) return false;
-            const createdDate = new Date(j.created_at);
-            return createdDate >= sevenDaysAgo;
-          })
-          .sort((a, b) => {
-            // Sort by newest first
-            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return dateB - dateA;
-          })
-          .slice(0, 5);
-      
-      case "bidding":
-        // Vendor's pending bids (max 5)
-        // Use offer.id for unique key, but store issue.id for navigation
-        return pendingBids.slice(0, 5).map(b => ({
-          id: b.offer.id, // Use offer ID for unique key
-          issueId: b.issue?.id || 0, // Store issue ID for navigation
-          type: b.issue?.type || "General",
-          summary: b.issue?.summary || "",
-          severity: b.issue?.severity || "medium",
-          bidCount: 1,
-          listing: b.listing,
-          isHot: false,
-          myBid: b.offer.price,
-        }));
-      
-      case "visits":
-        // Return visits data for special rendering
-        return processedVisits.slice(0, 5);
-      
-      default:
-        // Priority List: Jobs to bid on, ranked by opportunity (max 5)
-        // Exclude jobs already bid on, prioritize high severity + low competition
-        const availableJobs = marketplaceJobs
-          .filter(j => !alreadyBidOnIds.has(j.id)) // Haven't bid yet
-          .filter(j => j.bidCount < 3) // Still winnable (less than 3 bids)
-          .map(j => ({
-            ...j,
-            priorityScore: getPriorityScore(j),
-            isHot: j.severity === 'high' || j.bidCount === 0,
-          }))
-          .sort((a, b) => b.priorityScore - a.priorityScore) // Highest priority first
-          .slice(0, 5); // Limit to 5 items
-        
-        return availableJobs;
-    }
-  };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100">
-      <div className="w-full max-w-[1800px] mx-auto px-4 py-4 lg:px-6">
+    <div className="min-h-screen w-full bg-background">
+      <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
 
         {/* Greeting Header */}
-        <div className="flex items-center gap-3 mb-6">
-          {vendor?.profile_image_url ? (
-            <img src={vendor.profile_image_url} alt={vendor.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
-              {(vendor?.name || "V")[0].toUpperCase()}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            {vendor?.profile_image_url ? (
+              <img
+                src={vendor.profile_image_url}
+                alt={vendor.name}
+                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
+                {(vendor?.name || "V")[0].toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
+                {(() => {
+                  const hour = new Date().getHours();
+                  const firstName = vendor?.name?.split(/\s+/)[0] || "";
+                  if (hour >= 5 && hour < 12) return `Good morning, ${firstName}`;
+                  if (hour >= 12 && hour < 17) return `Good afternoon, ${firstName}`;
+                  return `Good evening, ${firstName}`;
+                })()}
+              </h1>
+              <p className="text-sm text-muted-foreground">Here's what's happening today</p>
             </div>
-          )}
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-display font-bold text-gray-900">
-              {(() => {
-                const hour = new Date().getHours();
-                const firstName = vendor?.name?.split(/\s+/)[0] || "";
-                if (hour >= 5 && hour < 12) return `Good morning, ${firstName}`;
-                if (hour >= 12 && hour < 17) return `Good afternoon, ${firstName}`;
-                if (hour >= 17 && hour < 21) return `Good evening, ${firstName}`;
-                return `Hello, ${firstName}`;
-              })()}
-            </h1>
-            <p className="text-sm text-gray-500">Here's what's happening today</p>
           </div>
+
+          {/* Browse Jobs CTA */}
+          <Link
+            to={marketplaceLink}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-sm flex-shrink-0"
+          >
+            <FontAwesomeIcon icon={faSearch} className="text-xs" />
+            <span>Browse Jobs</span>
+          </Link>
         </div>
         
         {/* New Vendor Welcome Banner */}
@@ -765,648 +626,284 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         )}
 
         {/* Top Stat Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* New Job Alert */}
-          <div 
-            onClick={() => { setActiveTab("new"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-gold">{availableCount}</span>
-              {availableCount > 0 && (
-                <span className="px-2 py-0.5 bg-gold-200 text-gold-700 text-xs font-bold rounded">
-                  hot <FontAwesomeIcon icon={faFire} className="ml-0.5" />
-                </span>
-              )}
-            </div>
-            <div className="text-sm font-semibold text-gray-900">New Job Alert</div>
-            {availableCount > 0 && (
-              <div className="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
-                <FontAwesomeIcon icon={faClock} className="w-3 h-3" />
-                Be first to bid
-              </div>
-            )}
-          </div>
-
-          {/* Active Jobs */}
-          <div 
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <DashboardStatCard
+            iconBg="bg-amber-100"
+            icon={<Briefcase className="w-4 h-4 text-amber-600" />}
+            value={vendorMetrics.activeJobs}
+            label="Active Projects"
             onClick={() => navigate("/vendor/jobs?tab=active")}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-gray-900">
-                {vendorMetrics.activeJobs > 0 ? vendorMetrics.activeJobs : "—"}
-              </span>
-              <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-            </div>
-            <div className="text-sm font-semibold text-gray-900">Active Jobs</div>
-            <div className="text-xs text-gray-500 mt-1">
-              {vendorMetrics.activeJobs > 0 
-                ? `$${activeJobs.reduce((sum, j) => sum + (j.offer.price || 0), 0).toLocaleString()} In Progress`
-                : "Win a bid to start"
-              }
-            </div>
-          </div>
-
-          {/* Jobs Bidding */}
-          <div 
-            onClick={() => { setActiveTab("bidding"); }}
-            className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-4xl font-bold text-gray-900">
-                {vendorMetrics.pendingBids > 0 ? vendorMetrics.pendingBids : "—"}
-              </span>
-              <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-            </div>
-            <div className="text-sm font-semibold text-gray-900">My Bids</div>
-            <div className="text-xs mt-1">
-              {pendingBidsCount > 0 ? (
-                <span className="text-gold">Awaiting response</span>
-              ) : (
-                <span className="text-gray-500">Place your first bid</span>
-              )}
-            </div>
-          </div>
-
-          {/* Earnings & Performance - Dark Card */}
-          <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl p-5 text-white shadow-lg">
-            <div className="text-sm font-medium text-gray-400 mb-3">Earnings & Performance</div>
-            {vendorMetrics.totalEarnings === 0 && vendorMetrics.thisMonthEarnings === 0 && vendorMetrics.outstandingBids === 0 ? (
-              // New vendor - show encouraging message
-              <div className="text-center py-2">
-                <div className="w-10 h-10 bg-gold/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <FontAwesomeIcon icon={faRocket} className="text-gold text-lg" />
-                </div>
-                <div className="text-base font-semibold text-white mb-1">Start Earning</div>
-                <div className="text-xs text-gray-400">Win your first bid to see your earnings here</div>
-              </div>
-            ) : (
-              // Existing vendor - show earnings
-              <>
-                <div className="flex justify-between items-start mb-3">
-                  <div className="text-left">
-                    <div className="text-2xl font-bold">${vendorMetrics.thisMonthEarnings.toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">This Month</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold">${vendorMetrics.totalEarnings.toLocaleString()}</div>
-                    <div className="text-xs text-gray-400">Year To Date</div>
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-gray-700 text-center">
-                  <div className="text-xl font-bold">${vendorMetrics.outstandingBids.toLocaleString()}</div>
-                  <div className="text-xs text-gray-400">Outstanding Bids</div>
-                </div>
-              </>
-            )}
-          </div>
+          />
+          <DashboardStatCard
+            iconBg="bg-emerald-100"
+            icon={<span className="text-emerald-600 font-bold text-sm">$</span>}
+            value={`$${vendorMetrics.thisMonthEarnings.toLocaleString()}`}
+            label="This Month"
+          />
+          <DashboardStatCard
+            iconBg="bg-orange-100"
+            icon={<Star className="w-4 h-4 text-orange-500" />}
+            value={vendor?.rating ? parseFloat(vendor.rating).toFixed(1) : "—"}
+            label="Avg. Rating"
+          />
+          <DashboardStatCard
+            iconBg="bg-blue-100"
+            icon={<Zap className="w-4 h-4 text-blue-600" />}
+            value={`${winRate}%`}
+            label="Win Rate"
+          />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-12 gap-6">
-          
-          {/* Left Column - Priority List */}
-          <div className="col-span-12 lg:col-span-8">
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              {/* Priority List Header with Tabs */}
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-4">
-                    {/* Tabs */}
-                    <button
-                      onClick={() => setActiveTab("priority")}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === "priority" 
-                          ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-foreground hover:text-background"
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faListUl} />
-                      Priority List
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("new")}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === "new" 
-                          ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-foreground hover:text-background"
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faBriefcase} />
-                      New Jobs
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("bidding")}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === "bidding" 
-                          ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-foreground hover:text-background"
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faClock} />
-                      My Bids
-                      {vendorMetrics.pendingBids > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 bg-gold text-white text-xs rounded-full">
-                          {vendorMetrics.pendingBids}+
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("visits")}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        activeTab === "visits" 
-                          ? "bg-gray-900 text-white" 
-                          : "text-gray-600 hover:bg-foreground hover:text-background"
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faCalendarAlt} />
-                      Visits
-                      {(actionRequiredCount > 0 || confirmedVisitsCount > 0) && (
-                        <span className={`ml-1 px-1.5 py-0.5 text-white text-xs rounded-full ${
-                          actionRequiredCount > 0 ? "bg-red-500" : "bg-gold"
-                        }`}>
-                          {actionRequiredCount > 0 ? actionRequiredCount : confirmedVisitsCount}
-                        </span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
+        <div className="grid grid-cols-12 gap-5">
 
-              {/* Smart Filter Info Banner */}
-              {(activeTab === "priority" || activeTab === "new") && filterMode !== "exact" && marketplaceJobs.length > 0 && (
-                <div className={`px-4 py-3 flex items-center gap-3 text-sm ${
-                  filterMode === "specialty_only" 
-                    ? "bg-blue-50 text-blue-700 border-b border-blue-100" 
-                    : filterMode === "city_only"
-                      ? "bg-amber-50 text-amber-700 border-b border-amber-100"
-                      : "bg-gray-50 text-gray-600 border-b border-gray-100"
-                }`}>
-                  <FontAwesomeIcon 
-                    icon={filterMode === "specialty_only" ? faMapMarkerAlt : filterMode === "city_only" ? faWrench : faSearch} 
-                    className="flex-shrink-0"
-                  />
-                  <span>
-                    {filterMode === "specialty_only" && (
-                      <>No {normalizeAndCapitalize(vendor?.vendor_types?.split(',')[0] || 'specialty')} jobs in <strong>{vendor?.city || 'your city'}</strong>. Showing opportunities in other areas.</>
-                    )}
-                    {filterMode === "city_only" && (
-                      <>No jobs matching your specialty in <strong>{vendor?.city || 'your city'}</strong>. Showing other job types nearby.</>
-                    )}
-                    {filterMode === "all" && (
-                      <>Showing all available opportunities. Consider expanding your service area or specialties.</>
-                    )}
-                  </span>
-                </div>
-              )}
+          {/* Left Column - Active Projects + Job Opportunities */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-5 min-w-0">
 
-              {/* Priority List Items */}
-              <div className="divide-y divide-gray-100">
-                {activeTab === "visits" ? (
-                  // Visits Tab Rendering
-                  getPriorityItems().length > 0 ? (
-                    (getPriorityItems() as typeof processedVisits).map((visit) => (
-                      <div key={`visit-${visit.issueId}`}>
-                        <div 
-                          onClick={() => openIssueModal(visit.issueId, "assessments")}
-                          className={`flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 ${
-                            visit.category === "action_required" 
-                              ? "border-red-500 bg-red-50/30" 
-                              : visit.category === "confirmed" 
-                                ? "border-emerald-500 bg-emerald-50/30" 
-                                : "border-transparent hover:border-gold"
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            {/* Calendar Icon */}
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              visit.category === "action_required" 
-                                ? "bg-red-100" 
-                                : visit.category === "confirmed" 
-                                  ? "bg-emerald-100" 
-                                  : "bg-gold-100"
-                            }`}>
-                              <FontAwesomeIcon 
-                                icon={faCalendarAlt} 
-                                className={
-                                  visit.category === "action_required" 
-                                    ? "text-red-600" 
-                                    : visit.category === "confirmed" 
-                                      ? "text-emerald-600" 
-                                      : "text-gold"
-                                } 
-                              />
-                            </div>
-                            
-                            {/* Visit Info */}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                {/* Status Badge */}
-                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-                                  visit.category === "action_required" 
-                                    ? "bg-red-100 text-red-700" 
-                                    : visit.category === "confirmed" 
-                                      ? "bg-emerald-100 text-emerald-700" 
-                                      : "bg-gold-100 text-gold-700"
-                                }`}>
-                                  {visit.category === "action_required" 
-                                    ? `${visit.proposalCount} Proposal${visit.proposalCount > 1 ? 's' : ''} from Client` 
-                                    : visit.category === "confirmed" 
-                                      ? "Confirmed" 
-                                      : `${visit.proposalCount} Time${visit.proposalCount > 1 ? 's' : ''} Proposed`}
-                                </span>
-                                <span className="font-semibold text-gray-900 truncate max-w-[250px]">
-                                  {visit.issue?.summary || normalizeAndCapitalize(visit.issue?.type || "Assessment")}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 text-sm text-gray-500">
-                                <span className="flex items-center gap-1">
-                                  <FontAwesomeIcon icon={faCalendarAlt} className="text-xs" />
-                                  {visit.startTime.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
-                                </span>
-                                <span>
-                                  {visit.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                </span>
-                                {visit.listing?.address && (
-                                  <span className="flex items-center gap-1 truncate max-w-[200px]">
-                                    <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
-                                    {visit.listing.address}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
+            {/* ACTIVE PROJECTS LIST */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-amber-100"
+                icon={<Briefcase className="w-5 h-5 text-amber-600" />}
+                title="Active Projects"
+                viewAllHref="/vendor/jobs?tab=active"
+              />
+
+              <div className="divide-y divide-border">
+                {activeJobs.length > 0 ? (
+                  activeJobs.slice(0, 5).map(({ offer, issue, listing }) => {
+                    const statusLabel =
+                      issue?.status === "Status.IN_PROGRESS"
+                        ? "In Progress"
+                        : issue?.status === "Status.REVIEW"
+                        ? "In Review"
+                        : "Active";
+                    return (
+                      <div
+                        key={offer.id}
+                        onClick={() => issue?.id && openIssueModal(issue.id, "details")}
+                        className="flex items-center gap-4 px-5 py-4 hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={listing?.image_url} size="lg" />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-foreground truncate">
+                            {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Project`}
                           </div>
-
-                          {/* Right side actions */}
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {visit.category === "action_required" && (
-                              <button 
-                                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-foreground hover:text-background transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openIssueModal(visit.issueId, "assessments");
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {(() => { const a = listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          </div>
+                          {/* Progress indicator */}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full"
+                                style={{
+                                  width:
+                                    issue?.status === "Status.COMPLETED"
+                                      ? "100%"
+                                      : issue?.status === "Status.IN_PROGRESS"
+                                      ? "60%"
+                                      : issue?.status === "Status.REVIEW"
+                                      ? "85%"
+                                      : "30%",
                                 }}
-                              >
-                                Respond
-                              </button>
-                            )}
-                            {visit.category === "confirmed" && (
-                              <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium">
-                                <FontAwesomeIcon icon={faCheckCircle} />
-                                Scheduled
-                              </span>
-                            )}
-                            {visit.category === "pending" && (
-                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                Waiting for client
-                              </span>
-                            )}
-                            <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-12 text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400 text-2xl" />
-                      </div>
-                      <p className="text-gray-600 font-medium mb-2">No scheduled visits</p>
-                      <p className="text-sm text-gray-500 mb-4">
-                        When clients accept your bids, you can schedule assessment visits
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  // Jobs Tab Rendering (Priority, New, Bidding)
-                  getPriorityItems().length > 0 ? (
-                    getPriorityItems().map((item: any, index) => (
-                      <div key={item.id || index}>
-                        {/* Job Row */}
-                        <div 
-                          onClick={() => openIssueModal(item.issueId || item.id, activeTab === "bidding" ? "offers" : "details")}
-                          className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors border-l-4 border-transparent hover:border-gold"
-                        >
-                          <div className="flex items-center gap-4">
-                            {/* Icon */}
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              item.isHot ? "bg-gold-200" : "bg-gray-100"
-                            }`}>
-                              <FontAwesomeIcon 
-                                icon={pickIcon(item.type)} 
-                                className={item.isHot ? "text-gold" : "text-gray-600"} 
                               />
                             </div>
-                            
-                            {/* Job Info */}
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                {item.isHot && (
-                                  <span className="text-xs font-bold text-gold">hot</span>
-                                )}
-                                <span className="font-semibold text-gray-900 truncate max-w-[300px]">
-                                  {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
-                                </span>
-                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded flex-shrink-0">
-                                  {normalizeAndCapitalize(item.type)}
-                                </span>
-                              </div>
-                              <div className="text-sm text-gray-500 truncate">
-                                {item.listing?.address || "View location"}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right side info */}
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            {item.myBid ? (
-                              <span className="text-lg font-bold text-gray-900">
-                                ${item.myBid.toLocaleString()}
-                              </span>
-                            ) : item.bidCount === 0 ? (
-                              <span className="text-xs font-medium text-emerald-600 whitespace-nowrap bg-emerald-50 px-2 py-1 rounded">Be first!</span>
-                            ) : (
-                              <span className="text-xs text-gray-500 whitespace-nowrap">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</span>
-                            )}
-                            <button 
-                              className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gold transition-colors flex items-center gap-1.5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openIssueModal(item.issueId || item.id, activeTab === "bidding" ? "offers" : "details");
-                              }}
-                            >
-                              {activeTab === "bidding" ? "View Bid" : "View & Bid"}
-                              <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                            </button>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">{statusLabel}</span>
                           </div>
                         </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-12 text-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <FontAwesomeIcon icon={faBriefcase} className="text-gray-400 text-2xl" />
-                      </div>
-                      <p className="text-gray-600 font-medium mb-2">
-                        {activeTab === "bidding" ? "No pending bids" : activeTab === "new" ? "No new jobs in the last 7 days" : "No jobs available"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {activeTab === "bidding" 
-                          ? "Submit bids on jobs to see them here" 
-                          : "Check back later for new opportunities"}
-                      </p>
-                    </div>
-                  )
-                )}
 
-                {/* Prominent Marketplace Button */}
-                {(activeTab === "priority" || activeTab === "new") && (
-                  <div className="px-5 py-4 border-t border-gray-100">
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-foreground">${offer.price?.toLocaleString()}</div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs mt-1" />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-10 text-center">
+                    <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Briefcase className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-foreground font-semibold mb-1">No active projects yet</p>
+                    <p className="text-sm text-muted-foreground mb-4">Browse jobs and submit a bid to get started</p>
                     <Link
-                      to="/marketplace"
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
+                      to={marketplaceLink}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-colors"
                     >
                       <FontAwesomeIcon icon={faSearch} />
-                      Explore Marketplace
-                      <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
-                    </Link>
-                  </div>
-                )}
-                {activeTab === "bidding" && (
-                  <div className="px-5 py-4 border-t border-gray-100">
-                    <Link
-                      to="/vendor/jobs?tab=pending"
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-900 rounded-lg font-semibold text-sm hover:bg-gray-200 transition-colors"
-                    >
-                      View all pending bids
-                      <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
+                      Find Your First Project
                     </Link>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Active Projects Slideshow - Inside left column */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg mt-6">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-white" />
-                    </div>
-                    <span className="font-semibold text-gray-900">Active Projects</span>
-                  </div>
-                  
-                  {/* Slideshow Navigation - only show when more than 2 items */}
-                  {activeJobs.length > 2 && (
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: activeJobs.length - 1 }).map((_, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setProjectSlide(i)}
-                            className={`w-2 h-2 rounded-full transition-colors ${
-                              i === projectSlide ? "bg-gray-900" : "bg-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setProjectSlide(Math.max(0, projectSlide - 1))}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <FontAwesomeIcon icon={faChevronLeft} />
-                        </button>
-                        <button
-                          onClick={() => setProjectSlide(Math.min(Math.max(0, activeJobs.length - 2), projectSlide + 1))}
-                          className="p-1 text-gray-400 hover:text-gray-600"
-                        >
-                          <FontAwesomeIcon icon={faChevronRight} />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="p-5">
-                {activeJobs.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {activeJobs.slice(projectSlide, projectSlide + 2).map(({ offer, issue, listing }) => (
-                      <div 
-                        key={offer.id}
-                        className="rounded-xl overflow-hidden border border-gray-200  shadow-lg hover:shadow-md transition-shadow cursor-pointer"
-                        onClick={() => issue?.id && openIssueModal(issue.id, "details")}
+            {/* JOB OPPORTUNITIES */}
+            <div className="bg-card rounded-xl overflow-hidden shadow-soft border border-border">
+              <CardSectionHeader
+                iconBg="bg-gold-200"
+                icon={<Zap className="w-5 h-5 text-gold" />}
+                title="New Job Opportunities"
+                viewAllHref={marketplaceLink}
+              />
+
+              {/* Job List */}
+              {(() => {
+                const jobs = marketplaceJobs.filter(j => !alreadyBidOnIds.has(j.id)).slice(0, 5);
+                if (jobs.length === 0) {
+                  return (
+                    <div className="py-10 px-5 text-center">
+                      <p className="text-foreground font-medium mb-1">No matching jobs right now</p>
+                      <p className="text-sm text-muted-foreground mb-5">
+                        Browse the marketplace to find opportunities near you
+                      </p>
+                      <Link
+                        to={marketplaceLink}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
                       >
-                        {/* Project Image */}
-                        <div className="relative h-32 bg-gray-200">
-                          {listing?.image_url ? (
-                            <ImageComponent
-                              src={listing.image_url}
-                              fallback="/images/property_card_holder.jpg"
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                              <FontAwesomeIcon icon={faHouse} className="text-gray-400 text-3xl" />
-                            </div>
-                          )}
-                          {/* Overlay with title */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
-                            <div className="font-semibold text-white text-sm truncate">
-                              {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Project`}
-                            </div>
-                            <div className="text-xs text-white/80 truncate">
-                              {listing?.address?.split(',')[0]}
-                            </div>
-                          </div>
-                          {/* Avatar */}
-                          <div className="absolute bottom-3 right-3">
-                            <div className="w-8 h-8 bg-gold rounded-full flex items-center justify-center text-white text-xs font-bold border-2 border-white">
-                              {vendor?.name?.[0] || "V"}
-                            </div>
-                          </div>
+                        <FontAwesomeIcon icon={faSearch} />
+                        Browse Marketplace
+                      </Link>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-border">
+                    {jobs.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => openIssueModal(item.id, "details")}
+                        className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={item.listing?.image_url} size="md" />
+
+                        {/* Job Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm text-foreground truncate">
+                            {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                            {item.listing?.city && (
+                              <>
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                {item.listing.city}
+                              </>
+                            )}
+                            {item.created_at && <> · Posted {getRelativeTime(item.created_at)}</>}
+                          </p>
                         </div>
-                        
-                        {/* Project Details */}
-                        <div className="p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">
-                              {normalizeAndCapitalize(issue?.type || "")}
-                            </span>
-                            <span className="text-sm font-semibold text-gray-900">
-                              ${offer.price?.toLocaleString()}
-                            </span>
+
+                        {/* Right side */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="text-right">
+                            {item.bidCount === 0 ? (
+                              <p className="text-xs font-medium text-emerald-600">Be first!</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</p>
+                            )}
                           </div>
-                          
-                          <div className="flex items-center gap-1.5 text-xs text-gold">
-                            <span className="w-2 h-2 bg-gold rounded-full"></span>
-                            In progress
-                          </div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs" />
                         </div>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="py-8 text-center">
-                    <div className="w-14 h-14 bg-gold-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-gold text-2xl" />
-                    </div>
-                    <p className="text-gray-900 font-semibold mb-1">No active projects yet</p>
-                    <p className="text-sm text-gray-500 mb-4">Browse jobs and submit your first bid to get started</p>
-                    <Link
-                      to="/marketplace"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
+                );
+              })()}
+            </div>
+
+          </div> {/* End LEFT COLUMN */}
+
+          {/* Right Column — Earnings + Today's Schedule */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
+
+            {/* Earnings Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-emerald-100"
+                icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+                title="Earnings"
+              />
+
+              <div className="p-5 space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Week</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    ${vendorMetrics.thisWeekEarnings.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Month</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    ${vendorMetrics.thisMonthEarnings.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Total Earned</span>
+                  <span className="text-base font-bold text-foreground">
+                    ${vendorMetrics.totalEarnings.toLocaleString()}
+                  </span>
+                </div>
+
+                <Link
+                  to="/vendor/jobs"
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border text-foreground font-semibold text-sm rounded-lg hover:bg-muted transition-colors"
+                >
+                  View Earnings Details
+                </Link>
+              </div>
+            </div>
+
+            {/* Today's Schedule Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-blue-100"
+                icon={<CalendarCheck className="w-5 h-5 text-blue-600" />}
+                title="Today's Schedule"
+              />
+
+              <div className="divide-y divide-border">
+                {todaysSchedule.length > 0 ? (
+                  todaysSchedule.map((visit) => (
+                    <div
+                      key={visit.id}
+                      onClick={() => openIssueModal(visit.issueId, "assessments")}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors"
                     >
-                      <FontAwesomeIcon icon={faSearch} />
-                      Find Your First Project
-                      <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Sidebar (Performance + Recent Activity) */}
-          <div className="col-span-12 lg:col-span-4 space-y-6">
-            {/* Performance Card */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faTrophy} className="text-gold" />
-                  </div>
-                  <span className="font-semibold text-gray-900">Performance</span>
-                </div>
-              </div>
-              
-              <div className="p-5">
-                {/* Win Rate Circle */}
-                <div className="flex items-center justify-center mb-6">
-                  <div className="relative">
-                    <svg className="w-28 h-28 transform -rotate-90">
-                      <circle cx="56" cy="56" r="48" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-                      <circle 
-                        cx="56" cy="56" r="48" 
-                        stroke="#D4A853" 
-                        strokeWidth="8" 
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeDasharray={`${winRate * 3.01} 301`}
+                      {/* Thumbnail */}
+                      <PropertyThumbnail
+                        imageUrl={visit.listing?.image_url}
+                        size="sm"
+                        fallbackIcon={<Calendar className="w-4 h-4 text-muted-foreground" />}
                       />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-gray-900">{winRate}%</div>
-                        <div className="text-xs text-gray-500">Win Rate</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-gray-100">
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-900">{vendorMetrics.totalBids}</div>
-                    <div className="text-xs text-gray-500">Total Bids</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gold">{vendorMetrics.acceptedCount}</div>
-                    <div className="text-xs text-gray-500">Won</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-xl font-bold text-gray-900">{vendorMetrics.completedJobs}</div>
-                    <div className="text-xs text-gray-500">Completed</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faCalendarCheck} className="text-gray-600" />
-                    </div>
-                    <span className="font-semibold text-gray-900">Recent Activity</span>
-                  </div>
-                  <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-                </div>
-              </div>
-              
-              <div className="divide-y divide-gray-100">
-                {recentActivity.length > 0 ? (
-                  recentActivity.map((activity) => (
-                    <div key={activity.id} className="px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center text-white flex-shrink-0">
-                          <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground">
+                          {visit.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                          {" — "}
+                          {visit.issue?.summary || normalizeAndCapitalize(visit.issue?.type || "Visit")}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm text-gray-900">{activity.action}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{activity.category}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {(() => { const a = visit.listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          {visit.listing?.city ? ` · ${visit.listing.city}` : ""}
                         </div>
-                        <div className="text-xs text-gray-400 flex-shrink-0">{activity.time}</div>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="py-8 text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <FontAwesomeIcon icon={faCalendarCheck} className="text-gray-400" />
-                    </div>
-                    <p className="text-gray-600 font-medium text-sm mb-1">No recent activity</p>
-                    <p className="text-xs text-gray-500">Activity will appear as you win bids</p>
+                    <p className="text-sm text-muted-foreground">No confirmed visits scheduled</p>
                   </div>
                 )}
               </div>
             </div>
-          </div>
+
+          </div> {/* End RIGHT COLUMN */}
 
         </div>
 
@@ -1423,13 +920,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           
           {/* Modal Content */}
           <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
+            <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
               {/* Close Button */}
               <button
                 onClick={closeIssueModal}
-                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-muted hover:bg-muted/70 transition-colors"
+                aria-label="Close"
               >
-                <FontAwesomeIcon icon={faTimes} className="text-gray-600" />
+                <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
               </button>
               
               {/* Issue Details Component */}
