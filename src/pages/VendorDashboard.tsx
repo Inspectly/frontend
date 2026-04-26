@@ -18,12 +18,12 @@ import { store } from "../store/store";
 import DashboardStatCard from "../components/dashboard/DashboardStatCard";
 import CardSectionHeader from "../components/dashboard/CardSectionHeader";
 import PropertyThumbnail from "../components/dashboard/PropertyThumbnail";
+import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 import { getRelativeTime } from "../utils/dateUtils";
 import IssueDetails from "../components/IssueDetails";
 import { Briefcase, Calendar, CalendarCheck, MapPin, Star, TrendingUp, Zap } from "lucide-react";
-
 
 // Static lookup: vendor type → matching issue type keywords
 const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
@@ -37,7 +37,6 @@ const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
   cleaner: ['cleaning', 'cleaner', 'janitorial'],
   general: ['general', 'other', 'misc', 'interior', 'exterior'],
 };
-
 
 interface DashboardProps {
   user: User;
@@ -64,6 +63,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
   const { data: issues, error: issuesError } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
+  const { data: vendorReviewsData = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user.id), { skip: !user.id });
   
   // Vendor assessments - use user.id since that's what's stored in the assessment records
   const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
@@ -221,6 +221,56 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     return "/marketplace";
   }, [vendor]);
 
+  // Review stats - average rating and count
+  const reviewStats = useMemo(() => {
+    const count = vendorReviewsData.length;
+    if (count === 0) {
+      const fallback = parseFloat(vendor?.rating || "0") || 0;
+      return { rating: fallback, count: 0 };
+    }
+    const sum = vendorReviewsData.reduce((acc, r) => acc + (Number(r.rating) || 0), 0);
+    return { rating: Math.round((sum / count) * 10) / 10, count };
+  }, [vendorReviewsData, vendor?.rating]);
+
+  // Earnings segmented by this week and last month for trends
+  const earningsBreakdown = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const accepted = vendorOffers.filter((o) => o.status === IssueOfferStatus.ACCEPTED);
+    const thisWeek = accepted
+      .filter((o) => {
+        const d = new Date(o.updated_at || o.created_at || "");
+        return d >= weekStart;
+      })
+      .reduce((sum, o) => sum + (o.price || 0), 0);
+    const lastMonth = accepted
+      .filter((o) => {
+        const d = new Date(o.updated_at || o.created_at || "");
+        return d >= lastMonthStart && d < thisMonthStart;
+      })
+      .reduce((sum, o) => sum + (o.price || 0), 0);
+    return { thisWeek, lastMonth };
+  }, [vendorOffers]);
+
+  // Count of active projects started this week
+  const activeProjectsThisWeek = useMemo(() => {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    return vendorOffers.filter((o) => {
+      if (o.status !== IssueOfferStatus.ACCEPTED) return false;
+      const issue = issuesMap[o.issue_id];
+      if (!issue || issue.status === "Status.COMPLETED") return false;
+      const d = new Date(o.updated_at || o.created_at || "");
+      return d >= weekStart;
+    }).length;
+  }, [vendorOffers, issuesMap]);
+
   // Get vendor specialties for filtering
   const vendorSpecialties = useMemo(() => {
     if (!vendor?.vendor_types) return [];
@@ -370,15 +420,15 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     if (!issues) return 0;
     const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
     if (vendorSpecialties.length === 0) return available.length;
-    
+
     return available.filter((i) => {
       const issueType = (i.type || '').toLowerCase();
-      return vendorSpecialties.some(specialty => 
+      return vendorSpecialties.some(specialty =>
         issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
       );
     }).length;
   }, [issues, vendorSpecialties]);
-  
+
   const winRate = vendorMetrics.totalBids > 0 ? Math.round((vendorMetrics.acceptedCount / vendorMetrics.totalBids) * 100) : 0;
   const isNewVendor = vendorMetrics.totalBids === 0;
 
@@ -386,7 +436,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const alreadyBidOnIds = useMemo(() => {
     return new Set(vendorOffers.map(o => o.issue_id));
   }, [vendorOffers]);
-
 
   // Process ALL assessments (including client counter-proposals) into categorized visits - GROUPED BY ISSUE
   // NOTE: This useMemo must be BEFORE any early returns to comply with Rules of Hooks
@@ -499,8 +548,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     });
   }, [allAssessments, issuesMap, listingsMap, user.id]);
 
-  // Count issues with visits needing action (not individual assessments)
-
   // Today's confirmed schedule
   const todaysSchedule = useMemo(() => {
     const today = new Date();
@@ -539,29 +586,22 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   if (vendorError) return <p>Failed to load vendor data.</p>;
   if (!vendor) return <p>Vendor not found.</p>;
 
-  // Priority scoring for jobs (higher = more priority)
-
-
   return (
     <div className="min-h-screen w-full bg-background">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
 
         {/* Greeting Header */}
-        <div className="flex items-center justify-between gap-4 mb-6">
+        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
             {vendor?.profile_image_url ? (
-              <img
-                src={vendor.profile_image_url}
-                alt={vendor.name}
-                className="w-12 h-12 rounded-full object-cover flex-shrink-0"
-              />
+              <img src={vendor.profile_image_url} alt={vendor.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
                 {(vendor?.name || "V")[0].toUpperCase()}
               </div>
             )}
             <div>
-              <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
+              <h1 className="text-3xl lg:text-4xl font-display font-bold text-foreground">
                 {(() => {
                   const hour = new Date().getHours();
                   const firstName = vendor?.name?.split(/\s+/)[0] || "";
@@ -632,6 +672,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             icon={<Briefcase className="w-4 h-4 text-amber-600" />}
             value={vendorMetrics.activeJobs}
             label="Active Projects"
+            subtitle={activeProjectsThisWeek > 0 ? `+${activeProjectsThisWeek} this week` : undefined}
             onClick={() => navigate("/vendor/jobs?tab=active")}
           />
           <DashboardStatCard
@@ -639,12 +680,20 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             icon={<span className="text-emerald-600 font-bold text-sm">$</span>}
             value={`$${vendorMetrics.thisMonthEarnings.toLocaleString()}`}
             label="This Month"
+            subtitle={(() => {
+              const last = earningsBreakdown.lastMonth;
+              const curr = vendorMetrics.thisMonthEarnings;
+              if (last === 0) return curr > 0 ? "First earnings!" : undefined;
+              const pct = Math.round(((curr - last) / last) * 100);
+              return `${pct >= 0 ? "+" : ""}${pct}% vs last month`;
+            })()}
           />
           <DashboardStatCard
             iconBg="bg-orange-100"
             icon={<Star className="w-4 h-4 text-orange-500" />}
-            value={vendor?.rating ? parseFloat(vendor.rating).toFixed(1) : "—"}
+            value={reviewStats.rating > 0 ? reviewStats.rating.toFixed(1) : "—"}
             label="Avg. Rating"
+            subtitle={reviewStats.count > 0 ? `${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}` : undefined}
           />
           <DashboardStatCard
             iconBg="bg-blue-100"

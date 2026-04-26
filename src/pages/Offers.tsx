@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "../store/store";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
+import OfferDetailModal from "../components/OfferDetailModal";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { saveIssueImages, getIssueImages, deleteIssueImages } from "../utils/issueImageStore";
-import { getIssueImageUrls } from "../utils/issueImageUtils";
+import { getIssueImageUrls, getIssueImageUrlsFromIssue } from "../utils/issueImageUtils";
 
 // Use a unique key to avoid any conflicts
 const SUBS_KEY = '__INSPECTLY_OFFER_SUBS__';
@@ -20,37 +20,117 @@ const getGlobalSubscriptions = (): Map<number, any> => {
   return w[SUBS_KEY];
 };
 import {
-  faFilter,
-  faSort,
+  faSearch,
+  faChevronLeft,
+  faChevronRight,
+  faStar,
+  faClock,
   faCheckCircle,
+  faDollarSign,
   faClipboardList,
   faRocket,
   faArrowRight,
   faHome,
   faBolt,
   faShieldAlt,
+  faCalendarAlt,
+  faMapMarkerAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import { useGetIssuesQuery, useUpdateIssueMutation } from "../features/api/issuesApi";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
+import { useGetVendorsQuery } from "../features/api/vendorsApi";
 import { issueOffersApi, useUpdateOfferMutation } from "../features/api/issueOffersApi";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
-import { IssueOffer, IssueOfferStatus, IssueType, Listing, ReportType } from "../types";
-import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
+import { useGetAssessmentsByClientIdUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import {
+  IssueAssessment,
+  IssueAssessmentStatus,
+  IssueOffer,
+  IssueOfferStatus,
+  IssueType,
+  Listing,
+  ReportType,
+  Vendor,
+} from "../types";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import { shallowEqual } from "react-redux";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
 
-type FilterType = "all" | "pending" | "accepted" | "rejected" | "in-review" | "completed";
-type SortType = "date-desc" | "date-asc" | "price-low" | "price-high";
+type StatusFilter = "all" | "pending" | "accepted" | "declined";
+type GroupingMode = "none" | "issue" | "property";
 
-interface IssueWithOffers {
+const FALLBACK_HOUSE_IMAGE = "/images/property_card_holder.jpg";
+
+const IssueImageThumb: React.FC<{ images: string[] }> = ({ images }) => {
+  const [index, setIndex] = useState(0);
+  const hasImages = images.length > 0;
+  const hasMultiple = images.length > 1;
+  const currentSrc = hasImages ? images[index] : FALLBACK_HOUSE_IMAGE;
+
+  const stop = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  const goPrev = (e: React.MouseEvent) => {
+    stop(e);
+    setIndex((i) => (i - 1 + images.length) % images.length);
+  };
+
+  const goNext = (e: React.MouseEvent) => {
+    stop(e);
+    setIndex((i) => (i + 1) % images.length);
+  };
+
+  return (
+    <div
+      className="relative w-20 h-12 rounded-md overflow-hidden bg-gray-100 flex-shrink-0 group"
+      onClick={stop}
+    >
+      <img
+        src={currentSrc}
+        alt={hasImages ? `Issue image ${index + 1}` : "Property"}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src = FALLBACK_HOUSE_IMAGE;
+        }}
+      />
+      {hasMultiple && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous image"
+            onClick={goPrev}
+            className="absolute left-0.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} className="w-2.5 h-2.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next image"
+            onClick={goNext}
+            className="absolute right-0.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70"
+          >
+            <FontAwesomeIcon icon={faChevronRight} className="w-2.5 h-2.5" />
+          </button>
+          <div className="absolute bottom-0.5 right-0.5 px-1 py-0.5 rounded bg-black/60 text-white text-[9px] font-medium leading-none">
+            {index + 1}/{images.length}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+interface OfferRow {
+  offer: IssueOffer;
   issue: IssueType;
-  offers: IssueOffer[];
   report?: ReportType;
   listing?: Listing;
+  vendor?: Vendor;
 }
 
 const Offers: React.FC = () => {
@@ -63,7 +143,12 @@ const Offers: React.FC = () => {
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), { skip: !userId });
-  
+  const { data: vendors = [] } = useGetVendorsQuery();
+  const { data: clientAssessments = [] } = useGetAssessmentsByClientIdUsersInteractionIdQuery(
+    client?.id ?? 0,
+    { skip: !client?.id }
+  );
+
   const [updateOffer] = useUpdateOfferMutation();
   const [updateIssue] = useUpdateIssueMutation();
   const [createCheckoutSession] = useCreateCheckoutSessionMutation();
@@ -75,22 +160,19 @@ const Offers: React.FC = () => {
     const filterParam = searchParams.get("filter");
     const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
     const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
-    
-    // Trigger on session_id OR payment=success with pending payment data
+
     const shouldVerify = (sessionId || (paymentParam === "success" && filterParam === "accepted")) && pendingPayment;
-    
+
     if (shouldVerify && !paymentVerified) {
       setPaymentVerified(true);
 
-      // Open the modal IMMEDIATELY using saved issue/listing data (no API wait)
       const savedIssue = pendingPayment.issue;
       const savedListing = pendingPayment.listing;
       if (savedIssue) {
         setSelectedIssue({ issue: savedIssue, listing: savedListing || undefined, defaultTab: "offers" });
-        setFilterStatus("accepted");
+        setStatusFilter("accepted");
       }
-      
-      // Process payment verification in background
+
       (async () => {
         try {
           await updateOffer({
@@ -103,11 +185,10 @@ const Offers: React.FC = () => {
             comment_vendor: pendingPayment.comment_vendor || "",
             comment_client: pendingPayment.comment_client || "",
           }).unwrap();
-          
+
           const issueId = Number(pendingPayment.issue_id);
           const issue = savedIssue || issues.find(i => i.id === issueId);
 
-          // Restore images from IndexedDB (saved before Stripe redirect)
           let restoredImages: string[] | null = null;
           try {
             restoredImages = await getIssueImages(issueId);
@@ -116,7 +197,7 @@ const Offers: React.FC = () => {
           if (issue) {
             const report = reports.find(r => r.id === issue.report_id);
             const listing = savedListing || listings.find(l => l.id === report?.listing_id);
-            
+
             let imageUrlsForUpdate = issue.image_urls || "";
             if (restoredImages && restoredImages.length > 0) {
               const realUrls = restoredImages.filter((url: string) => !url.startsWith("data:"));
@@ -124,10 +205,10 @@ const Offers: React.FC = () => {
                 imageUrlsForUpdate = realUrls.length === 1 ? realUrls[0] : JSON.stringify(realUrls);
               }
             }
-            
+
             const issueWithImages = { ...issue, image_urls: imageUrlsForUpdate };
             try {
-              await updateIssue(buildIssueUpdateBody(issueWithImages, { 
+              await updateIssue(buildIssueUpdateBody(issueWithImages, {
                 vendor_id: pendingPayment.vendor_id,
                 status: "in_progress",
                 active: false,
@@ -136,23 +217,21 @@ const Offers: React.FC = () => {
               // Offer accepted, issue update failed silently
             }
 
-            // Update modal to show issue with restored images (savedIssue is slim and has no image_urls)
             if (restoredImages && restoredImages.length > 0) {
               const displayIssue = { ...issue, image_urls: restoredImages };
               setSelectedIssue(prev => prev && prev.issue?.id === issueId ? { ...prev, issue: displayIssue } : prev);
             }
           }
 
-          // Clean up
           try { await deleteIssueImages(issueId); } catch { /* ignore */ }
-          
+
           toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
           localStorage.removeItem("pending_offer_payment");
           refetchIssues();
         } catch {
           toast.error("Payment completed but status update failed. Please refresh.");
         }
-        
+
         searchParams.delete("session_id");
         searchParams.delete("payment");
         setSearchParams(searchParams, { replace: true });
@@ -160,58 +239,51 @@ const Offers: React.FC = () => {
     }
   }, [searchParams, paymentVerified, refetchIssues, setSearchParams, updateOffer, updateIssue, issues, reports, listings]);
 
-  // Read initial filter from URL params
-  const initialFilter = (): FilterType => {
+  const initialFilter = (): StatusFilter => {
     const param = searchParams.get("filter");
-    if (param === "review" || param === "in-review") return "in-review";
     if (param === "pending") return "pending";
     if (param === "accepted") return "accepted";
-    if (param === "completed") return "completed";
-    if (param === "rejected") return "rejected";
+    if (param === "rejected" || param === "declined") return "declined";
     return "all";
   };
 
-  const [filterStatus, setFilterStatus] = useState<FilterType>(initialFilter);
-  const [filterProperty, setFilterProperty] = useState<string>("all");
-  const [filterIssueType, setFilterIssueType] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<SortType>("date-desc");
-  const [visibleCount, setVisibleCount] = useState(10); // Show 10 issues at a time
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialFilter);
+  const [grouping, setGrouping] = useState<GroupingMode>("none");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(20);
 
-  // Modal state for issue details
   const [selectedIssue, setSelectedIssue] = useState<{
     issue: IssueType;
     listing?: Listing;
     defaultTab?: "details" | "offers" | "assessments" | "dispute";
   } | null>(null);
 
-  // Modal state for approve/request changes
+  const [selectedOffer, setSelectedOffer] = useState<OfferRow | null>(null);
+  const [isProcessingOffer, setIsProcessingOffer] = useState(false);
+
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRequestChangesModal, setShowRequestChangesModal] = useState(false);
   const [selectedIssueForAction, setSelectedIssueForAction] = useState<{ issue: IssueType; listing?: Listing } | null>(null);
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
 
-  // Get user's issues
   const userIssues = useMemo(() => {
     const userReportIds = reports.filter((r) => r.user_id === userId).map((r) => r.id);
     return issues.filter((issue) => userReportIds.includes(issue.report_id));
   }, [issues, reports, userId]);
 
-  // Trigger fetches for issues that don't have cached data
   const issueIdsKey = userIssues.map(i => i.id).sort().join(',');
-  
+
   useEffect(() => {
     if (isLoadingIssues || isLoadingReports || userIssues.length === 0) return;
-    
+
     const subs = getGlobalSubscriptions();
-    
-    // Check which issues already have subscriptions
+
     const issuesNeedingSubscription = userIssues.filter(
       issue => !subs.has(issue.id)
     );
-    
+
     if (issuesNeedingSubscription.length === 0) return;
-    
-    // Trigger fetches for all issues (RTK Query will use cache if available)
+
     issuesNeedingSubscription.forEach((issue) => {
       const subscription = dispatch(
         issueOffersApi.endpoints.getOffersByIssueId.initiate(issue.id, {
@@ -221,176 +293,224 @@ const Offers: React.FC = () => {
       );
       subs.set(issue.id, subscription);
     });
-    
-    // NO cleanup! Subscriptions persist at module level
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueIdsKey, dispatch, isLoadingIssues, isLoadingReports]);
 
-  // Access offers directly from Redux cache (synchronous and FAST!)
   const offersByIssueId = useSelector((state: RootState) => {
     if (userIssues.length === 0) return {};
-    
+
     const offersMap: Record<number, IssueOffer[]> = {};
-    
-    // Read directly from cache - synchronous operation
+
     userIssues.forEach((issue) => {
       const select = issueOffersApi.endpoints.getOffersByIssueId.select(issue.id);
       const result = select(state);
-      
+
       if (result.data) {
         offersMap[issue.id] = result.data;
       }
     });
-    
-    return offersMap;
-  }, shallowEqual); // Use shallowEqual to prevent unnecessary rerenders
 
-  // Show loading only when we have NO issues/reports data at all (first ever load)
-  // Offers load progressively from dashboard prefetch — don't block on them
+    return offersMap;
+  }, shallowEqual);
+
   const isLoading = (isLoadingIssues && issues.length === 0) || (isLoadingReports && reports.length === 0);
 
-  // Combine issues with their offers, reports, and listings
-  const issuesWithOffers: IssueWithOffers[] = useMemo(() => {
-    return userIssues
-      .map((issue) => {
-        const offers = offersByIssueId[issue.id] || [];
-        const report = reports.find((r) => r.id === issue.report_id);
-        const listing = listings.find((l) => l.id === report?.listing_id);
-        return { issue, offers, report, listing };
-      })
-      .filter((item) => item.offers.length > 0); // Only show issues with offers
-  }, [userIssues, offersByIssueId, reports, listings]);
+  // Map vendor by vendor_user_id (offer.vendor_id refers to the vendor's user id)
+  const vendorByUserId = useMemo(() => {
+    const map = new Map<number, Vendor>();
+    vendors.forEach((v) => map.set(v.vendor_user_id, v));
+    return map;
+  }, [vendors]);
 
-  // Get unique properties and issue types for filters
-  const uniqueProperties = useMemo(() => {
-    const props = new Map<number, string>();
-    issuesWithOffers.forEach(({ listing }) => {
-      if (listing) {
-        props.set(listing.id, listing.address);
-      }
+  // Flatten into one row per offer
+  const offerRows: OfferRow[] = useMemo(() => {
+    const rows: OfferRow[] = [];
+    userIssues.forEach((issue) => {
+      const offers = offersByIssueId[issue.id] || [];
+      const report = reports.find((r) => r.id === issue.report_id);
+      const listing = listings.find((l) => l.id === report?.listing_id);
+      offers.forEach((offer) => {
+        rows.push({
+          offer,
+          issue,
+          report,
+          listing,
+          vendor: vendorByUserId.get(offer.vendor_id),
+        });
+      });
     });
-    return Array.from(props.entries());
-  }, [issuesWithOffers]);
-
-  const uniqueIssueTypes = useMemo(() => {
-    const types = new Set<string>();
-    issuesWithOffers.forEach(({ issue }) => {
-      types.add(issue.type);
-    });
-    return Array.from(types);
-  }, [issuesWithOffers]);
+    return rows;
+  }, [userIssues, offersByIssueId, reports, listings, vendorByUserId]);
 
   // Apply filters
-  const filteredIssues = useMemo(() => {
-    return issuesWithOffers.filter(({ issue, offers, listing }) => {
-      // Filter by status
-      if (filterStatus !== "all") {
-        // Handle "in-review" filter separately (it's an issue status, not offer status)
-        if (filterStatus === "in-review") {
-          if (issue.status !== "Status.REVIEW") return false;
-        } else if (filterStatus === "completed") {
-          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
-          if (!isCompleted) return false;
-        } else {
-          // Map filter status to actual enum values
-          const statusMap: Record<string, string> = {
-            "pending": IssueOfferStatus.RECEIVED,
-            "accepted": IssueOfferStatus.ACCEPTED,
-            "rejected": IssueOfferStatus.REJECTED,
-          };
-          const targetStatus = statusMap[filterStatus];
-          const hasMatchingStatus = offers.some((o) => o.status === targetStatus);
-          if (!hasMatchingStatus) return false;
-          const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
-          if (filterStatus === "accepted" && isCompleted) return false;
-          if (filterStatus === "pending" && isCompleted) return false;
-        }
+  const filteredRows = useMemo(() => {
+    return offerRows.filter(({ offer, issue, listing, vendor }) => {
+      if (statusFilter !== "all") {
+        if (statusFilter === "pending" && offer.status !== IssueOfferStatus.RECEIVED) return false;
+        if (statusFilter === "accepted" && offer.status !== IssueOfferStatus.ACCEPTED) return false;
+        if (statusFilter === "declined" && offer.status !== IssueOfferStatus.REJECTED) return false;
       }
 
-      // Filter by property
-      if (filterProperty !== "all" && listing?.id !== Number(filterProperty)) {
-        return false;
-      }
-
-      // Filter by issue type
-      if (filterIssueType !== "all" && issue.type !== filterIssueType) {
-        return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const haystack = [
+          vendor?.name,
+          vendor?.company_name,
+          issue.summary,
+          issue.type,
+          listing?.address,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(q)) return false;
       }
 
       return true;
     });
-  }, [issuesWithOffers, filterStatus, filterProperty, filterIssueType]);
+  }, [offerRows, statusFilter, searchQuery]);
 
-  // Apply sorting - items needing client action at top, then by selected sort
-  const sortedIssues = useMemo(() => {
-    return [...filteredIssues].sort((a, b) => {
-      // Check if issues need client action
-      const aHasPending = a.offers.some((o) => o.status === IssueOfferStatus.RECEIVED);
-      const bHasPending = b.offers.some((o) => o.status === IssueOfferStatus.RECEIVED);
-      const aInReview = a.issue.status === "Status.REVIEW";
-      const bInReview = b.issue.status === "Status.REVIEW";
-      
-      // Prioritize: issues in review first (vendor completed work), then pending offers
-      const aNeedsAction = aInReview || aHasPending;
-      const bNeedsAction = bInReview || bHasPending;
-      
-      if (aNeedsAction && !bNeedsAction) return -1;
-      if (!aNeedsAction && bNeedsAction) return 1;
-      
-      // Within action-needed items, review items come before pending offers
-      if (aNeedsAction && bNeedsAction) {
-        if (aInReview && !bInReview) return -1;
-        if (!aInReview && bInReview) return 1;
-      }
-      
-      // Then apply selected sort order
-      if (sortBy === "date-desc" || sortBy === "date-asc") {
-        const aDate = Math.max(...a.offers.map((o) => new Date(o.created_at).getTime()));
-        const bDate = Math.max(...b.offers.map((o) => new Date(o.created_at).getTime()));
-        return sortBy === "date-desc" ? bDate - aDate : aDate - bDate;
-      } else if (sortBy === "price-low" || sortBy === "price-high") {
-        const aPrice = Math.min(...a.offers.map((o) => o.price));
-        const bPrice = Math.min(...b.offers.map((o) => o.price));
-        return sortBy === "price-low" ? aPrice - bPrice : bPrice - aPrice;
-      }
-      return 0;
+  // Sort - newest offers first, accepted bumped up slightly
+  const sortedRows = useMemo(() => {
+    return [...filteredRows].sort((a, b) => {
+      const aTime = new Date(a.offer.updated_at || a.offer.created_at).getTime();
+      const bTime = new Date(b.offer.updated_at || b.offer.created_at).getTime();
+      return bTime - aTime;
     });
-  }, [filteredIssues, sortBy]);
+  }, [filteredRows]);
 
-  // Statistics
+  // Group rows when grouping is active
+  type Group = { key: string; label: string; rows: OfferRow[] };
+  const groupedRows: Group[] = useMemo(() => {
+    if (grouping === "none") {
+      return [{ key: "all", label: "", rows: sortedRows }];
+    }
+    const groups = new Map<string, Group>();
+    sortedRows.forEach((row) => {
+      let key = "";
+      let label = "";
+      if (grouping === "issue") {
+        key = `issue-${row.issue.id}`;
+        label = row.issue.summary || `Issue #${row.issue.id}`;
+      } else if (grouping === "property") {
+        key = `listing-${row.listing?.id ?? "none"}`;
+        label = row.listing?.address || "Unknown property";
+      }
+      if (!groups.has(key)) {
+        groups.set(key, { key, label, rows: [] });
+      }
+      groups.get(key)!.rows.push(row);
+    });
+    return Array.from(groups.values());
+  }, [sortedRows, grouping]);
+
+  // Assessment requests — vendor proposed a date but hasn't put an offer yet
+  type AssessmentRequest = {
+    issue: IssueType;
+    listing?: Listing;
+    vendor?: Vendor;
+    vendorUserId: number;
+    proposals: IssueAssessment[];
+    earliest?: IssueAssessment;
+  };
+  const assessmentRequests: AssessmentRequest[] = useMemo(() => {
+    if (!clientAssessments.length || !userIssues.length) return [];
+    const userIssueIds = new Set(userIssues.map((i) => i.id));
+
+    // Group by (issue, vendor) where status is RECEIVED and vendor has no offer for that issue
+    const grouped = new Map<string, AssessmentRequest>();
+
+    clientAssessments.forEach((a) => {
+      if (a.status !== IssueAssessmentStatus.RECEIVED) return;
+      const parts = (a.users_interaction_id || "").split("_");
+      if (parts.length < 3) return;
+      const vendorUserId = Number(parts[1]);
+      const issueId = Number(parts[2]);
+      if (!vendorUserId || !issueId) return;
+      if (!userIssueIds.has(issueId)) return;
+
+      // Skip if this vendor already has an offer for this issue
+      const issueOffers = offersByIssueId[issueId] || [];
+      if (issueOffers.some((o) => o.vendor_id === vendorUserId)) return;
+
+      const issue = userIssues.find((i) => i.id === issueId);
+      if (!issue) return;
+      const report = reports.find((r) => r.id === issue.report_id);
+      const listing = listings.find((l) => l.id === report?.listing_id);
+      const vendor = vendorByUserId.get(vendorUserId);
+
+      const key = `${issueId}-${vendorUserId}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          issue,
+          listing,
+          vendor,
+          vendorUserId,
+          proposals: [],
+        });
+      }
+      grouped.get(key)!.proposals.push(a);
+    });
+
+    // Set earliest proposal per group
+    const result = Array.from(grouped.values()).map((g) => ({
+      ...g,
+      earliest: [...g.proposals].sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      )[0],
+    }));
+
+    // Sort groups by earliest proposal time (soonest first)
+    return result.sort((a, b) => {
+      const aTime = a.earliest ? new Date(a.earliest.start_time).getTime() : 0;
+      const bTime = b.earliest ? new Date(b.earliest.start_time).getTime() : 0;
+      return aTime - bTime;
+    });
+  }, [clientAssessments, userIssues, offersByIssueId, reports, listings, vendorByUserId]);
+
+  const formatProposedDate = (iso: string) => {
+    const date = new Date(iso);
+    return date.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  // Stats — based on full offer set (not filtered) so totals stay stable
   const stats = useMemo(() => {
-    let totalOffers = 0;
-    let pendingOffers = 0;
-    let acceptedOffers = 0;
-    let inReviewCount = 0;
-    let completedCount = 0;
+    let pending = 0;
+    let accepted = 0;
+    let committed = 0;
 
-    issuesWithOffers.forEach(({ issue, offers }) => {
+    offerRows.forEach(({ offer, issue }) => {
       const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
-      totalOffers += offers.length;
-      if (!isCompleted) {
-        pendingOffers += offers.filter((o) => o.status === IssueOfferStatus.RECEIVED).length;
+      if (offer.status === IssueOfferStatus.RECEIVED && !isCompleted) {
+        pending += 1;
       }
-      if (!isCompleted) {
-        acceptedOffers += offers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
-      }
-      if (issue.status === "Status.REVIEW") {
-        inReviewCount++;
-      }
-      if (isCompleted) {
-        completedCount++;
+      if (offer.status === IssueOfferStatus.ACCEPTED) {
+        accepted += 1;
+        committed += offer.price || 0;
       }
     });
 
-    return { totalOffers, pendingOffers, acceptedOffers, inReviewCount, completedCount };
-  }, [issuesWithOffers]);
+    return { pending, accepted, committed };
+  }, [offerRows]);
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000) {
+      return `$${value.toLocaleString()}`;
+    }
+    return `$${value}`;
+  };
 
   const handleAcceptOffer = async (offer: IssueOffer) => {
     try {
       const issue = issues.find(i => i.id === offer.issue_id);
       const report = issue ? reports.find(r => r.id === issue.report_id) : null;
       const listing = report ? listings.find(l => l.id === report.listing_id) : undefined;
-      // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
       const slimIssue = issue ? { ...issue, image_urls: [] } : null;
       const slimListing = listing ? { ...listing } : null;
       const pendingData = {
@@ -405,7 +525,6 @@ const Offers: React.FC = () => {
       };
       localStorage.setItem("pending_offer_payment", JSON.stringify(pendingData));
 
-      // Save issue images to IndexedDB in background (don't block Stripe)
       if (issue) {
         const imageUrls = getIssueImageUrls(issue.image_urls);
         if (imageUrls.length > 0) {
@@ -434,10 +553,33 @@ const Offers: React.FC = () => {
     }
   };
 
+  const handleDeclineOffer = async (offer: IssueOffer) => {
+    setIsProcessingOffer(true);
+    try {
+      await updateOffer({
+        id: offer.id,
+        issue_id: offer.issue_id,
+        vendor_id: offer.vendor_id,
+        price: offer.price,
+        status: "rejected",
+        user_last_viewed: new Date().toISOString(),
+        comment_vendor: offer.comment_vendor || "",
+        comment_client: offer.comment_client || "",
+      }).unwrap();
+      toast.success("Offer declined");
+      setSelectedOffer(null);
+    } catch (err) {
+      console.error("Failed to decline offer", err);
+      toast.error("Could not decline offer. Please try again.");
+    } finally {
+      setIsProcessingOffer(false);
+    }
+  };
+
   const handleApproveWork = async () => {
     if (!selectedIssueForAction) return;
     try {
-      await updateIssue(buildIssueUpdateBody(selectedIssueForAction.issue, { 
+      await updateIssue(buildIssueUpdateBody(selectedIssueForAction.issue, {
         status: "completed",
         review_status: "completed",
       }, selectedIssueForAction.listing?.id)).unwrap();
@@ -455,7 +597,6 @@ const Offers: React.FC = () => {
     if (!selectedIssueForAction || !changeRequestMessage.trim()) return;
     try {
       await updateIssue(buildIssueUpdateBody(selectedIssueForAction.issue, { status: "in_progress" }, selectedIssueForAction.listing?.id)).unwrap();
-      // TODO: Post changeRequestMessage as a comment with "Change Request" flag
       setShowRequestChangesModal(false);
       setSelectedIssueForAction(null);
       setChangeRequestMessage("");
@@ -470,180 +611,329 @@ const Offers: React.FC = () => {
     return <div className="p-6">Please log in to view offers.</div>;
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="max-w-[1600px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
-        
-        {/* Header - Clean like dashboard */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-              Offers & Approvals
-            </h1>
-          </div>
+  const totalVisible = sortedRows.length;
+  const hasAnyOffers = offerRows.length > 0;
 
-          {/* Stat Cards Row - Only show if user has listings */}
-          {listings.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              <div 
-                onClick={() => setFilterStatus("all")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'all' ? 'ring-2 ring-gray-900' : ''}`}
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.totalOffers}</div>
-                <div className="text-sm font-semibold text-gray-900">Total Offers</div>
-              </div>
+  // Vendor avatar helpers
+  const getVendorInitials = (vendor?: Vendor): string => {
+    const name = vendor?.name || vendor?.company_name || "";
+    const parts = name.trim().split(/\s+/).slice(0, 2);
+    return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "?";
+  };
 
-              <div 
-                onClick={() => setFilterStatus("in-review")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'in-review' ? 'ring-2 ring-gray-900' : ''}`}
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.inReviewCount}</div>
-                <div className="text-sm font-semibold text-gray-900">Awaiting Approval</div>
-                {stats.inReviewCount > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
-                    <span className="w-2 h-2 bg-gold rounded-full"></span>
-                    Needs action
-                  </div>
-                )}
-              </div>
+  const getStatusBadge = (status: IssueOfferStatus) => {
+    if (status === IssueOfferStatus.ACCEPTED) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+          <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
+          Accepted
+        </span>
+      );
+    }
+    if (status === IssueOfferStatus.REJECTED) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500" />
+          Declined
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+        <FontAwesomeIcon icon={faClock} className="w-3 h-3" />
+        Pending
+      </span>
+    );
+  };
 
-              <div 
-                onClick={() => setFilterStatus("pending")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'pending' ? 'ring-2 ring-gray-900' : ''}`}
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.pendingOffers}</div>
-                <div className="text-sm font-semibold text-gray-900">Pending Quotes</div>
-              </div>
+  const renderRow = (row: OfferRow) => {
+    const { offer, issue, listing, vendor } = row;
+    const vendorName = vendor?.name || vendor?.company_name || "Unknown vendor";
+    const rating = vendor?.rating ? Number(vendor.rating) : null;
+    const issueImages = getIssueImageUrlsFromIssue(issue);
 
-              <div 
-                onClick={() => setFilterStatus("accepted")}
-                className={`bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${filterStatus === 'accepted' ? 'ring-2 ring-gray-900' : ''}`}
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.acceptedOffers}</div>
-                <div className="text-sm font-semibold text-gray-900">Accepted</div>
-              </div>
+    return (
+      <div
+        key={offer.id}
+        onClick={() => setSelectedOffer(row)}
+        className="flex items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
+      >
+        {/* Vendor avatar */}
+        <div className="flex-shrink-0">
+          {vendor?.profile_image_url && vendor.profile_image_url !== "None" ? (
+            <img
+              src={vendor.profile_image_url}
+              alt={vendorName}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-600">
+              {getVendorInitials(vendor)}
             </div>
           )}
         </div>
 
-        {/* Filters Card - Only show if user has listings */}
-        {listings.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-          {/* Status Tabs */}
-          <div className="px-5 py-4 border-b border-gray-100">
-            <div className="flex items-center gap-1 flex-wrap">
-              {[
-                { value: 'all', label: 'All' },
-                { value: 'in-review', label: 'In Review', count: stats.inReviewCount },
-                { value: 'pending', label: 'Pending', count: stats.pendingOffers },
-                { value: 'accepted', label: 'Accepted', count: stats.acceptedOffers },
-                { value: 'completed', label: 'Completed', count: stats.completedCount },
-                { value: 'rejected', label: 'Rejected' },
-              ].map((tab) => (
-                <button
-                  key={tab.value}
-                  onClick={() => setFilterStatus(tab.value as FilterType)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                    filterStatus === tab.value 
-                      ? 'bg-gray-900 text-white' 
-                      : 'text-gray-600 hover:bg-foreground hover:text-background'
-                  }`}
-                >
-                  {tab.label}
-                  {tab.count !== undefined && tab.count > 0 && (
-                    <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                      filterStatus === tab.value ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+        {/* Vendor + issue info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-900 truncate">{vendorName}</span>
+            {rating !== null && !Number.isNaN(rating) && (
+              <span className="inline-flex items-center gap-0.5 text-xs text-gray-700 flex-shrink-0">
+                <FontAwesomeIcon icon={faStar} className="w-3 h-3 text-amber-400" />
+                {rating.toFixed(1)}
+              </span>
+            )}
           </div>
-
-          {/* Secondary Filters */}
-          <div className="px-5 py-3 flex flex-wrap items-center gap-3">
-            <select
-              value={filterProperty}
-              onChange={(e) => setFilterProperty(e.target.value)}
-              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            >
-              <option value="all">All Properties</option>
-              {uniqueProperties.map(([id, address]) => (
-                <option key={id} value={id}>
-                  {address}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterIssueType}
-              onChange={(e) => setFilterIssueType(e.target.value)}
-              className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-            >
-              <option value="all">All Issue Types</option>
-              {uniqueIssueTypes.map((type) => (
-                <option key={type} value={type}>
-                  {normalizeAndCapitalize(type)}
-                </option>
-              ))}
-            </select>
-
-            <div className="ml-auto flex items-center gap-2">
-              <FontAwesomeIcon icon={faSort} className="text-gray-400 w-4 h-4" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortType)}
-                className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-              >
-                <option value="date-desc">Newest First</option>
-                <option value="date-asc">Oldest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-            </div>
+          <div className="text-sm text-gray-500 truncate">
+            {issue.summary || "Issue"}
+            {listing?.address && (
+              <>
+                <span className="mx-1.5">·</span>
+                <span>{listing.address}</span>
+              </>
+            )}
           </div>
         </div>
+
+        {/* Issue images with arrow navigation */}
+        <div className="hidden sm:block flex-shrink-0">
+          <IssueImageThumb images={issueImages} />
+        </div>
+
+        {/* Price */}
+        <div className="flex-shrink-0 text-right min-w-[72px]">
+          <div className="text-base font-bold text-gray-900">
+            ${(offer.price || 0).toLocaleString()}
+          </div>
+        </div>
+
+        {/* Status badge */}
+        <div className="flex-shrink-0">{getStatusBadge(offer.status)}</div>
+
+        {/* Chevron */}
+        <FontAwesomeIcon icon={faChevronRight} className="text-gray-300 w-3 h-3 flex-shrink-0" />
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="max-w-[1600px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
+
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Offers</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {stats.pending} pending · {stats.accepted} accepted
+          </p>
+        </div>
+
+        {/* Stat Cards */}
+        {listings.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-5">
+            <button
+              type="button"
+              onClick={() => setStatusFilter("pending")}
+              className={`flex items-center gap-3 bg-white rounded-xl p-4 border transition-all text-left hover:shadow-sm ${
+                statusFilter === "pending" ? "border-gray-900" : "border-gray-200"
+              }`}
+            >
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <FontAwesomeIcon icon={faClock} className="text-amber-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gray-900 leading-tight">{stats.pending}</div>
+                <div className="text-xs text-gray-500 mt-0.5">Pending</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStatusFilter("accepted")}
+              className={`flex items-center gap-3 bg-white rounded-xl p-4 border transition-all text-left hover:shadow-sm ${
+                statusFilter === "accepted" ? "border-gray-900" : "border-gray-200"
+              }`}
+            >
+              <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <FontAwesomeIcon icon={faCheckCircle} className="text-green-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gray-900 leading-tight">{stats.accepted}</div>
+                <div className="text-xs text-gray-500 mt-0.5">Accepted</div>
+              </div>
+            </button>
+
+            <div className="flex items-center gap-3 bg-white rounded-xl p-4 border border-gray-200">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <FontAwesomeIcon icon={faDollarSign} className="text-amber-600" />
+              </div>
+              <div>
+                <div className="text-xl font-bold text-gray-900 leading-tight">
+                  {formatCurrency(stats.committed)}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">Committed</div>
+              </div>
+            </div>
+          </div>
         )}
 
-      {/* Offers List - One row per issue */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Assessment Requests — vendor proposed an inspection time but hasn't quoted yet */}
+        {assessmentRequests.length > 0 && (
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <FontAwesomeIcon icon={faCalendarAlt} className="w-4 h-4 text-blue-600" />
+                Assessment Requests
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                  {assessmentRequests.length}
+                </span>
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {assessmentRequests.map((req) => {
+                const vendorName = req.vendor?.name || req.vendor?.company_name || "Unknown vendor";
+                const rating = req.vendor?.rating ? Number(req.vendor.rating) : null;
+                return (
+                  <div
+                    key={`${req.issue.id}-${req.vendorUserId}`}
+                    onClick={() => setSelectedIssue({ issue: req.issue, listing: req.listing, defaultTab: "assessments" })}
+                    className="flex items-center gap-4 px-4 py-3 bg-white border border-blue-200 rounded-xl hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                  >
+                    <div className="flex-shrink-0">
+                      {req.vendor?.profile_image_url && req.vendor.profile_image_url !== "None" ? (
+                        <img
+                          src={req.vendor.profile_image_url}
+                          alt={vendorName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-sm font-semibold text-blue-700">
+                          {(vendorName[0] || "?").toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 truncate">{vendorName}</span>
+                        {rating !== null && !Number.isNaN(rating) && (
+                          <span className="inline-flex items-center gap-0.5 text-xs text-gray-700 flex-shrink-0">
+                            <FontAwesomeIcon icon={faStar} className="w-3 h-3 text-amber-400" />
+                            {rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">
+                        {req.issue.summary || "Issue"}
+                        {req.listing?.address && (
+                          <>
+                            <span className="mx-1.5">·</span>
+                            <span className="inline-flex items-center gap-1">
+                              <FontAwesomeIcon icon={faMapMarkerAlt} className="w-3 h-3" />
+                              {req.listing.address}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:flex flex-col items-end text-xs text-gray-600 flex-shrink-0">
+                      {req.earliest && (
+                        <div className="flex items-center gap-1">
+                          <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3 text-blue-600" />
+                          <span>{formatProposedDate(req.earliest.start_time)}</span>
+                        </div>
+                      )}
+                      {req.proposals.length > 1 && (
+                        <span className="text-[11px] text-gray-400">
+                          +{req.proposals.length - 1} more time{req.proposals.length - 1 > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 flex-shrink-0">
+                      <FontAwesomeIcon icon={faCalendarAlt} className="w-3 h-3" />
+                      Assessment Requested
+                    </span>
+
+                    <FontAwesomeIcon icon={faChevronRight} className="text-gray-300 w-3 h-3 flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Search + filters bar */}
+        {listings.length > 0 && hasAnyOffers && (
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="flex-1 relative">
+              <FontAwesomeIcon
+                icon={faSearch}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search vendor or issue..."
+                className="w-full pl-10 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent min-w-[140px]"
+            >
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="accepted">Accepted</option>
+              <option value="declined">Declined</option>
+            </select>
+            <select
+              value={grouping}
+              onChange={(e) => setGrouping(e.target.value as GroupingMode)}
+              className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent min-w-[140px]"
+            >
+              <option value="none">No Grouping</option>
+              <option value="issue">Group by Issue</option>
+              <option value="property">Group by Property</option>
+            </select>
+          </div>
+        )}
+
+        {/* List */}
         {isLoading ? (
-          <div className="p-12 text-center">
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading offers...</h3>
             <p className="text-gray-500">Please wait while we fetch your offers</p>
           </div>
-        ) : sortedIssues.length === 0 ? (
-          <div className="p-8">
-            {filterStatus !== "all" || filterProperty !== "all" || filterIssueType !== "all" ? (
-              // Filtered empty state
+        ) : sortedRows.length === 0 ? (
+          <div className="bg-white rounded-xl border border-gray-200 p-8">
+            {(statusFilter !== "all" || searchQuery.trim()) ? (
               <div className="text-center py-8">
                 <FontAwesomeIcon
-                  icon={faFilter}
+                  icon={faSearch}
                   className="w-12 h-12 text-gray-300 mb-4 mx-auto"
                 />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No matching offers</h3>
-                <p className="text-gray-500 mb-4">Try adjusting your filters to see more results</p>
+                <p className="text-gray-500 mb-4">Try adjusting your search or filters</p>
                 <button
                   onClick={() => {
-                    setFilterStatus("all");
-                    setFilterProperty("all");
-                    setFilterIssueType("all");
+                    setStatusFilter("all");
+                    setSearchQuery("");
                   }}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium text-sm hover:bg-gray-200 transition"
                 >
-                  Clear all filters
+                  Clear filters
                 </button>
               </div>
             ) : listings.length === 0 ? (
-              // New user - no properties
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 lg:p-10">
-                {/* Decorative elements */}
                 <div className="absolute top-0 right-0 w-72 h-72 bg-gold/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-gold/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-                
+
                 <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
                   <div className="flex-1 text-center lg:text-left">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gold/20 text-gold rounded-full text-sm font-medium mb-4">
@@ -656,7 +946,7 @@ const Offers: React.FC = () => {
                     <p className="text-gray-400 text-base mb-6 max-w-lg">
                       Upload your inspection report and post issues to the marketplace. Verified contractors will send you competitive quotes.
                     </p>
-                    
+
                     <div className="flex flex-wrap gap-4 justify-center lg:justify-start mb-6">
                       <div className="flex items-center gap-2 text-sm text-gray-300">
                         <FontAwesomeIcon icon={faShieldAlt} className="text-gold" />
@@ -671,7 +961,7 @@ const Offers: React.FC = () => {
                         Compare & save
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={() => navigate("/dashboard")}
                       className="inline-flex items-center gap-3 px-6 py-3 bg-gold text-white rounded-xl font-bold text-base hover:bg-foreground hover:text-background transition-all shadow-lg hover:shadow-gold/25 hover:-translate-y-0.5"
@@ -681,8 +971,7 @@ const Offers: React.FC = () => {
                       <FontAwesomeIcon icon={faArrowRight} />
                     </button>
                   </div>
-                  
-                  {/* Visual illustration */}
+
                   <div className="hidden lg:flex items-center justify-center">
                     <div className="relative">
                       <div className="absolute -top-2 -left-2 w-36 h-44 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
@@ -700,7 +989,6 @@ const Offers: React.FC = () => {
                 </div>
               </div>
             ) : (
-              // Has properties but no offers yet
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <FontAwesomeIcon icon={faClipboardList} className="text-3xl text-gray-400" />
@@ -721,168 +1009,31 @@ const Offers: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="divide-y divide-gray-100">
-              {sortedIssues.slice(0, visibleCount).map(({ issue, offers, listing }) => {
-                const pendingOffers = offers.filter((o) => o.status === IssueOfferStatus.RECEIVED);
-                const acceptedOffer = offers.find((o) => o.status === IssueOfferStatus.ACCEPTED);
-                const isInReview = issue.status === "Status.REVIEW";
-                const isCompleted = (issue.status || "").toUpperCase().includes("COMPLETED");
-                const lowestPendingOffer = pendingOffers.length > 0 
-                  ? pendingOffers.reduce((min, o) => (o.price || 0) < (min.price || 0) ? o : min, pendingOffers[0])
-                  : null;
-
-                return (
-                  <div
-                    key={issue.id}
-                    className="flex items-center justify-between px-5 py-4 border-l-4 border-transparent hover:border-gold hover:bg-gray-50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-                    onClick={() => setSelectedIssue({ issue, listing, defaultTab: "offers" })}
-                  >
-                    {/* Left side - Issue info */}
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        issue.severity === 'high' ? 'bg-red-100' :
-                        issue.severity === 'medium' ? 'bg-gold-200' : 'bg-gray-100'
-                      }`}>
-                        <FontAwesomeIcon 
-                          icon={getIssueTypeIcon(issue.type)} 
-                          className={
-                            issue.severity === 'high' ? 'text-red-600' :
-                            issue.severity === 'medium' ? 'text-gold' : 'text-gray-600'
-                          } 
-                        />
+            <div className="space-y-2">
+              {grouping === "none"
+                ? sortedRows.slice(0, visibleCount).map(renderRow)
+                : groupedRows.map((group) => (
+                    <div key={group.key} className="space-y-2">
+                      <div className="px-1 pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {group.label}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-gray-900 truncate">
-                          {issue.summary || `${normalizeAndCapitalize(issue.type)} Issue`}
-                        </div>
-                        {listing && issue.vendor_id && (
-                          <div className="flex items-center gap-1 text-sm text-gray-500">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            <span className="truncate">{listing.address}</span>
-                          </div>
-                        )}
-                      </div>
+                      {group.rows.map(renderRow)}
                     </div>
-
-                    {/* Right side - Price, count, action */}
-                    <div className="flex items-center gap-4 flex-shrink-0">
-                      {/* Show price and quote count */}
-                      {isCompleted && acceptedOffer ? (
-                        <div className="text-right min-w-[80px]">
-                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                        </div>
-                      ) : isInReview && acceptedOffer ? (
-                        <div className="text-right min-w-[80px]">
-                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                          <div className="text-xs text-gold">Work completed</div>
-                        </div>
-                      ) : lowestPendingOffer ? (
-                        <div className="text-right min-w-[80px]">
-                          <div className="text-lg font-bold text-gray-900">${lowestPendingOffer.price.toLocaleString()}</div>
-                          {pendingOffers.length > 1 && (
-                            <div className="text-xs text-gray-500">{pendingOffers.length} quotes</div>
-                          )}
-                        </div>
-                      ) : acceptedOffer ? (
-                        <div className="text-right min-w-[80px]">
-                          <div className="text-lg font-bold text-gray-900">${acceptedOffer.price.toLocaleString()}</div>
-                          <div className="text-xs text-emerald-600">Accepted</div>
-                        </div>
-                      ) : null}
-
-                      {/* Action button - only positive actions */}
-                      {isCompleted ? (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedIssue({ issue, listing, defaultTab: "offers" });
-                            }}
-                            className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedIssue({ issue, listing, defaultTab: "dispute" });
-                            }}
-                            className="min-w-[90px] px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors text-center uppercase tracking-widest"
-                          >
-                            Dispute
-                          </button>
-                        </>
-                      ) : isInReview && acceptedOffer ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIssueForAction({ issue, listing });
-                            setShowApproveModal(true);
-                          }}
-                          className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"
-                        >
-                          Approve
-                        </button>
-                      ) : pendingOffers.length === 1 && !acceptedOffer ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAcceptOffer(pendingOffers[0]);
-                          }}
-                          className="min-w-[90px] px-4 py-2 bg-gold text-white text-sm font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors text-center"
-                        >
-                          Accept
-                        </button>
-                      ) : acceptedOffer ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIssue({ issue, listing, defaultTab: "offers" });
-                          }}
-                          className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
-                        >
-                          View
-                        </button>
-                      ) : pendingOffers.length > 1 ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedIssue({ issue, listing, defaultTab: "offers" });
-                          }}
-                          className="min-w-[90px] px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition-colors text-center"
-                        >
-                          Compare
-                        </button>
-                      ) : (
-                        <button
-                          className="min-w-[90px] px-4 py-2 bg-gray-100 text-gray-600 text-sm font-semibold rounded-lg text-center"
-                        >
-                          View
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  ))}
             </div>
 
-            {/* Load More Button */}
-            {visibleCount < sortedIssues.length && (
-              <div className="p-4 border-t border-gray-100">
+            {grouping === "none" && visibleCount < totalVisible && (
+              <div className="mt-4">
                 <button
-                  onClick={() => setVisibleCount((prev) => prev + 10)}
-                  className="w-full py-3 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors flex items-center justify-center gap-2"
+                  onClick={() => setVisibleCount((prev) => prev + 20)}
+                  className="w-full py-3 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-white rounded-xl border border-gray-200 transition-colors flex items-center justify-center gap-2"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                  Load more ({sortedIssues.length - visibleCount} remaining)
+                  Load more ({totalVisible - visibleCount} remaining)
                 </button>
               </div>
             )}
           </>
         )}
-      </div>
 
       {/* Approve Modal */}
       {showApproveModal && selectedIssueForAction && (
@@ -911,8 +1062,8 @@ const Offers: React.FC = () => {
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-6">
-              <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+              <button
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors"
                 onClick={() => setShowApproveModal(false)}
               >
                 Cancel
@@ -946,17 +1097,17 @@ const Offers: React.FC = () => {
                 </p>
               </div>
             </div>
-            
+
             <textarea
               value={changeRequestMessage}
               onChange={(e) => setChangeRequestMessage(e.target.value)}
               placeholder="Describe what changes are needed..."
               className="w-full h-24 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-transparent resize-none"
             />
-            
+
             <div className="flex justify-end gap-2 mt-4">
-              <button 
-                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors" 
+              <button
+                className="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50 transition-colors"
                 onClick={() => {
                   setShowRequestChangesModal(false);
                   setChangeRequestMessage("");
@@ -974,6 +1125,21 @@ const Offers: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Offer Detail Modal */}
+      {selectedOffer && (
+        <OfferDetailModal
+          offer={selectedOffer.offer}
+          issue={selectedOffer.issue}
+          listing={selectedOffer.listing}
+          vendor={selectedOffer.vendor}
+          currentUserId={userId}
+          isProcessing={isProcessingOffer}
+          onClose={() => setSelectedOffer(null)}
+          onAccept={() => handleAcceptOffer(selectedOffer.offer)}
+          onDecline={() => handleDeclineOffer(selectedOffer.offer)}
+        />
       )}
 
       {/* Issue Details Modal */}

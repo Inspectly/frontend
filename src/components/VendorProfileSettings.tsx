@@ -5,19 +5,19 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import Preloader from "./Preloader";
 import { toast } from "react-toastify";
+import { Camera } from "lucide-react";
 
 interface VendorFormData {
   name: string;
+  contactName: string;
   email: string;
   phone: string;
-  street: string;
-  city: string;
-  state: string;
-  zipcode: string;
+  serviceArea: string;
   businessType: string;
-  serviceAreas: string;
   license: string;
 }
+
+type Tab = "profile" | "notifications" | "verification";
 
 const VendorProfileSettings: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -25,31 +25,28 @@ const VendorProfileSettings: React.FC = () => {
     skip: !user?.id,
   });
   const [updateVendor, { isLoading: isUpdating }] = useUpdateVendorMutation();
+  const { data: vendorTypesList } = useGetVendorTypesQuery();
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState<VendorFormData>({
     name: "",
+    contactName: "",
     email: "",
     phone: "",
-    street: "",
-    city: "",
-    state: "",
-    zipcode: "",
+    serviceArea: "",
     businessType: "",
-    serviceAreas: "",
     license: "",
   });
 
   const getInitialFormData = (data: typeof vendorData): VendorFormData => ({
     name: data?.name || "",
+    contactName: "",
     email: data?.email || "",
     phone: data?.phone || "",
-    street: data?.address || "",
-    city: data?.city || "",
-    state: data?.state || "",
-    zipcode: data?.postal_code || "",
+    serviceArea: [data?.city, data?.state].filter(Boolean).join(", "),
     businessType: data?.vendor_types || "",
-    serviceAreas: "",
     license: data?.license || "",
   });
 
@@ -65,11 +62,14 @@ const VendorProfileSettings: React.FC = () => {
     setFormData(getInitialFormData(vendorData));
   };
 
-  const handleImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (
+    e: ChangeEvent<HTMLInputElement>,
+    setter: (src: string) => void
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.onloadend = () => setter(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
@@ -85,6 +85,8 @@ const VendorProfileSettings: React.FC = () => {
     e.preventDefault();
     if (!vendorData?.id) return;
 
+    const [city = "", state = ""] = formData.serviceArea.split(",").map((s) => s.trim());
+
     try {
       const payload = {
         id: vendorData.id,
@@ -97,217 +99,265 @@ const VendorProfileSettings: React.FC = () => {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        address: formData.street,
-        city: formData.city,
-        state: formData.state,
+        address: vendorData.address,
+        city,
+        state,
         country: vendorData.country,
-        postal_code: formData.zipcode,
+        postal_code: vendorData.postal_code,
         rating: vendorData.rating,
-        review: vendorData.review
+        review: vendorData.review,
       };
 
       await updateVendor(payload).unwrap();
-      toast.success("Vendor profile updated successfully");
+      toast.success("Profile updated successfully");
       refetch();
     } catch (error) {
       console.error("Failed to update vendor", error);
-      toast.error("Failed to update vendor profile");
+      toast.error("Failed to update profile");
     }
   };
 
-  const { data: vendorTypesList } = useGetVendorTypesQuery();
-
   if (isLoading) return <Preloader />;
 
-  return (
-    <div className="card-body">
-      <h6 className="text-base text-neutral-600 mb-4">Company Logo / Profile Photo</h6>
+  const subtitleParts = [
+    vendorData?.vendor_types || vendorData?.vendor_type?.vendor_type,
+    vendorData?.verified ? "Verified" : null,
+  ].filter(Boolean);
 
-      {/* Upload Image */}
-      <div className="mb-6 mt-4 relative w-[120px] h-[120px]">
-        <div className="avatar-upload relative w-full h-full rounded-full overflow-hidden border border-gray-300">
-          {imagePreview ? (
-            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-gray-100 flex items-center justify-center text-sm text-gray-400">
-              No image
-            </div>
-          )}
-          <div className="avatar-edit absolute bottom-2 right-3 z-10">
-            <input
-              type="file"
-              id="imageUpload"
-              accept=".png, .jpg, .jpeg"
-              onChange={handleImageUpload}
-              hidden
-            />
-            <label
-              htmlFor="imageUpload"
-              className="w-8 h-8 flex justify-center items-center bg-blue-100 text-blue-600 border border-blue-600 hover:bg-blue-200 text-lg rounded-full cursor-pointer"
-            >
-              📷
-            </label>
-          </div>
-        </div>
+  const tabClass = (tab: Tab) =>
+    `px-5 py-2 rounded-full text-sm font-medium transition ${
+      activeTab === tab
+        ? "bg-white text-neutral-900 shadow-sm border border-neutral-200"
+        : "text-neutral-500 hover:text-neutral-800"
+    }`;
+
+  return (
+    <div>
+      <header className="mb-6">
+        <h1 className="font-serif text-4xl text-neutral-900 mb-1">Profile</h1>
+        <p className="text-neutral-500">Manage your profile and preferences</p>
+      </header>
+
+      <div className="inline-flex items-center gap-1 bg-neutral-100 rounded-full p-1 mb-6">
+        <button type="button" className={tabClass("profile")} onClick={() => setActiveTab("profile")}>
+          Profile
+        </button>
+        <button type="button" className={tabClass("notifications")} onClick={() => setActiveTab("notifications")}>
+          Notifications
+        </button>
+        <button type="button" className={tabClass("verification")} onClick={() => setActiveTab("verification")}>
+          Verification
+        </button>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit}>
-        <div className="mb-5">
-          <label htmlFor="businessName" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Name <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="text"
-            id="businessName"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter business name"
-            value={formData.name}
-            onChange={handleChange}
-          />
-        </div>
+      {activeTab === "profile" && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-neutral-200 p-6">
+          <div className="relative mb-16">
+            <div className="h-44 w-full rounded-xl overflow-hidden bg-neutral-200">
+              {bannerPreview ? (
+                <img src={bannerPreview} alt="Banner" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-neutral-200 to-neutral-300" />
+              )}
+              <input
+                type="file"
+                id="bannerUpload"
+                accept=".png, .jpg, .jpeg"
+                onChange={(e) => handleFileUpload(e, setBannerPreview)}
+                hidden
+              />
+              <label
+                htmlFor="bannerUpload"
+                className="absolute top-3 right-3 w-9 h-9 flex items-center justify-center bg-white/90 hover:bg-white rounded-full cursor-pointer shadow"
+              >
+                <Camera className="w-4 h-4 text-neutral-700" />
+              </label>
+            </div>
 
-        <div className="mb-5">
-          <label htmlFor="email" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Email Address <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="email"
-            id="email"
-            className="w-full border rounded-lg px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-            placeholder="Enter email"
-            value={formData.email}
-            readOnly
-            disabled
-          />
-        </div>
+            <div className="absolute left-6 -bottom-10">
+              <div className="relative w-24 h-24 rounded-full border-4 border-white overflow-hidden bg-neutral-100">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
+                    No photo
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                id="avatarUpload"
+                accept=".png, .jpg, .jpeg"
+                onChange={(e) => handleFileUpload(e, setAvatarPreview)}
+                hidden
+              />
+              <label
+                htmlFor="avatarUpload"
+                className="absolute bottom-0 right-0 w-7 h-7 flex items-center justify-center bg-gold text-white rounded-full cursor-pointer shadow"
+              >
+                <Camera className="w-3.5 h-3.5" />
+              </label>
+            </div>
+          </div>
 
-        <div className="mb-5">
-          <label htmlFor="phone" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Phone Number
-          </label>
-          <input
-            type="text"
-            id="phone"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter phone number"
-            value={formData.phone}
-            onChange={handleChange}
-          />
-        </div>
+          <div className="mb-6 pl-1">
+            <h3 className="text-lg font-semibold text-neutral-900">
+              {formData.name || "Your business"}
+            </h3>
+            {subtitleParts.length > 0 && (
+              <p className="text-sm text-neutral-500">{subtitleParts.join(" · ")}</p>
+            )}
+          </div>
 
-        {/* Address Fields */}
-        <div className="mb-5">
-          <label className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Address
-          </label>
-          <input
-            type="text"
-            id="street"
-            className="w-full border rounded-lg px-3 py-2 mb-4"
-            placeholder="Street address"
-            value={formData.street}
-            onChange={handleChange}
-          />
-          <div className="flex gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-neutral-800 mb-2">
+                Business Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                placeholder="Enter business name"
+                value={formData.name}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="contactName" className="block text-sm font-medium text-neutral-800 mb-2">
+                Contact Name
+              </label>
+              <input
+                type="text"
+                id="contactName"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                placeholder="Enter contact name"
+                value={formData.contactName}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-800 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 bg-neutral-50 text-neutral-500 cursor-not-allowed"
+                value={formData.email}
+                readOnly
+                disabled
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-neutral-800 mb-2">
+                Phone
+              </label>
+              <input
+                type="text"
+                id="phone"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label htmlFor="serviceArea" className="block text-sm font-medium text-neutral-800 mb-2">
+              Service Area
+            </label>
             <input
               type="text"
-              id="city"
-              className="w-[300px] border rounded-lg px-3 py-2"
-              placeholder="City"
-              value={formData.city}
-              onChange={handleChange}
-            />
-            <input
-              type="text"
-              id="state"
-              className="w-[150px] border rounded-lg px-3 py-2"
-              placeholder="State"
-              value={formData.state}
+              id="serviceArea"
+              className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+              placeholder="e.g. London, ON"
+              value={formData.serviceArea}
               onChange={handleChange}
             />
           </div>
-          <input
-            type="text"
-            id="zipcode"
-            className="w-52 border rounded-lg px-3 py-2"
-            placeholder="Zip Code"
-            value={formData.zipcode}
-            onChange={handleChange}
-          />
-        </div>
 
-        <div className="mb-5">
-          <label htmlFor="businessType" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Business Type
-          </label>
-          <select
-            id="businessType"
-            className="w-full border rounded-lg px-3 py-2"
-            value={formData.businessType}
-            onChange={handleChange}
-          >
-            <option value="">Select business type</option>
-            {vendorTypesList?.map((type: any) => (
-              <option key={type.id || type.vendor_type} value={type.vendor_type}>
-                {type.vendor_type}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="mb-5">
-          <label htmlFor="serviceAreas" className="block font-semibold text-sm text-neutral-600 mb-2">
-            Service Area (comma-separated)
-          </label>
-          <input
-            type="text"
-            id="serviceAreas"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Torronto, London, Scarborough"
-            value={formData.serviceAreas}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="mb-5">
-          <label htmlFor="license" className="block font-semibold text-sm text-neutral-600 mb-2">License Number</label>
-          <input
-            type="text"
-            id="license"
-            className="w-full border rounded-lg px-3 py-2"
-            placeholder="Enter license number"
-            value={formData.license}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="mb-5">
-          <label className="block font-semibold text-sm text-neutral-600 mb-2">Verification Status</label>
-          <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${vendorData?.verified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-            {vendorData?.verified ? 'Verified' : 'Pending Verification'}
-          </div>
-        </div>
-
-        {isChanged && (
           <div className="flex gap-3">
             <button
-              type="button"
-              onClick={handleCancel}
-              className="border border-red-600 bg-red-100 hover:bg-red-200 text-red-600 text-base px-8 py-2 rounded-lg"
-            >
-              Cancel
-            </button>
-            <button
               type="submit"
-              disabled={isUpdating}
-              className="border border-blue-600 bg-blue-600 hover:bg-blue-700 text-white text-base px-8 py-2 rounded-lg disabled:opacity-50"
+              disabled={isUpdating || !isChanged}
+              className="bg-gold hover:bg-gold-600 text-white text-sm font-medium px-6 py-2.5 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUpdating ? "Saving..." : "Save Changes"}
             </button>
+            {isChanged && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="border border-neutral-200 hover:bg-neutral-50 text-neutral-700 text-sm font-medium px-6 py-2.5 rounded-lg"
+              >
+                Cancel
+              </button>
+            )}
           </div>
-        )}
-      </form>
+        </form>
+      )}
+
+      {activeTab === "notifications" && (
+        <div className="bg-white rounded-2xl border border-neutral-200 p-8">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-1">Notifications</h3>
+          <p className="text-sm text-neutral-500">We are working on it!</p>
+        </div>
+      )}
+
+      {activeTab === "verification" && (
+        <div className="bg-white rounded-2xl border border-neutral-200 p-6">
+          <h3 className="text-lg font-semibold text-neutral-900 mb-4">Verification</h3>
+          <div className="mb-5">
+            <p className="text-sm font-medium text-neutral-800 mb-2">Status</p>
+            <div
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                vendorData?.verified ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {vendorData?.verified ? "Verified" : "Pending Verification"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label htmlFor="businessType" className="block text-sm font-medium text-neutral-800 mb-2">
+                Business Type
+              </label>
+              <select
+                id="businessType"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                value={formData.businessType}
+                onChange={handleChange}
+              >
+                <option value="">Select business type</option>
+                {vendorTypesList?.map((type: any) => (
+                  <option key={type.id || type.vendor_type} value={type.vendor_type}>
+                    {type.vendor_type}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="license" className="block text-sm font-medium text-neutral-800 mb-2">
+                License Number
+              </label>
+              <input
+                type="text"
+                id="license"
+                className="w-full border border-neutral-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gold/40"
+                placeholder="Enter license number"
+                value={formData.license}
+                onChange={handleChange}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

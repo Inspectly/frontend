@@ -8,6 +8,7 @@ import {
   faLayerGroup,
   faListCheck,
   faShop,
+  faGear,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React, { useMemo } from "react";
@@ -193,9 +194,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           <li>
             <Link
-              to="/dashboard/faqs"
+              to="/settings"
               className={`${navItemBase} ${
-                activePage === "/dashboard/faqs" ? navItemActive : navItemInactive
+                activePage === "/settings" ? navItemActive : navItemInactive
+              }`}
+            >
+              <FontAwesomeIcon icon={faGear} className="mr-3 w-4" />
+              <span>Settings</span>
+            </Link>
+          </li>
+
+          <li>
+            <Link
+              to="/dashboard/faq"
+              className={`${navItemBase} ${
+                activePage === "/dashboard/faq" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faCircleQuestion} className="mr-3 w-4" />
@@ -205,11 +218,9 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
           <li>
             <Link
-              to="/dashboard/termsandconditions"
+              to="/dashboard/terms"
               className={`${navItemBase} ${
-                activePage === "/dashboard/termsandconditions"
-                  ? navItemActive
-                  : navItemInactive
+                activePage === "/dashboard/terms" ? navItemActive : navItemInactive
               }`}
             >
               <FontAwesomeIcon icon={faInfo} className="mr-3 w-4" />

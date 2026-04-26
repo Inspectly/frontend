@@ -482,6 +482,12 @@ const Marketplace: React.FC = () => {
     <div className="min-h-screen bg-background py-6">
       <div className="container mx-auto px-4">
 
+        {/* Page Title */}
+        <div className="mb-6">
+          <h1 className="text-3xl lg:text-4xl font-display font-bold text-gray-900">Marketplace</h1>
+          <p className="text-sm text-gray-500 mt-1">Find the perfect jobs for your expertise</p>
+        </div>
+
         {/* Search and Filter Section */}
           <div className="bg-card rounded-xl shadow-lg border border-border mb-8 overflow-hidden">
           <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-border">
