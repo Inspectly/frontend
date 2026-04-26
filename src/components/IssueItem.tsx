@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
+import { MapPin } from "lucide-react";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import { IssueAddress, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
-  faMapMarkerAlt, 
   faExclamationTriangle, 
   faClock,
   faExclamationCircle,
@@ -69,13 +70,13 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
   return (
     <div
       onClick={handleClick}
-      className={`group cursor-pointer border border-gray-200 rounded-xl overflow-hidden bg-white h-[350px] ${CARD_HOVER.LIFT}`}
+      className={`group cursor-pointer border border-border rounded-xl overflow-hidden bg-card h-[350px] ${CARD_HOVER.LIFT}`}
     >
       {/* Image Section - Top 3/4 with scroll arrows */}
       <div className="h-3/4 overflow-hidden relative">
         <ImageComponent
-          src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
-          fallback="/images/property_card_holder.jpg"
+          src={imageList[currentImageIndex] || PROPERTY_FALLBACK_IMAGE}
+          fallback={PROPERTY_FALLBACK_IMAGE}
           className="w-full h-full object-cover"
         />
 
@@ -115,10 +116,10 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
       <div className="h-1/4 p-4 flex flex-col justify-between">
         {/* Top Row: Summary and Days aligned horizontally */}
         <div className="flex items-start justify-between mb-2">
-          <h3 className="font-medium text-gray-900 text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
+          <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
             {issue.summary}
           </h3>
-          <div className="flex items-center gap-1 text-xs text-gray-500 flex-shrink-0">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0">
             <FontAwesomeIcon icon={faClock} className="text-gray-400" />
             <span>
               {formatRelativeTime(issue.created_at)}
@@ -129,22 +130,18 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
         {/* Bottom Row: City, Severity, Rating */}
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 text-gray-600">
-              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-gray-400" />
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <MapPin className="w-3 h-3 flex-shrink-0" />
               <span>
                 {address?.city || "Loading..."}
               </span>
             </div>
             <div className="flex items-center gap-1">
               <FontAwesomeIcon icon={severityConfig.icon} className={severityConfig.color} />
-              <span className="text-gray-600 capitalize">
+              <span className="text-muted-foreground capitalize">
                 {issue.severity || 'Medium'}
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-yellow-500">★</span>
-            <span className="font-medium text-gray-700">4.97</span>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ImageComponent from "../components/ImageComponent";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import { useGetListingByUserIdQuery, useCreateListingMutation } from "../features/api/listingsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -89,7 +90,7 @@ const Listings: React.FC = () => {
       </div>
 
       <div className="card h-full p-0 rounded-xl border-0 overflow-hidden">
-        <div className="card-header border-b border-neutral-200 bg-white py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
+        <div className="card-header border-b border-border bg-card py-4 px-6 flex items-center flex-wrap gap-3 justify-between">
           <div className="flex items-center flex-wrap gap-3">
             <form className="relative" onSubmit={(e) => e.preventDefault()}>
               <input
@@ -97,11 +98,11 @@ const Listings: React.FC = () => {
                 placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="h-10 w-[20rem] rounded-lg border border-gray-200 bg-gray-100 px-[2.625rem] pr-5 py-[0.3125rem] text-gray-900"
+                className="h-10 w-[20rem] rounded-lg border border-border bg-muted px-[2.625rem] pr-5 py-[0.3125rem] text-foreground"
               />
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
-                className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-gray-600"
+                className="absolute top-1/2 left-3 -translate-y-1/2 text-[0.9rem] text-muted-foreground"
               />
             </form>
           </div>
@@ -116,9 +117,9 @@ const Listings: React.FC = () => {
           </button>
         </div>
 
-        <div className="bg-white p-6">
+        <div className="bg-card p-6">
           {currentListings.length === 0 ? (
-            <div className="text-center text-gray-500">
+            <div className="text-center text-muted-foreground">
               You have no current listings.
             </div>
           ) : (
@@ -135,7 +136,7 @@ const Listings: React.FC = () => {
                   <div className="h-[266px] overflow-hidden relative">
                     <ImageComponent
                       src={listing.image_url}
-                      fallback="/images/property_card_holder.jpg"
+                      fallback={PROPERTY_FALLBACK_IMAGE}
                       className="hover-scale-img__img w-full h-full object-cover"
                     />
                     <h6 className="absolute bottom-0 left-0 w-full text-white text-center py-2 bg-gradient-to-t from-black/40 via-black/30 to-transparent">

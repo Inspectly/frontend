@@ -1,4 +1,20 @@
 /**
+ * Formats a date as a compact relative time with sub-day precision (e.g. "5m ago", "3h ago", "2d ago").
+ * Returns "" for invalid date strings.
+ */
+export const getRelativeTime = (dateStr: string): string => {
+  const ts = new Date(dateStr).getTime();
+  if (isNaN(ts)) return "";
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+
+/**
  * Formats a date to show relative time in days-based format for marketplace context
  * @param dateString - ISO date string
  * @returns Formatted relative time string

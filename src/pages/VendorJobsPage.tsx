@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -596,7 +597,7 @@ const VendorJobsPage: React.FC = () => {
                   <div className="w-24 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                     <ImageComponent
                       src={issue?.image_urls || listing?.image_url}
-                      fallback="/images/property_card_holder.jpg"
+                      fallback={PROPERTY_FALLBACK_IMAGE}
                       className="w-full h-full object-cover"
                     />
                   </div>
