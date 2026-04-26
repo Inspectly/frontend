@@ -119,7 +119,14 @@ export default {
 					dark: 'hsl(var(--gold-dark))',
 					muted: 'hsl(var(--gold-muted))'
 				},
-				chart: {
+				/* Issue / Property status tokens */
+			'issue-open': {
+				DEFAULT: 'var(--issue-open-bg)',
+				foreground: 'var(--issue-open-foreground)',
+			},
+			'issue-resolved': 'var(--issue-resolved-color)',
+			'issue-pending': 'var(--issue-pending-color)',
+			chart: {
 					'1': 'hsl(var(--chart-1))',
 					'2': 'hsl(var(--chart-2))',
 					'3': 'hsl(var(--chart-3))',

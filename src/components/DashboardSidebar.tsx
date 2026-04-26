@@ -24,6 +24,7 @@ import logo from "@/assets/logo.png";
 interface DashboardSidebarProps {
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
+  handleLogout?: () => void;
 }
 
 const SectionLabel = ({ label }: { label: string }) => (
@@ -44,7 +45,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
 
   const user = useSelector((state: RootState) => state.auth.user);
   const isAuthReady = useSelector((state: RootState) => state.auth.authenticated);
-  const isVendor = user?.user_type === "vendor";
+  const isVendor = isAuthReady && user?.user_type === "vendor";
 
   const { data: vendor } = useGetVendorByVendorUserIdQuery(
     String(user?.id),
