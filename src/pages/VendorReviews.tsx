@@ -11,9 +11,14 @@ import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
 
 const VendorReviews: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
-  const { data: reviews = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user?.id), {
+  const { data: allReviews = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user?.id), {
     skip: !user?.id,
   });
+
+  const reviews = useMemo(() => {
+    return allReviews.filter((r: any) => r.status === "approved");
+  }, [allReviews]);
+
   const { data: clients = [] } = useGetClientsQuery();
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user?.id), {
     skip: !user?.id,
@@ -36,7 +41,7 @@ const VendorReviews: React.FC = () => {
         avg: 0,
         distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } as Record<1 | 2 | 3 | 4 | 5, number>,
         fiveStarRate: 0,
-        repeatClientRate: 0,
+        uniqueClients: 0,
       };
     }
     const distribution: Record<1 | 2 | 3 | 4 | 5, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
@@ -50,22 +55,18 @@ const VendorReviews: React.FC = () => {
     });
     const uniqueClients = Object.keys(reviewsPerClient).length;
     const repeatClients = Object.values(reviewsPerClient).filter((n) => n > 1).length;
-    const repeatClientRate = uniqueClients > 0 ? Math.round((repeatClients / uniqueClients) * 100) : 0;
     const fiveStarRate = Math.round((distribution[5] / count) * 100);
     return {
       count,
       avg: Math.round((sum / count) * 10) / 10,
       distribution,
       fiveStarRate,
-      repeatClientRate,
+      uniqueClients,
     };
   }, [reviews]);
 
-  const winRate = useMemo(() => {
-    const total = vendorOffers.length;
-    if (total === 0) return 0;
-    const accepted = vendorOffers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
-    return Math.round((accepted / total) * 100);
+  const jobsWon = useMemo(() => {
+    return vendorOffers.filter((o) => o.status === IssueOfferStatus.ACCEPTED).length;
   }, [vendorOffers]);
 
   const sortedReviews = useMemo(() => {
@@ -82,9 +83,9 @@ const VendorReviews: React.FC = () => {
       </div>
 
       {/* Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card className="border-border">
-          <CardContent className="p-5 text-center flex flex-col justify-center h-full">
+          <CardContent className="p-8 text-center flex flex-col justify-center h-full">
             <p className="text-5xl font-bold text-foreground mb-2">
               {stats.count > 0 ? stats.avg.toFixed(1) : "—"}
             </p>
@@ -105,9 +106,9 @@ const VendorReviews: React.FC = () => {
         </Card>
 
         <Card className="border-border">
-          <CardContent className="p-5">
+          <CardContent className="p-8 flex flex-col justify-center h-full">
             <h3 className="text-sm font-semibold text-foreground mb-3">Rating Distribution</h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {([5, 4, 3, 2, 1] as const).map((r) => (
                 <div key={r} className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground w-3">{r}</span>
@@ -126,12 +127,12 @@ const VendorReviews: React.FC = () => {
         </Card>
 
         <Card className="border-border">
-          <CardContent className="p-5">
+          <CardContent className="p-8 flex flex-col justify-center h-full">
             <h3 className="text-sm font-semibold text-foreground mb-3">Highlights</h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[
-                { label: "Repeat Clients", value: `${stats.repeatClientRate}%`, icon: ThumbsUp },
-                { label: "Win Rate", value: vendorOffers.length > 0 ? `${winRate}%` : "—", icon: Trophy },
+                { label: "Clients Helped", value: stats.uniqueClients.toString(), icon: User },
+                { label: "Jobs Won", value: jobsWon.toString(), icon: Trophy },
                 { label: "5-Star Rate", value: `${stats.fiveStarRate}%`, icon: Star },
               ].map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
@@ -150,7 +151,7 @@ const VendorReviews: React.FC = () => {
       </div>
 
       {/* Reviews list */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {sortedReviews.length > 0 ? (
           sortedReviews.map((review) => {
             const client = clientsByUserId[review.user_id];
@@ -169,9 +170,9 @@ const VendorReviews: React.FC = () => {
 
             return (
               <Card key={review.id} className="border-border">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="h-10 w-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-lg">
+                <CardContent className="p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
                       {initial}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -200,7 +201,7 @@ const VendorReviews: React.FC = () => {
           })
         ) : (
           <Card className="border-border">
-            <CardContent className="py-12 flex flex-col items-center justify-center text-center">
+            <CardContent className="py-16 flex flex-col items-center justify-center text-center">
               <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center mb-4">
                 <User className="h-6 w-6 text-muted-foreground" />
               </div>
