@@ -3,44 +3,40 @@ import { useNavigate, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
-  faArrowTrendUp,
-  faBolt,
-  faBriefcase,
-  faCalendarAlt,
   faChevronRight,
-  faClock,
-  faDollarSign,
-  faHouse,
-  faMapMarkerAlt,
   faRocket,
   faSearch,
-  faStar,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment } from "../types";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
-import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
+import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
 import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
+import { store } from "../store/store";
+import DashboardStatCard from "../components/dashboard/DashboardStatCard";
+import CardSectionHeader from "../components/dashboard/CardSectionHeader";
+import PropertyThumbnail from "../components/dashboard/PropertyThumbnail";
 import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
-import ImageComponent from "../components/ImageComponent";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
+import { getRelativeTime } from "../utils/dateUtils";
 import IssueDetails from "../components/IssueDetails";
+import { Briefcase, Calendar, CalendarCheck, MapPin, Star, TrendingUp, Zap } from "lucide-react";
 
-// "Posted Xm/Xh/Xd ago" string
-function getPostedAgo(date: Date): string {
-  const diffMs = Date.now() - date.getTime();
-  const mins = Math.floor(diffMs / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
-}
+// Static lookup: vendor type → matching issue type keywords
+const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
+  electrician: ['electrical', 'electrician', 'electric', 'wiring'],
+  plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
+  painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
+  hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
+  roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
+  carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
+  landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
+  cleaner: ['cleaning', 'cleaner', 'janitorial'],
+  general: ['general', 'other', 'misc', 'interior', 'exterior'],
+};
 
 interface DashboardProps {
   user: User;
@@ -180,8 +176,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       return issue && issue.status !== "Status.COMPLETED";
     }).length;
 
-    // Calculate earnings this month
+    // Calculate earnings this month and this week
     const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
     const thisMonth = acceptedOffers
       .filter(o => {
         const issue = issuesMap[o.issue_id];
@@ -191,17 +189,37 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       })
       .reduce((sum, o) => sum + (o.price || 0), 0);
 
+    const thisWeek = acceptedOffers
+      .filter(o => {
+        const issue = issuesMap[o.issue_id];
+        if (!issue) return false;
+        const created = new Date(issue.created_at || '');
+        return created >= weekAgo;
+      })
+      .reduce((sum, o) => sum + (o.price || 0), 0);
+
     return {
       activeJobs,
       completedJobs,
       totalEarnings,
       thisMonthEarnings: thisMonth,
+      thisWeekEarnings: thisWeek,
       pendingBids: pendingOffers.length,
       totalBids: vendorOffers.length,
       acceptedCount: acceptedOffers.length,
       outstandingBids: pendingOffers.reduce((sum, o) => sum + (o.price || 0), 0),
     };
   }, [vendorOffers, issuesMap]);
+
+  // Marketplace link with vendor type/city pre-filled
+  const marketplaceLink = useMemo(() => {
+    if (vendor) {
+      const type = vendor.vendor_types?.split(",")[0]?.trim() || "";
+      const city = vendor.city || "";
+      return `/marketplace?type=${encodeURIComponent(type)}&city=${encodeURIComponent(city)}`;
+    }
+    return "/marketplace";
+  }, [vendor]);
 
   // Review stats - average rating and count
   const reviewStats = useMemo(() => {
@@ -253,19 +271,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }).length;
   }, [vendorOffers, issuesMap]);
 
-  // Mapping from vendor types to issue types they can handle
-  const vendorToIssueTypeMap: Record<string, string[]> = {
-    electrician: ['electrical', 'electrician', 'electric', 'wiring'],
-    plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
-    painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
-    hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
-    roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
-    carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
-    landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
-    cleaner: ['cleaning', 'cleaner', 'janitorial'],
-    general: ['general', 'other', 'misc', 'interior', 'exterior'],
-  };
-
   // Get vendor specialties for filtering
   const vendorSpecialties = useMemo(() => {
     if (!vendor?.vendor_types) return [];
@@ -277,12 +282,126 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       // Add the original type
       expanded.add(type);
       // Add mapped issue types
-      const mappedTypes = vendorToIssueTypeMap[type] || [];
+      const mappedTypes = VENDOR_TO_ISSUE_TYPE_MAP[type] || [];
       mappedTypes.forEach(t => expanded.add(t));
     });
     
     return Array.from(expanded);
   }, [vendor?.vendor_types]);
+
+  // Available opportunities from marketplace with bid info
+  const [marketplaceJobs, setMarketplaceJobs] = useState<
+    Array<{
+      id: number;
+      type: string;
+      summary: string;
+      severity: string;
+      bidCount: number;
+      listing?: Listing;
+      isHot: boolean;
+      estimatedPrice?: number;
+      distance?: string;
+      created_at?: string;
+    }>
+  >([]);
+  
+
+  // Helper to check if issue matches vendor specialty
+  const matchesSpecialty = (issue: IssueType) => {
+    if (vendorSpecialties.length === 0) return true;
+    const issueType = (issue.type || '').toLowerCase();
+    return vendorSpecialties.some(specialty => 
+      issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
+    );
+  };
+
+  // Helper to check if issue is in vendor's city
+  const matchesCity = (issue: IssueType) => {
+    if (!vendor?.city) return true; // If no vendor city, match all
+    const listing = listingsMap[issue.listing_id];
+    if (!listing?.city) return false;
+    return listing.city.toLowerCase() === vendor.city.toLowerCase();
+  };
+
+  // Filter and fetch marketplace opportunities with smart fallbacks
+  useEffect(() => {
+    const fetchOpportunities = async () => {
+      if (!issues) return;
+
+      const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
+      
+      // Try different filter combinations with fallbacks
+      let filtered: IssueType[] = [];
+      
+      // 1. Best match: specialty + city
+      const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
+      
+      if (exactMatch.length > 0) {
+        filtered = exactMatch;
+      } else {
+        // 2. Fallback A: specialty only (any location)
+        const specialtyOnly = available.filter((i) => matchesSpecialty(i));
+        
+        if (specialtyOnly.length > 0) {
+          filtered = specialtyOnly;
+        } else {
+          // 3. Fallback B: city only (any specialty)
+          const cityOnly = available.filter((i) => matchesCity(i));
+          
+          if (cityOnly.length > 0) {
+            filtered = cityOnly;
+          } else {
+            // 4. Fallback C: show all available
+            filtered = available;
+          }
+        }
+      }
+      
+      
+      // Sort by severity for Priority List (high → medium → low)
+      const sortedBySeverity = [...filtered].sort((a, b) => {
+        const severityOrder = { high: 0, medium: 1, low: 2 };
+        return (severityOrder[a.severity as keyof typeof severityOrder] || 2) -
+               (severityOrder[b.severity as keyof typeof severityOrder] || 2);
+      });
+
+      // Show jobs immediately without waiting for bid counts
+      const top20 = sortedBySeverity.slice(0, 20);
+      const jobsWithoutBids = top20.map((issue) => {
+        const listing = listingsMap[issue.listing_id];
+        return {
+          id: issue.id,
+          type: issue.type || "General",
+          summary: issue.summary || "View details",
+          severity: issue.severity,
+          bidCount: 0,
+          listing,
+          isHot: issue.severity === 'high',
+          created_at: issue.created_at,
+        };
+      });
+      setMarketplaceJobs(jobsWithoutBids);
+
+      // Fetch bid counts in background (non-blocking, progressive)
+      top20.forEach((issue) => {
+        store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
+          .then((result) => {
+            const bidCount = result.data?.length || 0;
+            setMarketplaceJobs((prev) => {
+              const updated = [...prev];
+              const jobIdx = updated.findIndex(j => j.id === issue.id);
+              if (jobIdx !== -1) {
+                updated[jobIdx] = { ...updated[jobIdx], bidCount, isHot: issue.severity === 'high' || bidCount === 0 };
+              }
+              return updated;
+            });
+          })
+          .catch(() => {});
+      });
+    };
+
+    fetchOpportunities();
+  }, [issues, vendorSpecialties, listingsMap, vendor?.city]);
 
   // Active jobs (accepted offers)
   const activeJobs = useMemo(() => {
@@ -310,37 +429,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }).length;
   }, [issues, vendorSpecialties]);
 
-  // New job opportunities - open issues matching vendor specialty or all if none match
-  const newJobOpportunities = useMemo(() => {
-    if (!issues) return [];
-    const alreadyBid = new Set(vendorOffers.map((o) => o.issue_id));
-    const open = issues.filter(
-      (i) => i.status === "Status.OPEN" && !i.vendor_id && i.active && !alreadyBid.has(i.id)
-    );
-    const specialtyMatch = (issue: IssueType) => {
-      if (vendorSpecialties.length === 0) return true;
-      const issueType = (issue.type || "").toLowerCase();
-      return vendorSpecialties.some(
-        (s) => issueType.includes(s) || s.includes(issueType) || s === "general"
-      );
-    };
-    const matched = open.filter(specialtyMatch);
-    const pool = matched.length > 0 ? matched : open;
-    return [...pool]
-      .sort((a, b) => {
-        const ta = new Date(a.created_at || 0).getTime();
-        const tb = new Date(b.created_at || 0).getTime();
-        return tb - ta;
-      })
-      .slice(0, 5)
-      .map((issue) => ({
-        issue,
-        listing: listingsMap[issue.listing_id],
-      }));
-  }, [issues, vendorOffers, vendorSpecialties, listingsMap]);
-  
   const winRate = vendorMetrics.totalBids > 0 ? Math.round((vendorMetrics.acceptedCount / vendorMetrics.totalBids) * 100) : 0;
   const isNewVendor = vendorMetrics.totalBids === 0;
+
+  // IDs of jobs vendor has already bid on
+  const alreadyBidOnIds = useMemo(() => {
+    return new Set(vendorOffers.map(o => o.issue_id));
+  }, [vendorOffers]);
 
   // Process ALL assessments (including client counter-proposals) into categorized visits - GROUPED BY ISSUE
   // NOTE: This useMemo must be BEFORE any early returns to comply with Rules of Hooks
@@ -453,14 +548,19 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     });
   }, [allAssessments, issuesMap, listingsMap, user.id]);
 
-  // Today's schedule - visits starting today
-  const todaySchedule = useMemo(() => {
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+  // Today's confirmed schedule
+  const todaysSchedule = useMemo(() => {
+    const today = new Date();
     return processedVisits
-      .filter(v => v.startTime >= dayStart && v.startTime < dayEnd)
+      .filter(v => {
+        if (v.category !== "confirmed") return false;
+        const d = v.startTime;
+        return (
+          d.getDate() === today.getDate() &&
+          d.getMonth() === today.getMonth() &&
+          d.getFullYear() === today.getFullYear()
+        );
+      })
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [processedVisits]);
 
@@ -468,16 +568,16 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   if (issuesError) return <p>Error loading dashboard data</p>;
   if (isVendorLoading) {
     return (
-      <div className="min-h-screen w-full bg-gray-100 p-6">
+      <div className="min-h-screen w-full bg-background p-6">
         <div className="w-full max-w-[1800px] mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-16 bg-gray-200 rounded-xl w-full"></div>
+            <div className="h-16 bg-muted rounded-xl w-full"></div>
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-28 bg-gray-200 rounded-xl"></div>
+                <div key={i} className="h-28 bg-muted rounded-xl"></div>
               ))}
             </div>
-            <div className="h-96 bg-gray-200 rounded-xl"></div>
+            <div className="h-96 bg-muted rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -487,11 +587,11 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   if (!vendor) return <p>Vendor not found.</p>;
 
   return (
-    <div className="min-h-screen w-full bg-gray-100">
-      <div className="w-full max-w-[1800px] mx-auto px-4 py-4 lg:px-6">
+    <div className="min-h-screen w-full bg-background">
+      <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
 
         {/* Greeting Header */}
-        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
             {vendor?.profile_image_url ? (
               <img src={vendor.profile_image_url} alt={vendor.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
@@ -501,25 +601,26 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
             )}
             <div>
-              <h1 className="text-3xl lg:text-4xl font-display font-bold text-gray-900">
+              <h1 className="text-3xl lg:text-4xl font-display font-bold text-foreground">
                 {(() => {
                   const hour = new Date().getHours();
                   const firstName = vendor?.name?.split(/\s+/)[0] || "";
                   if (hour >= 5 && hour < 12) return `Good morning, ${firstName}`;
                   if (hour >= 12 && hour < 17) return `Good afternoon, ${firstName}`;
-                  if (hour >= 17 && hour < 21) return `Good evening, ${firstName}`;
-                  return `Hello, ${firstName}`;
+                  return `Good evening, ${firstName}`;
                 })()}
               </h1>
-              <p className="text-sm text-gray-500">Here's what's happening today</p>
+              <p className="text-sm text-muted-foreground">Here's what's happening today</p>
             </div>
           </div>
+
+          {/* Browse Jobs CTA */}
           <Link
-            to="/marketplace"
-            className="inline-flex items-center gap-2 px-5 py-3 bg-gold text-white rounded-lg font-semibold hover:bg-foreground hover:text-background transition-colors shadow-sm"
+            to={marketplaceLink}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-sm flex-shrink-0"
           >
-            <FontAwesomeIcon icon={faBriefcase} />
-            Browse Jobs
+            <FontAwesomeIcon icon={faSearch} className="text-xs" />
+            <span>Browse Jobs</span>
           </Link>
         </div>
         
@@ -565,419 +666,294 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         )}
 
         {/* Top Stat Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Active Projects */}
-          <div
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <DashboardStatCard
+            iconBg="bg-amber-100"
+            icon={<Briefcase className="w-4 h-4 text-amber-600" />}
+            value={vendorMetrics.activeJobs}
+            label="Active Projects"
+            subtitle={activeProjectsThisWeek > 0 ? `+${activeProjectsThisWeek} this week` : undefined}
             onClick={() => navigate("/vendor/jobs?tab=active")}
-            className="bg-white rounded-xl p-5 cursor-pointer shadow-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center mb-4">
-              <FontAwesomeIcon icon={faBriefcase} className="text-gold" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">{vendorMetrics.activeJobs}</div>
-            <div className="text-sm text-gray-500 mt-0.5">Active Projects</div>
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
-              <FontAwesomeIcon icon={faArrowTrendUp} />
-              {activeProjectsThisWeek > 0 ? `+${activeProjectsThisWeek} this week` : "No change this week"}
-            </div>
-          </div>
-
-          {/* This Month */}
-          <div
-            onClick={() => navigate("/vendor/jobs?tab=active")}
-            className="bg-white rounded-xl p-5 cursor-pointer shadow-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          >
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
-              <FontAwesomeIcon icon={faDollarSign} className="text-emerald-600" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">${vendorMetrics.thisMonthEarnings.toLocaleString()}</div>
-            <div className="text-sm text-gray-500 mt-0.5">This Month</div>
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
-              <FontAwesomeIcon icon={faArrowTrendUp} />
-              {(() => {
-                const last = earningsBreakdown.lastMonth;
-                const curr = vendorMetrics.thisMonthEarnings;
-                if (last === 0) return curr > 0 ? "First earnings" : "No earnings yet";
-                const pct = Math.round(((curr - last) / last) * 100);
-                return `${pct >= 0 ? "+" : ""}${pct}% vs last`;
-              })()}
-            </div>
-          </div>
-
-          {/* Avg. Rating */}
-          <div className="bg-white rounded-xl p-5 shadow-lg">
-            <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center mb-4">
-              <FontAwesomeIcon icon={faStar} className="text-gold" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {reviewStats.count > 0 ? reviewStats.rating.toFixed(1) : "—"}
-            </div>
-            <div className="text-sm text-gray-500 mt-0.5">Avg. Rating</div>
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
-              <FontAwesomeIcon icon={faArrowTrendUp} />
-              {reviewStats.count > 0
-                ? `${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}`
-                : "No reviews yet"}
-            </div>
-          </div>
-
-          {/* Response Rate */}
-          <div className="bg-white rounded-xl p-5 shadow-lg">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-              <FontAwesomeIcon icon={faBolt} className="text-blue-600" />
-            </div>
-            <div className="text-3xl font-bold text-gray-900">
-              {vendorMetrics.totalBids > 0 ? `${winRate}%` : "—"}
-            </div>
-            <div className="text-sm text-gray-500 mt-0.5">Response Rate</div>
-            <div className="flex items-center gap-1 mt-2 text-xs text-gold font-medium">
-              <FontAwesomeIcon icon={faArrowTrendUp} />
-              {vendorMetrics.totalBids > 0
-                ? `${vendorMetrics.acceptedCount} of ${vendorMetrics.totalBids} bids`
-                : "Place your first bid"}
-            </div>
-          </div>
+          />
+          <DashboardStatCard
+            iconBg="bg-emerald-100"
+            icon={<span className="text-emerald-600 font-bold text-sm">$</span>}
+            value={`$${vendorMetrics.thisMonthEarnings.toLocaleString()}`}
+            label="This Month"
+            subtitle={(() => {
+              const last = earningsBreakdown.lastMonth;
+              const curr = vendorMetrics.thisMonthEarnings;
+              if (last === 0) return curr > 0 ? "First earnings!" : undefined;
+              const pct = Math.round(((curr - last) / last) * 100);
+              return `${pct >= 0 ? "+" : ""}${pct}% vs last month`;
+            })()}
+          />
+          <DashboardStatCard
+            iconBg="bg-orange-100"
+            icon={<Star className="w-4 h-4 text-orange-500" />}
+            value={reviewStats.rating > 0 ? reviewStats.rating.toFixed(1) : "—"}
+            label="Avg. Rating"
+            subtitle={reviewStats.count > 0 ? `${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}` : undefined}
+          />
+          <DashboardStatCard
+            iconBg="bg-blue-100"
+            icon={<Zap className="w-4 h-4 text-blue-600" />}
+            value={`${winRate}%`}
+            label="Win Rate"
+          />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-12 gap-6">
-          
-          {/* Left Column - Active Projects */}
-          <div className="col-span-12 lg:col-span-8 flex flex-col">
+        <div className="grid grid-cols-12 gap-5">
 
-            {/* Active Projects - mockup style */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg flex-1 flex flex-col">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-gray-700" />
-                    </div>
-                    <span className="font-semibold text-gray-900">Active Projects</span>
-                  </div>
-                  {activeJobs.length > 0 && (
-                    <Link
-                      to="/vendor/jobs?tab=active"
-                      className="text-sm text-gold font-medium hover:underline flex items-center gap-1"
-                    >
-                      View all
-                      <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                    </Link>
-                  )}
-                </div>
-              </div>
+          {/* Left Column - Active Projects + Job Opportunities */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-5 min-w-0">
 
-              <div className="p-4 flex-1">
+            {/* ACTIVE PROJECTS LIST */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-amber-100"
+                icon={<Briefcase className="w-5 h-5 text-amber-600" />}
+                title="Active Projects"
+                viewAllHref="/vendor/jobs?tab=active"
+              />
+
+              <div className="divide-y divide-border">
                 {activeJobs.length > 0 ? (
-                  <div className="space-y-2">
-                    {activeJobs.slice(0, 3).map(({ offer, issue, listing }) => {
-                      const progress =
-                        issue?.status === "Status.REVIEW" ? 90
-                        : issue?.status === "Status.IN_PROGRESS" ? 55
-                        : 25;
-                      const acceptedAt = new Date(offer.updated_at || offer.created_at || Date.now());
-                      const dueAt = new Date(acceptedAt);
-                      dueAt.setDate(dueAt.getDate() + 7);
-                      const msDay = 1000 * 60 * 60 * 24;
-                      const daysRemaining = Math.ceil((dueAt.getTime() - Date.now()) / msDay);
-                      const dueText =
-                        daysRemaining <= 0 ? "Due Today"
-                        : daysRemaining === 1 ? "Due 1 day"
-                        : `Due ${daysRemaining} days`;
-                      const initial = (vendor?.name || "V")[0].toUpperCase();
-                      return (
-                        <div
-                          key={offer.id}
-                          onClick={() => issue?.id && openIssueModal(issue.id, "details")}
-                          className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                        >
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                            {listing?.image_url ? (
-                              <ImageComponent
-                                src={listing.image_url}
-                                fallback="/images/property_card_holder.jpg"
-                                className="w-full h-full object-cover"
+                  activeJobs.slice(0, 5).map(({ offer, issue, listing }) => {
+                    const statusLabel =
+                      issue?.status === "Status.IN_PROGRESS"
+                        ? "In Progress"
+                        : issue?.status === "Status.REVIEW"
+                        ? "In Review"
+                        : "Active";
+                    return (
+                      <div
+                        key={offer.id}
+                        onClick={() => issue?.id && openIssueModal(issue.id, "details")}
+                        className="flex items-center gap-4 px-5 py-4 hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={listing?.image_url} size="lg" />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-foreground truncate">
+                            {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Project`}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {(() => { const a = listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          </div>
+                          {/* Progress indicator */}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full"
+                                style={{
+                                  width:
+                                    issue?.status === "Status.COMPLETED"
+                                      ? "100%"
+                                      : issue?.status === "Status.IN_PROGRESS"
+                                      ? "60%"
+                                      : issue?.status === "Status.REVIEW"
+                                      ? "85%"
+                                      : "30%",
+                                }}
                               />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-                                <FontAwesomeIcon icon={faHouse} className="text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-gray-900 truncate">
-                              {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Project`}
                             </div>
-                            <div className="flex items-center gap-1 text-sm text-gray-500 mt-0.5 truncate">
-                              <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs flex-shrink-0" />
-                              <span className="truncate">{listing?.address || "No address"}</span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-2">
-                              {vendor?.profile_image_url ? (
-                                <img
-                                  src={vendor.profile_image_url}
-                                  alt={vendor.name}
-                                  className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                                />
-                              ) : (
-                                <div className="w-6 h-6 rounded-full bg-gold flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                  {initial}
-                                </div>
-                              )}
-                              <span className="text-xs text-gray-700 font-medium whitespace-nowrap">
-                                {vendor?.name?.split(/\s+/)[0] || "You"}
-                              </span>
-                              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden min-w-[60px]">
-                                <div className="h-full bg-gold transition-all" style={{ width: `${progress}%` }} />
-                              </div>
-                              <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{progress}%</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end flex-shrink-0">
-                            <span className="text-lg font-bold text-gray-900">
-                              ${offer.price?.toLocaleString()}
-                            </span>
-                            <div className="flex items-center gap-1 text-xs text-gray-500 mt-1 whitespace-nowrap">
-                              <FontAwesomeIcon icon={faClock} className="text-xs" />
-                              {dueText}
-                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">{statusLabel}</span>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-foreground">${offer.price?.toLocaleString()}</div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs mt-1" />
+                        </div>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <div className="py-8 text-center">
-                    <div className="w-14 h-14 bg-gold-50 rounded-xl flex items-center justify-center mx-auto mb-4">
-                      <FontAwesomeIcon icon={faBriefcase} className="text-gold text-2xl" />
+                  <div className="py-10 text-center">
+                    <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Briefcase className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <p className="text-gray-900 font-semibold mb-1">No active projects yet</p>
-                    <p className="text-sm text-gray-500 mb-4">Browse jobs and submit your first bid to get started</p>
+                    <p className="text-foreground font-semibold mb-1">No active projects yet</p>
+                    <p className="text-sm text-muted-foreground mb-4">Browse jobs and submit a bid to get started</p>
                     <Link
-                      to="/marketplace"
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gold text-white rounded-lg font-semibold text-sm hover:bg-foreground hover:text-background transition-colors"
+                      to={marketplaceLink}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-colors"
                     >
                       <FontAwesomeIcon icon={faSearch} />
                       Find Your First Project
-                      <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
                     </Link>
                   </div>
                 )}
               </div>
             </div>
 
-          </div>
+            {/* JOB OPPORTUNITIES */}
+            <div className="bg-card rounded-xl overflow-hidden shadow-soft border border-border">
+              <CardSectionHeader
+                iconBg="bg-gold-200"
+                icon={<Zap className="w-5 h-5 text-gold" />}
+                title="New Job Opportunities"
+                viewAllHref={marketplaceLink}
+              />
 
-          {/* Right Column - Sidebar (Earnings + Schedule) */}
-          <div className="col-span-12 lg:col-span-4 space-y-6">
-            {/* Earnings Summary */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <FontAwesomeIcon icon={faArrowTrendUp} className="text-emerald-600" />
+              {/* Job List */}
+              {(() => {
+                const jobs = marketplaceJobs.filter(j => !alreadyBidOnIds.has(j.id)).slice(0, 5);
+                if (jobs.length === 0) {
+                  return (
+                    <div className="py-10 px-5 text-center">
+                      <p className="text-foreground font-medium mb-1">No matching jobs right now</p>
+                      <p className="text-sm text-muted-foreground mb-5">
+                        Browse the marketplace to find opportunities near you
+                      </p>
+                      <Link
+                        to={marketplaceLink}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+                      >
+                        <FontAwesomeIcon icon={faSearch} />
+                        Browse Marketplace
+                      </Link>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-border">
+                    {jobs.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => openIssueModal(item.id, "details")}
+                        className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={item.listing?.image_url} size="md" />
+
+                        {/* Job Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-sm text-foreground truncate">
+                            {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                            {item.listing?.city && (
+                              <>
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                {item.listing.city}
+                              </>
+                            )}
+                            {item.created_at && <> · Posted {getRelativeTime(item.created_at)}</>}
+                          </p>
+                        </div>
+
+                        {/* Right side */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="text-right">
+                            {item.bidCount === 0 ? (
+                              <p className="text-xs font-medium text-emerald-600">Be first!</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</p>
+                            )}
+                          </div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-semibold text-gray-900">Earnings</span>
-                </div>
-              </div>
+                );
+              })()}
+            </div>
+
+          </div> {/* End LEFT COLUMN */}
+
+          {/* Right Column — Earnings + Today's Schedule */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
+
+            {/* Earnings Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-emerald-100"
+                icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+                title="Earnings"
+              />
+
               <div className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">This Week</span>
-                  <span className="text-base font-semibold text-gray-900">
-                    ${earningsBreakdown.thisWeek.toLocaleString()}
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Week</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    ${vendorMetrics.thisWeekEarnings.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">This Month</span>
-                  <span className="text-base font-semibold text-gray-900">
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Month</span>
+                  <span className="text-sm font-semibold text-foreground">
                     ${vendorMetrics.thisMonthEarnings.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Total Earned</span>
-                  <span className="text-base font-semibold text-gray-900">
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Total Earned</span>
+                  <span className="text-base font-bold text-foreground">
                     ${vendorMetrics.totalEarnings.toLocaleString()}
                   </span>
                 </div>
-                {vendorMetrics.outstandingBids > 0 && (
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">Outstanding Bids</span>
-                    <span className="text-base font-semibold text-gold">
-                      ${vendorMetrics.outstandingBids.toLocaleString()}
-                    </span>
-                  </div>
-                )}
-                <button
-                  onClick={() => navigate("/vendor/earnings")}
-                  className="w-full mt-2 px-4 py-2.5 border-2 border-gray-900 text-gray-900 rounded-lg font-semibold text-sm hover:bg-gray-900 hover:text-white transition-colors"
+
+                <Link
+                  to="/vendor/jobs"
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border text-foreground font-semibold text-sm rounded-lg hover:bg-muted transition-colors"
                 >
                   View Earnings Details
-                </button>
+                </Link>
               </div>
             </div>
 
-            {/* Today's Schedule */}
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              <div className="px-5 py-4 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faCalendarAlt} className="text-blue-600" />
-                    </div>
-                    <span className="font-semibold text-gray-900">Today's Schedule</span>
-                  </div>
-                  {processedVisits.length > 0 && (
-                    <Link
-                      to="/vendor/jobs?tab=visits"
-                      className="text-sm text-gold font-medium hover:underline flex items-center gap-1"
-                    >
-                      See All ({processedVisits.length})
-                      <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                    </Link>
-                  )}
-                </div>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {todaySchedule.length > 0 ? (
-                  todaySchedule.slice(0, 4).map((visit) => (
+            {/* Today's Schedule Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-blue-100"
+                icon={<CalendarCheck className="w-5 h-5 text-blue-600" />}
+                title="Today's Schedule"
+              />
+
+              <div className="divide-y divide-border">
+                {todaysSchedule.length > 0 ? (
+                  todaysSchedule.map((visit) => (
                     <div
-                      key={`today-${visit.issueId}`}
+                      key={visit.id}
                       onClick={() => openIssueModal(visit.issueId, "assessments")}
-                      className="flex items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors"
                     >
-                      <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {visit.listing?.image_url ? (
-                          <ImageComponent
-                            src={visit.listing.image_url}
-                            fallback="/images/property_card_holder.jpg"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <FontAwesomeIcon icon={faHouse} className="text-gray-400" />
-                          </div>
-                        )}
-                      </div>
+                      {/* Thumbnail */}
+                      <PropertyThumbnail
+                        imageUrl={visit.listing?.image_url}
+                        size="sm"
+                        fallbackIcon={<Calendar className="w-4 h-4 text-muted-foreground" />}
+                      />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-semibold text-gray-900 truncate">
+                        <div className="text-sm font-semibold text-foreground">
                           {visit.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                           {" — "}
                           {visit.issue?.summary || normalizeAndCapitalize(visit.issue?.type || "Visit")}
                         </div>
-                        <div className="text-xs text-gray-500 truncate mt-0.5">
-                          {visit.listing?.address?.split(",")[0] || "Location TBD"}
-                          {visit.issue?.type && ` · ${normalizeAndCapitalize(visit.issue.type)}`}
+                        <div className="text-xs text-muted-foreground truncate">
+                          {(() => { const a = visit.listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          {visit.listing?.city ? ` · ${visit.listing.city}` : ""}
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="py-8 text-center">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                      <FontAwesomeIcon icon={faCalendarAlt} className="text-gray-400" />
-                    </div>
-                    <p className="text-gray-600 font-medium text-sm mb-1">Nothing scheduled today</p>
-                    <p className="text-xs text-gray-500">Confirmed visits will appear here</p>
+                    <p className="text-sm text-muted-foreground">No confirmed visits scheduled</p>
                   </div>
                 )}
               </div>
             </div>
 
-          </div>
+          </div> {/* End RIGHT COLUMN */}
 
-        </div>
-
-        {/* New Job Opportunities - full width */}
-        <div className="bg-white rounded-xl overflow-hidden shadow-lg mt-6">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
-                  <FontAwesomeIcon icon={faBolt} className="text-gold" />
-                </div>
-                <span className="font-semibold text-gray-900">New Job Opportunities</span>
-              </div>
-              <Link
-                to="/marketplace"
-                className="text-sm text-gold font-medium hover:underline flex items-center gap-1"
-              >
-                View all
-                <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-              </Link>
-            </div>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {newJobOpportunities.length > 0 ? (
-              newJobOpportunities.map(({ issue, listing }) => {
-                const isUrgent = (issue.severity || "").toLowerCase() === "high";
-                const cityState = listing
-                  ? [listing.city, listing.state].filter(Boolean).join(", ")
-                  : "";
-                const posted = issue.created_at
-                  ? getPostedAgo(new Date(issue.created_at))
-                  : "";
-                const title =
-                  issue.summary ||
-                  `${normalizeAndCapitalize(issue.type || "")} Job`;
-                return (
-                  <div
-                    key={issue.id}
-                    onClick={() => openIssueModal(issue.id, "offers")}
-                    className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                      {listing?.image_url ? (
-                        <ImageComponent
-                          src={listing.image_url}
-                          fallback="/images/property_card_holder.jpg"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FontAwesomeIcon icon={faHouse} className="text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-gray-900 truncate">{title}</span>
-                        {isUrgent && (
-                          <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-                            Urgent
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 text-sm text-gray-500 mt-0.5 truncate">
-                        <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs flex-shrink-0" />
-                        <span className="truncate">
-                          {cityState || "Location TBD"}
-                          {issue.type && ` · ${normalizeAndCapitalize(issue.type)}`}
-                          {posted && ` · Posted ${posted}`}
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openIssueModal(issue.id, "offers");
-                      }}
-                      className="flex-shrink-0 px-4 py-2 bg-gold text-white rounded-lg text-sm font-semibold hover:bg-foreground hover:text-background transition-colors"
-                    >
-                      Bid
-                    </button>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="py-8 text-center">
-                <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <FontAwesomeIcon icon={faBolt} className="text-gray-400" />
-                </div>
-                <p className="text-gray-600 font-medium text-sm mb-1">No new opportunities</p>
-                <p className="text-xs text-gray-500">Check back soon for fresh jobs in your area</p>
-              </div>
-            )}
-          </div>
         </div>
 
       </div>
@@ -993,13 +969,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           
           {/* Modal Content */}
           <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
+            <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
               {/* Close Button */}
               <button
                 onClick={closeIssueModal}
-                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-muted hover:bg-muted/70 transition-colors"
+                aria-label="Close"
               >
-                <FontAwesomeIcon icon={faTimes} className="text-gray-600" />
+                <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
               </button>
               
               {/* Issue Details Component */}

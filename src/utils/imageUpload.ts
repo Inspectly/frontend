@@ -2,26 +2,10 @@ const BASE_URL = import.meta.env.VITE_BE_BASE_URL || "/api/";
 
 const normalizeBaseUrl = (url: string) => (url.endsWith("/") ? url : `${url}/`);
 
-const buildImagesEndpoint = (baseUrl: string) => {
-  const normalized = normalizeBaseUrl(baseUrl);
-  const lower = normalized.toLowerCase();
-
-  if (lower.endsWith("/api/v0/") || lower.endsWith("/api/v0")) {
-    return `${normalized}images/`;
-  }
-  if (lower.endsWith("/api/") || lower.endsWith("/api")) {
-    return `${normalized}v0/images/`;
-  }
-  if (lower.includes("/api/v0/") || lower.includes("/api/v0")) {
-    return `${normalized}images/`;
-  }
-  if (lower.includes("/api/")) {
-    return `${normalized}v0/images/`;
-  }
-  return `${normalized}api/v0/images/`;
-};
-
-const IMAGES_ENDPOINT = buildImagesEndpoint(BASE_URL);
+// Follow the same URL pattern as apiSlice: base + path.
+// The Vite dev proxy rewrites /api → /api/v0 automatically, so we must NOT
+// include v0 here — doing so produces a double-prefix (/api/v0/v0/images/).
+const IMAGES_ENDPOINT = `${normalizeBaseUrl(BASE_URL)}images/`;
 
 type ImageUploadResponse = {
   url?: string;
@@ -29,7 +13,6 @@ type ImageUploadResponse = {
 };
 
 export const uploadFileToImageUrl = async (file: File): Promise<string> => {
-  console.log("uploadFileToImageUrl called with file:", file.name, "uploading to:", IMAGES_ENDPOINT);
   const formData = new FormData();
   formData.append("image", file);
 
@@ -46,9 +29,10 @@ export const uploadFileToImageUrl = async (file: File): Promise<string> => {
   }
 
   if (!response.ok) {
+    const err = json as Record<string, unknown> | null;
     const message =
-      (json as any)?.detail ||
-      (json as any)?.message ||
+      (typeof err?.detail === "string" ? err.detail : null) ||
+      (typeof err?.message === "string" ? err.message : null) ||
       `Image upload failed (${response.status})`;
     throw new Error(message);
   }

@@ -8,9 +8,8 @@ import {
   faMagnifyingGlass,
   faAngleDoubleLeft,
   faAngleDoubleRight,
-  faMapMarkerAlt,
-  faWrench,
 } from "@fortawesome/free-solid-svg-icons";
+import { MapPin, Wrench } from "lucide-react";
 import { BUTTON_HOVER } from "../styles/shared";
 import {
   useGetAddressesByIssueIdsMutation,
@@ -480,7 +479,7 @@ const Marketplace: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
+    <div className="min-h-screen bg-background py-6">
       <div className="container mx-auto px-4">
 
         {/* Page Title */}
@@ -490,15 +489,16 @@ const Marketplace: React.FC = () => {
         </div>
 
         {/* Search and Filter Section */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 overflow-hidden">
-          <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Search & Filter</h2>
+          <div className="bg-card rounded-xl shadow-lg border border-border mb-8 overflow-hidden">
+          <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground mb-1">Search & Filter</h2>
+            <p className="text-sm text-muted-foreground">Find the perfect jobs for your expertise</p>
       </div>
 
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
               <div className="lg:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Search</label>
             <div className="relative">
               <input
                 type="text"
@@ -506,24 +506,24 @@ const Marketplace: React.FC = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white"
+                    className="w-full pl-10 pr-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-muted text-foreground focus:bg-card"
               />
               <FontAwesomeIcon
                 icon={faMagnifyingGlass}
-                    className="absolute left-3 top-3.5 text-gray-400"
+                    className="absolute left-3 top-3.5 text-muted-foreground"
               />
                 </div>
             </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <label className="block text-sm font-medium text-foreground mb-2">Type</label>
                 <select
                   value={selectedType}
                 onChange={(e) => {
                     setSelectedType(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white"
+                  className="w-full px-3 py-3 border border-border rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-muted text-foreground focus:bg-card"
                 >
                   <option value="">All Types</option>
                   <option value="electrical">Electrical</option>
@@ -541,7 +541,7 @@ const Marketplace: React.FC = () => {
           </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                <label className="block text-sm font-medium text-foreground mb-2">State</label>
             <select
                   value={selectedProvince}
               onChange={(e) => {
@@ -565,7 +565,7 @@ const Marketplace: React.FC = () => {
                 setCurrentPage(1);
               }}
               disabled={isLoadingListings}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white disabled:opacity-50"
+                  className="w-full px-3 py-3 border border-border rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-muted text-foreground focus:bg-card disabled:opacity-50"
             >
                   <option value="">{isLoadingListings ? "Loading states..." : "All States"}</option>
                   {uniqueStates.map((state) => (
@@ -577,7 +577,7 @@ const Marketplace: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                <label className="block text-sm font-medium text-foreground mb-2">City</label>
             <select
               value={selectedCity}
               onChange={(e) => {
@@ -585,7 +585,7 @@ const Marketplace: React.FC = () => {
                 setCurrentPage(1);
               }}
               disabled={isLoadingListings}
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-gray-50 focus:bg-white disabled:opacity-50"
+                  className="w-full px-3 py-3 border border-border rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-muted text-foreground focus:bg-card disabled:opacity-50"
             >
               <option value="">{isLoadingListings ? "Loading cities..." : "All Cities"}</option>
                   {filteredCities.map((city: string) => (
@@ -606,7 +606,7 @@ const Marketplace: React.FC = () => {
                   </button>
                   <button
                     onClick={clearFilters}
-                    className={`px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium border border-gray-300 ${BUTTON_HOVER}`}
+                    className={`px-4 py-3 bg-muted text-foreground rounded-lg font-medium border border-border ${BUTTON_HOVER}`}
                   >
                     Clear
             </button>
@@ -614,7 +614,7 @@ const Marketplace: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between pt-4 border-t border-border">
               <label className="flex items-center space-x-3 cursor-pointer group">
               <input
                 type="checkbox"
@@ -623,7 +623,7 @@ const Marketplace: React.FC = () => {
                   setGroupByAddress(e.target.checked);
                 setCurrentPage(1);
               }}
-                  className="w-4 h-4 rounded border-gray-300 text-gold focus:ring-gold focus:ring-2"
+                  className="w-4 h-4 rounded border-border text-gold focus:ring-gold focus:ring-2"
               />
                 <span className="text-sm font-medium text-gray-700 group-hover:text-gold transition-colors">
                   📍 Group by address
@@ -636,11 +636,11 @@ const Marketplace: React.FC = () => {
 
         {/* Smart Filter Fallback Banner */}
         {isVendor && currentFilterMode !== "exact" && currentFilterMode !== "all" && (selectedType || selectedCity) && (
-          <div className="mb-6 px-4 py-3 rounded-lg flex items-start gap-3 bg-gold-50 text-gray-800 border border-gold-200">
-            <FontAwesomeIcon 
-              icon={currentFilterMode === "type_only" ? faMapMarkerAlt : faWrench} 
-              className="mt-0.5 flex-shrink-0 text-gold"
-            />
+          <div className="mb-6 px-4 py-3 rounded-lg flex items-start gap-3 bg-gold-50 text-foreground border border-gold-200">
+            {currentFilterMode === "type_only"
+              ? <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-gold" />
+              : <Wrench className="w-4 h-4 mt-0.5 flex-shrink-0 text-gold" />
+            }
             <div>
               <p className="font-medium">
                 {currentFilterMode === "type_only" && (
@@ -650,7 +650,7 @@ const Marketplace: React.FC = () => {
                   <>No {normalizeAndCapitalize(selectedType)} jobs available</>
                 )}
               </p>
-              <p className="text-sm mt-1 text-gray-600">
+              <p className="text-sm mt-1 text-muted-foreground">
                 {currentFilterMode === "type_only" && (
                   <>Showing {normalizeAndCapitalize(selectedType)} opportunities in other areas. Consider expanding your service area.</>
                 )}
@@ -665,10 +665,10 @@ const Marketplace: React.FC = () => {
         {/* Results Section */}
         <div className="mb-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-800">
+            <h2 className="text-xl font-semibold text-foreground">
               {groupByAddress ? "Grouped Issues" : "All Issues"}
             </h2>
-            <span className="text-gray-600">
+            <span className="text-muted-foreground">
               {groupByAddress
                 ? `${groupedIssues.length} address groups found`
                 : `${totalItems} issues found`}
@@ -705,7 +705,7 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(Math.max(1, currentPage - 5))}
               disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
+              className="px-3 py-2 rounded-lg bg-card border border-border text-foreground hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground disabled:hover:border-border"
             >
               <FontAwesomeIcon icon={faAngleDoubleLeft} />
               </button>
@@ -713,7 +713,7 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
+              className="px-3 py-2 rounded-lg bg-card border border-border text-foreground hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground disabled:hover:border-border"
               >
               <FontAwesomeIcon icon={faArrowLeft} />
               </button>
@@ -725,10 +725,10 @@ const Marketplace: React.FC = () => {
                 disabled={page === "..."}
                 className={`px-3 py-2 rounded-lg border transition-colors ${
                   page === currentPage
-                    ? "bg-gray-900 text-white border-gray-900"
+                    ? "bg-foreground text-background border-foreground"
                     : page === "..."
-                    ? "bg-white border-gray-300 text-gray-400 cursor-default"
-                    : "bg-white border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold"
+                    ? "bg-card border-border text-muted-foreground cursor-default"
+                    : "bg-card border-border text-foreground hover:bg-gold hover:text-white hover:border-gold"
                 }`}
               >
                 {page}
@@ -738,7 +738,7 @@ const Marketplace: React.FC = () => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
+              className="px-3 py-2 rounded-lg bg-card border border-border text-foreground hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground disabled:hover:border-border"
             >
               <FontAwesomeIcon icon={faArrowRight} />
               </button>
@@ -746,7 +746,7 @@ const Marketplace: React.FC = () => {
               <button
               onClick={() => handlePageChange(Math.min(totalPages, currentPage + 5))}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-700 disabled:hover:border-gray-300"
+              className="px-3 py-2 rounded-lg bg-card border border-border text-foreground hover:bg-gold hover:text-white hover:border-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground disabled:hover:border-border"
             >
               <FontAwesomeIcon icon={faAngleDoubleRight} />
               </button>
@@ -764,7 +764,7 @@ const Marketplace: React.FC = () => {
           }}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto relative"
+            className="bg-card rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
@@ -773,7 +773,7 @@ const Marketplace: React.FC = () => {
                 setIsModalOpen(false);
                 setSelectedIssue(null);
               }}
-              className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900 transition-colors"
+              className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-muted hover:bg-muted/70 text-muted-foreground hover:text-foreground transition-colors"
             >
               ✕
             </button>

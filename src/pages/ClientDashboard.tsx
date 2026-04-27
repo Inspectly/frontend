@@ -4,14 +4,18 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 const SUBS_KEY = '__INSPECTLY_OFFER_SUBS__';
 
 // Helper to get/create the global subscriptions map (survives HMR)
-const getGlobalSubscriptions = (): Map<number, any> => {
-  const w = window as any;
+const getGlobalSubscriptions = (): Map<number, unknown> => {
+  const w = (window as unknown) as Window & { [key: string]: unknown };
   if (!w[SUBS_KEY]) {
-    w[SUBS_KEY] = new Map<number, any>();
+    w[SUBS_KEY] = new Map<number, unknown>();
   }
-  return w[SUBS_KEY];
+  return w[SUBS_KEY] as Map<number, unknown>;
 };
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { Calendar, ClipboardList, FileText, MapPin, TrendingUp } from "lucide-react";
+import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
+import DashboardStatCard from "../components/dashboard/DashboardStatCard";
+import CardSectionHeader from "../components/dashboard/CardSectionHeader";
 import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -28,11 +32,9 @@ import {
   faEdit,
   faFileAlt,
   faHome,
-  faMapMarkerAlt,
   faPlus,
   faMagic,
   faTimes,
-  faTrophy,
   faUpload,
   faTrash,
   faUser,
@@ -375,9 +377,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       setProposedTimes([""]);
       // Refetch to update the UI
       await refetchAssessments();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to propose new time:", err);
-      console.error("Error details:", err?.data || err?.message || err);
+      const errObj = err as Record<string, unknown>;
+      console.error("Error details:", errObj?.data || errObj?.message || err);
       toast.error("Failed to propose times. Please try again.");
     }
   };
@@ -420,7 +423,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       }).unwrap();
       toast.success("Proposal cancelled successfully");
       await refetchAssessments();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to cancel proposal:", err);
       toast.error("Failed to cancel proposal. Please try again.");
     }
@@ -456,7 +459,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // State for issue detail modal
   const [selectedIssueForModal, setSelectedIssueForModal] = useState<IssueType | null>(null);
-  const [selectedListingForModal, setSelectedListingForModal] = useState<any>(null);
+  const [selectedListingForModal, setSelectedListingForModal] = useState<Listing | undefined>(undefined);
   const [modalDefaultTab, setModalDefaultTab] = useState<
     "details" | "offers" | "assessments" | "dispute"
   >("details");
@@ -469,12 +472,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     const report = reports?.find((r) => r.id === issue.report_id);
     const listing = _listings?.find((l) => l.id === report?.listing_id);
     setSelectedIssueForModal(issue);
-    setSelectedListingForModal(listing || null);
+    setSelectedListingForModal(listing || undefined);
     setModalDefaultTab(defaultTab);
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-100">
+    <div className="min-h-screen w-full bg-background">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
         
         {/* Welcome Header */}
@@ -485,17 +488,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 {clientProfile?.first_name?.[0]?.toUpperCase() || user?.id?.toString()?.[0] || "U"}
               </div>
               <div>
-                <h1 className="text-2xl lg:text-3xl font-display font-bold text-gray-900">
-                  {(() => {
-                    const hour = new Date().getHours();
-                    const firstName = clientProfile?.first_name || "";
-                    if (hour >= 5 && hour < 12) return `Good morning${firstName ? `, ${firstName}` : ""}`;
-                    if (hour >= 12 && hour < 17) return `Good afternoon${firstName ? `, ${firstName}` : ""}`;
-                    if (hour >= 17 && hour < 21) return `Good evening${firstName ? `, ${firstName}` : ""}`;
-                    return `Hello${firstName ? `, ${firstName}` : ""}`;
-                  })()}
+                <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
+                  Today at a glance
                 </h1>
-                <p className="text-sm text-gray-500">Here's what's happening today</p>
+                <p className="text-sm text-muted-foreground">
+                  Welcome back{clientProfile?.first_name ? `, ${clientProfile.first_name}` : ""}
+                </p>
               </div>
             </div>
             
@@ -511,26 +509,26 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </button>
               
               {isCreateDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-50">
                   <button
                     onClick={() => { setIsCreateIssueModalOpen(true); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
                   >
-                    <FontAwesomeIcon icon={faClipboardList} className="text-gray-400 w-4" />
+                    <FontAwesomeIcon icon={faClipboardList} className="text-muted-foreground w-4" />
                     Post a Job
                   </button>
                   <button
                     onClick={() => { setIsAddListingModalOpen(true); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
                   >
-                    <FontAwesomeIcon icon={faUpload} className="text-gray-400 w-4" />
+                    <FontAwesomeIcon icon={faUpload} className="text-muted-foreground w-4" />
                     Upload Report
                   </button>
                   <button
                     onClick={() => { navigate('/listings?action=add'); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
                   >
-                    <FontAwesomeIcon icon={faHome} className="text-gray-400 w-4" />
+                    <FontAwesomeIcon icon={faHome} className="text-muted-foreground w-4" />
                     Add Property
                   </button>
                 </div>
@@ -541,64 +539,32 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           {/* Stat Cards Row - Only show for existing users */}
           {!isNewUser && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-              {/* Approvals Needed */}
-              <div 
+              <DashboardStatCard
+                iconBg="bg-amber-100"
+                icon={<ClipboardList className="w-4 h-4 text-amber-600" />}
+                value={approvalItems.length}
+                label="Approvals Needed"
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{approvalItems.length}</div>
-                <div className="text-sm font-semibold text-gray-900">Approvals Needed</div>
-                {approvalItems.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
-                    <span className="w-2 h-2 bg-gold rounded-full"></span>
-                    Action needed
-                  </div>
-                )}
-              </div>
-
-              {/* Quotes to Compare */}
-              <div 
+              />
+              <DashboardStatCard
+                iconBg="bg-blue-100"
+                icon={<FileText className="w-4 h-4 text-blue-600" />}
+                value={quoteItems.length}
+                label="Quotes to Compare"
                 onClick={() => navigate("/offers")}
-                className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-              >
-                <div className="text-3xl font-bold text-gray-900 mb-1">{quoteItems.length}</div>
-                <div className="text-sm font-semibold text-gray-900">Quotes to Compare</div>
-                {quoteItems.length > 0 && (
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-gold">
-                    <span className="w-2 h-2 bg-gold rounded-full"></span>
-                    Review pending
-                  </div>
-                )}
-              </div>
-
-              {/* Visit Scheduled */}
-              <div className="bg-white rounded-xl p-5 border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
-                <div className="text-3xl font-bold text-gray-900 mb-1">{calendarEvents.length}</div>
-                <div className="text-sm font-semibold text-gray-900">Visit Scheduled</div>
-                {calendarEvents.length > 0 && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    {calendarEvents[0]?.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })} →
-                  </div>
-                )}
-              </div>
-
-              {/* Budget / Spend */}
-              <div className="bg-white rounded-xl p-5 cursor-pointer border-l-4 border-transparent shadow-lg hover:border-gold hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="w-9 h-9 bg-gold-200 rounded-lg flex items-center justify-center">
-                    <span className="text-gold font-bold">$</span>
-                  </span>
-                  <div>
-                    <div className="text-xl font-bold text-gray-900">
-                      ${Object.values(offersByIssueId).flat().filter(o => o.status === IssueOfferStatus.ACCEPTED).reduce((sum, o) => sum + (o.price || 0), 0).toLocaleString()}
-                    </div>
-                    <div className="text-xs text-gray-500">Spent on repairs</div>
-                  </div>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-gold-400 to-gold rounded-full" style={{ width: '45%' }}></div>
-                </div>
-              </div>
+              />
+              <DashboardStatCard
+                iconBg="bg-emerald-100"
+                icon={<Calendar className="w-4 h-4 text-emerald-600" />}
+                value={calendarEvents.length}
+                label="Visits Scheduled"
+              />
+              <DashboardStatCard
+                iconBg="bg-gold-200"
+                icon={<span className="text-gold font-bold text-sm">$</span>}
+                value={`$${Object.values(offersByIssueId).flat().filter(o => o.status === IssueOfferStatus.ACCEPTED).reduce((sum, o) => sum + (o.price || 0), 0).toLocaleString()}`}
+                label="Spent on Repairs"
+              />
             </div>
           )}
         </div>
@@ -667,39 +633,39 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             
             {/* Quick Start Steps */}
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
+              <div className="bg-card rounded-xl p-5 border border-border shadow-lg hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group"
                    onClick={() => setIsCreateIssueModalOpen(true)}>
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:bg-gold transition-colors">
                     <span className="text-gold font-bold group-hover:text-white transition-colors">1</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Post a Job</h3>
-                    <p className="text-sm text-gray-500">Describe what you need fixed or upload a report</p>
+                    <h3 className="font-semibold text-foreground mb-1">Post a Job</h3>
+                    <p className="text-sm text-muted-foreground">Describe what you need fixed or upload a report</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg opacity-60">
+              <div className="bg-card rounded-xl p-5 border border-border shadow-lg opacity-60">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-gray-400 font-bold">2</span>
+                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-muted-foreground font-bold">2</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Get Quotes</h3>
-                    <p className="text-sm text-gray-500">Verified contractors send you competitive bids</p>
+                    <h3 className="font-semibold text-foreground mb-1">Get Quotes</h3>
+                    <p className="text-sm text-muted-foreground">Verified contractors send you competitive bids</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-lg opacity-60">
+              <div className="bg-card rounded-xl p-5 border border-border shadow-lg opacity-60">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-gray-400 font-bold">3</span>
+                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-muted-foreground font-bold">3</span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-1">Hire & Track</h3>
-                    <p className="text-sm text-gray-500">Choose a pro and track your project to completion</p>
+                    <h3 className="font-semibold text-foreground mb-1">Hire & Track</h3>
+                    <p className="text-sm text-muted-foreground">Choose a pro and track your project to completion</p>
                   </div>
                 </div>
               </div>
@@ -716,74 +682,62 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             
             {/* PRIORITY INBOX - Main Card */}
             <div className="min-w-0">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                {/* Header with icon and tabs */}
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faClipboardList} className="text-gray-600 text-lg" />
-                      </div>
-                      <h2 className="text-lg font-bold text-gray-900">Priority Inbox</h2>
-                      <FontAwesomeIcon icon={faChevronRight} className="text-gray-400 text-sm" />
-                    </div>
-                  </div>
-                  
-                  {/* Tabs */}
-                  <div className="flex items-center gap-1">
+              <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden transition-shadow duration-300">
+                <CardSectionHeader
+                  iconBg="bg-muted"
+                  icon={<FontAwesomeIcon icon={faClipboardList} className="text-muted-foreground text-lg" />}
+                  title="Priority Inbox"
+                  viewAllHref="/offers"
+                >
+                  {/* Tabs — plain text style, underline on active */}
+                  <div className="flex items-center gap-1 border-b border-border -mb-4 pb-0">
                     <button
                       onClick={() => setActiveInboxTab('approvals')}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        activeInboxTab === 'approvals' 
-                          ? 'bg-gray-900 text-white' 
-                          : 'text-gray-600 hover:bg-foreground hover:text-background'
+                      className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 border-b-2 -mb-px ${
+                        activeInboxTab === 'approvals'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       Approvals
                       {approvalItems.length > 0 && (
-                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                          activeInboxTab === 'approvals' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
-                        }`}>
+                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-gold-200 text-gold-700">
                           {approvalItems.length}
                         </span>
                       )}
                     </button>
                     <button
                       onClick={() => setActiveInboxTab('quotes')}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        activeInboxTab === 'quotes' 
-                          ? 'bg-gray-900 text-white' 
-                          : 'text-gray-600 hover:bg-foreground hover:text-background'
+                      className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 border-b-2 -mb-px ${
+                        activeInboxTab === 'quotes'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       Quotes
                       {quoteItems.length > 0 && (
-                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                          activeInboxTab === 'quotes' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
-                        }`}>
+                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-gold-200 text-gold-700">
                           {quoteItems.length}
                         </span>
                       )}
                     </button>
                     <button
                       onClick={() => setActiveInboxTab('visits')}
-                      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                        activeInboxTab === 'visits' 
-                          ? 'bg-gray-900 text-white' 
-                          : 'text-gray-600 hover:bg-foreground hover:text-background'
+                      className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 border-b-2 -mb-px ${
+                        activeInboxTab === 'visits'
+                          ? 'border-primary text-foreground'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       Visit Requests
                       {pendingAssessments.length > 0 && (
-                        <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-                          activeInboxTab === 'visits' ? 'bg-gold text-white' : 'bg-gold-200 text-gold-700'
-                        }`}>
+                        <span className="px-1.5 py-0.5 text-xs rounded-full bg-gold-200 text-gold-700">
                           {pendingAssessments.length}
                         </span>
                       )}
                     </button>
                   </div>
-                </div>
+                </CardSectionHeader>
 
                 {/* Tab Content */}
                 <div className="p-4">
@@ -791,8 +745,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   {activeInboxTab === 'approvals' && (
                     <div className="space-y-3">
                       {approvalItems.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <FontAwesomeIcon icon={faCheckCircle} className="text-3xl text-gray-300 mb-2" />
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FontAwesomeIcon icon={faCheckCircle} className="text-3xl text-muted-foreground/50 mb-2" />
                           <p>No approvals pending</p>
                         </div>
                       ) : (
@@ -807,29 +761,29 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               <div
                                 key={item.id}
                                 onClick={() => openIssueModal(item)}
-                                className="group flex items-center justify-between p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                                className="group flex items-center justify-between p-4 bg-muted/40 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-primary hover:bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                               >
                                 <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gold-100">
-                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-gray-600 group-hover:text-gold" />
+                                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center group-hover:bg-gold-100">
+                                    <FontAwesomeIcon icon={getIssueTypeIcon(item.type)} className="text-muted-foreground group-hover:text-gold" />
                                   </div>
                                   <div>
-                                    <div className="font-semibold text-gray-900">
+                                    <div className="font-semibold text-foreground">
                                       {item.summary || `${normalizeAndCapitalize(item.type)} Issue`}
                                     </div>
-                                    <div className="text-sm text-gray-500 flex items-center gap-1">
-                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                                      <MapPin className="w-3 h-3 flex-shrink-0" />
                                       {listing?.address || "Property"}
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                   {acceptedOffer && (
-                                    <span className="text-lg font-bold text-gray-900">${acceptedOffer.price?.toLocaleString()}</span>
+                                    <span className="text-sm font-semibold text-foreground">${acceptedOffer.price?.toLocaleString()}</span>
                                   )}
-                                  <button className="px-4 py-2 bg-gold text-white font-semibold rounded-lg hover:bg-foreground hover:text-background transition-colors flex items-center gap-2">
-                                    Approve <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
-                                  </button>
+                                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
+                                    Pending
+                                  </span>
                                 </div>
                               </div>
                             );
@@ -837,7 +791,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           {approvalItems.length > 2 && (
                             <button
                               onClick={() => navigate("/offers?filter=review")}
-                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                              className="w-full text-center py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             >
                               View all {approvalItems.length} approvals →
                             </button>
@@ -851,8 +805,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   {activeInboxTab === 'quotes' && (
                     <div className="space-y-3">
                       {quoteItems.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <FontAwesomeIcon icon={faFileAlt} className="text-3xl text-gray-300 mb-2" />
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FontAwesomeIcon icon={faFileAlt} className="text-3xl text-muted-foreground/50 mb-2" />
                           <p>No quotes to review</p>
                         </div>
                       ) : (
@@ -873,7 +827,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               return (
                                 <div
                                   key={offer.id}
-                                  className="flex items-center justify-between p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                                  className="flex items-center justify-between p-4 border-b border-border last:border-b-0 hover:bg-muted/40 transition-colors cursor-pointer"
                                   onClick={() => openIssueModal(item, "offers")}
                                 >
                                   <div className="flex items-center gap-3 min-w-0">
@@ -890,7 +844,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                     </div>
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-gray-900 text-sm truncate">{vendorName}</span>
+                                        <span className="font-semibold text-foreground text-sm truncate">{vendorName}</span>
                                         {vendorRating && vendorRating > 0 && (
                                           <span className="flex items-center gap-0.5 text-xs text-amber-600">
                                             <FontAwesomeIcon icon={faStar} className="text-[10px]" />
@@ -898,16 +852,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                           </span>
                                         )}
                                       </div>
-                                      <div className="text-xs text-gray-500 truncate">
+                                      <div className="text-xs text-muted-foreground truncate">
                                         {item.summary || normalizeAndCapitalize(item.type)} · {address}
                                       </div>
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-                                    <span className="text-lg font-bold text-gray-900">${offer.price?.toLocaleString()}</span>
+                                    <span className="text-lg font-bold text-foreground">${offer.price?.toLocaleString()}</span>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); openIssueModal(item, "offers"); }}
-                                      className="px-3 py-1.5 text-xs font-semibold border-2 border-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                                      className="px-3 py-1.5 text-xs font-semibold border-2 border-foreground rounded-lg hover:bg-muted transition-colors"
                                     >
                                       Decline
                                     </button>
@@ -925,7 +879,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           {quoteItems.length > 2 && (
                             <button
                               onClick={() => navigate("/offers?filter=pending")}
-                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                              className="w-full text-center py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             >
                               View all {quoteItems.length} quotes →
                             </button>
@@ -939,8 +893,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   {activeInboxTab === 'visits' && (
                     <div className="space-y-3">
                       {pendingAssessments.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <FontAwesomeIcon icon={faCalendarAlt} className="text-3xl text-gray-300 mb-2" />
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FontAwesomeIcon icon={faCalendarAlt} className="text-3xl text-muted-foreground/50 mb-2" />
                           <p>No visit requests pending</p>
                         </div>
                       ) : (
@@ -948,7 +902,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           {pendingAssessments.slice(0, 3).map((event) => (
                             <div
                               key={event.id}
-                              className="group p-4 bg-gray-50 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+                              className="group p-4 bg-muted/40 rounded-xl cursor-pointer border-l-4 border-transparent hover:border-gold hover:bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
                             >
                               <div className="flex items-start gap-4">
                                 {/* Issue type icon */}
@@ -961,26 +915,26 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                 
                                 <div className="flex-1 min-w-0">
                                   {/* Issue title */}
-                                  <div className="font-semibold text-gray-900 mb-1 truncate">
+                                  <div className="font-semibold text-foreground mb-1 truncate">
                                     {event.title}
                                   </div>
                                   
                                   {/* Vendor name and rating */}
                                   {event.vendor && (
-                                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                                      <FontAwesomeIcon icon={faUser} className="text-xs text-gray-400" />
+                                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                      <FontAwesomeIcon icon={faUser} className="text-xs text-muted-foreground" />
                                       <span className="font-medium">{event.vendor.name || "Vendor"}</span>
                                       <span className="flex items-center gap-0.5 text-gold">
                                         <FontAwesomeIcon icon={faStar} className="text-xs" />
-                                        <span className="text-gray-600">{event.vendor.rating || "New"}</span>
+                                        <span className="text-muted-foreground">{event.vendor.rating || "New"}</span>
                                       </span>
                                     </div>
                                   )}
                                   
                                   {/* Property address */}
                                   {event.listing && (
-                                    <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
-                                      <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs" />
+                                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+                                      <MapPin className="w-3 h-3 flex-shrink-0" />
                                       <span className="truncate">
                                         {event.listing.address?.split(',')[0] || event.listing.address}
                                       </span>
@@ -988,7 +942,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                   )}
                                   
                                   {/* Date and time */}
-                                  <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-3">
+                                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
                                     <FontAwesomeIcon icon={faClock} className="text-xs" />
                                     <span>
                                       {event.start.toLocaleDateString("en-US", { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -1026,7 +980,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                             handleAcceptAssessment(event);
                                           }}
                                           disabled={isUpdatingAssessment}
-                                          className={`flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 text-white text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
+                                          className={`flex items-center gap-1.5 px-3 py-1.5 bg-foreground text-background text-xs font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50`}
                                         >
                                           <FontAwesomeIcon icon={faCheck} />
                                           {isUpdatingAssessment ? "Accepting..." : "Accept"}
@@ -1036,7 +990,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                             e.stopPropagation();
                                             openProposeTimeModal(event);
                                           }}
-                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 transition-colors"
+                                          className="flex items-center gap-1.5 px-3 py-1.5 bg-muted text-foreground text-xs font-semibold rounded-lg hover:bg-muted/80 transition-colors"
                                         >
                                           <FontAwesomeIcon icon={faEdit} />
                                           Propose New Time
@@ -1051,7 +1005,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                           {pendingAssessments.length > 3 && (
                             <button
                               onClick={() => setShowScheduleModal(true)}
-                              className="w-full text-center py-3 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                              className="w-full text-center py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                             >
                               View all {pendingAssessments.length} visit requests →
                             </button>
@@ -1066,35 +1020,32 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
             </div>
 
             {/* ACTIVE PROPERTIES - Inside left column */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <FontAwesomeIcon icon={faHome} className="text-gray-600" />
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden transition-shadow duration-300">
+              <CardSectionHeader
+                iconBg="bg-muted"
+                icon={<FontAwesomeIcon icon={faHome} className="text-muted-foreground" />}
+                title="Active Properties"
+                right={
+                  <div className="flex items-center gap-2">
+                    {_listings && _listings.length > 2 && (
+                      <div className="flex gap-1">
+                        {Array.from({ length: Math.ceil(_listings.length / 2) }).map((_, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActivePropertyIndex(idx)}
+                            className={`w-2 h-2 rounded-full transition-colors ${
+                              idx === activePropertyIndex ? 'bg-foreground' : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                            }`}
+                          />
+                        ))}
                       </div>
-                      <h2 className="text-lg font-bold text-gray-900">Active Properties</h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {_listings && _listings.length > 2 && (
-                        <div className="flex gap-1">
-                          {Array.from({ length: Math.ceil(_listings.length / 2) }).map((_, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => setActivePropertyIndex(idx)}
-                              className={`w-2 h-2 rounded-full transition-colors ${
-                                idx === activePropertyIndex ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      )}
-                      <Link to="/listings" className="ml-2 text-gray-400 hover:text-gray-600">
-                        <FontAwesomeIcon icon={faChevronRight} />
-                      </Link>
-                    </div>
+                    )}
+                    <Link to="/listings" className="ml-2 text-muted-foreground hover:text-foreground">
+                      <FontAwesomeIcon icon={faChevronRight} />
+                    </Link>
                   </div>
-                </div>
+                }
+              />
                 
                 <div className="p-5">
                   {_listings && _listings.length > 0 ? (
@@ -1126,13 +1077,13 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             <div
                               key={listing.id}
                               onClick={() => navigate(`/listings/${listing.id}`)}
-                              className="group rounded-xl overflow-hidden cursor-pointer bg-white border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300"
+                              className="group rounded-xl overflow-hidden cursor-pointer bg-card border border-border shadow-soft hover:shadow-md transition-all duration-300"
                             >
                               {/* Large Image */}
-                              <div className="h-44 bg-gray-200 relative overflow-hidden">
+                              <div className="h-44 bg-muted relative overflow-hidden">
                                 <ImageComponent
                                   src={listing.image_url}
-                                  fallback="/images/property_card_holder.jpg"
+                                  fallback={PROPERTY_FALLBACK_IMAGE}
                                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
@@ -1157,21 +1108,21 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                         {openCount} open issue{openCount !== 1 ? 's' : ''}
                                       </span>
                                     ) : (
-                                      <span className="text-sm text-gray-500">
+                                      <span className="text-sm text-muted-foreground">
                                         {listingIssues.length} issue{listingIssues.length !== 1 ? 's' : ''} tracked
                                       </span>
                                     )}
                                   </div>
-                                  <button 
+                                  <button
                                     onClick={(e) => { e.stopPropagation(); navigate(`/listings/${listing.id}`); }}
-                                    className="text-sm font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                                    className="text-sm font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1"
                                   >
                                     View Property <FontAwesomeIcon icon={faChevronRight} className="text-xs" />
                                   </button>
                                 </div>
                                 
                                 {/* Progress bar */}
-                                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                                   <div 
                                     className={`h-full rounded-full transition-all duration-500 ${
                                       openCount > 0 ? 'bg-gold' : 'bg-emerald-500'
@@ -1187,14 +1138,14 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="w-16 h-16 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-                        <FontAwesomeIcon icon={faBuilding} className="text-gray-400 text-2xl" />
+                      <div className="w-16 h-16 bg-muted rounded-xl flex items-center justify-center mx-auto mb-4">
+                        <FontAwesomeIcon icon={faBuilding} className="text-muted-foreground text-2xl" />
                       </div>
-                      <p className="text-gray-900 mb-1 font-semibold">No properties yet</p>
-                      <p className="text-sm text-gray-500 mb-4">Add your first property to get started</p>
+                      <p className="text-foreground mb-1 font-semibold">No properties yet</p>
+                      <p className="text-sm text-muted-foreground mb-4">Add your first property to get started</p>
                       <button
                         onClick={() => setIsAddListingModalOpen(true)}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-lg font-medium text-sm hover:bg-gray-800 transition"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg font-medium text-sm hover:opacity-90 transition"
                       >
                         Add property <FontAwesomeIcon icon={faArrowRight} className="text-xs" />
                       </button>
@@ -1207,27 +1158,23 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
             {/* RIGHT COLUMN - Project Health + Schedule stacked */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
-              <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <FontAwesomeIcon icon={faTrophy} className="text-gray-600" />
-                    </div>
-                    <h2 className="text-lg font-bold text-gray-900">Project Health</h2>
-                  </div>
-                  <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
-                </div>
+              <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden transition-shadow duration-300">
+                <CardSectionHeader
+                  iconBg="bg-gold-200"
+                  icon={<TrendingUp className="w-5 h-5 text-gold" />}
+                  title="Project Health"
+                />
                 
                 <div className="p-5 space-y-5">
                   {/* Resolution Progress */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Resolution Rate</span>
-                      <span className="text-sm font-bold text-gray-900">{resolutionRate}%</span>
+                      <span className="text-sm font-medium text-muted-foreground">Resolution Rate</span>
+                      <span className="text-sm font-bold text-foreground">{resolutionRate}%</span>
                     </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-gold-400 to-gold rounded-full transition-all duration-500" 
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
                         style={{ width: `${resolutionRate}%` }}
                       ></div>
                     </div>
@@ -1235,17 +1182,17 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
                   {/* Quick Stats */}
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-gray-900">{realMetrics.totalIssues}</div>
-                      <div className="text-xs text-gray-500">Total</div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-xl font-bold text-foreground">{realMetrics.totalIssues}</div>
+                      <div className="text-xs text-muted-foreground">Total</div>
                     </div>
-                    <div className="text-center p-3 bg-gray-50 rounded-lg">
-                      <div className="text-xl font-bold text-gray-900">{realMetrics.openIssues}</div>
-                      <div className="text-xs text-gray-500">Open</div>
+                    <div className="text-center p-3 bg-muted/50 rounded-lg">
+                      <div className="text-xl font-bold text-primary">{realMetrics.openIssues}</div>
+                      <div className="text-xs text-muted-foreground">Open</div>
                     </div>
                     <div className="text-center p-3 bg-emerald-50 rounded-lg">
                       <div className="text-xl font-bold text-emerald-600">{realMetrics.completedIssues}</div>
-                      <div className="text-xs text-gray-500">Done</div>
+                      <div className="text-xs text-muted-foreground">Done</div>
                     </div>
                   </div>
 
@@ -1253,18 +1200,18 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </div>
 
             {/* UPCOMING VISITS CARD - Confirmed upcoming assessments, max 5, closest at top */}
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden transition-shadow duration-300">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
                     <FontAwesomeIcon icon={faCalendarAlt} className="text-emerald-600" />
                   </div>
-                  <h2 className="text-lg font-bold text-gray-900">Upcoming Visits</h2>
+                  <h2 className="text-lg font-bold text-foreground">Upcoming Visits</h2>
                 </div>
                 {confirmedAssessments.length > 5 && (
                   <button
                     onClick={() => setShowScheduleModal(true)}
-                    className="text-sm text-gray-500 hover:text-gray-700"
+                    className="text-sm text-muted-foreground hover:text-foreground"
                   >
                     View all
                   </button>
@@ -1274,18 +1221,18 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 {confirmedAssessments.length > 0 ? (
                   <div className="space-y-2">
                     {confirmedAssessments.slice(0, 5).map((event) => (
-                      <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div key={event.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40 transition-colors">
+                        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
                           <FontAwesomeIcon 
                             icon={getIssueTypeIcon(event.issue?.type)} 
-                            className="text-gray-600 text-sm" 
+                            className="text-muted-foreground text-sm" 
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-gray-900 truncate">
+                          <div className="text-sm font-medium text-foreground truncate">
                             {event.title}
                           </div>
-                          <div className="text-xs text-gray-500 truncate">
+                          <div className="text-xs text-muted-foreground truncate">
                             {event.listing?.address?.split(',')[0] || 'Property'}
                             {' · '}
                             {event.start.toLocaleDateString("en-US", { weekday: 'short' })}
@@ -1297,7 +1244,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-6 text-gray-500 text-sm">
+                  <div className="text-center py-6 text-muted-foreground text-sm">
                     No confirmed visits scheduled
                   </div>
                 )}
@@ -1344,12 +1291,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           onClick={() => setSelectedIssueForModal(null)}
         >
           <div
-            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setSelectedIssueForModal(null)}
-              className="absolute -top-10 right-0 text-white text-3xl leading-none px-2 hover:text-gray-300 transition-colors"
+              className="absolute -top-10 right-0 text-white text-3xl leading-none px-2 hover:text-white/70 transition-colors"
             >
               &times;
             </button>
@@ -1367,16 +1314,16 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       {/* Propose New Time Modal */}
       {proposeTimeModal.isOpen && proposeTimeModal.assessment && (
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Propose Times</h3>
-                  <p className="text-xs text-gray-500">Add up to 3 time options</p>
+                  <h3 className="text-lg font-bold text-foreground">Propose Times</h3>
+                  <p className="text-xs text-muted-foreground">Add up to 3 time options</p>
                 </div>
               </div>
               <button
@@ -1384,25 +1331,25 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   setProposeTimeModal({ isOpen: false, assessment: null });
                   setProposedTimes([""]);
                 }}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
               >
-                <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+                <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
               </button>
             </div>
 
             {/* Content */}
             <div className="p-6">
               {/* Issue context */}
-              <div className="mb-5 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">For issue:</p>
-                <p className="font-medium text-gray-900 text-sm">
+              <div className="mb-5 p-3 bg-muted/40 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">For issue:</p>
+                <p className="font-medium text-foreground text-sm">
                   {proposeTimeModal.assessment.issue?.summary || proposeTimeModal.assessment.title}
                 </p>
               </div>
 
               {/* Time slots */}
               <div className="space-y-3 mb-5">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-foreground">
                   Select your preferred times (30 min each)
                 </label>
                 
@@ -1416,7 +1363,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                       value={time}
                       onChange={(e) => updateTimeSlot(index, e.target.value)}
                       min={new Date().toISOString().slice(0, 16)}
-                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold focus:border-gold text-gray-900 text-sm"
+                      className="flex-1 px-4 py-2.5 border border-border bg-card rounded-lg focus:ring-2 focus:ring-gold focus:border-gold text-foreground text-sm"
                     />
                     {proposedTimes.length > 1 && (
                       <button
@@ -1440,7 +1387,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 )}
               </div>
 
-              <p className="text-xs text-gray-500 mb-6">
+              <p className="text-xs text-muted-foreground mb-6">
                 The contractor will be able to accept one of your proposed times or suggest alternatives.
               </p>
 
@@ -1451,7 +1398,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     setProposeTimeModal({ isOpen: false, assessment: null });
                     setProposedTimes([""]);
                   }}
-                  className={`flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg ${BUTTON_HOVER}`}
+                  className={`flex-1 px-4 py-3 border border-border text-foreground font-semibold rounded-lg ${BUTTON_HOVER}`}
                 >
                   Cancel
                 </button>
@@ -1471,25 +1418,25 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       {/* Full Schedule Modal */}
       {showScheduleModal && (
         <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
+            <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gold-200 rounded-lg flex items-center justify-center">
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">All Scheduled Visits</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-lg font-bold text-foreground">All Scheduled Visits</h3>
+                  <p className="text-sm text-muted-foreground">
                     {pendingAssessments.length} pending · {confirmedAssessments.length} confirmed
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
               >
-                <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+                <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
               </button>
             </div>
 
@@ -1505,33 +1452,33 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                     {pendingAssessments.map((event) => (
                       <div key={event.id} className="p-4 bg-gold-50 rounded-xl border border-gold-200">
                         <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
+                          <div className="w-10 h-10 bg-card rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
                             <FontAwesomeIcon 
                               icon={getIssueTypeIcon(event.issue?.type)} 
                               className="text-gold" 
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-gray-900 mb-1">{event.title}</div>
+                            <div className="font-semibold text-foreground mb-1">{event.title}</div>
                             {/* Vendor name and rating */}
                             {event.vendor && (
-                              <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                                <FontAwesomeIcon icon={faUser} className="text-xs text-gray-400" />
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                                <FontAwesomeIcon icon={faUser} className="text-xs text-muted-foreground" />
                                 <span className="font-medium">{event.vendor.name || "Vendor"}</span>
                                 <span className="flex items-center gap-0.5 text-gold">
                                   <FontAwesomeIcon icon={faStar} className="text-xs" />
-                                  <span className="text-gray-600">{event.vendor.rating || "New"}</span>
+                                  <span className="text-muted-foreground">{event.vendor.rating || "New"}</span>
                                 </span>
                               </div>
                             )}
                             {event.listing && (
-                              <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-1">
-                                <FontAwesomeIcon icon={faMapMarkerAlt} className="text-xs text-gray-400" />
+                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
+                                <MapPin className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
                                 {event.listing.address}
                               </div>
                             )}
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-3">
-                              <FontAwesomeIcon icon={faClock} className="text-xs text-gray-400" />
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
+                              <FontAwesomeIcon icon={faClock} className="text-xs text-muted-foreground" />
                               {event.start.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric' })}
                               {' at '}
                               {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
@@ -1558,7 +1505,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                   <button
                                     onClick={() => handleAcceptAssessment(event)}
                                     disabled={isUpdatingAssessment}
-                                    className={`flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    className={`flex items-center gap-1.5 px-4 py-2 bg-foreground text-background text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
                                   >
                                     <FontAwesomeIcon icon={faCheck} />
                                     {isUpdatingAssessment ? "Accepting..." : "Accept"}
@@ -1568,7 +1515,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                       setShowScheduleModal(false);
                                       openProposeTimeModal(event);
                                     }}
-                                    className={`flex items-center gap-1.5 px-4 py-2 bg-white text-gray-700 text-sm font-semibold rounded-lg border border-gray-300 ${BUTTON_HOVER}`}
+                                    className={`flex items-center gap-1.5 px-4 py-2 bg-card text-foreground text-sm font-semibold rounded-lg border border-border ${BUTTON_HOVER}`}
                                   >
                                     <FontAwesomeIcon icon={faEdit} />
                                     Propose New Time
@@ -1592,15 +1539,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   </h4>
                   <div className="space-y-2">
                     {confirmedAssessments.map((event) => (
-                      <div key={event.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center gap-3">
+                      <div key={event.id} className="p-3 bg-muted/40 rounded-xl border border-border flex items-center gap-3">
                         <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <FontAwesomeIcon icon={faCheckCircle} className="text-emerald-600 text-sm" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900 truncate">{event.title}</div>
-                          <div className="text-xs text-gray-500">
+                          <div className="font-medium text-sm text-foreground truncate">{event.title}</div>
+                          <div className="text-xs text-muted-foreground">
                             {event.vendor?.name && (
-                              <span className="font-medium text-gray-700">{event.vendor.name} · </span>
+                              <span className="font-medium text-foreground">{event.vendor.name} · </span>
                             )}
                             {event.listing?.address?.split(',')[0] || 'Property'}
                             {' · '}
@@ -1618,8 +1565,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               {/* Empty state */}
               {calendarEvents.length === 0 && (
                 <div className="text-center py-12">
-                  <FontAwesomeIcon icon={faCalendarAlt} className="text-4xl text-gray-300 mb-3" />
-                  <p className="text-gray-500">No scheduled visits</p>
+                  <FontAwesomeIcon icon={faCalendarAlt} className="text-4xl text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">No scheduled visits</p>
                 </div>
               )}
             </div>
