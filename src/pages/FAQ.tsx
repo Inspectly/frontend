@@ -76,7 +76,7 @@ const FAQs = () => {
   const totalFaqs = categories.reduce((s, c) => s + c.faqs.length, 0);
 
   const content = (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto animate-fade-up">
+    <div className="p-6 lg:p-8 w-full max-w-4xl mx-auto animate-fade-up">
       <div className="text-center mb-8">
         <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
           <HelpCircle className="h-6 w-6 text-primary" />
