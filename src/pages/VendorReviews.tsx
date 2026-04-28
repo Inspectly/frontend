@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useSelector } from "react-redux";
-import { Star, ThumbsUp, Trophy, User } from "lucide-react";
+import { Star, Trophy, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RootState } from "../store/store";
@@ -54,7 +54,6 @@ const VendorReviews: React.FC = () => {
       reviewsPerClient[r.user_id] = (reviewsPerClient[r.user_id] || 0) + 1;
     });
     const uniqueClients = Object.keys(reviewsPerClient).length;
-    const repeatClients = Object.values(reviewsPerClient).filter((n) => n > 1).length;
     const fiveStarRate = Math.round((distribution[5] / count) * 100);
     return {
       count,
