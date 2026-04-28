@@ -44,7 +44,7 @@ interface DashboardProps {
 
 const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const navigate = useNavigate();
-  
+
   // UI State
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
     return localStorage.getItem('vendor_welcome_banner_dismissed') !== 'true';
@@ -54,7 +54,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     setShowWelcomeBanner(false);
     localStorage.setItem('vendor_welcome_banner_dismissed', 'true');
   };
-  
+
   // Modal state for issue details
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
 
@@ -64,7 +64,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const { data: issues, error: issuesError } = useGetIssuesQuery();
   const { data: listings = [] } = useGetListingsQuery();
   const { data: vendorReviewsData = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user.id), { skip: !user.id });
-  
+
   // Vendor assessments - use user.id since that's what's stored in the assessment records
   const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
     user.id,
@@ -79,34 +79,34 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const uniqueInteractionIds = useMemo(() => {
     return [...new Set(vendorAssessments.map(a => a.users_interaction_id).filter(Boolean))].sort();
   }, [vendorAssessments]);
-  
+
   // Stable key for the interaction IDs
   const interactionIdsKey = uniqueInteractionIds.join(",");
 
   // Fetch all assessments for the vendor's interaction IDs (to include client counter-proposals)
   useEffect(() => {
     let isMounted = true;
-    
+
     const fetchAllAssessments = async () => {
       if (uniqueInteractionIds.length === 0) {
         if (isMounted) setAllAssessments(vendorAssessments);
         return;
       }
-      
+
       try {
         // Fetch ALL assessments for each interaction ID
         const results = await Promise.all(
           uniqueInteractionIds.map(id => fetchAssessmentsByInteraction(id).unwrap())
         );
-        
+
         if (!isMounted) return;
-        
+
         // Flatten and dedupe by assessment ID
         const allResults = results.flat();
         const uniqueAssessments = Array.from(
           new Map(allResults.map(a => [a.id, a])).values()
         ) as IssueAssessment[];
-        
+
         setAllAssessments(uniqueAssessments);
       } catch (err) {
         console.error("Failed to fetch all assessments:", err);
@@ -114,9 +114,9 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         if (isMounted) setAllAssessments(vendorAssessments);
       }
     };
-    
+
     fetchAllAssessments();
-    
+
     return () => {
       isMounted = false;
     };
@@ -143,7 +143,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Selected issue data for modal (derived from existing data)
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
   const selectedIssueListing = selectedIssue ? listingsMap[selectedIssue.listing_id] : undefined;
-  
+
   // Open issue modal
   const openIssueModal = (
     issueId: number,
@@ -153,7 +153,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     // Update URL to set the tab for IssueDetails
     navigate(`?tab=${defaultTab}`, { replace: true });
   };
-  
+
   // Close issue modal
   const closeIssueModal = () => {
     setSelectedIssueId(null);
@@ -275,7 +275,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   const vendorSpecialties = useMemo(() => {
     if (!vendor?.vendor_types) return [];
     const rawTypes = vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-    
+
     // Expand to include all matching issue types
     const expanded = new Set<string>();
     rawTypes.forEach(type => {
@@ -285,7 +285,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       const mappedTypes = VENDOR_TO_ISSUE_TYPE_MAP[type] || [];
       mappedTypes.forEach(t => expanded.add(t));
     });
-    
+
     return Array.from(expanded);
   }, [vendor?.vendor_types]);
 
@@ -304,13 +304,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       created_at?: string;
     }>
   >([]);
-  
+
 
   // Helper to check if issue matches vendor specialty
   const matchesSpecialty = (issue: IssueType) => {
     if (vendorSpecialties.length === 0) return true;
     const issueType = (issue.type || '').toLowerCase();
-    return vendorSpecialties.some(specialty => 
+    return vendorSpecialties.some(specialty =>
       issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
     );
   };
@@ -329,25 +329,25 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       if (!issues) return;
 
       const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
-      
+
       // Try different filter combinations with fallbacks
       let filtered: IssueType[] = [];
-      
+
       // 1. Best match: specialty + city
       const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
-      
+
       if (exactMatch.length > 0) {
         filtered = exactMatch;
       } else {
         // 2. Fallback A: specialty only (any location)
         const specialtyOnly = available.filter((i) => matchesSpecialty(i));
-        
+
         if (specialtyOnly.length > 0) {
           filtered = specialtyOnly;
         } else {
           // 3. Fallback B: city only (any specialty)
           const cityOnly = available.filter((i) => matchesCity(i));
-          
+
           if (cityOnly.length > 0) {
             filtered = cityOnly;
           } else {
@@ -356,13 +356,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           }
         }
       }
-      
-      
+
+
       // Sort by severity for Priority List (high → medium → low)
       const sortedBySeverity = [...filtered].sort((a, b) => {
         const severityOrder = { high: 0, medium: 1, low: 2 };
         return (severityOrder[a.severity as keyof typeof severityOrder] || 2) -
-               (severityOrder[b.severity as keyof typeof severityOrder] || 2);
+          (severityOrder[b.severity as keyof typeof severityOrder] || 2);
       });
 
       // Show jobs immediately without waiting for bid counts
@@ -396,7 +396,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               return updated;
             });
           })
-          .catch(() => {});
+          .catch(() => { });
       });
     };
 
@@ -454,14 +454,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       const issueId = Number(issueIdStr);
       const issue = issuesMap[issueId];
       const listing = issue ? listingsMap[issue.listing_id] : undefined;
-      
+
       // Check if there's an accepted assessment
       // Note: Backend may return status as lowercase "accepted" or as enum "Assessment_Status.ACCEPTED"
       const acceptedAssessment = assessments.find(a => {
         const status = (a.status as string)?.toLowerCase() || "";
         return status === "accepted" || status.includes("accepted");
       });
-      
+
       // Helper to check if status is "received" (pending)
       const isReceivedStatus = (status: string) => {
         if (!status) return false;
@@ -470,12 +470,12 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       };
 
       // Check if there are pending assessments from client (action required for vendor)
-      const actionRequiredAssessments = assessments.filter(a => 
+      const actionRequiredAssessments = assessments.filter(a =>
         isReceivedStatus(a.status as string) && a.user_id !== user.id
       );
-      
+
       // Check if there are pending assessments from vendor (waiting for client)
-      const pendingAssessments = assessments.filter(a => 
+      const pendingAssessments = assessments.filter(a =>
         isReceivedStatus(a.status as string) && a.user_id === user.id
       );
 
@@ -623,7 +623,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             <span>Browse Jobs</span>
           </Link>
         </div>
-        
+
         {/* New Vendor Welcome Banner */}
         {isNewVendor && showWelcomeBanner && (
           <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-gold to-gold-400 relative">
@@ -632,7 +632,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
                 <FontAwesomeIcon icon={faRocket} className="text-gray-900 text-2xl" />
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 text-center lg:text-left">
                 <h2 className="text-xl font-bold text-gray-900 mb-1">
@@ -642,7 +642,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                   {availableCount} jobs available in your area • Browse, bid, and start earning today
                 </p>
               </div>
-              
+
               {/* CTA */}
               <Link
                 to="/marketplace"
@@ -652,7 +652,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 Explore Marketplace
                 <FontAwesomeIcon icon={faArrowRight} />
               </Link>
-              
+
               {/* Dismiss Button */}
               <button
                 onClick={dismissWelcomeBanner}
@@ -694,6 +694,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
             value={reviewStats.rating > 0 ? reviewStats.rating.toFixed(1) : "—"}
             label="Avg. Rating"
             subtitle={reviewStats.count > 0 ? `${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}` : undefined}
+            onClick={() => navigate("/vendor/reviews")}
           />
           <DashboardStatCard
             iconBg="bg-blue-100"
@@ -725,8 +726,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                       issue?.status === "Status.IN_PROGRESS"
                         ? "In Progress"
                         : issue?.status === "Status.REVIEW"
-                        ? "In Review"
-                        : "Active";
+                          ? "In Review"
+                          : "Active";
                     return (
                       <div
                         key={offer.id}
@@ -755,10 +756,10 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                                     issue?.status === "Status.COMPLETED"
                                       ? "100%"
                                       : issue?.status === "Status.IN_PROGRESS"
-                                      ? "60%"
-                                      : issue?.status === "Status.REVIEW"
-                                      ? "85%"
-                                      : "30%",
+                                        ? "60%"
+                                        : issue?.status === "Status.REVIEW"
+                                          ? "85%"
+                                          : "30%",
                                 }}
                               />
                             </div>
@@ -962,11 +963,11 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       {selectedIssueId && selectedIssue && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           {/* Backdrop */}
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 transition-opacity"
             onClick={closeIssueModal}
           />
-          
+
           {/* Modal Content */}
           <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
             <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
@@ -978,7 +979,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
               >
                 <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
               </button>
-              
+
               {/* Issue Details Component */}
               <div className="p-6">
                 <IssueDetails issue={selectedIssue} listing={selectedIssueListing} />
