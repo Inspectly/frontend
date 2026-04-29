@@ -1,0 +1,184 @@
+import { MapPin, Star, Wrench, Paintbrush, Zap, Droplets, Home, TreeDeciduous } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
+
+const Listings = () => {
+  const { ref, isVisible } = useScrollAnimation();
+  
+  const listings = [
+    {
+      id: 1,
+      title: "Kitchen Renovation",
+      category: "Renovation",
+      icon: Home,
+      location: "Toronto, ON",
+      postedTime: "2 hours ago",
+      description: "Full kitchen renovation including new cabinets, countertops, and appliances installation.",
+      bids: 8,
+      image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop"
+    },
+    {
+      id: 2,
+      title: "Bathroom Plumbing Repair",
+      category: "Plumbing",
+      icon: Droplets,
+      location: "Vancouver, BC",
+      postedTime: "5 hours ago",
+      description: "Fix leaking pipes under bathroom sink and replace old faucet fixtures.",
+      bids: 12,
+      image: "https://images.unsplash.com/photo-1552321554-5fefe8c9ef14?w=400&h=300&fit=crop"
+    },
+    {
+      id: 3,
+      title: "Electrical Panel Upgrade",
+      category: "Electrical",
+      icon: Zap,
+      location: "Calgary, AB",
+      postedTime: "1 day ago",
+      description: "Upgrade 100A panel to 200A for home addition. Licensed electrician required.",
+      bids: 5,
+      image: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=400&h=300&fit=crop"
+    },
+    {
+      id: 4,
+      title: "Interior Painting - 3 Rooms",
+      category: "Painting",
+      icon: Paintbrush,
+      location: "Montreal, QC",
+      postedTime: "3 hours ago",
+      description: "Paint living room, master bedroom, and office. Walls and ceiling, neutral colors.",
+      bids: 15,
+      image: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400&h=300&fit=crop"
+    },
+    {
+      id: 5,
+      title: "Deck Building",
+      category: "Carpentry",
+      icon: Wrench,
+      location: "Ottawa, ON",
+      postedTime: "6 hours ago",
+      description: "Build a 400 sq ft composite deck with railing and stairs in backyard.",
+      bids: 7,
+      image: "https://images.unsplash.com/photo-1591825729269-caeb344f6df2?w=400&h=300&fit=crop"
+    },
+    {
+      id: 6,
+      title: "Landscaping & Garden Design",
+      category: "Landscaping",
+      icon: TreeDeciduous,
+      location: "Edmonton, AB",
+      postedTime: "12 hours ago",
+      description: "Front yard landscaping including new sod, flower beds, and stone pathway.",
+      bids: 9,
+      image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=400&h=300&fit=crop"
+    },
+  ];
+
+  return (
+    <section 
+      id="listings" 
+      ref={ref as React.RefObject<HTMLElement>}
+      className={`py-14 lg:py-20 bg-background section-animate ${isVisible ? 'visible' : ''}`}
+    >
+      <div className="container mx-auto px-4 lg:px-8 max-w-6xl">
+        {/* Section header */}
+        <div 
+          className="text-center mb-10"
+          style={{ 
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.6s ease-out'
+          }}
+        >
+          <span className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-medium rounded-full text-xs mb-4">
+            Live Marketplace
+          </span>
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-display font-bold text-foreground mb-3">
+            Browse Active Projects
+          </h2>
+          <p className="text-base text-muted-foreground max-w-lg mx-auto">
+            See real projects from homeowners looking for skilled contractors.
+          </p>
+        </div>
+
+        {/* Listings grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-10">
+          {listings.map((listing, index) => (
+            <Card 
+              key={listing.id} 
+              className="group overflow-hidden hover:shadow-xl transition-all duration-500 border-border hover:border-primary/30 hover:-translate-y-1"
+              style={{ 
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.98)',
+                transition: `all 0.6s ease-out ${0.1 + index * 0.08}s`
+              }}
+            >
+              {/* Image */}
+              <div className="relative h-44 overflow-hidden">
+                <img 
+                  src={listing.image} 
+                  alt={listing.title}
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-foreground/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute top-3 left-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-background/95 backdrop-blur-sm rounded-full text-xs font-medium text-foreground shadow-sm">
+                    <listing.icon className="w-3.5 h-3.5 text-primary" />
+                    {listing.category}
+                  </span>
+                </div>
+                <div className="absolute top-3 right-3">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-foreground text-background rounded-full text-xs font-medium shadow-sm">
+                    <Star className="w-3 h-3 fill-current" />
+                    {listing.bids} bids
+                  </span>
+                </div>
+              </div>
+
+              <CardContent className="p-5">
+                <h3 className="font-semibold text-base text-foreground mb-2 group-hover:text-primary transition-colors duration-300">
+                  {listing.title}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
+                  {listing.description}
+                </p>
+
+                {/* Meta info */}
+                <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {listing.location}
+                  </span>
+                </div>
+
+                <Button variant="outline" size="sm" className="w-full text-sm h-9 group-hover:border-primary group-hover:text-primary group-hover:bg-primary/5 transition-all duration-300">
+                  View Details
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div 
+          className="text-center"
+          style={{ 
+            opacity: isVisible ? 1 : 0,
+            transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+            transition: 'all 0.6s ease-out 0.6s'
+          }}
+        >
+          <Button variant="gold" size="lg">
+            View All Projects
+          </Button>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Or <a href="#" className="text-primary hover:underline font-medium transition-colors">post your own project</a> to get started
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default Listings;
