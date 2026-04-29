@@ -253,7 +253,7 @@ const Contact = () => {
                   Get answers about memberships, pricing, and how our vendors are screened.
                 </p>
                 <button
-                  onClick={() => navigate("/signup")}
+                  onClick={() => navigate("/faq")}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline transition-colors"
                 >
                   Browse FAQs

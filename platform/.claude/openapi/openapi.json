@@ -1,0 +1,10357 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+    "title": "Inspectly AI Backend API",
+    "version": "0.1.0"
+    },
+    "paths": {
+    "/": {
+    "get": {
+    "summary": "Get All",
+    "operationId": "get_all__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/": {
+    "get": {
+    "summary": "Get All",
+    "operationId": "get_all_api__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/status": {
+    "get": {
+    "summary": "Get Status",
+    "operationId": "get_status_api_status_get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/db_status": {
+    "get": {
+    "summary": "Get Db Status",
+    "operationId": "get_db_status_api_db_status_get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/": {
+    "get": {
+    "tags": [
+    "v0"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/status": {
+    "get": {
+    "tags": [
+    "v0"
+    ],
+    "summary": "Get Status",
+    "operationId": "get_status_api_v0_status_get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_types/": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_types"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_user_types__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "user_types"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_user_types__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Types"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_types/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_types"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_user_types__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "user_types"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_user_types__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Types"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "user_types"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_user_types__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_types/": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_types"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_vendor_types__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "vendor_types"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_vendor_types__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Types"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_types/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_types"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_vendor_types__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "vendor_types"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_vendor_types__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Types"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "vendor_types"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_vendor_types__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/users/": {
+    "get": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_users__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_users__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Users"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/users/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_users__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_users__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Users"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_users__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/users/firebase/{firebase_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "users"
+    ],
+    "summary": "Get One By Firebase Id",
+    "operationId": "get_one_by_firebase_id_api_v0_users_firebase__firebase_id__get",
+    "parameters": [
+    {
+    "name": "firebase_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "Firebase Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_logins/": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_user_logins__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_user_logins__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Logins"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_logins/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_user_logins__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_user_logins__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Logins"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_user_logins__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_logins/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_logins"
+    ],
+    "summary": "Get User Login",
+    "operationId": "get_user_login_api_v0_user_logins_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_sessions/": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_sessions"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_user_sessions__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "user_sessions"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_user_sessions__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Sessions"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_sessions/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_sessions"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_user_sessions__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "user_sessions"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_user_sessions__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    },
+    {
+    "name": "logout_time",
+    "in": "query",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "Logout Time"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/user_sessions/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "user_sessions"
+    ],
+    "summary": "Get User Session",
+    "operationId": "get_user_session_api_v0_user_sessions_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/clients/": {
+    "get": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_clients__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_clients__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Clients"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/clients/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_clients__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_clients__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Clients"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_clients__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/clients/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "clients"
+    ],
+    "summary": "Get One User Id",
+    "operationId": "get_one_user_id_api_v0_clients_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtors/": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_realtors__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_realtors__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtors"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtors/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_realtors__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_realtors__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtors"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_realtors__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtors/realtor_user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtors"
+    ],
+    "summary": "Get One Realtor User Id",
+    "operationId": "get_one_realtor_user_id_api_v0_realtors_realtor_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendors/": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_vendors__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_vendors__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendors"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendors/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_vendors__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_vendors__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendors"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_vendors__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendors/vendor_user_id/{vendor_user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendors"
+    ],
+    "summary": "Get One Vendor User Id",
+    "operationId": "get_one_vendor_user_id_api_v0_vendors_vendor_user_id__vendor_user_id__get",
+    "parameters": [
+    {
+    "name": "vendor_user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/client_reviews/": {
+    "get": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_client_reviews__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_client_reviews__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Client_Reviews"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/client_reviews/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_client_reviews__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_client_reviews__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Client_Reviews"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_client_reviews__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/client_reviews/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_client_reviews_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/client_reviews/client_user_id/{client_user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "client_reviews"
+    ],
+    "summary": "Get All By Client User Id",
+    "operationId": "get_all_by_client_user_id_api_v0_client_reviews_client_user_id__client_user_id__get",
+    "parameters": [
+    {
+    "name": "client_user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Client User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_reviews/": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_realtor_reviews__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_realtor_reviews__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtor_Reviews"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_reviews/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_realtor_reviews__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_realtor_reviews__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtor_Reviews"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_realtor_reviews__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_reviews/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_realtor_reviews_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_reviews/realtor_user_id/{realtor_user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_reviews"
+    ],
+    "summary": "Get All By Realtor User Id",
+    "operationId": "get_all_by_realtor_user_id_api_v0_realtor_reviews_realtor_user_id__realtor_user_id__get",
+    "parameters": [
+    {
+    "name": "realtor_user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Realtor User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_reviews/": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_vendor_reviews__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_vendor_reviews__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Reviews"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_reviews/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_vendor_reviews__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_vendor_reviews__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Reviews"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_vendor_reviews__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_reviews/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_vendor_reviews_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_reviews/vendor_user_id/{vendor_user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_reviews"
+    ],
+    "summary": "Get All By Vendor User Id",
+    "operationId": "get_all_by_vendor_user_id_api_v0_vendor_reviews_vendor_user_id__vendor_user_id__get",
+    "parameters": [
+    {
+    "name": "vendor_user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_employees/vendor_id/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_employees"
+    ],
+    "summary": "Get All By Vendor Id",
+    "operationId": "get_all_by_vendor_id_api_v0_vendor_employees_vendor_id__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_employees/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "vendor_employees"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_vendor_employees__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "vendor_employees"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_vendor_employees__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Employees"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_employees/": {
+    "post": {
+    "tags": [
+    "v0",
+    "vendor_employees"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_vendor_employees__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Vendor_Employees"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/vendor_employees/{id}/{vendor_id}": {
+    "delete": {
+    "tags": [
+    "v0",
+    "vendor_employees"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_vendor_employees__id___vendor_id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    },
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_firms/": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_firms"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_realtor_firms__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "realtor_firms"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_realtor_firms__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtor_Firms"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/realtor_firms/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "realtor_firms"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_realtor_firms__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "realtor_firms"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_realtor_firms__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Realtor_Firms"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "realtor_firms"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_realtor_firms__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/listings/": {
+    "get": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_listings__get",
+    "parameters": [
+    {
+    "name": "page",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "minimum": 1,
+    "description": "Page number",
+    "default": 1,
+    "title": "Page"
+    },
+    "description": "Page number"
+    },
+    {
+    "name": "size",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "maximum": 100,
+    "minimum": 1,
+    "description": "Page size",
+    "default": 50,
+    "title": "Size"
+    },
+    "description": "Page size"
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Page"
+    }
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_listings__post",
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Listings"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/listings/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_listings__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_listings__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Listings"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_listings__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/listings/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "listings"
+    ],
+    "summary": "Get User Listings",
+    "operationId": "get_user_listings_api_v0_listings_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/reports/": {
+    "get": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_reports__get",
+    "parameters": [
+    {
+    "name": "page",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "minimum": 1,
+    "description": "Page number",
+    "default": 1,
+    "title": "Page"
+    },
+    "description": "Page number"
+    },
+    {
+    "name": "size",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "maximum": 100,
+    "minimum": 1,
+    "description": "Page size",
+    "default": 50,
+    "title": "Size"
+    },
+    "description": "Page size"
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Page"
+    }
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_reports__post",
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Reports"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/reports/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_reports__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_reports__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Reports"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_reports__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/reports/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Get User Reports",
+    "operationId": "get_user_reports_api_v0_reports_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/reports/listing/{listing_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Get Listing Reports",
+    "operationId": "get_listing_reports_api_v0_reports_listing__listing_id__get",
+    "parameters": [
+    {
+    "name": "listing_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Listing Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/reports/extract/issues": {
+    "post": {
+    "tags": [
+    "v0",
+    "reports"
+    ],
+    "summary": "Extract Issues",
+    "operationId": "extract_issues_api_v0_reports_extract_issues_post",
+    "requestBody": {
+    "content": {
+    "multipart/form-data": {
+    "schema": {
+    "$ref": "#/components/schemas/Body_extract_issues_api_v0_reports_extract_issues_post"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_issues__get",
+    "parameters": [
+    {
+    "name": "page",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "minimum": 1,
+    "description": "Page number",
+    "default": 1,
+    "title": "Page"
+    },
+    "description": "Page number"
+    },
+    {
+    "name": "size",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "maximum": 100,
+    "minimum": 1,
+    "description": "Page size",
+    "default": 50,
+    "title": "Size"
+    },
+    "description": "Page size"
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Page"
+    }
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issues__post",
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issues"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/total": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Total Issues Count",
+    "operationId": "total_issues_count_api_v0_issues_total_get",
+    "parameters": [
+    {
+    "name": "vendor_assigned",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "default": false,
+    "title": "Vendor Assigned"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/total/filter": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Total Issues Count Filter",
+    "operationId": "total_issues_count_filter_api_v0_issues_total_filter_get",
+    "parameters": [
+    {
+    "name": "type",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "Type"
+    }
+    },
+    {
+    "name": "city",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "City"
+    }
+    },
+    {
+    "name": "state",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "State"
+    }
+    },
+    {
+    "name": "search",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "Search"
+    }
+    },
+    {
+    "name": "vendor_assigned",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "default": false,
+    "title": "Vendor Assigned"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/filter": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get All Filter",
+    "operationId": "get_all_filter_api_v0_issues_filter_get",
+    "parameters": [
+    {
+    "name": "type",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "Type"
+    }
+    },
+    {
+    "name": "city",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "City"
+    }
+    },
+    {
+    "name": "state",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "State"
+    }
+    },
+    {
+    "name": "search",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "title": "Search"
+    }
+    },
+    {
+    "name": "vendor_assigned",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "boolean",
+    "default": false,
+    "title": "Vendor Assigned"
+    }
+    },
+    {
+    "name": "page",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "minimum": 1,
+    "description": "Page number",
+    "default": 1,
+    "title": "Page"
+    },
+    "description": "Page number"
+    },
+    {
+    "name": "size",
+    "in": "query",
+    "required": false,
+    "schema": {
+    "type": "integer",
+    "maximum": 100,
+    "minimum": 1,
+    "description": "Page size",
+    "default": 50,
+    "title": "Size"
+    },
+    "description": "Page size"
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Page"
+    }
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_issues__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_issues__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issues"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_issues__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get Report Issues",
+    "operationId": "get_report_issues_api_v0_issues_report__report_id__get",
+    "parameters": [
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/listing/{listing_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get Listing Issues",
+    "operationId": "get_listing_issues_api_v0_issues_listing__listing_id__get",
+    "parameters": [
+    {
+    "name": "listing_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Listing Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/vendor/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get Vendor Issues",
+    "operationId": "get_vendor_issues_api_v0_issues_vendor__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/addresses/all": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get All Issue Addresses",
+    "operationId": "get_all_issue_addresses_api_v0_issues_addresses_all_get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/addresses/issue_ids": {
+    "post": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get All Issue Addresses Issue Ids",
+    "operationId": "get_all_issue_addresses_issue_ids_api_v0_issues_addresses_issue_ids_post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Body_get_all_issue_addresses_issue_ids_api_v0_issues_addresses_issue_ids_post"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issues/address/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issues"
+    ],
+    "summary": "Get Issue Address",
+    "operationId": "get_issue_address_api_v0_issues_address__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_offers/": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_issue_offers__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_offers__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Offers"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_offers/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_issue_offers__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_issue_offers__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Offers"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_issue_offers__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Body_delete_api_v0_issue_offers__id__delete"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_offers/issue/{issue_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Get All By Issue Id",
+    "operationId": "get_all_by_issue_id_api_v0_issue_offers_issue__issue_id__get",
+    "parameters": [
+    {
+    "name": "issue_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_offers/vendor/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Get All By Vendor Id",
+    "operationId": "get_all_by_vendor_id_api_v0_issue_offers_vendor__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_offers/vendor/{vendor_id}/issue/{issue_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_offers"
+    ],
+    "summary": "Get All By Vendor Id",
+    "operationId": "get_all_by_vendor_id_api_v0_issue_offers_vendor__vendor_id__issue__issue_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    },
+    {
+    "name": "issue_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_issue_assessments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_assessments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Assessments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_issue_assessments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_issue_assessments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Assessments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_issue_assessments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Assessments_Delete"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/issue/{issue_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All By Issue Id",
+    "operationId": "get_all_by_issue_id_api_v0_issue_assessments_issue__issue_id__get",
+    "parameters": [
+    {
+    "name": "issue_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/users_interaction/{users_interaction_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All By Users Interaction Id",
+    "operationId": "get_all_by_users_interaction_id_api_v0_issue_assessments_users_interaction__users_interaction_id__get",
+    "parameters": [
+    {
+    "name": "users_interaction_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "Users Interaction Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_issue_assessments_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/client_id_users_interaction_id/{client_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All By Client Id Users Interaction Id",
+    "operationId": "get_all_by_client_id_users_interaction_id_api_v0_issue_assessments_client_id_users_interaction_id__client_id__get",
+    "parameters": [
+    {
+    "name": "client_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Client Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessments/vendor_id_users_interaction_id/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessments"
+    ],
+    "summary": "Get All By Vendor Id Users Interaction Id",
+    "operationId": "get_all_by_vendor_id_users_interaction_id_api_v0_issue_assessments_vendor_id_users_interaction_id__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_issue_assessment_comments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_assessment_comments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Assessment_Comments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_issue_assessment_comments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_issue_assessment_comments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Assessment_Comments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/issue_assessment/{issue_assessment_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Get All By Issue Assessment Id",
+    "operationId": "get_all_by_issue_assessment_id_api_v0_issue_assessment_comments_issue_assessment__issue_assessment_id__get",
+    "parameters": [
+    {
+    "name": "issue_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_issue_assessment_comments_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/user/{user_id}/issue_assessment/{issue_assessment_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Get Comments By User Id And Issue Assessment Id",
+    "operationId": "get_comments_by_user_id_and_issue_assessment_id_api_v0_issue_assessment_comments_user__user_id__issue_assessment__issue_assessment_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    },
+    {
+    "name": "issue_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_assessment_comments/{id}/issue_assessment/{issue_assessment_id}": {
+    "delete": {
+    "tags": [
+    "v0",
+    "issue_assessment_comments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_issue_assessment_comments__id__issue_assessment__issue_assessment_id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    },
+    {
+    "name": "issue_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_offers/": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_report_offers__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_report_offers__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Offers"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_offers/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_report_offers__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_report_offers__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Offers"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_report_offers__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Body_delete_api_v0_report_offers__id__delete"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_offers/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Get All By Report Id",
+    "operationId": "get_all_by_report_id_api_v0_report_offers_report__report_id__get",
+    "parameters": [
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_offers/vendor/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Get All By Vendor Id",
+    "operationId": "get_all_by_vendor_id_api_v0_report_offers_vendor__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_offers/vendor/{vendor_id}/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_offers"
+    ],
+    "summary": "Get All By Vendor Id",
+    "operationId": "get_all_by_vendor_id_api_v0_report_offers_vendor__vendor_id__report__report_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    },
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_report_assessments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_report_assessments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Assessments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_report_assessments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_report_assessments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Assessments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_report_assessments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Assessments_Delete"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All By Report Id",
+    "operationId": "get_all_by_report_id_api_v0_report_assessments_report__report_id__get",
+    "parameters": [
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/users_interaction/{users_interaction_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All By Users Interaction Id",
+    "operationId": "get_all_by_users_interaction_id_api_v0_report_assessments_users_interaction__users_interaction_id__get",
+    "parameters": [
+    {
+    "name": "users_interaction_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "Users Interaction Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/user_id/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_report_assessments_user_id__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/client_id_users_interaction_id/{client_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All By Client Id Users Interaction Id",
+    "operationId": "get_all_by_client_id_users_interaction_id_api_v0_report_assessments_client_id_users_interaction_id__client_id__get",
+    "parameters": [
+    {
+    "name": "client_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Client Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessments/vendor_id_users_interaction_id/{vendor_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessments"
+    ],
+    "summary": "Get All By Vendor Id Users Interaction Id",
+    "operationId": "get_all_by_vendor_id_users_interaction_id_api_v0_report_assessments_vendor_id_users_interaction_id__vendor_id__get",
+    "parameters": [
+    {
+    "name": "vendor_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Vendor Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_report_assessment_comments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_report_assessment_comments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Assessment_Comments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_report_assessment_comments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_report_assessment_comments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Report_Assessment_Comments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/report_assessment/{report_assessment_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Get All By Report Assessment Id",
+    "operationId": "get_all_by_report_assessment_id_api_v0_report_assessment_comments_report_assessment__report_assessment_id__get",
+    "parameters": [
+    {
+    "name": "report_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Get All By User Id",
+    "operationId": "get_all_by_user_id_api_v0_report_assessment_comments_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/user/{user_id}/report_assessment/{report_assessment_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Get Comments By User Id And Report Assessment Id",
+    "operationId": "get_comments_by_user_id_and_report_assessment_id_api_v0_report_assessment_comments_user__user_id__report_assessment__report_assessment_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    },
+    {
+    "name": "report_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/report_assessment_comments/{id}/report_assessment/{report_assessment_id}": {
+    "delete": {
+    "tags": [
+    "v0",
+    "report_assessment_comments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_report_assessment_comments__id__report_assessment__report_assessment_id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    },
+    {
+    "name": "report_assessment_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Assessment Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/attachments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_attachments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_attachments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Attachments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/attachments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_attachments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_attachments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Attachments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_attachments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/attachments/issue/{issue_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Get Issue Attachments",
+    "operationId": "get_issue_attachments_api_v0_attachments_issue__issue_id__get",
+    "parameters": [
+    {
+    "name": "issue_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/attachments/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "attachments"
+    ],
+    "summary": "Get User Attachments",
+    "operationId": "get_user_attachments_api_v0_attachments_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/comments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_comments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_comments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Comments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/comments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_comments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_comments__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Comments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_comments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/comments/issue/{issue_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Get Issue Comments",
+    "operationId": "get_issue_comments_api_v0_comments_issue__issue_id__get",
+    "parameters": [
+    {
+    "name": "issue_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/comments/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "comments"
+    ],
+    "summary": "Get User Comments",
+    "operationId": "get_user_comments_api_v0_comments_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/notes/": {
+    "get": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_notes__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_notes__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Notes"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/notes/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_notes__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_notes__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Notes"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_notes__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/notes/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Get Report Notes",
+    "operationId": "get_report_notes_api_v0_notes_report__report_id__get",
+    "parameters": [
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/notes/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "notes"
+    ],
+    "summary": "Get User Notes",
+    "operationId": "get_user_notes_api_v0_notes_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/payments/": {
+    "get": {
+    "tags": [
+    "v0",
+    "payments"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_payments__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "payments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_payments__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Payments"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/payments/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "payments"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_payments__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "payments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_payments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/payments/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "payments"
+    ],
+    "summary": "Get User Payments",
+    "operationId": "get_user_payments_api_v0_payments_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe_user_information/": {
+    "get": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_stripe_user_information__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_stripe_user_information__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Stripe_Information"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe_user_information/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_stripe_user_information__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_stripe_user_information__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/User_Stripe_Information"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "delete": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_stripe_user_information__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe_user_information/user/{user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Get User Stripe Information",
+    "operationId": "get_user_stripe_information_api_v0_stripe_user_information_user__user_id__get",
+    "parameters": [
+    {
+    "name": "user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe_user_information/stripe_user_id/{stripe_user_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "stripe_user_information"
+    ],
+    "summary": "Get User Stripe Information By Stripe User Id",
+    "operationId": "get_user_stripe_information_by_stripe_user_id_api_v0_stripe_user_information_stripe_user_id__stripe_user_id__get",
+    "parameters": [
+    {
+    "name": "stripe_user_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "string",
+    "title": "Stripe User Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/tasks/": {
+    "get": {
+    "tags": [
+    "v0",
+    "tasks"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_tasks__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "tasks"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_tasks__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Tasks"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/tasks/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "tasks"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_tasks__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "tasks"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_tasks__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Tasks"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/tasks/report/{report_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "tasks"
+    ],
+    "summary": "Get Report Tasks",
+    "operationId": "get_report_tasks_api_v0_tasks_report__report_id__get",
+    "parameters": [
+    {
+    "name": "report_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe/checkout/create-session": {
+    "post": {
+    "tags": [
+    "v0",
+    "stripe"
+    ],
+    "summary": "Create Checkout Session",
+    "operationId": "create_checkout_session_api_v0_stripe_checkout_create_session_post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Checkout_Session_Request"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/stripe/checkout/webhook": {
+    "post": {
+    "tags": [
+    "v0",
+    "stripe"
+    ],
+    "summary": "Stripe Webhook",
+    "operationId": "stripe_webhook_api_v0_stripe_checkout_webhook_post",
+    "parameters": [
+    {
+    "name": "stripe-signature",
+    "in": "header",
+    "required": false,
+    "schema": {
+    "type": "string",
+    "title": "Stripe-Signature"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/images/": {
+    "post": {
+    "tags": [
+    "v0",
+    "images"
+    ],
+    "summary": "Upload",
+    "operationId": "upload_api_v0_images__post",
+    "requestBody": {
+    "content": {
+    "multipart/form-data": {
+    "schema": {
+    "$ref": "#/components/schemas/Body_upload_api_v0_images__post"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_disputes/{id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Get One",
+    "operationId": "get_one_api_v0_issue_disputes__id__get",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    },
+    "put": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Update",
+    "operationId": "update_api_v0_issue_disputes__id__put",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Disputes"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_disputes/": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Get All",
+    "operationId": "get_all_api_v0_issue_disputes__get",
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    }
+    }
+    },
+    "post": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_disputes__post",
+    "requestBody": {
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Disputes"
+    }
+    }
+    },
+    "required": true
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_disputes/issue_offer/{issue_offer_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Get All By Issue Offer Id",
+    "operationId": "get_all_by_issue_offer_id_api_v0_issue_disputes_issue_offer__issue_offer_id__get",
+    "parameters": [
+    {
+    "name": "issue_offer_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Offer Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_disputes/issue_offer/{issue_offer_id}/open": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Get Open Disputes By Issue Offer Id",
+    "operationId": "get_open_disputes_by_issue_offer_id_api_v0_issue_disputes_issue_offer__issue_offer_id__open_get",
+    "parameters": [
+    {
+    "name": "issue_offer_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Offer Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_disputes/issue_offer/{issue_offer_id}/details": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_disputes"
+    ],
+    "summary": "Get Dispute Details By Issue Offer Id",
+    "operationId": "get_dispute_details_by_issue_offer_id_api_v0_issue_disputes_issue_offer__issue_offer_id__details_get",
+    "parameters": [
+    {
+    "name": "issue_offer_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Offer Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_dispute_messages/{issue_dispute_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_dispute_messages"
+    ],
+    "summary": "Get All By Issue Dispute Id",
+    "operationId": "get_all_by_issue_dispute_id_api_v0_issue_dispute_messages__issue_dispute_id__get",
+    "parameters": [
+    {
+    "name": "issue_dispute_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Dispute Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_dispute_messages/": {
+    "post": {
+    "tags": [
+    "v0",
+    "issue_dispute_messages"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_dispute_messages__post",
+    "parameters": [
+    {
+    "name": "issue_dispute_id",
+    "in": "query",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Dispute Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Dispute_Messages"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_dispute_attachments/{issue_dispute_id}": {
+    "get": {
+    "tags": [
+    "v0",
+    "issue_dispute_attachments"
+    ],
+    "summary": "Get All By Issue Dispute Id",
+    "operationId": "get_all_by_issue_dispute_id_api_v0_issue_dispute_attachments__issue_dispute_id__get",
+    "parameters": [
+    {
+    "name": "issue_dispute_id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Dispute Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_dispute_attachments/": {
+    "post": {
+    "tags": [
+    "v0",
+    "issue_dispute_attachments"
+    ],
+    "summary": "Create",
+    "operationId": "create_api_v0_issue_dispute_attachments__post",
+    "parameters": [
+    {
+    "name": "issue_dispute_id",
+    "in": "query",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Issue Dispute Id"
+    }
+    }
+    ],
+    "requestBody": {
+    "required": true,
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/Issue_Dispute_Attachments"
+    }
+    }
+    }
+    },
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "/api/v0/issue_dispute_attachments/{id}": {
+    "delete": {
+    "tags": [
+    "v0",
+    "issue_dispute_attachments"
+    ],
+    "summary": "Delete",
+    "operationId": "delete_api_v0_issue_dispute_attachments__id__delete",
+    "parameters": [
+    {
+    "name": "id",
+    "in": "path",
+    "required": true,
+    "schema": {
+    "type": "integer",
+    "title": "Id"
+    }
+    }
+    ],
+    "responses": {
+    "200": {
+    "description": "Successful Response",
+    "content": {
+    "application/json": {
+    "schema": {}
+    }
+    }
+    },
+    "422": {
+    "description": "Validation Error",
+    "content": {
+    "application/json": {
+    "schema": {
+    "$ref": "#/components/schemas/HTTPValidationError"
+    }
+    }
+    }
+    }
+    }
+    }
+    }
+    },
+    "components": {
+    "schemas": {
+    "Assessment_Status": {
+    "type": "string",
+    "enum": [
+    "received",
+    "accepted",
+    "rejected"
+    ],
+    "title": "Assessment_Status"
+    },
+    "Attachments": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "name": {
+    "type": "string",
+    "title": "Name"
+    },
+    "type": {
+    "type": "string",
+    "title": "Type"
+    },
+    "url": {
+    "type": "string",
+    "title": "Url"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id",
+    "user_id",
+    "name",
+    "type",
+    "url"
+    ],
+    "title": "Attachments"
+    },
+    "Bid_Status": {
+    "type": "string",
+    "enum": [
+    "received",
+    "accepted",
+    "rejected"
+    ],
+    "title": "Bid_Status"
+    },
+    "Body_delete_api_v0_issue_offers__id__delete": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id"
+    ],
+    "title": "Body_delete_api_v0_issue_offers__id__delete"
+    },
+    "Body_delete_api_v0_report_offers__id__delete": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id"
+    ],
+    "title": "Body_delete_api_v0_report_offers__id__delete"
+    },
+    "Body_extract_issues_api_v0_reports_extract_issues_post": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "listing_id": {
+    "type": "integer",
+    "title": "Listing Id"
+    },
+    "name": {
+    "type": "string",
+    "title": "Name"
+    },
+    "property_report": {
+    "type": "string",
+    "format": "binary",
+    "title": "Property Report"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "listing_id",
+    "name",
+    "property_report"
+    ],
+    "title": "Body_extract_issues_api_v0_reports_extract_issues_post"
+    },
+    "Body_get_all_issue_addresses_issue_ids_api_v0_issues_addresses_issue_ids_post": {
+    "properties": {
+    "issue_ids": {
+    "items": {
+    "type": "integer"
+    },
+    "type": "array",
+    "title": "Issue Ids"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_ids"
+    ],
+    "title": "Body_get_all_issue_addresses_issue_ids_api_v0_issues_addresses_issue_ids_post"
+    },
+    "Body_upload_api_v0_images__post": {
+    "properties": {
+    "image": {
+    "type": "string",
+    "format": "binary",
+    "title": "Image"
+    }
+    },
+    "type": "object",
+    "required": [
+    "image"
+    ],
+    "title": "Body_upload_api_v0_images__post"
+    },
+    "Checkout_Session_Request": {
+    "properties": {
+    "client_id": {
+    "type": "integer",
+    "title": "Client Id"
+    },
+    "vendor_id": {
+    "type": "integer",
+    "title": "Vendor Id"
+    },
+    "offer_id": {
+    "type": "integer",
+    "title": "Offer Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "client_id",
+    "vendor_id",
+    "offer_id"
+    ],
+    "title": "Checkout_Session_Request"
+    },
+    "Client_Reviews": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "client_user_id": {
+    "type": "integer",
+    "title": "Client User Id"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Review_Status",
+    "default": "pending"
+    },
+    "rating": {
+    "type": "number",
+    "title": "Rating"
+    },
+    "review": {
+    "type": "string",
+    "title": "Review"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "client_user_id",
+    "rating",
+    "review"
+    ],
+    "title": "Client_Reviews"
+    },
+    "Clients": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "first_name": {
+    "type": "string",
+    "title": "First Name"
+    },
+    "last_name": {
+    "type": "string",
+    "title": "Last Name"
+    },
+    "email": {
+    "type": "string",
+    "title": "Email"
+    },
+    "phone": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Phone"
+    },
+    "address": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Address"
+    },
+    "city": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "City"
+    },
+    "state": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "State"
+    },
+    "country": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Country"
+    },
+    "postal_code": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Postal Code"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "first_name",
+    "last_name",
+    "email"
+    ],
+    "title": "Clients"
+    },
+    "Comments": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "comment": {
+    "type": "string",
+    "title": "Comment"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id",
+    "user_id",
+    "comment"
+    ],
+    "title": "Comments"
+    },
+    "Dispute_Status": {
+    "type": "string",
+    "enum": [
+    "open",
+    "in_review",
+    "resolved",
+    "closed"
+    ],
+    "title": "Dispute_Status"
+    },
+    "HTTPValidationError": {
+    "properties": {
+    "detail": {
+    "items": {
+    "$ref": "#/components/schemas/ValidationError"
+    },
+    "type": "array",
+    "title": "Detail"
+    }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+    },
+    "Issue_Assessment_Comments": {
+    "properties": {
+    "issue_assessment_id": {
+    "type": "integer",
+    "title": "Issue Assessment Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "comment": {
+    "type": "string",
+    "title": "Comment"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_assessment_id",
+    "user_id",
+    "comment"
+    ],
+    "title": "Issue_Assessment_Comments"
+    },
+    "Issue_Assessments": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "user_type": {
+    "$ref": "#/components/schemas/User_Type"
+    },
+    "interaction_id": {
+    "type": "string",
+    "title": "Interaction Id"
+    },
+    "users_interaction_id": {
+    "type": "string",
+    "title": "Users Interaction Id"
+    },
+    "start_time": {
+    "type": "string",
+    "title": "Start Time"
+    },
+    "end_time": {
+    "type": "string",
+    "title": "End Time"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Assessment_Status"
+    },
+    "user_last_viewed": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "User Last Viewed"
+    },
+    "min_assessment_time": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Min Assessment Time"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id",
+    "user_id",
+    "user_type",
+    "interaction_id",
+    "users_interaction_id",
+    "start_time",
+    "end_time",
+    "status"
+    ],
+    "title": "Issue_Assessments"
+    },
+    "Issue_Assessments_Delete": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    },
+    "interaction_id": {
+    "type": "string",
+    "title": "Interaction Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id",
+    "interaction_id"
+    ],
+    "title": "Issue_Assessments_Delete"
+    },
+    "Issue_Dispute_Attachments": {
+    "properties": {
+    "attachment_url": {
+    "type": "string",
+    "title": "Attachment Url"
+    },
+    "user_type": {
+    "$ref": "#/components/schemas/User_Type"
+    }
+    },
+    "type": "object",
+    "required": [
+    "attachment_url",
+    "user_type"
+    ],
+    "title": "Issue_Dispute_Attachments"
+    },
+    "Issue_Dispute_Messages": {
+    "properties": {
+    "message": {
+    "type": "string",
+    "title": "Message"
+    },
+    "user_type": {
+    "$ref": "#/components/schemas/User_Type"
+    }
+    },
+    "type": "object",
+    "required": [
+    "message",
+    "user_type"
+    ],
+    "title": "Issue_Dispute_Messages"
+    },
+    "Issue_Disputes": {
+    "properties": {
+    "issue_offer_id": {
+    "type": "integer",
+    "title": "Issue Offer Id"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Dispute_Status"
+    },
+    "status_message": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Status Message"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_offer_id",
+    "status"
+    ],
+    "title": "Issue_Disputes"
+    },
+    "Issue_Offers": {
+    "properties": {
+    "issue_id": {
+    "type": "integer",
+    "title": "Issue Id"
+    },
+    "vendor_id": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Vendor Id"
+    },
+    "price": {
+    "type": "number",
+    "title": "Price"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Bid_Status"
+    },
+    "user_last_viewed": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "User Last Viewed"
+    },
+    "comment_vendor": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Comment Vendor"
+    },
+    "comment_client": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Comment Client"
+    }
+    },
+    "type": "object",
+    "required": [
+    "issue_id",
+    "price",
+    "status"
+    ],
+    "title": "Issue_Offers"
+    },
+    "Issues": {
+    "properties": {
+    "report_id": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Report Id",
+    "default": 0
+    },
+    "listing_id": {
+    "type": "integer",
+    "title": "Listing Id"
+    },
+    "type": {
+    "type": "string",
+    "title": "Type"
+    },
+    "vendor_id": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Vendor Id"
+    },
+    "description": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Description"
+    },
+    "summary": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Summary"
+    },
+    "severity": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Severity"
+    },
+    "status": {
+    "$ref": "#/components/schemas/app__schema__types__Status"
+    },
+    "active": {
+    "type": "boolean",
+    "title": "Active"
+    },
+    "image_urls": {
+    "anyOf": [
+    {
+    "items": {
+    "type": "string"
+    },
+    "type": "array"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Image Urls"
+    },
+    "review_status": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review Status"
+    }
+    },
+    "type": "object",
+    "required": [
+    "listing_id",
+    "type",
+    "status",
+    "active"
+    ],
+    "title": "Issues"
+    },
+    "Listings": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "address": {
+    "type": "string",
+    "title": "Address"
+    },
+    "city": {
+    "type": "string",
+    "title": "City"
+    },
+    "state": {
+    "type": "string",
+    "title": "State"
+    },
+    "country": {
+    "type": "string",
+    "title": "Country"
+    },
+    "postal_code": {
+    "type": "string",
+    "title": "Postal Code"
+    },
+    "image_url": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Image Url"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "address",
+    "city",
+    "state",
+    "country",
+    "postal_code"
+    ],
+    "title": "Listings"
+    },
+    "Login": {
+    "type": "string",
+    "enum": [
+    "email",
+    "phone",
+    "gmail"
+    ],
+    "title": "Login"
+    },
+    "Notes": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "note": {
+    "type": "string",
+    "title": "Note"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id",
+    "user_id",
+    "note"
+    ],
+    "title": "Notes"
+    },
+    "Page": {
+    "properties": {
+    "items": {
+    "items": {},
+    "type": "array",
+    "title": "Items"
+    },
+    "total": {
+    "type": "integer",
+    "minimum": 0,
+    "title": "Total"
+    },
+    "page": {
+    "type": "integer",
+    "minimum": 1,
+    "title": "Page"
+    },
+    "size": {
+    "type": "integer",
+    "minimum": 1,
+    "title": "Size"
+    },
+    "pages": {
+    "type": "integer",
+    "minimum": 0,
+    "title": "Pages"
+    }
+    },
+    "type": "object",
+    "required": [
+    "items",
+    "total",
+    "page",
+    "size",
+    "pages"
+    ],
+    "title": "Page"
+    },
+    "Payments": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "amount": {
+    "type": "number",
+    "title": "Amount"
+    },
+    "expiry_date": {
+    "type": "string",
+    "title": "Expiry Date"
+    },
+    "stripe_payment_id": {
+    "type": "string",
+    "title": "Stripe Payment Id"
+    },
+    "stripe_user_id": {
+    "type": "string",
+    "title": "Stripe User Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "amount",
+    "expiry_date",
+    "stripe_payment_id",
+    "stripe_user_id"
+    ],
+    "title": "Payments"
+    },
+    "Realtor_Firms": {
+    "properties": {
+    "name": {
+    "type": "string",
+    "title": "Name"
+    },
+    "code": {
+    "type": "string",
+    "title": "Code"
+    },
+    "email": {
+    "type": "string",
+    "title": "Email"
+    },
+    "phone": {
+    "type": "string",
+    "title": "Phone"
+    },
+    "address": {
+    "type": "string",
+    "title": "Address"
+    },
+    "city": {
+    "type": "string",
+    "title": "City"
+    },
+    "state": {
+    "type": "string",
+    "title": "State"
+    },
+    "country": {
+    "type": "string",
+    "title": "Country"
+    },
+    "postal_code": {
+    "type": "string",
+    "title": "Postal Code"
+    },
+    "rating": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Rating",
+    "default": -1
+    },
+    "review": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review"
+    }
+    },
+    "type": "object",
+    "required": [
+    "name",
+    "code",
+    "email",
+    "phone",
+    "address",
+    "city",
+    "state",
+    "country",
+    "postal_code"
+    ],
+    "title": "Realtor_Firms"
+    },
+    "Realtor_Reviews": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "realtor_user_id": {
+    "type": "integer",
+    "title": "Realtor User Id"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Review_Status",
+    "default": "pending"
+    },
+    "rating": {
+    "type": "number",
+    "title": "Rating"
+    },
+    "review": {
+    "type": "string",
+    "title": "Review"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "realtor_user_id",
+    "rating",
+    "review"
+    ],
+    "title": "Realtor_Reviews"
+    },
+    "Realtors": {
+    "properties": {
+    "realtor_user_id": {
+    "type": "integer",
+    "title": "Realtor User Id"
+    },
+    "realtor_firm_id": {
+    "type": "integer",
+    "title": "Realtor Firm Id"
+    },
+    "first_name": {
+    "type": "string",
+    "title": "First Name"
+    },
+    "last_name": {
+    "type": "string",
+    "title": "Last Name"
+    },
+    "email": {
+    "type": "string",
+    "title": "Email"
+    },
+    "phone": {
+    "type": "string",
+    "title": "Phone"
+    },
+    "address": {
+    "type": "string",
+    "title": "Address"
+    },
+    "city": {
+    "type": "string",
+    "title": "City"
+    },
+    "state": {
+    "type": "string",
+    "title": "State"
+    },
+    "country": {
+    "type": "string",
+    "title": "Country"
+    },
+    "postal_code": {
+    "type": "string",
+    "title": "Postal Code"
+    },
+    "rating": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Rating",
+    "default": -1
+    },
+    "review": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review"
+    }
+    },
+    "type": "object",
+    "required": [
+    "realtor_user_id",
+    "realtor_firm_id",
+    "first_name",
+    "last_name",
+    "email",
+    "phone",
+    "address",
+    "city",
+    "state",
+    "country",
+    "postal_code"
+    ],
+    "title": "Realtors"
+    },
+    "Report_Assessment_Comments": {
+    "properties": {
+    "report_assessment_id": {
+    "type": "integer",
+    "title": "Report Assessment Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "comment": {
+    "type": "string",
+    "title": "Comment"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_assessment_id",
+    "user_id",
+    "comment"
+    ],
+    "title": "Report_Assessment_Comments"
+    },
+    "Report_Assessments": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    },
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "user_type": {
+    "$ref": "#/components/schemas/User_Type"
+    },
+    "interaction_id": {
+    "type": "string",
+    "title": "Interaction Id"
+    },
+    "users_interaction_id": {
+    "type": "string",
+    "title": "Users Interaction Id"
+    },
+    "start_time": {
+    "type": "string",
+    "title": "Start Time"
+    },
+    "end_time": {
+    "type": "string",
+    "title": "End Time"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Assessment_Status"
+    },
+    "user_last_viewed": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "User Last Viewed"
+    },
+    "min_assessment_time": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Min Assessment Time"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id",
+    "user_id",
+    "user_type",
+    "interaction_id",
+    "users_interaction_id",
+    "start_time",
+    "end_time",
+    "status"
+    ],
+    "title": "Report_Assessments"
+    },
+    "Report_Assessments_Delete": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    },
+    "interaction_id": {
+    "type": "string",
+    "title": "Interaction Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id",
+    "interaction_id"
+    ],
+    "title": "Report_Assessments_Delete"
+    },
+    "Report_Offers": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    },
+    "vendor_id": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Vendor Id"
+    },
+    "price": {
+    "type": "number",
+    "title": "Price"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Bid_Status"
+    },
+    "user_last_viewed": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "User Last Viewed"
+    },
+    "comment_vendor": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Comment Vendor"
+    },
+    "comment_client": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Comment Client"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id",
+    "price",
+    "status"
+    ],
+    "title": "Report_Offers"
+    },
+    "Reports": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "listing_id": {
+    "type": "integer",
+    "title": "Listing Id"
+    },
+    "aws_link": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Aws Link"
+    },
+    "name": {
+    "type": "string",
+    "title": "Name"
+    },
+    "review_status": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review Status"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "listing_id",
+    "name"
+    ],
+    "title": "Reports"
+    },
+    "Review_Status": {
+    "type": "string",
+    "enum": [
+    "pending",
+    "approved",
+    "rejected"
+    ],
+    "title": "Review_Status"
+    },
+    "Task_Type": {
+    "type": "string",
+    "enum": [
+    "extract_issues",
+    "extract_images"
+    ],
+    "title": "Task_Type"
+    },
+    "Tasks": {
+    "properties": {
+    "report_id": {
+    "type": "integer",
+    "title": "Report Id"
+    },
+    "task_type": {
+    "$ref": "#/components/schemas/Task_Type"
+    },
+    "status": {
+    "$ref": "#/components/schemas/app__schema__tasks__Status"
+    }
+    },
+    "type": "object",
+    "required": [
+    "report_id",
+    "task_type",
+    "status"
+    ],
+    "title": "Tasks"
+    },
+    "User_Logins": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "email_login": {
+    "type": "boolean",
+    "title": "Email Login",
+    "default": false
+    },
+    "email": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Email"
+    },
+    "phone_login": {
+    "type": "boolean",
+    "title": "Phone Login",
+    "default": false
+    },
+    "phone": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Phone"
+    },
+    "gmail_login": {
+    "type": "boolean",
+    "title": "Gmail Login",
+    "default": false
+    },
+    "gmail": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Gmail"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id"
+    ],
+    "title": "User_Logins"
+    },
+    "User_Sessions": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "login": {
+    "$ref": "#/components/schemas/Login"
+    },
+    "login_time": {
+    "type": "string",
+    "title": "Login Time"
+    },
+    "logout_time": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Logout Time"
+    },
+    "authentication_code": {
+    "type": "string",
+    "title": "Authentication Code"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "login",
+    "login_time",
+    "authentication_code"
+    ],
+    "title": "User_Sessions"
+    },
+    "User_Stripe_Information": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "stripe_user_id": {
+    "type": "string",
+    "title": "Stripe User Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "stripe_user_id"
+    ],
+    "title": "User_Stripe_Information"
+    },
+    "User_Type": {
+    "type": "string",
+    "enum": [
+    "admin",
+    "client",
+    "realtor",
+    "vendor"
+    ],
+    "title": "User_Type"
+    },
+    "User_Types": {
+    "properties": {
+    "user_type": {
+    "$ref": "#/components/schemas/User_Type"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_type"
+    ],
+    "title": "User_Types"
+    },
+    "Users": {
+    "properties": {
+    "user_type": {
+    "$ref": "#/components/schemas/User_Types"
+    },
+    "firebase_id": {
+    "type": "string",
+    "title": "Firebase Id"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_type",
+    "firebase_id"
+    ],
+    "title": "Users"
+    },
+    "ValidationError": {
+    "properties": {
+    "loc": {
+    "items": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "integer"
+    }
+    ]
+    },
+    "type": "array",
+    "title": "Location"
+    },
+    "msg": {
+    "type": "string",
+    "title": "Message"
+    },
+    "type": {
+    "type": "string",
+    "title": "Error Type"
+    },
+    "input": {
+    "title": "Input"
+    },
+    "ctx": {
+    "type": "object",
+    "title": "Context"
+    }
+    },
+    "type": "object",
+    "required": [
+    "loc",
+    "msg",
+    "type"
+    ],
+    "title": "ValidationError"
+    },
+    "Vendor_Employees": {
+    "properties": {
+    "vendor_id": {
+    "type": "integer",
+    "title": "Vendor Id"
+    },
+    "first_name": {
+    "type": "string",
+    "title": "First Name"
+    },
+    "last_name": {
+    "type": "string",
+    "title": "Last Name"
+    },
+    "skills": {
+    "type": "string",
+    "title": "Skills"
+    },
+    "email": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Email"
+    },
+    "phone": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Phone"
+    },
+    "address": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Address"
+    },
+    "city": {
+    "type": "string",
+    "title": "City"
+    },
+    "state": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "State"
+    },
+    "country": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Country"
+    },
+    "postal_code": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Postal Code"
+    },
+    "rating": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Rating",
+    "default": -1
+    },
+    "review": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review"
+    },
+    "years_of_experience": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Years Of Experience"
+    }
+    },
+    "type": "object",
+    "required": [
+    "vendor_id",
+    "first_name",
+    "last_name",
+    "skills",
+    "city"
+    ],
+    "title": "Vendor_Employees"
+    },
+    "Vendor_Reviews": {
+    "properties": {
+    "user_id": {
+    "type": "integer",
+    "title": "User Id"
+    },
+    "vendor_user_id": {
+    "type": "integer",
+    "title": "Vendor User Id"
+    },
+    "status": {
+    "$ref": "#/components/schemas/Review_Status",
+    "default": "pending"
+    },
+    "rating": {
+    "type": "number",
+    "title": "Rating"
+    },
+    "review": {
+    "type": "string",
+    "title": "Review"
+    }
+    },
+    "type": "object",
+    "required": [
+    "user_id",
+    "vendor_user_id",
+    "rating",
+    "review"
+    ],
+    "title": "Vendor_Reviews"
+    },
+    "Vendor_Type": {
+    "type": "string",
+    "enum": [
+    "general",
+    "structural",
+    "electrician",
+    "plumber",
+    "painter",
+    "cleaner",
+    "hvac",
+    "roofing",
+    "insulation",
+    "drywall",
+    "plaster",
+    "carpentry",
+    "landscaping",
+    "other"
+    ],
+    "title": "Vendor_Type"
+    },
+    "Vendor_Types": {
+    "properties": {
+    "vendor_type": {
+    "$ref": "#/components/schemas/Vendor_Type"
+    }
+    },
+    "type": "object",
+    "required": [
+    "vendor_type"
+    ],
+    "title": "Vendor_Types"
+    },
+    "Vendors": {
+    "properties": {
+    "vendor_user_id": {
+    "type": "integer",
+    "title": "Vendor User Id"
+    },
+    "vendor_type": {
+    "$ref": "#/components/schemas/Vendor_Types"
+    },
+    "vendor_types": {
+    "type": "string",
+    "title": "Vendor Types"
+    },
+    "code": {
+    "type": "string",
+    "title": "Code"
+    },
+    "license": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "License"
+    },
+    "verified": {
+    "type": "boolean",
+    "title": "Verified",
+    "default": false
+    },
+    "name": {
+    "type": "string",
+    "title": "Name"
+    },
+    "email": {
+    "type": "string",
+    "title": "Email"
+    },
+    "phone": {
+    "type": "string",
+    "title": "Phone"
+    },
+    "address": {
+    "type": "string",
+    "title": "Address"
+    },
+    "city": {
+    "type": "string",
+    "title": "City"
+    },
+    "state": {
+    "type": "string",
+    "title": "State"
+    },
+    "country": {
+    "type": "string",
+    "title": "Country"
+    },
+    "postal_code": {
+    "type": "string",
+    "title": "Postal Code"
+    },
+    "rating": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Rating",
+    "default": -1
+    },
+    "review": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Review"
+    },
+    "years_of_experience": {
+    "anyOf": [
+    {
+    "type": "integer"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Years Of Experience"
+    },
+    "service_area": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Service Area"
+    },
+    "response_time": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Response Time"
+    },
+    "insurance": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Insurance"
+    },
+    "warranty": {
+    "anyOf": [
+    {
+    "type": "string"
+    },
+    {
+    "type": "null"
+    }
+    ],
+    "title": "Warranty"
+    }
+    },
+    "type": "object",
+    "required": [
+    "vendor_user_id",
+    "vendor_type",
+    "vendor_types",
+    "code",
+    "name",
+    "email",
+    "phone",
+    "address",
+    "city",
+    "state",
+    "country",
+    "postal_code"
+    ],
+    "title": "Vendors"
+    },
+    "app__schema__tasks__Status": {
+    "type": "string",
+    "enum": [
+    "pending",
+    "in_progress",
+    "completed",
+    "failed"
+    ],
+    "title": "Status"
+    },
+    "app__schema__types__Status": {
+    "type": "string",
+    "enum": [
+    "open",
+    "review",
+    "in_progress",
+    "completed"
+    ],
+    "title": "Status"
+    }
+    }
+    }
+    }
