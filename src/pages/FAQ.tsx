@@ -46,6 +46,7 @@ const categories: FAQCategory[] = [
     faqs: [
       { question: "How much does Inspectly cost?", answer: "Inspectly offers a free tier for managing up to 2 properties. Premium plans start at $9.99/month and include unlimited properties, priority vendor matching, and advanced analytics." },
       { question: "Do I pay vendors through Inspectly?", answer: "Payment arrangements are made directly between you and the vendor. Inspectly facilitates the connection and provides a secure messaging platform." },
+      { question: "", answer: "When a homeowner accepts your bid, they pay through Stripe at the time of booking. Inspectly holds the funds until the job is marked complete and approved by the homeowner. Once approved, payment is released to the Stripe account you set up during signup. Stripe then deposits the money into your linked bank account automatically. The entire process can take upto 2 days."}
     ],
   },
   {
