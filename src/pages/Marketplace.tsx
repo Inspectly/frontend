@@ -520,8 +520,16 @@ const Marketplace: React.FC = () => {
                 <select
                   value={selectedType}
                 onChange={(e) => {
-                    setSelectedType(e.target.value);
+                    const newType = e.target.value;
+                    setSelectedType(newType);
                     setCurrentPage(1);
+                    const newParams = new URLSearchParams(searchParams);
+                    if (newType) {
+                      newParams.set('type', newType);
+                    } else {
+                      newParams.delete('type');
+                    }
+                    setSearchParams(newParams, { replace: true });
                   }}
                   className="w-full px-3 py-3 border border-border rounded-lg focus:ring-2 focus:ring-gold focus:border-gold transition-colors bg-muted text-foreground focus:bg-card"
                 >
