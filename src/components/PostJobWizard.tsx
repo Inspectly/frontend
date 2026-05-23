@@ -101,9 +101,10 @@ type Props = {
   listings: Listing[];
   reports?: ReportType[];
   currentListing?: Listing;
+  currentReportId?: number;
 };
 
-const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: propReports, currentListing }) => {
+const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: propReports, currentListing, currentReportId }) => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
@@ -243,7 +244,7 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
     if (!selectedListing || !issueType || !summary || !severity) return;
 
     try {
-      const reportId = await getOrCreateReportId(selectedListing.id);
+      const reportId = currentReportId ?? await getOrCreateReportId(selectedListing.id);
       const severityMap: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
 
       const base64Images = await Promise.all(

@@ -492,6 +492,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
             onClose={() => setIsModalOpen(false)}
             listings={[]}
             currentListing={currentListing}
+            currentReportId={reportId ? Number(reportId) : undefined}
           />
         </div>
       </div>
