@@ -69,6 +69,7 @@ const Marketplace: React.FC = () => {
   // Modal state
   const [selectedIssue, setSelectedIssue] = useState<IssueType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalDefaultTab, setModalDefaultTab] = useState<"details" | "offers">("details");
 
   const itemsPerPage = 12;
   const maxFetchLimit = 100; // Backend max page size is 100
@@ -701,6 +702,12 @@ const Marketplace: React.FC = () => {
                     address={addressMap[issue.id]}
                     onClick={(clickedIssue) => {
                       setSelectedIssue(clickedIssue);
+                      setModalDefaultTab("details");
+                      setIsModalOpen(true);
+                    }}
+                    onPlaceBid={(clickedIssue) => {
+                      setSelectedIssue(clickedIssue);
+                      setModalDefaultTab("offers");
                       setIsModalOpen(true);
                     }}
                   />
@@ -787,7 +794,14 @@ const Marketplace: React.FC = () => {
             </button>
             
             <div className="p-6">
-              <IssueDetails issue={selectedIssue} />
+              <IssueDetails
+                issue={selectedIssue}
+                defaultTab={modalDefaultTab}
+                onNotInterested={() => {
+                  setIsModalOpen(false);
+                  setSelectedIssue(null);
+                }}
+              />
             </div>
           </div>
         </div>

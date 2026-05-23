@@ -902,7 +902,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                 </div>
 
                 <Link
-                  to="/vendor/jobs"
+                  to="/vendor/earnings"
                   className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border text-foreground font-semibold text-sm rounded-lg hover:bg-muted transition-colors"
                 >
                   View Earnings Details

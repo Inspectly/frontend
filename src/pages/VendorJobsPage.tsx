@@ -28,6 +28,8 @@ import { IssueAssessment, IssueDispute } from "../types";
 import { faCalendarAlt } from "@fortawesome/free-regular-svg-icons";
 import ImageComponent from "../components/ImageComponent";
 import IssueDetails from "../components/IssueDetails";
+import UserName from "../components/UserName";
+import { faUser } from "@fortawesome/free-solid-svg-icons";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 
@@ -615,10 +617,51 @@ const VendorJobsPage: React.FC = () => {
                     
                     {/* Only show address for accepted offers */}
                     {offer.status === IssueOfferStatus.ACCEPTED && listing && (
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-gray-600 mb-1">
                         {listing.address}, {listing.city}, {listing.state}
                       </p>
                     )}
+
+                    {/* Homeowner name (for accepted offers) */}
+                    {offer.status === IssueOfferStatus.ACCEPTED && listing?.user_id && (
+                      <p className="text-sm text-gray-600 mb-2 flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faUser} className="w-3 h-3 text-gray-400" />
+                        <UserName userId={listing.user_id} />
+                      </p>
+                    )}
+
+                    {/* Progress indicator for accepted offers */}
+                    {offer.status === IssueOfferStatus.ACCEPTED && (() => {
+                      const issueStatus = issue?.status?.toUpperCase() || "";
+                      const completed = isIssueCompleted(issue?.status);
+                      const inProgress = issueStatus.includes("IN_PROGRESS");
+                      const inReview = issueStatus.includes("REVIEW");
+                      const statusLabel = completed
+                        ? "Completed"
+                        : inProgress
+                          ? "In Progress"
+                          : inReview
+                            ? "In Review"
+                            : "Active";
+                      const width = completed
+                        ? "100%"
+                        : inReview
+                          ? "85%"
+                          : inProgress
+                            ? "60%"
+                            : "30%";
+                      return (
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gold rounded-full"
+                              style={{ width }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-600 whitespace-nowrap">{statusLabel}</span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Show assessment status if exists */}
                     {assessmentInfoByIssueId[offer.issue_id] && (() => {

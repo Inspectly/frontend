@@ -22,9 +22,10 @@ interface IssueItemProps {
   userType?: string;
   address?: IssueAddress;
   onClick?: (issue: IssueType) => void;
+  onPlaceBid?: (issue: IssueType) => void;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
+const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceBid }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -69,11 +70,10 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
 
   return (
     <div
-      onClick={handleClick}
-      className={`group cursor-pointer border border-border rounded-xl overflow-hidden bg-card h-[350px] ${CARD_HOVER.LIFT}`}
+      className={`group border border-border rounded-xl overflow-hidden bg-card h-[400px] flex flex-col ${CARD_HOVER.LIFT}`}
     >
-      {/* Image Section - Top 3/4 with scroll arrows */}
-      <div className="h-3/4 overflow-hidden relative">
+      {/* Image Section - with scroll arrows */}
+      <div onClick={handleClick} className="cursor-pointer h-[260px] overflow-hidden relative">
         <ImageComponent
           src={imageList[currentImageIndex] || PROPERTY_FALLBACK_IMAGE}
           fallback={PROPERTY_FALLBACK_IMAGE}
@@ -112,8 +112,8 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
         </div>
       </div>
 
-      {/* Content Section - Bottom 1/4 */}
-      <div className="h-1/4 p-4 flex flex-col justify-between">
+      {/* Content Section */}
+      <div onClick={handleClick} className="cursor-pointer flex-1 px-4 pt-3 pb-2 flex flex-col justify-between">
         {/* Top Row: Summary and Days aligned horizontally */}
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-medium text-foreground text-sm line-clamp-2 group-hover:underline flex-1 pr-3">
@@ -144,6 +144,23 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick }) => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Place Bid Button */}
+      <div className="px-4 pb-4">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onPlaceBid) {
+              onPlaceBid(issue);
+            } else {
+              handleClick();
+            }
+          }}
+          className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors"
+        >
+          Place Bid
+        </button>
       </div>
     </div>
   );

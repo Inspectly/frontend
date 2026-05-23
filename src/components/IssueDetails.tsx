@@ -62,6 +62,7 @@ export interface IssueDetailsProps {
   listing?: Listing;
   defaultTab?: "details" | "offers" | "assessments" | "dispute";
   autoOpenDispute?: boolean;
+  onNotInterested?: () => void;
 }
 
 type IssueDetailsTab = "details" | "offers" | "assessments" | "dispute";
@@ -87,6 +88,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   listing,
   defaultTab,
   autoOpenDispute = true,
+  onNotInterested,
 }) => {
   const navigate = useNavigate();
   const userId = useSelector((state: RootState) => state.auth.user?.id);
@@ -1328,6 +1330,23 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {onNotInterested && (
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3 justify-end bg-white sticky bottom-0">
+          <button
+            onClick={onNotInterested}
+            className="px-5 py-2.5 rounded-lg border border-border bg-muted text-foreground font-medium hover:bg-gray-100 transition-colors"
+          >
+            Not Interested
+          </button>
+          <button
+            onClick={() => handleOpenOfferModal()}
+            className="px-5 py-2.5 rounded-lg bg-gray-900 text-white font-medium hover:bg-gold transition-colors"
+          >
+            Place Bid
+          </button>
         </div>
       )}
     </div>

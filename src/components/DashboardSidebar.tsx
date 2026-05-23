@@ -8,6 +8,7 @@ import {
   faLayerGroup,
   faListCheck,
   faShop,
+  faStar,
   faGear,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -140,6 +141,39 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 >
                   <FontAwesomeIcon icon={faLayerGroup} className="mr-3 w-4" />
                   <span>My Projects</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/vendor/earnings"
+                  className={`${navItemBase} ${
+                    activePage === "/vendor/earnings" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faFileInvoiceDollar} className="mr-3 w-4" />
+                  <span>Earnings</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/vendor/reviews"
+                  className={`${navItemBase} ${
+                    activePage === "/vendor/reviews" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faStar} className="mr-3 w-4" />
+                  <span>Reviews</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/chat"
+                  className={`${navItemBase} ${
+                    activePage === "/chat" ? navItemActive : navItemInactive
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faCommentDots} className="mr-3 w-4" />
+                  <span>Messages</span>
                 </Link>
               </li>
             </>
