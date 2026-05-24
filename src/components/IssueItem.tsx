@@ -157,9 +157,9 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceB
               handleClick();
             }
           }}
-          className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gold transition-colors"
+          className="w-full px-4 py-2 btn-dark rounded-lg text-sm"
         >
-          Place Bid
+          Quote
         </button>
       </div>
     </div>

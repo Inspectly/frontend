@@ -509,27 +509,36 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               </button>
               
               {isCreateDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-card rounded-xl shadow-lg border border-border py-2 z-50">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-card rounded-xl shadow-lg border border-border py-2 z-50">
                   <button
                     onClick={() => { setIsCreateIssueModalOpen(true); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-muted flex items-start gap-3 transition-colors"
                   >
-                    <FontAwesomeIcon icon={faClipboardList} className="text-muted-foreground w-4" />
-                    Post a Job
+                    <FontAwesomeIcon icon={faClipboardList} className="text-gold mt-0.5 w-4 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Post a Job</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Describe an issue and get quotes</p>
+                    </div>
                   </button>
                   <button
                     onClick={() => { setIsAddListingModalOpen(true); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-muted flex items-start gap-3 transition-colors"
                   >
-                    <FontAwesomeIcon icon={faUpload} className="text-muted-foreground w-4" />
-                    Upload Report
+                    <FontAwesomeIcon icon={faUpload} className="text-gold mt-0.5 w-4 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Upload Inspection Report</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">We'll extract issues for you</p>
+                    </div>
                   </button>
                   <button
                     onClick={() => { navigate('/listings?action=add'); setIsCreateDropdownOpen(false); }}
-                    className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted flex items-center gap-3"
+                    className="w-full px-4 py-3 text-left hover:bg-muted flex items-start gap-3 transition-colors"
                   >
-                    <FontAwesomeIcon icon={faHome} className="text-muted-foreground w-4" />
-                    Add Property
+                    <FontAwesomeIcon icon={faHome} className="text-gold mt-0.5 w-4 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Add Property</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Add a new property to your account</p>
+                    </div>
                   </button>
                 </div>
               )}

@@ -147,7 +147,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
                   />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {confirmModal.type === "withdraw" ? "Withdraw Offer?" : "Accept Counter Offer?"}
+                  {confirmModal.type === "withdraw" ? "Withdraw quote?" : "Accept counter offer?"}
                 </h3>
               </div>
             </div>
@@ -157,14 +157,14 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
               {confirmModal.type === "withdraw" ? (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
-                    Are you sure you want to withdraw your offer of{" "}
+                    Are you sure you want to withdraw your quote of{" "}
                     <span className="font-semibold text-gray-900">
                       ${formatPrice(Number(confirmModal.offer.price))}
                     </span>?
                   </p>
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs text-gray-500">
-                      This action cannot be undone. You'll need to submit a new offer if you change your mind.
+                      This action cannot be undone. You'll need to submit a new quote if you change your mind.
                     </p>
                   </div>
                 </div>
@@ -212,7 +212,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
                     Processing...
                   </span>
                 ) : confirmModal.type === "withdraw" ? (
-                  "Yes, Withdraw"
+                  "Yes, Withdraw quote"
                 ) : (
                   "Yes, Accept"
                 )}
@@ -257,7 +257,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
               className={`px-4 py-2 bg-gold text-white text-sm font-medium rounded-lg ${BUTTON_HOVER} flex items-center gap-2`}
             >
               <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
-              Place Offer
+              Quote
             </button>
           )}
         </div>
@@ -312,7 +312,7 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
                                   onClick={() => onOpenOfferModal(offer)}
                                   className={`px-3 py-1.5 text-xs font-medium bg-gray-900 text-white rounded-lg ${BUTTON_HOVER}`}
                                 >
-                                  Edit
+                                  Edit quote
                                 </button>
                                 <button
                                   onClick={() => setConfirmModal({ type: "withdraw", offer, isLoading: false })}
@@ -356,8 +356,8 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
               </svg>
             </div>
             <p className="text-gray-500 text-sm">
-              You haven't submitted an offer yet. Click{" "}
-              <strong>"Place Offer"</strong> above to submit your offer.
+              You haven't submitted a quote yet. Click{" "}
+              <strong>"Quote"</strong> above to get started.
             </p>
           </div>
         )}

@@ -40,10 +40,11 @@ import {
   useGetAssessmentsByIssueIdQuery,
   useUpdateAssessmentMutation,
 } from "../features/api/issueAssessmentsApi";
-import { useGetVendorsQuery } from "../features/api/vendorsApi";
+import { useGetVendorsQuery, useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
+import OffersTabVendor from "./OffersTabVendor";
 import { useCreateCheckoutSessionMutation } from "../features/api/stripePaymentsApi";
 import AssessmentReviewTab from "./AssessmentReviewTab";
 import VendorReviewModal from "./VendorReviewModal";
@@ -121,10 +122,22 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), {
     skip: !userId || userType !== "client",
   });
+  const { data: currentVendor } = useGetVendorByVendorUserIdQuery(userId, {
+    skip: !userId || userType !== "vendor",
+  });
 
   const { data: report } = useGetReportByIdQuery(issue.report_id, {
     skip: !issue.report_id,
   });
+
+  // True only for issues that originated from a real inspection report,
+  // not the synthetic "my posted jobs" report that PostJobWizard creates
+  const isFromInspectionReport = !!(
+    issue.report_id &&
+    issue.report_id > 0 &&
+    report &&
+    !["my posted jobs", "jobs"].includes((report.name ?? "").toLowerCase().trim())
+  );
 
   // Function to get users_interaction_id for a vendor
   const getUsersInteractionId = (vendorId: number) => {
@@ -315,6 +328,17 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     setActiveTab(defaultTab);
     navigate(`?tab=${defaultTab}`, { replace: true });
   }, [allowDisputeComposer, autoOpenDispute, defaultTab, hasOpenDispute, issue?.id, navigate, showDisputeTab]);
+  // Auto-open bid form when vendor lands on offers tab with no existing bid
+  useEffect(() => {
+    if (defaultTab !== "offers" || userType !== "vendor" || offersLoading) return;
+    const hasBid = offers.some((o) => String(o.vendor_id) === String(userId));
+    if (!hasBid) {
+      setCounterTarget(null);
+      setOfferAmount("");
+      setIsOfferModalOpen(true);
+    }
+  }, [defaultTab, userType, offersLoading, issue?.id]);
+
   useEffect(() => {
     if (!showDisputeTab && activeTab === "dispute" && !allowDisputeComposer) {
       setActiveTab("details");
@@ -667,7 +691,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               {normalizeAndCapitalize(issue.type)}
             </span>
           )}
-          {issue.report_id && issue.report_id > 0 && (
+          {isFromInspectionReport && (
             <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
               Inspection Report
             </span>
@@ -684,7 +708,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
           <div>
             <p className="text-sm font-semibold text-foreground">Reported on {reportedDate}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {issue.report_id && issue.report_id > 0
+              {isFromInspectionReport
                 ? "Identified during professional home inspection"
                 : "Posted directly by homeowner"}
             </p>
@@ -770,7 +794,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               }`}
             >
               {tabLabels[tab]}
-              {tab === "offers" && offers.length > 0 && (
+              {tab === "offers" && offers.length > 0 && userType !== "vendor" && (
                 <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[0.6rem] font-bold">
                   {offers.length > 9 ? "9+" : offers.length}
                 </span>
@@ -879,6 +903,21 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                     }
                   }}
                 />
+              ) : userType === "vendor" ? (
+                <OffersTabVendor
+                  offers={offers}
+                  vendorId={currentVendor?.id}
+                  onOpenOfferModal={(editingOffer) => {
+                    if (editingOffer) {
+                      setCounterTarget(editingOffer);
+                      setOfferAmount(String(editingOffer.price ?? ""));
+                    } else {
+                      setCounterTarget(null);
+                      setOfferAmount("");
+                    }
+                    setIsOfferModalOpen(true);
+                  }}
+                />
               ) : null}
             </div>
           )}
@@ -941,7 +980,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       {isOfferModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Place Your Offer</h2>
+            <h2 className="text-lg font-semibold mb-4">Your quote</h2>
 
             <input
               type="number"
@@ -970,25 +1009,24 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
             {counterTarget ? (
               <p className="text-sm text-gray-600 mb-3">
-                You are placing a <strong>counter</strong> to the original offer
-                of <strong>${counterTarget.price}</strong>
+                You are countering the original quote of <strong>${counterTarget.price}</strong>
               </p>
             ) : (
               <p className="text-sm text-gray-600 mb-2">
-                You are about to place an offer for:{" "}
+                Your quote:{" "}
                 <strong>
-                  $
-                  {new Intl.NumberFormat("en-US").format(
-                    Number(offerAmount) || 0
-                  )}
+                  ${new Intl.NumberFormat("en-US").format(Number(offerAmount) || 0)}
                 </strong>
               </p>
             )}
 
-            <p className="text-xs text-gray-500 mt-2">
-              By selecting <strong>Confirm offer</strong>, you are committing to
-              this issue.
-            </p>
+            {!counterTarget && (
+              <div className="mt-3 p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  This is a quote. Final cost may change based on actual scope discovered during or after an assessment.
+                </p>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 mt-4">
               <button
@@ -1003,7 +1041,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 className={`text-sm px-4 py-2 rounded-lg bg-gray-900 text-white ${BUTTON_HOVER} disabled:opacity-50`}
                 disabled={isOfferSubmitting}
               >
-                {isOfferSubmitting ? <>Sending...</> : "Confirm Offer"}
+                {isOfferSubmitting ? <>Sending...</> : "Quote"}
               </button>
             </div>
           </div>
