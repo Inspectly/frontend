@@ -151,7 +151,7 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({
                 <Link
                   to="/listings"
                   className={`${navItemBase} ${
-                    activePage === "/listings" ? navItemActive : navItemInactive
+                    activePage.startsWith("/listings") ? navItemActive : navItemInactive
                   }`}
                 >
                   <FontAwesomeIcon icon={faListCheck} className="mr-3 w-4" />
