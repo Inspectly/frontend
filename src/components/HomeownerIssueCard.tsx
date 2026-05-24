@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
 import { getIssueImages, saveIssueImages } from "../utils/issueImageStore";
@@ -14,10 +14,15 @@ import {
   statusOptions,
 } from "../types";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTimes, faChevronLeft, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faChevronLeft, faChevronRight, faCalendarAlt, faEye, faShare, faHeart, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { MapPin } from "lucide-react";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
-import Attachments from "./Attachments";
+import {
+  useCreateAttachmentMutation,
+  useDeleteAttachmentMutation,
+  useGetAttachmentsQuery,
+} from "../features/api/attachmentsApi";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
 import DisputeTab from "./DisputeTab";
@@ -161,6 +166,50 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [isOfferSubmitting, setIsOfferSubmitting] = useState(false);
   const [commentClient, setCommentClient] = useState("");
 
+  const [commentCount, setCommentCount] = useState(0);
+
+  // Attachments
+  const { data: allAttachments = [], refetch: refetchAttachments } = useGetAttachmentsQuery();
+  const [createAttachment] = useCreateAttachmentMutation();
+  const [deleteAttachment] = useDeleteAttachmentMutation();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "loading" | "error">("idle");
+
+  const issueAttachments = useMemo(
+    () => allAttachments.filter((a) => a.issue_id === issue.id),
+    [allAttachments, issue.id]
+  );
+  const attachmentImages = useMemo(
+    () => issueAttachments.filter((a) => a.type === "image"),
+    [issueAttachments]
+  );
+  const docAttachments = useMemo(
+    () => issueAttachments.filter((a) => a.type !== "image"),
+    [issueAttachments]
+  );
+
+  const handleAddMedia = () => fileInputRef.current?.click();
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !issue.id) return;
+    e.target.value = "";
+    setUploadStatus("loading");
+    try {
+      await createAttachment({ issueId: issue.id, file, userId: userId ?? 0 }).unwrap();
+      refetchAttachments();
+      setUploadStatus("idle");
+    } catch {
+      setUploadStatus("error");
+    }
+  };
+  const handleDeleteAttachment = async (id: number) => {
+    if (!window.confirm("Delete this attachment?")) return;
+    try {
+      await deleteAttachment(id).unwrap();
+      refetchAttachments();
+    } catch { /* ignore */ }
+  };
+
   // Vendor Review State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
@@ -280,16 +329,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     return map;
   }, [allVendors]);
 
-  const formatDate = (iso: string) =>
-    new Date(iso + "Z").toLocaleString("en-US", {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
 
   const handleTabChange = (tab: "details" | "offers" | "assessments" | "dispute") => {
     setActiveTab(tab);
@@ -436,462 +475,447 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
     }
   };
 
+  // ── Derived display values ────────────────────────────────────────────────
+  // Merge issue image_urls + image attachments into one list for the carousel
+  const imageList = useMemo(() => {
+    const base = displayImageUrls.length > 0 ? displayImageUrls : [];
+    const extra = attachmentImages.map((a) => a.url);
+    const merged = [...base, ...extra];
+    return merged.length > 0 ? merged : ["/images/property_card_holder.jpg"];
+  }, [displayImageUrls, attachmentImages]);
+  const isLocked = !!issue.vendor_id;
+  const effectiveActive = isLocked ? false : isActive;
+
+  const severityColors: Record<string, string> = {
+    high:   "bg-red-100 text-red-700",
+    medium: "bg-yellow-100 text-yellow-700",
+    low:    "bg-green-100 text-green-600",
+  };
+  const severityClass = severityColors[issue.severity?.toLowerCase()] ?? "bg-gray-100 text-gray-600";
+
+  const statusColors: Record<string, string> = {
+    open:        "bg-blue-100 text-blue-700",
+    in_progress: "bg-amber-100 text-amber-700",
+    review:      "bg-purple-100 text-purple-700",
+    completed:   "bg-green-100 text-green-700",
+  };
+  const statusNorm = statusMapping[issue.status as IssueStatus] ?? "open";
+  const statusClass = statusColors[statusNorm] ?? "bg-gray-100 text-gray-600";
+  const statusLabel = statusOptions.find(o => o.value === statusNorm)?.label ?? "Unknown";
+
+  const reportedDate = new Date(issue.created_at).toLocaleDateString("en-US", {
+    month: "long", day: "numeric", year: "numeric",
+  });
+
+  const tabList: Array<"details" | "offers" | "assessments" | "dispute"> = ["details", "offers", "assessments"];
+  if (showDisputeTab || allowDisputeComposer) tabList.push("dispute");
+  const tabLabels: Record<string, string> = {
+    details: "About", offers: "Offers", assessments: "Assessments", dispute: "Dispute",
+  };
+
   return (
-    <div className="relative h-full min-h-0 flex flex-col bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 w-7 h-7 rounded-full bg-red-600 flex items-center justify-center text-white hover:opacity-90 z-10"
-        >
-          <FontAwesomeIcon icon={faTimes} className="text-sm" />
-        </button>
+    <div className="relative h-full min-h-0 flex flex-col bg-card rounded-2xl overflow-hidden">
+
+      {/* ── Image carousel ── */}
+      <div className="relative group/img flex-shrink-0">
+        <img
+          src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
+          alt="Issue"
+          className="w-full h-72 object-cover cursor-pointer"
+          onClick={() => setSelectedImage(imageList[currentImageIndex] || null)}
+          onError={(e) => { (e.target as HTMLImageElement).src = "/images/property_card_holder.jpg"; }}
+        />
+        {/* Close button */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors z-10 backdrop-blur-sm"
+          >
+            <FontAwesomeIcon icon={faTimes} className="text-sm" />
+          </button>
+        )}
+        {/* Nav arrows */}
+        {imageList.length > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(p => p > 0 ? p - 1 : imageList.length - 1); }}
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+            >
+              <FontAwesomeIcon icon={faChevronLeft} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(p => p < imageList.length - 1 ? p + 1 : 0); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
+            >
+              <FontAwesomeIcon icon={faChevronRight} />
+            </button>
+            <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm font-medium">
+              {currentImageIndex + 1} / {imageList.length}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Thumbnail strip ── */}
+      {(imageList.length > 1 || docAttachments.length > 0 || userType !== "vendor") && (
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border overflow-x-auto flex-shrink-0">
+          {/* Image thumbnails */}
+          {imageList.filter(u => u !== "/images/property_card_holder.jpg").map((url, idx) => (
+            <img
+              key={idx}
+              src={url}
+              alt={`Image ${idx + 1}`}
+              onClick={() => setCurrentImageIndex(idx)}
+              className={`w-14 h-14 rounded-lg object-cover cursor-pointer border-2 flex-shrink-0 transition-colors ${
+                idx === currentImageIndex ? "border-gold" : "border-transparent hover:border-gold/40"
+              }`}
+            />
+          ))}
+
+          {/* Doc attachment thumbnails */}
+          {docAttachments.map((doc) => (
+            <div
+              key={doc.id}
+              className="relative w-14 h-14 rounded-lg border-2 border-transparent bg-muted flex flex-col items-center justify-center cursor-pointer hover:border-gold/40 flex-shrink-0 group/doc"
+              onClick={() => window.open(doc.url, "_blank")}
+              title={doc.name}
+            >
+              <img src="/images/google-docs.png" alt="doc" className="w-7 h-7" />
+              <span className="text-[9px] text-muted-foreground truncate w-full text-center px-1 mt-0.5">{doc.name}</span>
+              {userId === doc.user_id && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeleteAttachment(doc.id); }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] items-center justify-center hidden group-hover/doc:flex"
+                >×</button>
+              )}
+            </div>
+          ))}
+
+          {/* Add media button — homeowners only */}
+          {userType !== "vendor" && (
+            <div className="relative group/add flex-shrink-0">
+              <button
+                onClick={handleAddMedia}
+                disabled={uploadStatus === "loading"}
+                className="w-14 h-14 rounded-lg border-2 border-dashed border-border bg-muted hover:border-gold hover:bg-gold/5 flex items-center justify-center transition-colors disabled:opacity-50"
+              >
+                {uploadStatus === "loading" ? (
+                  <span className="text-xs text-muted-foreground">…</span>
+                ) : (
+                  <FontAwesomeIcon icon={faPlus} className="text-muted-foreground text-lg" />
+                )}
+              </button>
+              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 whitespace-nowrap rounded-lg bg-gray-900 text-white text-xs px-2.5 py-1.5 opacity-0 group-hover/add:opacity-100 transition-opacity">
+                Add documents or images
+              </span>
+            </div>
+          )}
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*, .pdf, .doc, .docx"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+
+          {uploadStatus === "error" && (
+            <span className="text-xs text-red-500 flex-shrink-0">Upload failed</span>
+          )}
+        </div>
       )}
 
-      {/* header */}
-      <div className="flex items-start justify-between gap-4 px-6 py-4 border-b bg-white">
-        <div className="pr-10">
-          <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-            {normalizeAndCapitalize(issue.type)} Issue
-          </p>
-          <h2 className="text-xl font-semibold text-gray-800 leading-snug">
-            {issue.summary || "No Title Found"}
-          </h2>
-          {listing && issue.vendor_id && (
-            <p className="text-sm text-gray-500 mt-1">
+      {/* ── Scrollable body ── */}
+      <div className="flex-1 overflow-y-auto">
+
+        {/* Title + address + actions */}
+        <div className="px-6 pt-5 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-xl font-bold text-foreground leading-snug flex-1">
+              {issue.summary || "No Title Found"}
+            </h2>
+            <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+              <button className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                <FontAwesomeIcon icon={faShare} className="text-xs" />
+              </button>
+              <button className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+                <FontAwesomeIcon icon={faHeart} className="text-xs" />
+              </button>
+            </div>
+          </div>
+          {listing && (
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1.5">
+              <MapPin size={13} className="flex-shrink-0" />
               {listing.address}, {listing.city}, {listing.state}
             </p>
           )}
         </div>
-      </div>
 
-      {/* tabs */}
-      <div className="flex gap-1 px-6 pt-4 border-b bg-white">
-        {(() => {
-          const tabs: Array<"details" | "offers" | "assessments" | "dispute"> = [
-            "details",
-            "offers",
-            "assessments",
-          ];
-          if (showDisputeTab || allowDisputeComposer) tabs.push("dispute");
-          return tabs;
-        })().map((tab) => (
-          <button
-            key={tab}
-            onClick={() => handleTabChange(tab)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg relative transition-colors ${activeTab === tab
-              ? "bg-gray-900 text-white"
-              : "text-gray-600 hover:bg-foreground hover:text-background"
-              }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {tab === "offers" && offers.length > 0 && (
-              <span className="absolute -top-1 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[0.65rem] flex items-center justify-center">
-                {offers.length > 9 ? "9+" : offers.length}
-              </span>
-            )}
-            {tab === "assessments" && assessments.length > 0 && (
-              <span className="absolute -top-1 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-gold text-white text-[0.65rem] flex items-center justify-center">
-                {assessments.length > 9 ? "9+" : assessments.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+        {/* Tags row */}
+        <div className="px-6 pb-4 flex flex-wrap gap-2">
+          {issue.severity && (
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${severityClass}`}>
+              {issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1).toLowerCase()} Priority
+            </span>
+          )}
+          <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${statusClass}`}>
+            {statusLabel}
+          </span>
+          {issue.type && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground capitalize">
+              {normalizeAndCapitalize(issue.type)}
+            </span>
+          )}
+          {issue.report_id && issue.report_id > 0 && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-purple-700">
+              Inspection Report
+            </span>
+          )}
+        </div>
 
-      {/* Action bar for issues in Review status - client needs to approve or request changes */}
-      {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
-        <div className="mx-6 mt-4 p-4 bg-gold-50 border border-gold-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gold-200 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-semibold text-gold-700">Work Ready for Review</p>
-                <p className="text-sm text-gold-700">The vendor has completed work and is awaiting your approval</p>
-              </div>
+        <div className="border-t border-border" />
+
+        {/* Reported date */}
+        <div className="px-6 py-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+            <FontAwesomeIcon icon={faCalendarAlt} className="text-muted-foreground text-sm" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Reported on {reportedDate}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {issue.report_id && issue.report_id > 0
+                ? "Identified during professional home inspection"
+                : "Posted directly by homeowner"}
+            </p>
+          </div>
+        </div>
+
+        {/* Marketplace Visibility */}
+        <div className="px-6 py-4 flex items-center justify-between gap-4 border-t border-border">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+              <FontAwesomeIcon icon={faEye} className="text-muted-foreground text-sm" />
             </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Marketplace Visibility</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {effectiveActive
+                  ? "Vendors can view and submit quotes for this issue"
+                  : isLocked ? "Hidden — vendor already assigned" : "Hidden from marketplace"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => { if (!isLocked) handleToggleVisibility(); }}
+            disabled={isLocked}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+              isLocked ? "bg-muted opacity-50 cursor-not-allowed"
+                : effectiveActive ? "bg-gold cursor-pointer" : "bg-muted-foreground/30 cursor-pointer"
+            }`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${effectiveActive ? "translate-x-5" : "translate-x-0.5"}`} />
+          </button>
+        </div>
+
+        {/* Vendor + cost row (when assigned) */}
+        {issue.vendor_id && (
+          <div className="px-6 py-3 border-t border-border flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Assigned vendor</span>
+            <VendorName vendorId={issue.vendor_id} isVendorId={false} showRating />
+          </div>
+        )}
+        {issue.vendor_id && issue.cost != null && (
+          <div className="px-6 py-3 border-t border-border flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Agreed cost</span>
+            <span className="font-semibold text-foreground">${Number(issue.cost).toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* Work review action bar */}
+        {userType === "client" && statusMapping[issue.status as IssueStatus] === "review" && (
+          <div className="mx-6 my-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="font-semibold text-amber-800 text-sm mb-0.5">Work ready for review</p>
+            <p className="text-xs text-amber-700 mb-3">The vendor has completed the work and is awaiting your approval.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowRequestChangesModal(true)}
-                className="px-4 py-2 bg-white border border-gold-300 text-gold-700 text-sm font-medium rounded-lg hover:bg-gold-200 transition-colors"
+                className="flex-1 px-4 py-2 bg-white border border-amber-300 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-50 transition-colors"
               >
-                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Revise
+                Request Revisions
               </button>
               <button
                 onClick={() => setShowApproveModal(true)}
-                className={`px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg ${BUTTON_HOVER}`}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
               >
-                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Approve
+                Approve Work
               </button>
             </div>
           </div>
+        )}
+
+        <div className="border-t border-border" />
+
+        {/* Tab bar */}
+        <div className="flex gap-1 px-6 pt-3 border-b border-border">
+          {tabList.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => handleTabChange(tab)}
+              className={`relative px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === tab
+                  ? "border-gold text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tabLabels[tab]}
+              {tab === "offers" && offers.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-4 px-1 rounded-full bg-red-500 text-white text-[0.6rem] font-bold">
+                  {offers.length > 9 ? "9+" : offers.length}
+                </span>
+              )}
+              {tab === "assessments" && assessments.length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-4 px-1 rounded-full bg-gold text-white text-[0.6rem] font-bold">
+                  {assessments.length > 9 ? "9+" : assessments.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-        {/* DETAILS TAB */}
-        {activeTab === "details" && (
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* LEFT */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Images with scroll for multiple */}
-              {(() => {
-                let imageList: string[] = displayImageUrls;
-                if (imageList.length === 0) imageList = ["/images/property_card_holder.jpg"];
+        {/* Tab content */}
+        <div className="px-6 py-5">
 
-                return (
-                  <div>
-                    {/* Main image with scroll arrows */}
-                    <div className="relative group/img rounded-lg overflow-hidden">
-                      <img
-                        src={imageList[currentImageIndex] || "/images/property_card_holder.jpg"}
-                        alt="Issue"
-                        className="w-full h-[260px] object-cover cursor-pointer"
-                        onClick={() => setSelectedImage(imageList[currentImageIndex] || null)}
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/property_card_holder.jpg"; }}
-                      />
-
-                      {/* Left/Right arrows */}
-                      {imageList.length > 1 && (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : imageList.length - 1)); }}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
-                          >
-                            <FontAwesomeIcon icon={faChevronLeft} />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < imageList.length - 1 ? prev + 1 : 0)); }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all backdrop-blur-sm shadow-lg opacity-0 group-hover/img:opacity-100"
-                          >
-                            <FontAwesomeIcon icon={faChevronRight} />
-                          </button>
-                          {/* Counter */}
-                          <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-medium shadow-lg">
-                            {currentImageIndex + 1} / {imageList.length}
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Thumbnail strip */}
-                    {imageList.length > 1 && (
-                      <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                        {imageList.map((url, idx) => (
-                          <img
-                            key={idx}
-                            src={url}
-                            alt={`Image ${idx + 1}`}
-                            className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition-colors flex-shrink-0 ${
-                              idx === currentImageIndex ? "border-blue-500" : "border-transparent hover:border-blue-300"
-                            }`}
-                            onClick={() => setCurrentImageIndex(idx)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Description */}
-              <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">
-                  Description
-                </h3>
-                <p className="text-sm text-gray-700 leading-relaxed">
+          {/* ABOUT TAB */}
+          {activeTab === "details" && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground mb-2">About this issue</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
                   {issue.description || "No description available."}
                 </p>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                  Attachments
-                </h3>
-                <Attachments issueId={issue.id} userType={userType} />
-              </div>
-
               {userType !== "vendor" && (
-                <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                    Comments
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                    Conversation
+                    {commentCount > 0 && (
+                      <span className="text-xs font-normal text-muted-foreground">({commentCount})</span>
+                    )}
                   </h3>
                   <div className="max-h-[360px] overflow-y-auto pr-1">
-                    <Comments issueId={issue.id} userId={userId} />
+                    <Comments
+                      issueId={issue.id}
+                      userId={userId}
+                      myName={client ? `${client.first_name} ${client.last_name}` : ""}
+                      onCountChange={setCommentCount}
+                    />
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* RIGHT: details */}
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-gray-700 mb-4">
-                  Details
-                </h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Type
-                    </p>
-                    <p className="text-sm font-semibold text-gray-500">
-                      {normalizeAndCapitalize(issue.type)}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Severity
-                    </p>
-                    <p
-                      className={`text-sm font-semibold ${issue.severity === "High"
-                        ? "text-red-600"
-                        : issue.severity === "Medium"
-                          ? "text-yellow-600"
-                          : "text-green-600"
-                        }`}
-                    >
-                      {issue.severity}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center gap-4">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Status
-                    </p>
-                    <span
-                      className={`inline-flex px-2.5 py-1.5 rounded text-xs font-medium ${statusMapping[issue.status as IssueStatus] === "open"
-                        ? "bg-gray-100 text-gray-700"
-                        : statusMapping[issue.status as IssueStatus] === "in_progress"
-                          ? "bg-gold-100 text-gold-700"
-                          : statusMapping[issue.status as IssueStatus] === "review"
-                            ? "bg-gold-100 text-gold-700"
-                            : statusMapping[issue.status as IssueStatus] === "completed"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-gray-100 text-gray-700"
-                        }`}
-                    >
-                      {statusOptions.find(
-                        (option) =>
-                          option.value === statusMapping[issue.status as IssueStatus]
-                      )?.label || "Unknown"}
-                    </span>
-                  </div>
-
-                  {/* Marketplace Visibility Toggle - disabled only when an offer is accepted */}
-                  {(() => {
-                    const isLocked = !!issue.vendor_id; // Locked when vendor assigned
-                    const effectiveActive = isLocked ? false : isActive;
-                    return (
-                      <div className="flex justify-between items-center gap-4">
-                        <div>
-                          <p className="text-xs font-bold uppercase text-gray-800">
-                            Marketplace
-                          </p>
-                          <p className="text-[0.65rem] text-gray-500">
-                            {effectiveActive
-                              ? "Visible in marketplace"
-                              : "Hidden from marketplace"}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!isLocked) {
-                              handleToggleVisibility();
-                            }
-                          }}
-                          disabled={isLocked}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                            isLocked
-                              ? "bg-gray-200 opacity-60 cursor-not-allowed"
-                              : effectiveActive ? "bg-gold cursor-pointer" : "bg-gray-300 cursor-pointer"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${effectiveActive ? "translate-x-4" : "translate-x-1"}`}
-                          />
-                        </button>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="h-px bg-gray-100 my-2" />
-
-                  {/* Cost - only show when vendor is assigned */}
-                  {issue.vendor_id && (
-                    <div className="flex justify-between gap-4">
-                      <p className="text-xs font-bold uppercase text-gray-800">
-                        Cost
-                      </p>
-                      <p className="text-sm font-semibold text-gray-500">
-                        {issue.cost != null
-                          ? `$${Number(issue.cost).toFixed(2)}`
-                          : "N/A"}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Vendor - only show when assigned */}
-                  {issue.vendor_id && (
-                    <div className="flex justify-between gap-4">
-                      <p className="text-xs font-bold uppercase text-gray-800">
-                        Vendor
-                      </p>
-                      <p className="text-sm font-semibold text-gray-500">
-                        <VendorName
-                          vendorId={issue.vendor_id}
-                          isVendorId={false}
-                          showRating
-                        />
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="h-px bg-gray-100 my-2" />
-
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Date Created
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(issue.created_at)}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase text-gray-800">
-                      Date Updated
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {formatDate(issue.updated_at)}
-                    </p>
-                  </div>
-                </div>
-              </div>
               {showDisputeButton && (
                 <button
                   type="button"
                   onClick={handleOpenDisputeComposer}
-                  className="w-full rounded-lg bg-red-600 text-white text-xs font-bold uppercase tracking-widest py-2.5 hover:bg-red-700 transition-colors"
+                  className="w-full rounded-xl border border-red-200 text-red-600 text-sm font-semibold py-2.5 hover:bg-red-50 transition-colors"
                 >
-                  Dispute
+                  Open Dispute
                 </button>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* OFFERS TAB */}
-        {activeTab === "offers" && (
-          <div className="space-y-4">
-            {offersLoading ? (
-              <p>Loading offers...</p>
-            ) : offersError ? (
-              <p>Error loading offers</p>
-            ) : (
-              <>
-                {userType === "client" && (
-                  <OffersTabClient
-                    offers={offers}
-                    uniqueVendors={
-                      new Set(offers.map((o) => o.vendor_id)).size
-                    }
-                    handleOpenOfferModal={handleOpenOfferModal}
-                    onOpenOfferModal={() => setIsOfferModalOpen(true)}
-                    issueVendorId={issue.vendor_id}
-                    onOfferAccepted={async (acceptedOffer) => {
-                      try {
-                        // Store minimal payload: omit issue.image_urls to avoid QuotaExceededError (images are in IndexedDB)
-                        const slimIssue = issue ? { ...issue, image_urls: [] } : null;
-                        const slimListing = listing ? { ...listing } : null;
-                        localStorage.setItem("pending_offer_payment", JSON.stringify({
-                          offer_id: acceptedOffer.id,
-                          issue_id: acceptedOffer.issue_id,
-                          vendor_id: acceptedOffer.vendor_id,
-                          price: acceptedOffer.price,
-                          comment_vendor: acceptedOffer.comment_vendor || "",
-                          comment_client: acceptedOffer.comment_client || "",
-                          issue: slimIssue,
-                          listing: slimListing,
-                        }));
-
-                        // Save issue images to IndexedDB in background (don't block Stripe)
-                        const imageUrls = getIssueImageUrls(issue.image_urls);
-                        if (imageUrls.length > 0) {
-                          saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
-                        }
-
-                        const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
-                        const successUrl = `${baseUrl}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
-                        const response = await createCheckoutSession({
-                          client_id: (client?.id ?? userId)!,
-                          vendor_id: acceptedOffer.vendor_id,
-                          offer_id: acceptedOffer.id,
-                          success_url: successUrl,
-                        }).unwrap();
-                        window.location.href = response.session_url;
-                      } catch (err: any) {
-                        console.error("Stripe error", err);
-                        localStorage.removeItem("pending_offer_payment");
-                        const errorDetail = err?.data?.detail || "";
-                        if (errorDetail.includes("Stripe Information not found")) {
-                          toast.error("Payment setup required. Add a payment method in Settings (gear icon → Payment Settings), or the vendor may need to complete Stripe setup.");
-                        } else {
-                          toast.error("Could not start payment session. Please try again.");
-                        }
+          {/* OFFERS TAB */}
+          {activeTab === "offers" && (
+            <div className="space-y-4">
+              {offersLoading ? (
+                <p className="text-sm text-muted-foreground">Loading offers…</p>
+              ) : offersError ? (
+                <p className="text-sm text-red-500">Error loading offers.</p>
+              ) : userType === "client" ? (
+                <OffersTabClient
+                  offers={offers}
+                  uniqueVendors={new Set(offers.map((o) => o.vendor_id)).size}
+                  handleOpenOfferModal={handleOpenOfferModal}
+                  onOpenOfferModal={() => setIsOfferModalOpen(true)}
+                  issueVendorId={issue.vendor_id}
+                  onOfferAccepted={async (acceptedOffer) => {
+                    try {
+                      const slimIssue = issue ? { ...issue, image_urls: [] } : null;
+                      const slimListing = listing ? { ...listing } : null;
+                      localStorage.setItem("pending_offer_payment", JSON.stringify({
+                        offer_id: acceptedOffer.id,
+                        issue_id: acceptedOffer.issue_id,
+                        vendor_id: acceptedOffer.vendor_id,
+                        price: acceptedOffer.price,
+                        comment_vendor: acceptedOffer.comment_vendor || "",
+                        comment_client: acceptedOffer.comment_client || "",
+                        issue: slimIssue,
+                        listing: slimListing,
+                      }));
+                      const imageUrls = getIssueImageUrls(issue.image_urls);
+                      if (imageUrls.length > 0) saveIssueImages(acceptedOffer.issue_id, imageUrls).catch(() => {});
+                      const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+                      const successUrl = `${baseUrl}/offers?filter=accepted&session_id={CHECKOUT_SESSION_ID}`;
+                      const response = await createCheckoutSession({
+                        client_id: (client?.id ?? userId)!,
+                        vendor_id: acceptedOffer.vendor_id,
+                        offer_id: acceptedOffer.id,
+                        success_url: successUrl,
+                      }).unwrap();
+                      window.location.href = response.session_url;
+                    } catch (err: any) {
+                      console.error("Stripe error", err);
+                      localStorage.removeItem("pending_offer_payment");
+                      const errorDetail = err?.data?.detail || "";
+                      if (errorDetail.includes("Stripe Information not found")) {
+                        toast.error("Payment setup required. Add a payment method in Settings, or the vendor may need to complete Stripe setup.");
+                      } else {
+                        toast.error("Could not start payment session. Please try again.");
                       }
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </div>
-        )}
+                    }
+                  }}
+                />
+              ) : null}
+            </div>
+          )}
 
-        {/* ASSESSMENTS TAB */}
-        {activeTab === "assessments" && (
-          <div className="space-y-3">
-            {assessments.length === 0 &&
-              !assessmentsLoading &&
-              !assessmentsFetching ? (
-              <p className="text-gray-600">No assessment requested yet.</p>
-            ) : (
-              <AssessmentReviewTab
-                assessments={assessments}
-                onAccept={handleAcceptAssessment}
-                onRejectSingle={handleRejectSingleAssessment}
-                userId={userId}
-                userType={userType}
-                vendorIdToName={vendorIdToName}
-                onlyShowVendorId={undefined}
-                assessmentsLoading={assessmentsLoading || assessmentsFetching}
-                issueId={issue.id}
-                getUsersInteractionId={getUsersInteractionId}
-                onProposalSubmitted={async () => {
-                  await refetchAssessments();
-                }}
-              />
-            )}
-          </div>
-        )}
-        {activeTab === "dispute" && userType !== "vendor" && (
-          <DisputeTab
-            issueOfferId={acceptedOffer?.id}
-            userType={userType}
-            isOfferLoading={offersLoading}
-            className="w-full"
-          />
-        )}
+          {/* ASSESSMENTS TAB */}
+          {activeTab === "assessments" && (
+            <div className="space-y-3">
+              {assessments.length === 0 && !assessmentsLoading && !assessmentsFetching ? (
+                <p className="text-sm text-muted-foreground">No assessment requested yet.</p>
+              ) : (
+                <AssessmentReviewTab
+                  assessments={assessments}
+                  onAccept={handleAcceptAssessment}
+                  onRejectSingle={handleRejectSingleAssessment}
+                  userId={userId}
+                  userType={userType}
+                  vendorIdToName={vendorIdToName}
+                  onlyShowVendorId={undefined}
+                  assessmentsLoading={assessmentsLoading || assessmentsFetching}
+                  issueId={issue.id}
+                  getUsersInteractionId={getUsersInteractionId}
+                  onProposalSubmitted={async () => { await refetchAssessments(); }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* DISPUTE TAB */}
+          {activeTab === "dispute" && userType !== "vendor" && (
+            <DisputeTab
+              issueOfferId={acceptedOffer?.id}
+              userType={userType}
+              isOfferLoading={offersLoading}
+              className="w-full"
+            />
+          )}
+        </div>
       </div>
 
       {/* fullscreen image */}

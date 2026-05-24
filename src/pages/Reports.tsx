@@ -1,26 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faPlus, faUpload, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faPlus, faUpload, faTriangleExclamation, faEye } from "@fortawesome/free-solid-svg-icons";
 import { MapPin, CircleCheck, Clock, TriangleAlert } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import { useGetReportsQuery, useUpdateReportMutation } from "../features/api/reportsApi";
+import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetIssuesQuery } from "../features/api/issuesApi";
 import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
 import PostJobWizard from "../components/PostJobWizard";
 import ImageComponent from "../components/ImageComponent";
-import type { IssueType, ReportType, ReviewStatus } from "../types";
+import HomeownerIssueCard from "../components/HomeownerIssueCard";
+import type { IssueType } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const normalizeReviewStatus = (raw?: string | null): ReviewStatus => {
-  const v = (raw ?? "").toLowerCase();
-  return v === "in_review" || v === "completed" || v === "not_reviewed"
-    ? (v as ReviewStatus)
-    : "not_reviewed";
-};
 
 const formatIssueDate = (dateStr: string) => {
   try {
@@ -80,10 +75,10 @@ const IssueRow: React.FC<IssueRowProps> = ({ issue, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className="flex items-center gap-4 px-4 py-3 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border last:border-b-0"
+      className="flex items-center gap-4 px-5 py-4 bg-card border border-border rounded-xl hover:shadow-sm cursor-pointer transition-all"
     >
       {/* Thumbnail */}
-      <div className="w-11 h-11 rounded-lg overflow-hidden bg-muted shrink-0">
+      <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted shrink-0">
         <ImageComponent
           src={firstImage}
           fallback="/images/property_card_holder.jpg"
@@ -93,22 +88,23 @@ const IssueRow: React.FC<IssueRowProps> = ({ issue, onClick }) => {
 
       {/* Title + meta */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{issue.summary}</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <p className="text-base font-semibold text-foreground truncate">{issue.summary}</p>
+        <p className="text-sm text-muted-foreground mt-1">
           {issue.type} · {formatIssueDate(issue.created_at)}
         </p>
       </div>
 
-      {/* Badges */}
+      {/* Badges + eye */}
       <div className="flex items-center gap-2 shrink-0">
         {issue.severity && (
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${severityCfg.className}`}>
+          <span className={`text-xs font-semibold px-3 py-1 rounded-full capitalize ${severityCfg.className}`}>
             {issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1).toLowerCase()}
           </span>
         )}
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${statusCfg.className}`}>
+        <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusCfg.className}`}>
           {statusCfg.label}
         </span>
+        <FontAwesomeIcon icon={faEye} className="text-muted-foreground/50 text-sm ml-1" />
       </div>
     </div>
   );
@@ -117,8 +113,7 @@ const IssueRow: React.FC<IssueRowProps> = ({ issue, onClick }) => {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const Reports: React.FC = () => {
-  const { data: reports, isLoading: reportsLoading, refetch } = useGetReportsQuery();
-  const [updateReport] = useUpdateReportMutation();
+  const { data: reports, refetch } = useGetReportsQuery();
 
   const user = useSelector((state: RootState) => state.auth.user);
   const navigate = useNavigate();
@@ -129,6 +124,7 @@ const Reports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
   const [isPostJobOpen, setIsPostJobOpen] = useState(false);
+  const [selectedIssue, setSelectedIssue] = useState<IssueType | null>(null);
 
   const location = useLocation();
 
@@ -182,29 +178,7 @@ const Reports: React.FC = () => {
   }, [activeTab, listingIssues, inspectionIssues, postedIssues]);
 
   const handleIssueClick = (issue: IssueType) => {
-    if (issue.report_id && issue.report_id > 0) {
-      navigate(`/listings/${listingId}/reports/${issue.report_id}/issues/${issue.id}`);
-    }
-  };
-
-  const handleStartOrContinueReview = async (report: ReportType) => {
-    const reviewStatus = normalizeReviewStatus(report.review_status);
-    try {
-      if (reviewStatus === "not_reviewed") {
-        await updateReport({
-          id: report.id,
-          user_id: report.user_id,
-          listing_id: report.listing_id,
-          aws_link: report.aws_link ?? "",
-          name: report.name ?? "",
-          review_status: "in_review",
-        }).unwrap();
-        refetch();
-      }
-      navigate(`/listings/${listingId}/reports/${report.id}/review`, { state: { report } });
-    } catch (e: any) {
-      console.error("Failed to start review:", e?.data ?? e);
-    }
+    setSelectedIssue(issue);
   };
 
   const cityState = [listing?.city, listing?.state].filter(Boolean).join(", ");
@@ -248,8 +222,21 @@ const Reports: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Photo strip ── */}
+      <div className="px-[4%] pt-4 flex items-center gap-3 overflow-x-auto pb-1">
+        {listing?.image_url && (
+          <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+            <ImageComponent
+              src={listing.image_url}
+              fallback="/images/property_card_holder.jpg"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+
       {/* ── Actions + Stats ── */}
-      <div className="px-5 pt-4 pb-3 flex flex-col gap-3">
+      <div className="px-[4%] pt-4 pb-3 flex flex-col gap-3">
         {/* Action buttons */}
         <div className="flex items-center gap-2">
           <button
@@ -268,36 +255,42 @@ const Reports: React.FC = () => {
           </button>
         </div>
 
-        {/* Stats row */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1.5 rounded-xl text-sm font-medium">
-            <TriangleAlert size={14} />
-            <span>{openCount}</span>
-            <span className="text-amber-600 font-normal">Open</span>
+        {/* Stats cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex items-center gap-4 bg-card border border-border rounded-xl px-5 py-4">
+            <TriangleAlert size={22} className="text-amber-500 flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold text-foreground leading-none">{openCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">Open</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-sm font-medium">
-            <Clock size={14} />
-            <span>{inProgressCount}</span>
-            <span className="text-blue-600 font-normal">In Progress</span>
+          <div className="flex items-center gap-4 bg-card border border-border rounded-xl px-5 py-4">
+            <Clock size={22} className="text-blue-500 flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold text-foreground leading-none">{inProgressCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">In Progress</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-xl text-sm font-medium">
-            <CircleCheck size={14} />
-            <span>{completedCount}</span>
-            <span className="text-green-600 font-normal">Completed</span>
+          <div className="flex items-center gap-4 bg-card border border-border rounded-xl px-5 py-4">
+            <CircleCheck size={22} className="text-green-500 flex-shrink-0" />
+            <div>
+              <p className="text-2xl font-bold text-foreground leading-none">{completedCount}</p>
+              <p className="text-sm text-muted-foreground mt-1">Completed</p>
+            </div>
           </div>
         </div>
 
         {/* Attention banner */}
         {openCount > 0 && (
-          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-4 py-2.5 text-sm font-medium">
-            <FontAwesomeIcon icon={faTriangleExclamation} className="text-amber-500 text-xs" />
-            {openCount} {openCount === 1 ? "issue needs" : "issues need"} attention
+          <div className="flex items-center gap-2 bg-gold-light rounded-xl px-5 py-3 text-sm text-gold">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="text-gold text-xs" />
+            <span><span className="font-semibold">{openCount} {openCount === 1 ? "issue" : "issues"}</span> need attention</span>
           </div>
         )}
       </div>
 
       {/* ── Tabs + Issue list ── */}
-      <div className="px-5 flex-1">
+      <div className="px-[4%] flex-1">
         {/* Tabs */}
         <div className="flex items-center gap-1 border-b border-border mb-0">
           {tabs.map((tab) => (
@@ -325,31 +318,31 @@ const Reports: React.FC = () => {
         </div>
 
         {/* Issue list */}
-        <div className="rounded-b-xl overflow-hidden bg-card border border-t-0 border-border">
-          {displayedIssues.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
-                <TriangleAlert size={20} className="text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-foreground mb-1">No issues found</p>
-              <p className="text-xs text-muted-foreground">
-                {activeTab === "inspection"
-                  ? "Upload a report to create inspection issues."
-                  : activeTab === "posted"
-                  ? "Post a job to add issues directly."
-                  : "Upload a report or post a job to get started."}
-              </p>
+        {displayedIssues.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+              <TriangleAlert size={20} className="text-muted-foreground" />
             </div>
-          ) : (
-            displayedIssues.map((issue) => (
+            <p className="text-sm font-medium text-foreground mb-1">No issues found</p>
+            <p className="text-xs text-muted-foreground">
+              {activeTab === "inspection"
+                ? "Upload a report to create inspection issues."
+                : activeTab === "posted"
+                ? "Post a job to add issues directly."
+                : "Upload a report or post a job to get started."}
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 pt-3">
+            {displayedIssues.map((issue) => (
               <IssueRow
                 key={issue.id}
                 issue={issue}
                 onClick={() => handleIssueClick(issue)}
               />
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="h-6" />
@@ -373,6 +366,33 @@ const Reports: React.FC = () => {
         reports={listingReports as any[]}
         currentListing={listing}
       />
+
+      {/* ── Issue detail modal ── */}
+      {selectedIssue && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center"
+          onClick={() => setSelectedIssue(null)}
+        >
+          <div
+            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-xl bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedIssue(null)}
+              className="absolute -top-10 right-0 text-white text-3xl leading-none px-2 hover:text-white/70 transition-colors"
+            >
+              &times;
+            </button>
+            <HomeownerIssueCard
+              key={selectedIssue.id}
+              issue={allIssues.find((i) => i.id === selectedIssue.id) ?? selectedIssue}
+              listing={listing}
+              onClose={() => setSelectedIssue(null)}
+              defaultTab="details"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
