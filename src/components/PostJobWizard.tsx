@@ -132,9 +132,11 @@ type Props = {
   reports?: ReportType[];
   currentListing?: Listing;
   currentReportId?: number;
+  /** Optional vendor_type slug to pre-select (e.g. from Quick Action Hub deep links). */
+  initialType?: string;
 };
 
-const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: propReports, currentListing, currentReportId }) => {
+const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: propReports, currentListing, currentReportId, initialType }) => {
   const navigate = useNavigate();
   const user = useSelector((state: RootState) => state.auth.user);
   const { data: fetchedVendorTypes } = useGetVendorTypesQuery();
@@ -220,7 +222,7 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
     setNewPropImage("");
     resetIssueFields();
     setCreatedIssue(null);
-  }, [open, currentListing, safeListings]);
+  }, [open, currentListing, safeListings, initialType]);
 
   if (!open) return null;
 
