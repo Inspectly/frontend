@@ -140,10 +140,10 @@ const Offers: React.FC = () => {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: issues = [], isLoading: isLoadingIssues } = useIssuesByListings(listings?.map((l) => l.id));
-  const refetchIssues = () => {};
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
+  const { data: issues = [], isLoading: isLoadingIssues } = useIssuesByListings(listings?.map((l) => l.id));
+  const refetchIssues = () => {};
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), { skip: !userId });
   const { data: vendors = [] } = useGetVendorsQuery();
   const { data: clientAssessments = [] } = useGetAssessmentsByClientIdUsersInteractionIdQuery(
@@ -542,6 +542,7 @@ const Offers: React.FC = () => {
         offer_id: offer.id,
         success_url: successUrl,
       }).unwrap();
+      localStorage.setItem("stripe_return_path", window.location.pathname + window.location.search);
       window.location.href = response.session_url;
     } catch (err: any) {
       console.error("Stripe error", err);

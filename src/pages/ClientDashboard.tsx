@@ -61,7 +61,6 @@ import {
 } from "../types";
 import { Briefcase, Upload as UploadIcon } from "lucide-react";
 import ImageComponent from "../components/ImageComponent";
-import { getIssueById } from "../features/api/issuesApi";
 import { useIssuesByListings } from "../hooks/useIssuesByListings";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";

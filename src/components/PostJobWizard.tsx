@@ -994,7 +994,7 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
                 className="flex-1"
                 onClick={() => {
                   onClose();
-                  if (active) navigate("/offers");
+                  if (active) navigate("/offers?filter=pending");
                 }}
               >
                 {active ? "View quotes" : "Done"}

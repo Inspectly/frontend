@@ -186,6 +186,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const [createAttachment] = useCreateAttachmentMutation();
   const [deleteAttachment] = useDeleteAttachmentMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollBodyRef = useRef<HTMLDivElement>(null);
+  const offersTabRef = useRef<HTMLDivElement>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "loading" | "error">("idle");
 
   const issueAttachments = useMemo(
@@ -293,6 +295,15 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       setCurrentImageIndex(0);
     }
   }, [currentImageIndex, displayImageUrls.length]);
+
+  // Scroll offers into view whenever the offers tab becomes active
+  useEffect(() => {
+    if (activeTab === "offers" && offersTabRef.current && scrollBodyRef.current) {
+      setTimeout(() => {
+        offersTabRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }, [activeTab]);
 
   const handleReviewSubmit = async (rating: number, review: string) => {
     if (!issue.vendor_id || !userId) return;
@@ -651,7 +662,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       )}
 
       {/* ── Scrollable body ── */}
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollBodyRef} className="flex-1 overflow-y-auto">
 
         {/* Title + address + actions */}
         <div className="px-6 pt-5 pb-3">
@@ -854,7 +865,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
           {/* OFFERS TAB */}
           {activeTab === "offers" && (
-            <div className="space-y-4">
+            <div ref={offersTabRef} className="space-y-4">
               {offersLoading ? (
                 <p className="text-sm text-muted-foreground">Loading offers…</p>
               ) : offersError ? (
@@ -890,6 +901,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                         offer_id: acceptedOffer.id,
                         success_url: successUrl,
                       }).unwrap();
+                      localStorage.setItem("stripe_return_path", window.location.pathname + window.location.search);
                       window.location.href = response.session_url;
                     } catch (err: any) {
                       console.error("Stripe error", err);

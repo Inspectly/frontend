@@ -119,7 +119,7 @@ const Reports: React.FC = () => {
   const navigate = useNavigate();
   const { listingId } = useParams<{ listingId: string }>();
   const { data: listing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
-  const { data: allIssues = [], isLoading: issuesLoading } = useGetIssuesByListingIdQuery(
+  const { data: allIssues = [] } = useGetIssuesByListingIdQuery(
     Number(listingId),
     { skip: !listingId }
   );
