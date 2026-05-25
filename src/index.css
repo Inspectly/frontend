@@ -249,7 +249,7 @@ body {
 /* ============================================================
    Primary-CTA highlight: a soft pulsing gold halo behind a
    button + a periodic left-to-right gold sweep across it.
-   Used by the dashboard hero's Create button.
+   Used by the dashboard hero CTA (Browse Jobs / Create / etc.).
    ============================================================ */
 @keyframes cta-halo-pulse {
   0%, 100% {

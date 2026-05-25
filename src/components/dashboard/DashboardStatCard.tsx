@@ -19,7 +19,7 @@ const DashboardStatCard: React.FC<DashboardStatCardProps> = ({
 }) => (
   <div
     onClick={onClick}
-    className={`bg-card rounded-xl p-5 border border-border shadow-soft hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${onClick ? "cursor-pointer" : ""}`}
+    className={`bg-card rounded-2xl p-5 border border-border/60 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 ${onClick ? "cursor-pointer" : ""}`}
   >
     <div className={`w-9 h-9 ${iconBg} rounded-lg flex items-center justify-center mb-3`}>
       {icon}

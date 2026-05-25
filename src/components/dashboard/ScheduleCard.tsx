@@ -254,9 +254,13 @@ const ListBody: React.FC<ListBodyProps> = ({
   onCancelProposal,
 }) => {
   if (events.length === 0) {
+    // Top-aligned empty state — when the card is stretched (right-column
+    // `flex-1` shock absorber), a centered row floats awkwardly in the middle
+    // of a huge whitespace block.  Pin it to the top instead so the empty
+    // affordance sits right below the header where the eye expects content.
     return (
-      <div className="p-3 flex-1 flex items-center">
-        <div className="flex items-center gap-3 px-2 py-2 w-full">
+      <div className="p-3 flex-1 min-h-0">
+        <div className="flex items-center gap-3 px-2 py-2">
           <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
             <CalendarIcon className="w-4 h-4 text-muted-foreground/70" />
           </div>
