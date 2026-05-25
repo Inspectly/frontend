@@ -212,7 +212,6 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
   // Vendor Review State
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
   const [reviewSubmitStatus, setReviewSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [createVendorReview] = useCreateVendorReviewMutation();
 
@@ -292,16 +291,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
         review,
       }).unwrap();
 
-      // Complete the status change and mark review as completed (ensure images from Idb so we don't clear on server)
-      const issueForUpdate = await getIssueForUpdate();
-      await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
-        status: pendingStatusChange || "completed",
-        review_status: "completed",
-      }, listing?.id)).unwrap();
-
       setReviewSubmitStatus("success");
       setIsReviewModalOpen(false);
-      setPendingStatusChange(null);
     } catch (err) {
       console.error("Failed to submit review", err);
       setReviewSubmitStatus("error");
@@ -1013,10 +1004,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
       {/* Vendor Review Modal */}
       <VendorReviewModal
         isOpen={isReviewModalOpen}
-        onClose={() => {
-          setIsReviewModalOpen(false);
-          setPendingStatusChange(null);
-        }}
+        onClose={() => setIsReviewModalOpen(false)}
         onSubmit={handleReviewSubmit}
         vendorName={allVendors.find(v => v.id === issue.vendor_id)?.name || "The Vendor"}
       />
@@ -1091,13 +1079,16 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
                 onClick={async () => {
                   try {
                     const issueForUpdate = await getIssueForUpdate();
-                    await updateIssue(buildIssueUpdateBody(issueForUpdate, { 
+                    await updateIssue(buildIssueUpdateBody(issueForUpdate, {
                       status: "completed",
                       review_status: "completed",
                     }, listing?.id)).unwrap();
                     setShowApproveModal(false);
                     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
                     toast.success(`Work approved for ${issue.summary || "issue"}!`);
+                    if (issue.vendor_id) {
+                      setIsReviewModalOpen(true);
+                    }
                   } catch (err) {
                     console.error("Failed to approve work", err);
                   }
