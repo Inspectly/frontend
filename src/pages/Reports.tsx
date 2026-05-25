@@ -1,18 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faPlus, faUpload, faTriangleExclamation, faEye } from "@fortawesome/free-solid-svg-icons";
-import { MapPin, CircleCheck, Clock, TriangleAlert } from "lucide-react";
+import { MapPin, CircleCheck, Clock, TriangleAlert, FileText, Loader2, AlertCircle } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetIssuesByListingIdQuery } from "../features/api/issuesApi";
+import { useGetTasksByReportIdQuery } from "../features/api/taskApi";
 import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
 import PostJobWizard from "../components/PostJobWizard";
 import ImageComponent from "../components/ImageComponent";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
-import type { IssueType } from "../types";
+import type { ExtractionStatus, IssueType, ReportType } from "../types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -50,7 +51,26 @@ const getStatusConfig = (status: StatusKey) =>
 const getSeverityConfig = (severity: string) =>
   SEVERITY_CONFIG[severity?.toLowerCase()] ?? { className: "bg-gray-100 text-gray-600" };
 
-type TabKey = "all" | "inspection" | "posted";
+type TabKey = "all" | "inspection" | "posted" | "extractions";
+
+const EXTRACTION_STATUS_CONFIG: Record<
+  ExtractionStatus,
+  { label: string; className: string }
+> = {
+  NONE:        { label: "No tasks",    className: "bg-gray-100 text-gray-600" },
+  PENDING:     { label: "Queued",      className: "bg-amber-100 text-amber-700" },
+  IN_PROGRESS: { label: "Processing",  className: "bg-blue-100 text-blue-700" },
+  COMPLETED:   { label: "Completed",   className: "bg-green-100 text-green-700" },
+  FAILED:      { label: "Failed",      className: "bg-red-100 text-red-700" },
+};
+
+const normalizeTaskStatus = (raw?: string): ExtractionStatus => {
+  if (!raw) return "NONE";
+  const core = raw.split(".").pop()?.toUpperCase() ?? raw.toUpperCase();
+  return (["PENDING", "IN_PROGRESS", "FAILED", "COMPLETED"].includes(core)
+    ? core
+    : "NONE") as ExtractionStatus;
+};
 
 // ─── Issue row ────────────────────────────────────────────────────────────────
 
@@ -103,6 +123,90 @@ const IssueRow: React.FC<IssueRowProps> = ({ issue, onClick }) => {
         )}
         <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusCfg.className}`}>
           {statusCfg.label}
+        </span>
+        <FontAwesomeIcon icon={faEye} className="text-muted-foreground/50 text-sm ml-1" />
+      </div>
+    </div>
+  );
+};
+
+// ─── Extraction row ───────────────────────────────────────────────────────────
+
+interface ExtractionRowProps {
+  report: ReportType;
+  onClick: () => void;
+}
+
+const ExtractionRow: React.FC<ExtractionRowProps> = ({ report, onClick }) => {
+  // Poll every 30s while non-terminal. Subscription is only alive while the
+  // Extractions tab is active (rows unmount on tab switch), and we stop the
+  // poll entirely once the latest task hits COMPLETED/FAILED.
+  const [done, setDone] = useState(false);
+  const { data: tasks = [] } = useGetTasksByReportIdQuery(report.id, {
+    skip: done,
+    pollingInterval: done ? 0 : 30000,
+    refetchOnMountOrArgChange: true,
+  });
+
+  const latestTask = useMemo(() => {
+    if (!tasks.length) return undefined;
+    return tasks
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
+  }, [tasks]);
+
+  const status = normalizeTaskStatus(latestTask?.status);
+
+  useEffect(() => {
+    if (status === "COMPLETED" || status === "FAILED") setDone(true);
+  }, [status]);
+
+  const cfg = EXTRACTION_STATUS_CONFIG[status];
+  const isActive = status === "PENDING" || status === "IN_PROGRESS";
+  const isFailed = status === "FAILED";
+
+  return (
+    <div
+      onClick={onClick}
+      className="flex items-center gap-4 px-5 py-4 bg-card border border-border rounded-xl hover:shadow-sm cursor-pointer transition-all"
+    >
+      {/* Icon */}
+      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center shrink-0">
+        {isActive ? (
+          <Loader2 size={20} className="text-blue-500 animate-spin" />
+        ) : isFailed ? (
+          <AlertCircle size={20} className="text-red-500" />
+        ) : status === "COMPLETED" ? (
+          <CircleCheck size={20} className="text-green-500" />
+        ) : (
+          <FileText size={20} className="text-muted-foreground" />
+        )}
+      </div>
+
+      {/* Name + meta */}
+      <div className="flex-1 min-w-0">
+        <p className="text-base font-semibold text-foreground truncate">
+          {report.name || "Untitled report"}
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Uploaded {formatIssueDate(report.created_at)}
+          {latestTask && (
+            <>
+              {" · "}Last update {formatIssueDate(latestTask.updated_at)}
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Status pill */}
+      <div className="flex items-center gap-2 shrink-0">
+        <span
+          className={`text-xs font-semibold px-3 py-1 rounded-full ${cfg.className}`}
+        >
+          {cfg.label}
         </span>
         <FontAwesomeIcon icon={faEye} className="text-muted-foreground/50 text-sm ml-1" />
       </div>
@@ -183,9 +287,10 @@ const Reports: React.FC = () => {
   const cityState = [listing?.city, listing?.state].filter(Boolean).join(", ");
 
   const tabs: { key: TabKey; label: string; count: number }[] = [
-    { key: "all",        label: "All Issues",  count: listingIssues.length },
-    { key: "inspection", label: "Inspection",  count: inspectionIssues.length },
-    { key: "posted",     label: "Posted",      count: postedIssues.length },
+    { key: "all",         label: "All Issues",  count: listingIssues.length },
+    { key: "inspection",  label: "Inspection",  count: inspectionIssues.length },
+    { key: "posted",      label: "Posted",      count: postedIssues.length },
+    { key: "extractions", label: "Extractions", count: listingReports.length },
   ];
 
   return (
@@ -316,8 +421,43 @@ const Reports: React.FC = () => {
           ))}
         </div>
 
-        {/* Issue list */}
-        {displayedIssues.length === 0 ? (
+        {/* Tab content */}
+        {activeTab === "extractions" ? (
+          listingReports.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
+                <FileText size={20} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground mb-1">
+                No reports yet
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Upload an inspection report to see extraction progress here.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 pt-3">
+              {listingReports
+                .slice()
+                .sort(
+                  (a, b) =>
+                    new Date(b.created_at).getTime() -
+                    new Date(a.created_at).getTime()
+                )
+                .map((report) => (
+                  <ExtractionRow
+                    key={report.id}
+                    report={report}
+                    onClick={() =>
+                      navigate(`/listings/${listingId}/reports/${report.id}`, {
+                        state: { report },
+                      })
+                    }
+                  />
+                ))}
+            </div>
+          )
+        ) : displayedIssues.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-3">
               <TriangleAlert size={20} className="text-muted-foreground" />
