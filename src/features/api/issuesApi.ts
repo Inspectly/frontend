@@ -4,17 +4,47 @@ import { IssueAddress, IssueStatus, IssueType } from "../../types";
 export const issuesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getIssues: builder.query<IssueType[], void>({
-      query: () => "issues/",
-      providesTags: ["Issues"],
-      transformResponse: (response: { items: IssueType[] }) => {
-        // Unwrap paginated response and transform status
-        return response.items.map(issue => ({
-          ...issue,
-          status: issue.status?.startsWith('Status.')
-            ? issue.status
-            : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
-        }));
+      // Fetch page 1 immediately so components show data fast, then background-fetch
+      // remaining pages and patch the same cache entry so all subscribers update live.
+      queryFn: async (_arg, queryApi, _extra, baseQuery) => {
+        const normalize = (items: IssueType[]) =>
+          items.map((issue) => ({
+            ...issue,
+            status: issue.status?.startsWith("Status.")
+              ? issue.status
+              : (`Status.${(issue.status || "OPEN").toUpperCase()}` as IssueStatus),
+          }));
+
+        const PAGE_SIZE = 50;
+        const first = await baseQuery(`issues/?page=1&size=${PAGE_SIZE}`);
+        if (first.error) return { error: first.error };
+
+        const firstData = first.data as { items: IssueType[]; total: number; pages: number };
+        const firstItems = normalize(firstData.items);
+
+        // Background-fetch remaining pages and merge into the same cache entry
+        if (firstData.pages > 1) {
+          const remaining = Array.from({ length: firstData.pages - 1 }, (_, i) =>
+            baseQuery(`issues/?page=${i + 2}&size=${PAGE_SIZE}`)
+          );
+          Promise.all(remaining).then((results) => {
+            const extra = results.flatMap((r) => {
+              const d = r.data as { items: IssueType[] } | undefined;
+              return normalize(d?.items ?? []);
+            });
+            queryApi.dispatch(
+              issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
+                extra.forEach((issue) => {
+                  if (!draft.find((i) => i.id === issue.id)) draft.push(issue);
+                });
+              })
+            );
+          });
+        }
+
+        return { data: firstItems };
       },
+      providesTags: ["Issues"],
     }),
 
     getPaginatedIssues: builder.query<
@@ -58,6 +88,20 @@ export const issuesApi = api.injectEndpoints({
               : `Status.${(issue.status || 'OPEN').toUpperCase()}` as IssueStatus
           }))
         };
+      },
+    }),
+
+    getIssuesByListingId: builder.query<IssueType[], number>({
+      query: (listingId) => `issues/listing/${listingId}`,
+      providesTags: (_result, _error, listingId) => [{ type: "Issues", id: `LISTING_${listingId}` }],
+      transformResponse: (response: { items: IssueType[] } | IssueType[]) => {
+        const items = Array.isArray(response) ? response : response.items;
+        return items.map((issue) => ({
+          ...issue,
+          status: issue.status?.startsWith("Status.")
+            ? issue.status
+            : (`Status.${(issue.status || "OPEN").toUpperCase()}` as IssueStatus),
+        }));
       },
     }),
 
@@ -231,6 +275,7 @@ export const issuesApi = api.injectEndpoints({
 
 export const {
   useGetIssuesQuery,
+  useGetIssuesByListingIdQuery,
   useGetIssueByIdQuery,
   useGetPaginatedIssuesQuery,
   useGetIssueAddressByIdQuery,

@@ -7,7 +7,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { useGetReportsQuery } from "../features/api/reportsApi";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetIssuesByListingIdQuery } from "../features/api/issuesApi";
 import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
 import PostJobWizard from "../components/PostJobWizard";
 import ImageComponent from "../components/ImageComponent";
@@ -119,7 +119,10 @@ const Reports: React.FC = () => {
   const navigate = useNavigate();
   const { listingId } = useParams<{ listingId: string }>();
   const { data: listing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
-  const { data: allIssues = [] } = useGetIssuesQuery();
+  const { data: allIssues = [], isLoading: issuesLoading } = useGetIssuesByListingIdQuery(
+    Number(listingId),
+    { skip: !listingId }
+  );
 
   const [activeTab, setActiveTab] = useState<TabKey>("all");
   const [isCreateCollectionOpen, setIsCreateCollectionOpen] = useState(false);
@@ -135,11 +138,7 @@ const Reports: React.FC = () => {
     }
   }, []);
 
-  // Issues for this listing
-  const listingIssues = useMemo(
-    () => allIssues.filter((i) => String(i.listing_id) === listingId),
-    [allIssues, listingId]
-  );
+  const listingIssues = allIssues;
 
   // Reports for this listing (used by modals)
   const listingReports = useMemo(

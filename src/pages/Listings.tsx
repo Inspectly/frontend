@@ -21,7 +21,7 @@ import {
   useGetListingByUserIdQuery,
   useCreateListingMutation,
 } from "../features/api/listingsApi";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByListings } from "../hooks/useIssuesByListings";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import AddListingOnlyModal from "../components/AddListingOnlyModal";
@@ -210,7 +210,7 @@ const Listings: React.FC = () => {
     user?.id ?? 0,
     { skip: !user?.id }
   );
-  const { data: allIssues = [] } = useGetIssuesQuery();
+  const { data: allIssues = [] } = useIssuesByListings(listings?.map((l) => l.id));
   const [createListing] = useCreateListingMutation();
 
   const navigate = useNavigate();

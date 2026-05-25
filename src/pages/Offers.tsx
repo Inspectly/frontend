@@ -36,7 +36,8 @@ import {
   faCalendarAlt,
   faMapMarkerAlt,
 } from "@fortawesome/free-solid-svg-icons";
-import { useGetIssuesQuery, useUpdateIssueMutation } from "../features/api/issuesApi";
+import { useUpdateIssueMutation } from "../features/api/issuesApi";
+import { useIssuesByListings } from "../hooks/useIssuesByListings";
 import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
@@ -139,7 +140,8 @@ const Offers: React.FC = () => {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { data: issues = [], isLoading: isLoadingIssues, refetch: refetchIssues } = useGetIssuesQuery();
+  const { data: issues = [], isLoading: isLoadingIssues } = useIssuesByListings(listings?.map((l) => l.id));
+  const refetchIssues = () => {};
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), { skip: !userId });
