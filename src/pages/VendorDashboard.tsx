@@ -22,7 +22,7 @@ import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorRe
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 import { getRelativeTime } from "../utils/dateUtils";
-import IssueDetails from "../components/IssueDetails";
+import HomeownerIssueCard from "../components/HomeownerIssueCard";
 import { Briefcase, Calendar, CalendarCheck, MapPin, Star, TrendingUp, Zap } from "lucide-react";
 
 // Static lookup: vendor type → matching issue type keywords
@@ -57,6 +57,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Modal state for issue details
   const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
+  const [selectedTab, setSelectedTab] = useState<"details" | "offers" | "assessments" | "dispute">("details");
 
   // Real data queries (poll every 20s so vendor sees updates when client accepts/rejects offers, approves work, etc.)
   const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
@@ -150,7 +151,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     defaultTab: "details" | "offers" | "assessments" | "dispute" = "details"
   ) => {
     setSelectedIssueId(issueId);
-    // Update URL to set the tab for IssueDetails
+    setSelectedTab(defaultTab);
     navigate(`?tab=${defaultTab}`, { replace: true });
   };
 
@@ -850,17 +851,15 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                           </p>
                         </div>
 
-                        {/* Right side */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <div className="text-right">
-                            {item.bidCount === 0 ? (
-                              <p className="text-xs font-medium text-emerald-600">Be first!</p>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">{item.bidCount} bid{item.bidCount !== 1 ? 's' : ''}</p>
-                            )}
-                          </div>
-                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs" />
-                        </div>
+                        {/* Right side — clicking bid/be-first goes straight to offers tab */}
+                        <button
+                          className={`shrink-0 px-3 py-1.5 rounded-lg text-xs w-24 ${
+                            item.bidCount === 0 ? "btn-gold" : "btn-dark"
+                          }`}
+                          onClick={(e) => { e.stopPropagation(); openIssueModal(item.id, "offers"); }}
+                        >
+                          {item.bidCount === 0 ? "Be first!" : "Quote"}
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -961,30 +960,21 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
       {/* Issue Details Modal */}
       {selectedIssueId && selectedIssue && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-[70] bg-black/40 flex items-center justify-center"
+          onClick={closeIssueModal}
+        >
           <div
-            className="fixed inset-0 bg-black/50 transition-opacity"
-            onClick={closeIssueModal}
-          />
-
-          {/* Modal Content */}
-          <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
-            <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
-              {/* Close Button */}
-              <button
-                onClick={closeIssueModal}
-                className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-muted hover:bg-muted/70 transition-colors"
-                aria-label="Close"
-              >
-                <FontAwesomeIcon icon={faTimes} className="text-muted-foreground" />
-              </button>
-
-              {/* Issue Details Component */}
-              <div className="p-6">
-                <IssueDetails issue={selectedIssue} listing={selectedIssueListing} />
-              </div>
-            </div>
+            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-xl bg-card"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <HomeownerIssueCard
+              key={selectedIssueId}
+              issue={selectedIssue}
+              listing={selectedIssueListing}
+              onClose={closeIssueModal}
+              defaultTab={selectedTab}
+            />
           </div>
         </div>
       )}

@@ -416,6 +416,20 @@ body {
   box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
 }
 
+/* Dark Button */
+.btn-dark {
+  background: #111827;
+  color: #ffffff;
+  font-weight: 500;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-dark:hover {
+  background: hsl(var(--primary));
+  box-shadow: 0 4px 12px rgba(234, 179, 8, 0.35);
+}
+
 /* Dark section */
 .section-dark {
   background: #09090b;

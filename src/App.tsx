@@ -229,6 +229,20 @@ function App() {
     }
   }, [location.pathname, location.search, navigate]);
 
+  // If user pressed browser back from Stripe without completing payment, restore their previous page
+  useEffect(() => {
+    const returnPath = localStorage.getItem("stripe_return_path");
+    const hasSessionId = new URLSearchParams(location.search).has("session_id");
+    if (returnPath && !hasSessionId) {
+      localStorage.removeItem("stripe_return_path");
+      const [path, search] = returnPath.split("?");
+      if (path && path !== location.pathname) {
+        navigate(search ? `${path}?${search}` : path, { replace: true });
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch user type based on user ID
   useEffect(() => {
     const fetchUserType = async () => {

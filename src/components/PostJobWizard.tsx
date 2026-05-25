@@ -214,7 +214,6 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
 
   useEffect(() => {
     if (!open) return;
-    setStep(1);
     setSelectedListing(currentListing ?? (safeListings.length === 1 ? safeListings[0] : null));
     setShowAddProperty(safeListings.length === 0 && !currentListing);
     setPropertyQuery("");
@@ -222,6 +221,9 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
     setNewPropImage("");
     resetIssueFields();
     setCreatedIssue(null);
+    // Skip property selection step when launched from within a property
+    setStep(currentListing ? 2 : 1);
+    if (initialType) setIssueType(initialType);
   }, [open, currentListing, safeListings, initialType]);
 
   if (!open) return null;
@@ -393,6 +395,11 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
       setShowAddProperty(false);
       return;
     }
+    // When launched from a property, step 2 is the first step — back should close
+    if (step === 2 && currentListing) {
+      onClose();
+      return;
+    }
     if (step > 1) setStep((step - 1) as Step);
   };
 
@@ -412,7 +419,8 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
 
   const backDisabled =
     step === 6 ||
-    (step === 1 && (!showAddProperty || safeListings.length === 0));
+    (step === 1 && (!showAddProperty || safeListings.length === 0)) ||
+    (step === 2 && !!currentListing);
 
   const selectedAddress = selectedListing
     ? `${selectedListing.address}, ${selectedListing.city}, ${selectedListing.state}`
@@ -649,7 +657,10 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
                           <button
                             key={listing.id}
                             type="button"
-                            onClick={() => setSelectedListing(listing)}
+                            onClick={() => {
+                              setSelectedListing(listing);
+                              setTimeout(() => setStep(2), 300);
+                            }}
                             className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
                               isSelected
                                 ? "border-primary bg-primary/5 shadow-sm"
@@ -726,7 +737,10 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
                       <button
                         key={vt.value}
                         type="button"
-                        onClick={() => setIssueType(vt.value)}
+                        onClick={() => {
+                          setIssueType(vt.value);
+                          setTimeout(() => setStep(3), 300);
+                        }}
                         className={`flex flex-col items-center gap-2 p-3.5 rounded-xl border-2 transition-all duration-200 ${
                           isSelected
                             ? "border-primary bg-primary/5 shadow-md"
@@ -761,7 +775,10 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
                     <button
                       key={s.value}
                       type="button"
-                      onClick={() => setSeverity(s.value)}
+                      onClick={() => {
+                        setSeverity(s.value);
+                        setTimeout(() => setStep(4), 300);
+                      }}
                       className={`w-full flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                         isSelected
                           ? "border-gray-900 bg-gray-50 shadow-sm"
@@ -977,7 +994,7 @@ const PostJobWizard: React.FC<Props> = ({ open, onClose, listings, reports: prop
                 className="flex-1"
                 onClick={() => {
                   onClose();
-                  if (active) navigate("/offers");
+                  if (active) navigate("/offers?filter=pending");
                 }}
               >
                 {active ? "View quotes" : "Done"}

@@ -61,7 +61,7 @@ import {
 } from "../types";
 import { Briefcase, Upload as UploadIcon } from "lucide-react";
 import ImageComponent from "../components/ImageComponent";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByListings } from "../hooks/useIssuesByListings";
 import { useCreateListingMutation, useGetListingByUserIdQuery } from "../features/api/listingsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 // useGetClientsQuery removed — was fetching all clients but result was never used
@@ -104,7 +104,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // Queries - all real data
   const { data: _listings } = useGetListingByUserIdQuery(user?.id, { skip: !user?.id });
   const { data: reports, refetch: refetchReports } = useGetReportsByUserIdQuery(user?.id, { skip: !user?.id });
-  const { data: issues } = useGetIssuesQuery();
+  const { data: issues = [] } = useIssuesByListings(_listings?.map((l) => l.id));
   const { data: clientProfile } = useGetClientByUserIdQuery(String(user?.id), { skip: !user?.id });
 
   const { data: assessments = [], refetch: refetchAssessments } =
@@ -1454,3 +1454,4 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 };
 
 export default ClientDashboard;
+
