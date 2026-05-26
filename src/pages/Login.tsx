@@ -298,9 +298,24 @@ const Login: React.FC = () => {
       setLoginMethod("email");
       localStorage.setItem("authToken", token);
     } catch (err) {
-      const error = err as AxiosError;
       console.error("Email login failed:", err);
-      setError(error.message || "Failed to sign in.");
+      const code = (err as { code?: string })?.code;
+      let message = "Failed to sign in. Please try again.";
+      if (
+        code === "auth/invalid-credential" ||
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found" ||
+        code === "auth/invalid-email"
+      ) {
+        message = "Incorrect email and/or password. Please try again.";
+      } else if (code === "auth/too-many-requests") {
+        message = "Too many failed attempts. Please try again later or reset your password.";
+      } else if (code === "auth/user-disabled") {
+        message = "This account has been disabled. Please contact support.";
+      } else if (code === "auth/network-request-failed") {
+        message = "Network error. Please check your connection and try again.";
+      }
+      setError(message);
       dispatch(logout());
     } finally {
       setLoading(false);
