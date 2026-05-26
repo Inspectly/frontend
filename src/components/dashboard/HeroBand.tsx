@@ -19,28 +19,11 @@ const HeroBand: React.FC<HeroBandProps> = ({
   isQuiet = false,
 }) => {
   return (
-    // NOTE: do not put `overflow-hidden` on this section — it would clip CTA
-    // dropdowns that drop below the hero. The radial glow is clipped by its
-    // own absolute-positioned wrapper below.
     <section
-      className="relative rounded-2xl border border-primary/15 shadow-hero
-                 bg-gradient-to-br from-card via-card to-primary/[0.07]
-                 px-6 py-5 lg:px-7 lg:py-6 mb-6"
+      className="relative rounded-2xl border border-border shadow-hero
+                 bg-card px-6 py-5 lg:px-7 lg:py-6 mb-6"
     >
-      {/* Soft gold radial glow in upper-right — clipped to the rounded
-          rectangle by its own wrapper so the section itself can stay
-          overflow-visible (needed for dropdown CTAs in the slot). */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
-      >
-        <div
-          className="absolute top-0 right-0 w-[28rem] h-[28rem] rounded-full blur-3xl
-                     bg-primary/10 -translate-y-1/2 translate-x-1/4"
-        />
-      </div>
-
-      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
         <div className="min-w-0 flex-1">
           {/* Kicker — greeting demoted to a small label */}
           <div className="flex items-center gap-2 mb-1.5">
@@ -49,7 +32,7 @@ const HeroBand: React.FC<HeroBandProps> = ({
             </span>
             {isQuiet && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded
-                               bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                               bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
                 <Sparkles className="w-2.5 h-2.5" />
                 All caught up
               </span>

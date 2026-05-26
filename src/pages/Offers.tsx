@@ -659,7 +659,7 @@ const Offers: React.FC = () => {
       <div
         key={offer.id}
         onClick={() => setSelectedOffer(row)}
-        className="flex items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
+        className="flex items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-gray-300 transition-all cursor-pointer"
       >
         {/* Vendor avatar */}
         <div className="flex-shrink-0">
@@ -800,7 +800,7 @@ const Offers: React.FC = () => {
                   <div
                     key={`${req.issue.id}-${req.vendorUserId}`}
                     onClick={() => setSelectedIssue({ issue: req.issue, listing: req.listing, defaultTab: "assessments" })}
-                    className="flex items-center gap-4 px-4 py-3 bg-white border border-blue-200 rounded-xl hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                    className="flex items-center gap-4 px-4 py-3 bg-white border border-blue-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 transition-all cursor-pointer"
                   >
                     <div className="flex-shrink-0">
                       {req.vendor?.profile_image_url && req.vendor.profile_image_url !== "None" ? (
@@ -907,13 +907,13 @@ const Offers: React.FC = () => {
 
         {/* List */}
         {isLoading ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-card p-12 text-center">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading offers...</h3>
             <p className="text-gray-500">Please wait while we fetch your offers</p>
           </div>
         ) : sortedRows.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-card p-8">
             {(statusFilter !== "all" || searchQuery.trim()) ? (
               <div className="text-center py-8">
                 <FontAwesomeIcon
@@ -979,7 +979,7 @@ const Offers: React.FC = () => {
                     <div className="relative">
                       <div className="absolute -top-2 -left-2 w-36 h-44 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
                       <div className="absolute -top-1 -left-1 w-36 h-44 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
-                      <div className="relative w-36 h-44 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
+                      <div className="relative w-36 h-44 bg-white rounded-2xl shadow-card-hover flex flex-col items-center justify-center p-4">
                         <div className="w-14 h-14 bg-gold-200 rounded-xl flex items-center justify-center mb-3">
                           <FontAwesomeIcon icon={faClipboardList} className="text-xl text-gold" />
                         </div>
@@ -1042,7 +1042,7 @@ const Offers: React.FC = () => {
       {showApproveModal && selectedIssueForAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowApproveModal(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-card-hover border p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full flex-shrink-0">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1086,7 +1086,7 @@ const Offers: React.FC = () => {
       {showRequestChangesModal && selectedIssueForAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-card-hover border p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 bg-gold-200 rounded-full flex-shrink-0">
                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1152,7 +1152,7 @@ const Offers: React.FC = () => {
           onClick={() => setSelectedIssue(null)}
         >
           <div
-            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-card-hover bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -1023,7 +1023,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           onClick={closeIssueModal}
         >
           <div
-            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-xl bg-card"
+            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-card-hover bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <HomeownerIssueCard

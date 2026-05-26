@@ -592,7 +592,7 @@ const VendorJobsPage: React.FC = () => {
               <div
                 key={offer.id}
                 onClick={() => openIssueModal(offer.issue_id)}
-                className="group bg-white rounded-xl border border-gray-200 p-4 border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                className="group bg-white rounded-xl border border-gray-200 p-4 border-l-4 border-l-transparent hover:border-l-gold hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
                 <div className="flex gap-4">
                   {/* Property Thumbnail */}
@@ -741,7 +741,7 @@ const VendorJobsPage: React.FC = () => {
           
           {/* Modal Content */}
           <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
+            <div className="relative bg-white rounded-2xl shadow-card-hover w-full max-w-5xl max-h-[85vh] overflow-y-auto">
               {/* Close Button */}
               <button
                 onClick={closeIssueModal}

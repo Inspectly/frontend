@@ -106,7 +106,7 @@ const VendorEarnings: React.FC = () => {
 
         {/* Stat Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl p-5 shadow-lg">
+          <div className="bg-white rounded-xl p-5 shadow-card">
             <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center mb-4">
               <FontAwesomeIcon icon={faDollarSign} className="text-emerald-600" />
             </div>
@@ -115,7 +115,7 @@ const VendorEarnings: React.FC = () => {
             <div className="text-xs text-gold font-medium mt-2">All time</div>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-lg">
+          <div className="bg-white rounded-xl p-5 shadow-card">
             <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center mb-4">
               <FontAwesomeIcon icon={faArrowTrendUp} className="text-gold" />
             </div>
@@ -128,7 +128,7 @@ const VendorEarnings: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-lg">
+          <div className="bg-white rounded-xl p-5 shadow-card">
             <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center mb-4">
               <FontAwesomeIcon icon={faClock} className="text-gold" />
             </div>
@@ -139,7 +139,7 @@ const VendorEarnings: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-5 shadow-lg">
+          <div className="bg-white rounded-xl p-5 shadow-card">
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
               <FontAwesomeIcon icon={faCheckCircle} className="text-blue-600" />
             </div>
@@ -153,7 +153,7 @@ const VendorEarnings: React.FC = () => {
         <div className="grid grid-cols-12 gap-6">
           {/* Monthly Goal */}
           <div className="col-span-12 lg:col-span-5 flex flex-col">
-            <div className="bg-white rounded-xl p-6 shadow-lg flex-1 flex flex-col">
+            <div className="bg-white rounded-xl p-6 shadow-card flex-1 flex flex-col">
               <h2 className="text-lg font-semibold text-gray-900">Monthly Goal</h2>
               <div className="flex flex-col items-center justify-center flex-1 py-6">
                 <div className="text-5xl font-bold text-gray-900">${metrics.thisMonth.toLocaleString()}</div>
@@ -170,7 +170,7 @@ const VendorEarnings: React.FC = () => {
 
           {/* Recent Transactions */}
           <div className="col-span-12 lg:col-span-7">
-            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="bg-white rounded-xl shadow-card overflow-hidden">
               <div className="px-6 py-5">
                 <h2 className="text-lg font-semibold text-gray-900">Recent Transactions</h2>
               </div>

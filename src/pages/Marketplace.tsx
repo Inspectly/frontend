@@ -490,7 +490,7 @@ const Marketplace: React.FC = () => {
         </div>
 
         {/* Search and Filter Section */}
-          <div className="bg-card rounded-xl shadow-lg border border-border mb-8 overflow-hidden">
+          <div className="bg-card rounded-xl shadow-card border border-border mb-8 overflow-hidden">
           <div className="bg-gradient-to-r from-gold-50 to-amber-50 px-6 py-4 border-b border-border">
             <h2 className="text-lg font-semibold text-foreground mb-1">Search & Filter</h2>
             <p className="text-sm text-muted-foreground">Find the perfect jobs for your expertise</p>
@@ -779,7 +779,7 @@ const Marketplace: React.FC = () => {
           }}
         >
           <div
-            className="bg-card rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-auto relative"
+            className="bg-card rounded-xl shadow-card-hover w-full max-w-4xl max-h-[90vh] overflow-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}

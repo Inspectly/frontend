@@ -47,6 +47,7 @@ import FAQ from "./pages/FAQ";
 import About from "./pages/About";
 import Terms from "./pages/Terms";
 import SettingsPage from "./pages/Settings";
+import Chat from "./pages/Chat";
 
 function App() {
   const location = useLocation();
@@ -68,6 +69,7 @@ function App() {
       '/vendor/earnings': 'Earnings',
       '/vendor/reviews': 'Reviews',
       '/settings': 'Settings',
+      '/chat': 'Chat',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -361,6 +363,10 @@ function App() {
               <Route
                 path="/dashboard/faq"
                 element={<PrivateRoute element={<FAQ />} />}
+              />
+              <Route
+                path="/chat"
+                element={<PrivateRoute element={<Chat />} />}
               />
               <Route
                 path="*"

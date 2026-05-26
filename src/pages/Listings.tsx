@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -13,6 +13,8 @@ import {
   TriangleAlert,
   CircleCheck,
   Clock,
+  MoreVertical,
+  Pencil,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -20,11 +22,13 @@ import ImageComponent from "../components/ImageComponent";
 import {
   useGetListingByUserIdQuery,
   useCreateListingMutation,
+  useUpdateListingMutation,
 } from "../features/api/listingsApi";
 import { useIssuesByListings } from "../hooks/useIssuesByListings";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import AddListingOnlyModal from "../components/AddListingOnlyModal";
+import Dropdown from "../components/Dropdown";
 import { Listing } from "../types";
 
 type ViewMode = "grid" | "list";
@@ -53,12 +57,52 @@ interface PropertyCardProps {
   listing: Listing;
   issueCounts?: IssueCounts;
   onClick: () => void;
+  onEdit: () => void;
 }
+
+const CardMenu: React.FC<{ onEdit: () => void }> = ({ onEdit }) => {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label="Property actions"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        className="flex items-center justify-center h-8 w-8 rounded-full bg-white/90 text-foreground shadow-sm hover:bg-white transition-colors"
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <Dropdown buttonRef={buttonRef} onClose={() => setOpen(false)}>
+          <button
+            type="button"
+            className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 w-full text-left rounded-md"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+              onEdit();
+            }}
+          >
+            <Pencil size={14} />
+            Edit Property
+          </button>
+        </Dropdown>
+      )}
+    </>
+  );
+};
 
 const PropertyCard: React.FC<PropertyCardProps> = ({
   listing,
   issueCounts,
   onClick,
+  onEdit,
 }) => {
   const total = issueCounts?.total ?? 0;
   const open = issueCounts?.open ?? 0;
@@ -68,7 +112,7 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer rounded-2xl bg-card overflow-hidden shadow-soft hover-lift"
+      className="group cursor-pointer rounded-2xl bg-card overflow-hidden shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200"
     >
       {/* Image area */}
       <div className="relative h-[var(--property-card-image-h)] overflow-hidden bg-muted">
@@ -83,6 +127,9 @@ const PropertyCard: React.FC<PropertyCardProps> = ({
             {open} open
           </div>
         )}
+        <div className="absolute top-3 right-3">
+          <CardMenu onEdit={onEdit} />
+        </div>
       </div>
 
       {/* Content area */}
@@ -125,6 +172,7 @@ const PropertyListRow: React.FC<PropertyCardProps> = ({
   listing,
   issueCounts,
   onClick,
+  onEdit,
 }) => {
   const total = issueCounts?.total ?? 0;
   const open = issueCounts?.open ?? 0;
@@ -134,7 +182,7 @@ const PropertyListRow: React.FC<PropertyCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className="group cursor-pointer flex items-center gap-4 rounded-xl bg-card p-3 shadow-soft hover-lift"
+      className="group cursor-pointer flex items-center gap-4 rounded-xl bg-card p-3 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200"
     >
       {/* Thumbnail */}
       <div className="relative w-20 h-[3.75rem] rounded-lg overflow-hidden bg-muted shrink-0">
@@ -180,6 +228,10 @@ const PropertyListRow: React.FC<PropertyCardProps> = ({
           {relativeTime(listing.updated_at)}
         </span>
       </div>
+
+      <div className="shrink-0">
+        <CardMenu onEdit={onEdit} />
+      </div>
     </div>
   );
 };
@@ -212,6 +264,7 @@ const Listings: React.FC = () => {
   );
   const { data: allIssues = [] } = useIssuesByListings(listings?.map((l) => l.id));
   const [createListing] = useCreateListingMutation();
+  const [updateListing] = useUpdateListingMutation();
 
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,6 +273,7 @@ const Listings: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(12);
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState(false);
+  const [editingListing, setEditingListing] = useState<Listing | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   // Auto-open modal if action=add is in URL
@@ -415,6 +469,7 @@ const Listings: React.FC = () => {
               listing={listing}
               issueCounts={issueCountsByListing[listing.id]}
               onClick={() => navigate(`/listings/${listing.id}`)}
+              onEdit={() => setEditingListing(listing)}
             />
           ))}
         </div>
@@ -426,6 +481,7 @@ const Listings: React.FC = () => {
               listing={listing}
               issueCounts={issueCountsByListing[listing.id]}
               onClick={() => navigate(`/listings/${listing.id}`)}
+              onEdit={() => setEditingListing(listing)}
             />
           ))}
         </div>
@@ -512,6 +568,38 @@ const Listings: React.FC = () => {
             window.scrollTo(0, 0);
           } catch (e) {
             console.error("Failed to create listing:", e);
+          }
+        }}
+      />
+
+      {/* ── Edit listing modal ── */}
+      <AddListingOnlyModal
+        isOpen={editingListing !== null}
+        mode="edit"
+        initialData={
+          editingListing
+            ? {
+                address: editingListing.address ?? "",
+                city: editingListing.city ?? "",
+                state: editingListing.state ?? "",
+                country: editingListing.country ?? "Canada",
+                postal_code: editingListing.postal_code ?? "",
+                image_url: editingListing.image_url ?? "",
+              }
+            : undefined
+        }
+        onClose={() => setEditingListing(null)}
+        onSubmit={async (formData) => {
+          if (!editingListing) return;
+          try {
+            await updateListing({
+              id: editingListing.id,
+              user_id: editingListing.user_id,
+              ...formData,
+            }).unwrap();
+            setEditingListing(null);
+          } catch (e) {
+            console.error("Failed to update listing:", e);
           }
         }}
       />

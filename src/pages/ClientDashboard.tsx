@@ -619,46 +619,24 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     !isNewUser;
 
   // Create dropdown — rendered as the Hero's CTA slot (replaces the previous
-  // contextual "Review your quote" / "Approve work" / etc. button). The button
-  // gets a pulsing gold halo + a left-to-right gold sweep to draw the eye
-  // toward the primary action, especially on first load.
+  // contextual "Review your quote" / "Approve work" / etc. button).
   const heroCreateCta = (
     <div className="relative" ref={createDropdownRef}>
-      {/* Inner wrapper scopes the gold halo to just the button (so it doesn't
-          balloon when the dropdown opens below). */}
-      <div className="relative inline-flex">
-        {/* Pulsing gold halo behind the button */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -inset-[6px] rounded-2xl
-                     bg-primary/40 blur-md animate-cta-halo"
+      <button
+        onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+        className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-xl
+                   bg-foreground text-background font-semibold text-sm
+                   hover:bg-foreground/90 hover:-translate-y-0.5
+                   active:translate-y-0
+                   transition-all shadow-card hover:shadow-card-hover"
+      >
+        <FontAwesomeIcon icon={faPlus} className="text-xs" />
+        <span>Create</span>
+        <FontAwesomeIcon
+          icon={faChevronRight}
+          className={`text-xs transition-transform ${isCreateDropdownOpen ? "rotate-90" : ""}`}
         />
-
-        <button
-          onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-          className="group relative overflow-hidden inline-flex items-center gap-2.5 px-5 py-3 rounded-xl
-                     bg-foreground text-background font-semibold text-sm
-                     hover:bg-foreground/90 hover:-translate-y-0.5
-                     active:translate-y-0
-                     transition-all shadow-card hover:shadow-card-hover
-                     ring-1 ring-primary/30"
-        >
-          {/* Left-to-right gold sweep (clipped by the button's overflow-hidden) */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3
-                       bg-gradient-to-r from-transparent via-primary/70 to-transparent
-                       animate-cta-sweep"
-          />
-
-          <FontAwesomeIcon icon={faPlus} className="text-xs relative z-10" />
-          <span className="relative z-10">Create</span>
-          <FontAwesomeIcon
-            icon={faChevronRight}
-            className={`text-xs transition-transform relative z-10 ${isCreateDropdownOpen ? "rotate-90" : ""}`}
-          />
-        </button>
-      </div>
+      </button>
 
       {isCreateDropdownOpen && (
         <div className="absolute right-0 top-full mt-2 w-64 bg-card rounded-xl shadow-card border border-border py-2 z-50">
@@ -715,12 +693,8 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           <div className="mb-6">
             {/* Hero Welcome Card */}
             <div className="relative overflow-hidden rounded-2xl bg-foreground p-8 lg:p-10 shadow-lg">
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
-              <div className="absolute top-10 right-10 w-20 h-20 border border-primary/20 rounded-xl rotate-12"></div>
               <div className="absolute bottom-10 right-32 w-12 h-12 border border-background/10 rounded-lg -rotate-6"></div>
-              
+
               <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
                 <div className="flex-1 text-center lg:text-left">
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium mb-4">
@@ -971,7 +945,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                               className="group rounded-2xl overflow-hidden cursor-pointer bg-card border border-border/60 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200"
                             >
                               {/* Property image area */}
-                              <div className="h-40 relative overflow-hidden bg-gradient-to-br from-primary/15 via-primary/5 to-card">
+                              <div className="h-40 relative overflow-hidden bg-muted">
                                 {hasImage ? (
                                   <>
                                     <ImageComponent
@@ -983,13 +957,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                   </>
                                 ) : (
                                   <>
-                                    {/* Soft pattern accent */}
-                                    <div className="absolute inset-0 opacity-60"
-                                         style={{
-                                           backgroundImage:
-                                             "radial-gradient(circle at 25% 30%, hsl(var(--primary) / 0.15), transparent 40%), radial-gradient(circle at 80% 75%, hsl(var(--primary) / 0.10), transparent 45%)",
-                                         }}
-                                    />
                                     <div className="absolute inset-0 flex items-center justify-center">
                                       <div className="w-20 h-20 rounded-2xl bg-card/85 backdrop-blur flex items-center justify-center font-display text-3xl font-bold text-primary shadow-card">
                                         {initial}

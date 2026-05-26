@@ -1,5 +1,6 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ImagePlus } from "lucide-react";
+import { uploadFileToImageUrl } from "../utils/imageUpload";
 
 export interface ListingOnlyFormData {
   address: string;
@@ -14,6 +15,8 @@ interface AddListingOnlyModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: ListingOnlyFormData) => Promise<void> | void;
+  initialData?: ListingOnlyFormData;
+  mode?: "create" | "edit";
 }
 
 const COUNTRY_STATES: Record<string, { code: string; name: string }[]> = {
@@ -49,13 +52,38 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  initialData,
+  mode = "create",
 }) => {
-  const [formData, setFormData] = useState<ListingOnlyFormData>(initialForm);
+  const [formData, setFormData] = useState<ListingOnlyFormData>(
+    initialData ?? initialForm
+  );
   const [loading, setLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string>("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(
+    initialData?.image_url ?? ""
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Sync form when opening with new initialData (e.g., switching between properties to edit)
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(initialData ?? initialForm);
+      setImageFile(null);
+      setImagePreview(initialData?.image_url ?? "");
+    }
+  }, [isOpen, initialData]);
+
+  // Revoke object URL previews when they change or unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview.startsWith("blob:")) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
   if (!isOpen) return null;
+
+  const isEdit = mode === "edit";
 
   const availableStates = COUNTRY_STATES[formData.country] || [];
 
@@ -80,16 +108,12 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setFormData((prev) => ({ ...prev, image_url: base64 }));
-      setImagePreview(base64);
-    };
-    reader.readAsDataURL(file);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const removeImage = () => {
+    setImageFile(null);
     setFormData((prev) => ({ ...prev, image_url: "" }));
     setImagePreview("");
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -120,8 +144,20 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
 
     setLoading(true);
     try {
-      await onSubmit(formData);
+      let imageUrl = formData.image_url ?? "";
+      if (imageFile) {
+        try {
+          imageUrl = await uploadFileToImageUrl(imageFile);
+        } catch (err) {
+          console.error("Failed to upload property image:", err);
+          alert("Failed to upload property image. Please try again.");
+          return;
+        }
+      }
+
+      await onSubmit({ ...formData, image_url: imageUrl });
       setFormData(initialForm);
+      setImageFile(null);
       setImagePreview("");
       onClose();
     } catch (err) {
@@ -133,6 +169,7 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
 
   const handleCancel = () => {
     setFormData(initialForm);
+    setImageFile(null);
     setImagePreview("");
     onClose();
   };
@@ -150,7 +187,9 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
           &times;
         </button>
 
-        <h6 className="text-lg font-semibold mb-4">Add New Property</h6>
+        <h6 className="text-lg font-semibold mb-4">
+          {isEdit ? "Edit Property" : "Add New Property"}
+        </h6>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-12 gap-4">
           {/* Property Image */}
@@ -293,7 +332,13 @@ const AddListingOnlyModal: React.FC<AddListingOnlyModalProps> = ({
                 loading ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
-              {loading ? "Creating..." : "Create Property"}
+              {loading
+                ? isEdit
+                  ? "Saving..."
+                  : "Creating..."
+                : isEdit
+                  ? "Save Changes"
+                  : "Create Property"}
             </button>
           </div>
         </form>

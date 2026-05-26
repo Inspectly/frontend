@@ -10,9 +10,11 @@ export const listingsApi = api.injectEndpoints({
     }),
     getListingById: builder.query<Listing, number>({
       query: (id) => `listings/${id}`,
+      providesTags: ["Listings"],
     }),
     getListingByUserId: builder.query<Listing[], number>({
       query: (userId) => `listings/user/${userId}`,
+      providesTags: ["Listings"],
     }),
     createListing: builder.mutation<Listing, Partial<Listing>>({
       query: (newListing) => ({
@@ -22,7 +24,21 @@ export const listingsApi = api.injectEndpoints({
       }),
       invalidatesTags: ["Listings"],
     }),
+    updateListing: builder.mutation<Listing, { id: number } & Partial<Listing>>({
+      query: ({ id, ...body }) => ({
+        url: `listings/${id}`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: ["Listings"],
+    }),
   }),
 });
 
-export const { useGetListingsQuery, useGetListingByIdQuery, useGetListingByUserIdQuery, useCreateListingMutation } = listingsApi;
+export const {
+  useGetListingsQuery,
+  useGetListingByIdQuery,
+  useGetListingByUserIdQuery,
+  useCreateListingMutation,
+  useUpdateListingMutation,
+} = listingsApi;

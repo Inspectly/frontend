@@ -169,32 +169,50 @@ body {
   box-shadow:
     0 0 14px -4px rgba(20, 15, 5, 0.04),
     0 2px 4px -1px rgba(20, 15, 5, 0.05),
-    0 10px 22px -10px rgba(20, 15, 5, 0.10);
+    0 10px 22px -10px rgba(212, 160, 23, 0.14);
 }
 
 .shadow-card-hover {
   box-shadow:
     0 0 18px -4px rgba(20, 15, 5, 0.06),
     0 4px 8px -2px rgba(20, 15, 5, 0.07),
-    0 18px 34px -14px rgba(20, 15, 5, 0.16);
+    0 18px 34px -14px rgba(212, 160, 23, 0.20);
 }
 
-/* Hero shadow — same containment principles, plus a soft gold halo. */
+/* Hero shadow — same containment principles as shadow-card, slightly deeper. */
 .shadow-hero {
   box-shadow:
     0 0 18px -4px rgba(20, 15, 5, 0.05),
     0 4px 10px -2px rgba(20, 15, 5, 0.07),
-    0 20px 44px -18px rgba(234, 179, 8, 0.30);
+    0 20px 44px -18px rgba(212, 160, 23, 0.22);
 }
 
-/* Warm home-feeling page background — distinct beige base with gold halo top-right.
-   Cards (bg-card = pure white) get a clear ~7% lightness step to lift off. */
+/* Dashboard scope — strip the gold tint so the dashboard reads as neutral
+   while Listings / Offers / etc. keep the warm halo. Bottom drop is also
+   dialed back so it doesn't read heavier than the rest of the app. */
+.bg-dashboard .shadow-card {
+  box-shadow:
+    0 0 14px -4px rgba(20, 15, 5, 0.04),
+    0 2px 4px -1px rgba(20, 15, 5, 0.05),
+    0 10px 22px -10px rgba(20, 15, 5, 0.06);
+}
+.bg-dashboard .shadow-card-hover {
+  box-shadow:
+    0 0 18px -4px rgba(20, 15, 5, 0.06),
+    0 4px 8px -2px rgba(20, 15, 5, 0.07),
+    0 18px 34px -14px rgba(20, 15, 5, 0.10);
+}
+.bg-dashboard .shadow-hero {
+  box-shadow:
+    0 0 18px -4px rgba(20, 15, 5, 0.05),
+    0 4px 10px -2px rgba(20, 15, 5, 0.07),
+    0 20px 44px -18px rgba(20, 15, 5, 0.10);
+}
+
+/* Dashboard background — matches the neutral `bg-neutral-100` used by the
+   rest of the logged-in app via DashboardHeader's outer wrapper. */
 .bg-dashboard {
-  background-color: hsl(40 22% 93%);
-  background-image:
-    radial-gradient(ellipse 80% 60% at 85% -10%, hsl(var(--primary) / 0.12), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 10% 5%, hsl(var(--primary) / 0.06), transparent 55%);
-  background-attachment: fixed;
+  background-color: hsl(0 0% 96%);
 }
 
 /* Animate on hover */
