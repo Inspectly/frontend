@@ -93,6 +93,45 @@ export const issueOffersApi = api.injectEndpoints({
           { type: "Offers", id },
           { type: "Offers", id: "LIST" },
         ],
+        async onQueryStarted({ id, issue_id, vendor_id }, { dispatch, queryFulfilled }) {
+          // Optimistically drop the offer from the cached lists so the
+          // marketplace card flips to "Write Offer" instantly, instead of
+          // waiting on the background refetch round-trip. Roll back on failure.
+          const patches: { undo: () => void }[] = [];
+          const removeOffer = (list: IssueOffer[]) => {
+            const idx = list.findIndex((o) => o.id === id);
+            if (idx !== -1) list.splice(idx, 1);
+          };
+          if (vendor_id != null) {
+            patches.push(
+              dispatch(
+                issueOffersApi.util.updateQueryData(
+                  "getOffersByVendorId",
+                  Number(vendor_id),
+                  removeOffer
+                )
+              )
+            );
+          }
+          if (issue_id != null) {
+            patches.push(
+              dispatch(
+                issueOffersApi.util.updateQueryData(
+                  "getOffersByIssueId",
+                  Number(issue_id),
+                  removeOffer
+                )
+              )
+            );
+          }
+          try {
+            await queryFulfilled;
+            if (issue_id) dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(Number(issue_id), { forceRefetch: true }));
+            if (vendor_id) dispatch(issueOffersApi.endpoints.getOffersByVendorId.initiate(Number(vendor_id), { forceRefetch: true }));
+          } catch {
+            patches.forEach((p) => p.undo());
+          }
+        },
       }),
   }),
 });
