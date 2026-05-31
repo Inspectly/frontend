@@ -1,0 +1,18 @@
+{
+  "homeowner": {
+    "name": "Inspectly",
+    "subtitle": "Manage Home Inspections",
+    "description": "Inspectly helps homeowners manage property inspections, review vendor offers, schedule site visits, and pay for repairs — all from your phone. Track issues found in inspection reports, receive competitive bids from verified vendors, and monitor project progress in real-time.",
+    "keywords": "home inspection, property management, home repair, vendor marketplace, home maintenance",
+    "category": "Lifestyle",
+    "primaryColor": "#D4A853"
+  },
+  "vendor": {
+    "name": "Inspectly Pro",
+    "subtitle": "Find & Manage Repair Jobs",
+    "description": "Inspectly Pro connects verified contractors and repair vendors with homeowners who need repairs identified during home inspections. Browse available jobs in the marketplace, submit competitive bids, schedule assessment visits, and manage your active projects — all in one app.",
+    "keywords": "contractor, repair jobs, home repair, vendor, bidding, marketplace",
+    "category": "Business",
+    "primaryColor": "#D4A853"
+  }
+}

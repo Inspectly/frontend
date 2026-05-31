@@ -1,0 +1,15 @@
+{
+  "name": "inspectly-mobile",
+  "private": true,
+  "scripts": {
+    "dev:homeowner": "cd apps/homeowner && npx expo start",
+    "dev:vendor": "cd apps/vendor && npx expo start",
+    "build:shared": "cd packages/shared && npm run build",
+    "lint": "turbo lint",
+    "clean": "turbo clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "~5.6.0"
+  }
+}
