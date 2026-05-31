@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Inspectly",
+    "slug": "inspectly-homeowner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "inspectly-homeowner",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1A1A1A"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.inspectly.homeowner"
+    },
+    "android": {
+      "package": "com.inspectly.homeowner"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
