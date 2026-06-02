@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
-import { IssueAddress, IssueType } from "../types";
+import { IssueAddress, IssueAssessment, IssueOffer, IssueType } from "../types";
 import ImageComponent from "./ImageComponent";
+import BidStatusButton from "./BidStatusButton";
+import { getBidStage, isCtaStage, BidStage } from "../utils/bidStatus";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
@@ -21,11 +23,15 @@ interface IssueItemProps {
   issue: IssueType;
   userType?: string;
   address?: IssueAddress;
+  /** The current vendor's existing offer on this issue, if any. */
+  myOffer?: IssueOffer;
+  /** The current vendor's assessment request on this issue, if any. */
+  myAssessment?: IssueAssessment;
   onClick?: (issue: IssueType) => void;
   onPlaceBid?: (issue: IssueType) => void;
 }
 
-const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceBid }) => {
+const IssueItem: React.FC<IssueItemProps> = ({ issue, address, myOffer, myAssessment, onClick, onPlaceBid }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -56,6 +62,23 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceB
   };
 
   const severityConfig = getSeverityIcon(issue.severity);
+
+  const stage = getBidStage(myOffer, myAssessment);
+
+  // Glanceable status badge shown over the image (amount for offers,
+  // visit status for assessments).
+  const badge: { label: string; className: string } | null = (() => {
+    const stageBadges: Partial<Record<BidStage, { label: string; className: string }>> = {
+      offer_accepted: { label: "Offer accepted", className: "bg-emerald-500/90 text-white" },
+      offer_pending: {
+        label: myOffer ? `$${Number(myOffer.price).toLocaleString()}` : "Your offer",
+        className: "bg-gold/90 text-white",
+      },
+      assessment_confirmed: { label: "Visit confirmed", className: "bg-emerald-500/90 text-white" },
+      assessment_pending: { label: "Visit requested", className: "bg-sky-500/90 text-white" },
+    };
+    return stageBadges[stage] ?? null;
+  })();
 
   const handleClick = () => {
     if (onClick) {
@@ -110,6 +133,17 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceB
             {normalizeAndCapitalize(issue.type)}
           </span>
         </div>
+
+        {/* Status badge - Top Right (offer amount / visit status) */}
+        {badge && (
+          <div className="absolute top-3 right-3">
+            <span
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full backdrop-blur-sm shadow-lg ${badge.className}`}
+            >
+              {badge.label}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content Section */}
@@ -146,21 +180,25 @@ const IssueItem: React.FC<IssueItemProps> = ({ issue, address, onClick, onPlaceB
         </div>
       </div>
 
-      {/* Place Bid Button */}
+      {/* Status-driven action button */}
       <div className="px-4 pb-4">
-        <button
+        <BidStatusButton
+          stage={stage}
+          className="w-full h-11 px-4"
           onClick={(e) => {
             e.stopPropagation();
-            if (onPlaceBid) {
-              onPlaceBid(issue);
+            // Active CTA → open the bid panel; other stages open the detail
+            // view so the vendor can view / manage the pending item.
+            if (isCtaStage(stage)) {
+              if (onPlaceBid) onPlaceBid(issue);
+              else handleClick();
+            } else if (onClick) {
+              onClick(issue);
             } else {
               handleClick();
             }
           }}
-          className="w-full px-4 py-2 btn-dark rounded-lg text-sm"
-        >
-          Quote
-        </button>
+        />
       </div>
     </div>
   );

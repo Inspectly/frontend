@@ -118,7 +118,7 @@ const STAGE_ACCENT: Record<JobStage, string> = {
   submitted: "border-l-purple-400",
 };
 
-const OVERDUE_ACCENT = "border-l-rose-500";
+const OVERDUE_ACCENT = "border-l-primary";
 
 const STAGE_PILL: Record<
   JobStage,
@@ -593,13 +593,13 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
                   <span
                     className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                       j.isOverdue
-                        ? "bg-rose-100 text-rose-700"
+                        ? "bg-primary/10 text-primary"
                         : "bg-amber-100 text-amber-800"
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        j.isOverdue ? "bg-rose-500" : "bg-amber-500"
+                        j.isOverdue ? "bg-primary" : "bg-amber-500"
                       } animate-pulse`}
                     />
                     Needs you
@@ -615,7 +615,7 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
                 {j.daysWaiting !== null && j.daysWaiting > 0 && (
                   <>
                     <span className="text-muted-foreground/50">·</span>
-                    <span className={j.isOverdue ? "font-semibold text-rose-600" : ""}>
+                    <span className={j.isOverdue ? "font-semibold text-primary" : ""}>
                       {j.daysWaiting} day{j.daysWaiting !== 1 ? "s" : ""} waiting
                     </span>
                   </>
@@ -650,7 +650,7 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
                 e.stopPropagation();
                 j.issue?.id && onOpenIssue(j.issue.id, "details");
               }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background"
             >
               View
             </button>
@@ -674,7 +674,7 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
                 handleAcceptVisit(j);
               }}
               disabled={pendingVisitActionId !== null}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
             >
               <Check className="w-3 h-3" />
               {pendingVisitActionId !== null ? "…" : "Accept"}
@@ -697,7 +697,7 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
               e.stopPropagation();
               j.issue?.id && onOpenIssue(j.issue.id, "assessments");
             }}
-            className="self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-opacity hover:opacity-90"
+            className="self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background"
           >
             <Calendar className="w-3 h-3" />
             Propose time
@@ -712,9 +712,7 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
                   j.stage.startsWith("visit") ? "assessments" : "details"
                 );
             }}
-            className={`self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ${
-              j.isOverdue ? "bg-rose-600 text-white" : "bg-foreground text-background"
-            }`}
+            className="self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background"
           >
             View
             <ChevronRight className="w-3 h-3" />
@@ -827,8 +825,8 @@ const VendorActiveJobsCard: React.FC<VendorActiveJobsCardProps> = ({
             <button
               onClick={onBrowseJobs}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
-                         bg-foreground text-background font-semibold text-sm
-                         hover:opacity-90 transition-opacity"
+                         bg-gold text-white font-semibold text-sm
+                         hover:bg-foreground hover:text-background transition-colors"
             >
               Browse jobs
               <ChevronRight className="w-4 h-4" />

@@ -104,7 +104,7 @@ const STAGE_ACCENT: Record<ProjectStage, string> = {
   "awaiting-quotes": "border-l-muted-foreground/30",
 };
 
-const OVERDUE_ACCENT = "border-l-rose-500";
+const OVERDUE_ACCENT = "border-l-primary";
 
 const STAGE_PILL: Record<ProjectStage, { label: string; cls: string; icon: React.ComponentType<{ className?: string }> }> = {
   "awaiting-approval": {
@@ -257,9 +257,17 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
           (acceptedOffer && vendorMap[acceptedOffer.vendor_id]) ||
           (issue.vendor_id ? vendorMap[issue.vendor_id] : undefined);
 
+        // A vendor-proposed visit awaiting the homeowner's confirm/decline is
+        // actionable on its own — even before any quote exists (the common
+        // marketplace flow is "propose a visit, then quote after assessing").
+        const vendorPendingVisit =
+          !!pendingVisit && pendingVisit.user_type === "vendor";
+
         let stage: ProjectStage;
         if (issue.status === "Status.REVIEW") {
           stage = "awaiting-approval";
+        } else if (vendorPendingVisit) {
+          stage = "visit-pending";
         } else if (pendingOffers.length > 0 && !acceptedOffer) {
           stage = "quotes-received";
         } else if (acceptedOffer && pendingVisit) {
@@ -521,13 +529,13 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
                   <span
                     className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                       p.isOverdue
-                        ? "bg-rose-100 text-rose-700"
+                        ? "bg-primary/10 text-primary"
                         : "bg-amber-100 text-amber-800"
                     }`}
                   >
                     <span
                       className={`w-1.5 h-1.5 rounded-full ${
-                        p.isOverdue ? "bg-rose-500" : "bg-amber-500"
+                        p.isOverdue ? "bg-primary" : "bg-amber-500"
                       } animate-pulse`}
                     />
                     Needs you
@@ -541,7 +549,7 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
                 {p.daysWaiting !== null && p.daysWaiting > 0 && (
                   <>
                     <span className="text-muted-foreground/50">·</span>
-                    <span className={p.isOverdue ? "font-semibold text-rose-600" : ""}>
+                    <span className={p.isOverdue ? "font-semibold text-primary" : ""}>
                       {p.daysWaiting} day{p.daysWaiting !== 1 ? "s" : ""} waiting
                     </span>
                   </>
@@ -578,7 +586,7 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
                 e.stopPropagation();
                 onOpenIssue(p.issue, "offers");
               }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background"
             >
               <Check className="w-3 h-3" />
               Accept
@@ -606,7 +614,7 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
                 if (p.pendingVisitEvent) handleAcceptVisitClick(p.pendingVisitEvent);
               }}
               disabled={pendingVisitActionId === Number(p.pendingVisitEvent.id)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background disabled:opacity-50"
             >
               <Check className="w-3 h-3" />
               {pendingVisitActionId === Number(p.pendingVisitEvent.id) ? "…" : "Accept"}
@@ -629,11 +637,7 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
               e.stopPropagation();
               onOpenIssue(p.issue, cta.tab);
             }}
-            className={`self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-opacity hover:opacity-90 ${
-              p.isOverdue
-                ? "bg-rose-600 text-white"
-                : "bg-foreground text-background"
-            }`}
+            className="self-center flex-shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gold text-white transition-colors hover:bg-foreground hover:text-background"
           >
             {cta.label}
             <ChevronRight className="w-3 h-3" />
@@ -724,8 +728,8 @@ const ActiveProjectsCard: React.FC<ActiveProjectsCardProps> = ({
             <button
               onClick={onPostJob}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl
-                         bg-foreground text-background font-semibold text-sm
-                         hover:opacity-90 transition-opacity"
+                         bg-gold text-white font-semibold text-sm
+                         hover:bg-foreground hover:text-background transition-colors"
             >
               Post a job
               <ChevronRight className="w-4 h-4" />

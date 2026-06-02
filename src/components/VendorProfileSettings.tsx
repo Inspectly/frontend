@@ -15,9 +15,32 @@ interface VendorFormData {
   serviceArea: string;
   businessType: string;
   license: string;
+  providesWarranty: boolean;
+  warrantyAmount: string;
+  warrantyUnit: string;
 }
 
 type Tab = "profile" | "notifications" | "verification";
+
+const WARRANTY_UNITS = ["Days", "Weeks", "Months", "Years"] as const;
+
+// Parse a stored warranty string (e.g. "1 year", "6 months") into an
+// amount + unit for the form controls. Falls back to a sensible default.
+const parseWarranty = (warranty?: string | null): { amount: string; unit: string } => {
+  const match = (warranty || "").trim().match(/^(\d+)\s*(day|week|month|year)/i);
+  if (match) {
+    const word = match[2].toLowerCase();
+    return { amount: match[1], unit: `${word.charAt(0).toUpperCase()}${word.slice(1)}s` };
+  }
+  return { amount: "1", unit: "Years" };
+};
+
+// Build the canonical warranty string, e.g. "1 year" / "2 years".
+const formatWarranty = (amount: string, unit: string): string => {
+  const n = parseInt(amount, 10) || 1;
+  const singular = unit.replace(/s$/, "").toLowerCase();
+  return `${n} ${singular}${n === 1 ? "" : "s"}`;
+};
 
 const VendorProfileSettings: React.FC = () => {
   const user = useSelector((state: RootState) => state.auth.user);
@@ -38,17 +61,26 @@ const VendorProfileSettings: React.FC = () => {
     serviceArea: "",
     businessType: "",
     license: "",
+    providesWarranty: false,
+    warrantyAmount: "1",
+    warrantyUnit: "Years",
   });
 
-  const getInitialFormData = (data: typeof vendorData): VendorFormData => ({
-    name: data?.name || "",
-    contactName: "",
-    email: data?.email || "",
-    phone: data?.phone || "",
-    serviceArea: [data?.city, data?.state].filter(Boolean).join(", "),
-    businessType: data?.vendor_types || "",
-    license: data?.license || "",
-  });
+  const getInitialFormData = (data: typeof vendorData): VendorFormData => {
+    const { amount, unit } = parseWarranty(data?.warranty);
+    return {
+      name: data?.name || "",
+      contactName: "",
+      email: data?.email || "",
+      phone: data?.phone || "",
+      serviceArea: [data?.city, data?.state].filter(Boolean).join(", "),
+      businessType: data?.vendor_types || "",
+      license: data?.license || "",
+      providesWarranty: Boolean(data?.warranty && data.warranty.trim()),
+      warrantyAmount: amount,
+      warrantyUnit: unit,
+    };
+  };
 
   useEffect(() => {
     if (vendorData) {
@@ -106,6 +138,9 @@ const VendorProfileSettings: React.FC = () => {
         postal_code: vendorData.postal_code,
         rating: vendorData.rating,
         review: vendorData.review,
+        warranty: formData.providesWarranty
+          ? formatWarranty(formData.warrantyAmount, formData.warrantyUnit)
+          : "",
       };
 
       await updateVendor(payload).unwrap();
@@ -279,6 +314,60 @@ const VendorProfileSettings: React.FC = () => {
               value={formData.serviceArea}
               onChange={handleChange}
             />
+          </div>
+
+          {/* Warranty — vendor-level. When enabled, the terms are attached to
+              all of this vendor's offers so homeowners can see them. */}
+          <div className="mb-6 border border-neutral-200 rounded-xl p-4">
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formData.providesWarranty}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, providesWarranty: e.target.checked }))
+                }
+                className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-gold focus:ring-gold"
+              />
+              <span className="text-sm">
+                <span className="block font-medium text-neutral-800">I offer a warranty on my work</span>
+                <span className="block text-neutral-500">
+                  Shown to homeowners with every offer you submit.
+                </span>
+              </span>
+            </label>
+
+            {formData.providesWarranty && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-neutral-800 mb-2">
+                  Warranty length
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    id="warrantyAmount"
+                    min={1}
+                    className="w-24 border border-neutral-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40"
+                    value={formData.warrantyAmount}
+                    onChange={handleChange}
+                  />
+                  <select
+                    id="warrantyUnit"
+                    className="border border-neutral-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gold/40 bg-white"
+                    value={formData.warrantyUnit}
+                    onChange={handleChange}
+                  >
+                    {WARRANTY_UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Homeowners will see "{formatWarranty(formData.warrantyAmount, formData.warrantyUnit)} warranty" on your offers.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3">

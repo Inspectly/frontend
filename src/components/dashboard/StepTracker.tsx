@@ -33,13 +33,9 @@ const StepTracker: React.FC<StepTrackerProps> = ({
               key={step}
               className={`h-1 flex-1 rounded-full transition-colors ${
                 isActive
-                  ? overdue
-                    ? "bg-rose-500"
-                    : "bg-primary"
+                  ? "bg-primary"
                   : isCompleted
-                  ? overdue
-                    ? "bg-rose-300"
-                    : "bg-primary/50"
+                  ? "bg-primary/50"
                   : isFuture
                   ? "bg-muted-foreground/15"
                   : ""
@@ -50,7 +46,7 @@ const StepTracker: React.FC<StepTrackerProps> = ({
       </div>
       <span
         className={`text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
-          overdue ? "text-rose-600" : "text-foreground/70"
+          overdue ? "text-primary" : "text-foreground/70"
         }`}
       >
         {label}
