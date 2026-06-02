@@ -48,7 +48,13 @@ export const issueAssessmentsApi = api.injectEndpoints({
       async onQueryStarted(body, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
-          if (data?.issue_id) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByIssueId.initiate(data.issue_id, { forceRefetch: true }));
+          // The create endpoint only RETURNs id/created_at/updated_at, so fall
+          // back to the request body for issue_id / user_id — otherwise the
+          // per-issue and per-vendor assessment lists never force-refetch and
+          // the marketplace stays stale until a manual refresh.
+          const issueId = data?.issue_id ?? (body as any).issue_id;
+          const userId = data?.user_id ?? (body as any).user_id;
+          if (issueId) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByIssueId.initiate(issueId, { forceRefetch: true }));
           const interactionId = (data as any)?.users_interaction_id ?? (body as any).users_interaction_id ?? (body as any).interaction_id;
           if (interactionId && typeof interactionId === "string") {
             const parts = interactionId.split("_");
@@ -59,7 +65,7 @@ export const issueAssessmentsApi = api.injectEndpoints({
               if (!isNaN(vendorId)) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByVendorIdUsersInteractionId.initiate(vendorId, { forceRefetch: true }));
             }
           }
-          if (data?.user_id) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByUserId.initiate(data.user_id, { forceRefetch: true }));
+          if (userId) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByUserId.initiate(userId, { forceRefetch: true }));
         } catch {}
       },
     }),
@@ -89,17 +95,20 @@ export const issueAssessmentsApi = api.injectEndpoints({
         } catch {}
       },
     }),
-    deleteAssessment: builder.mutation<void, { id: number; issue_id: number; interaction_id: string }>({
+    deleteAssessment: builder.mutation<void, { id: number; issue_id: number; interaction_id: string; user_id?: number }>({
       query: ({ id, issue_id, interaction_id }) => ({
         url: `issue_assessments/${id}`,
         method: "DELETE",
         body: { issue_id, interaction_id },
       }),
       invalidatesTags: ["Assessments"],
-      async onQueryStarted({ issue_id, interaction_id }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ issue_id, interaction_id, user_id }, { dispatch, queryFulfilled }) {
         try {
           await queryFulfilled;
           if (issue_id) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByIssueId.initiate(issue_id, { forceRefetch: true }));
+          // Refetch the per-user list too so the marketplace cards revert
+          // immediately (they read getAssessmentsByUserId), matching the modal.
+          if (user_id) dispatch(issueAssessmentsApi.endpoints.getAssessmentsByUserId.initiate(user_id, { forceRefetch: true }));
           if (interaction_id && typeof interaction_id === "string") {
             const parts = interaction_id.split("_");
             if (parts.length >= 3) {

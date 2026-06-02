@@ -12,7 +12,6 @@ const getGlobalSubscriptions = (): Map<number, unknown> => {
   return w[SUBS_KEY] as Map<number, unknown>;
 };
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { MapPin } from "lucide-react";
 import { PROPERTY_FALLBACK_IMAGE } from "../constants/assets";
 import CardSectionHeader from "../components/dashboard/CardSectionHeader";
 import HeroBand from "../components/dashboard/HeroBand";
@@ -26,27 +25,23 @@ import ScheduleCard from "../components/dashboard/ScheduleCard";
 // render in the top-right toolbar.
 // import NotificationsDropdown from "../components/dashboard/NotificationsDropdown";
 // import { buildDashboardActivity } from "../utils/dashboardActivity";
-import { normalizeAndCapitalize, getIssueTypeIcon } from "../utils/typeNormalizer";
+import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { useUploadReportFileMutation, useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
   faBuilding,
   faCalendarAlt,
-  faCheck,
   faCheckCircle,
   faChevronRight,
   faBriefcase,
   faClock,
-  faEdit,
   faHome,
   faPlus,
   faMagic,
   faTimes,
   faUpload,
   faTrash,
-  faUser,
-  faStar,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   CalendarReadyAssessment,
@@ -116,6 +111,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   const [updateAssessment, { isLoading: isUpdatingAssessment }] = useUpdateAssessmentMutation();
   const [deleteAssessment, { isLoading: isDeletingAssessment }] = useDeleteAssessmentMutation();
   const [createAssessment, { isLoading: isCreatingAssessment }] = useCreateAssessmentMutation();
+  // Tracks the assessment currently being accepted (covers the post-mutation
+  // refetch window so the button stays disabled and shows "Accepting...").
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
   // State for propose time modal - now supports up to 3 time slots
   const [proposeTimeModal, setProposeTimeModal] = useState<{
@@ -302,6 +300,9 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Handle accepting an assessment
   const handleAcceptAssessment = async (assessment: CalendarReadyAssessment) => {
+    // Re-entrancy guard: ignore extra clicks while one accept is in flight.
+    if (acceptingId) return;
+    setAcceptingId(assessment.id);
     try {
       // Only send fields the backend expects
       const payload = {
@@ -318,11 +319,15 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
         user_last_viewed: new Date().toISOString(), // Required by backend
       };
       await updateAssessment(payload).unwrap();
-      // Refetch to update the UI
-      refetchAssessments();
+      // Await the refetch so the UI reflects the confirmed state before the
+      // button re-enables — otherwise it briefly still shows "Accept", which
+      // led people to click a second time.
+      await refetchAssessments();
     } catch (err) {
       console.error("Failed to accept assessment:", err);
       toast.error("Failed to accept the visit. Please try again.");
+    } finally {
+      setAcceptingId(null);
     }
   };
 
@@ -415,12 +420,11 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   const [activePropertyIndex, setActivePropertyIndex] = useState(0);
 
-  // Unified schedule: pending + confirmed visits, future only, sorted ascending
+  // "Your Schedule" shows ONLY confirmed visits. Pending visits that the
+  // homeowner still needs to confirm or deny live under the "Visits" tab
+  // (ActiveProjectsCard), so the schedule stays a clean view of locked-in dates.
   const scheduleEvents = useMemo(
-    () => calendarEvents.filter(e =>
-      e.status === IssueAssessmentStatus.RECEIVED ||
-      e.status === IssueAssessmentStatus.ACCEPTED
-    ),
+    () => calendarEvents.filter(e => e.status === IssueAssessmentStatus.ACCEPTED),
     [calendarEvents]
   );
 
@@ -619,24 +623,43 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     !isNewUser;
 
   // Create dropdown — rendered as the Hero's CTA slot (replaces the previous
-  // contextual "Review your quote" / "Approve work" / etc. button).
+  // contextual "Review your quote" / "Approve work" / etc. button). The button
+  // gets a pulsing gold halo + a white left-to-right sweep, mirroring the
+  // vendor dashboard's "Browse Jobs" CTA so both surfaces feel consistent.
   const heroCreateCta = (
     <div className="relative" ref={createDropdownRef}>
-      <button
-        onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-        className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-xl
-                   bg-foreground text-background font-semibold text-sm
-                   hover:bg-foreground/90 hover:-translate-y-0.5
-                   active:translate-y-0
-                   transition-all shadow-card hover:shadow-card-hover"
-      >
-        <FontAwesomeIcon icon={faPlus} className="text-xs" />
-        <span>Create</span>
-        <FontAwesomeIcon
-          icon={faChevronRight}
-          className={`text-xs transition-transform ${isCreateDropdownOpen ? "rotate-90" : ""}`}
+      {/* Inner wrapper scopes the gold halo to just the button (so it doesn't
+          balloon when the dropdown opens below). */}
+      <div className="relative inline-flex">
+        {/* Pulsing gold halo behind the button */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -inset-[6px] rounded-2xl
+                     bg-primary/40 blur-md animate-cta-halo"
         />
-      </button>
+
+        <button
+          onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+          className="relative overflow-hidden inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
+                     bg-primary text-primary-foreground font-bold text-sm
+                     shadow-md hover:shadow-lg hover:opacity-95 transition-all"
+        >
+          {/* White left→right sweep (matches the vendor "Browse Jobs" CTA). */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-0 -left-1/3 h-full w-1/3
+                       bg-gradient-to-r from-transparent via-white/40 to-transparent
+                       animate-cta-sweep"
+          />
+
+          <FontAwesomeIcon icon={faPlus} className="text-xs relative z-10" />
+          <span className="relative z-10">Create</span>
+          <FontAwesomeIcon
+            icon={faChevronRight}
+            className={`text-xs transition-transform relative z-10 ${isCreateDropdownOpen ? "rotate-90" : ""}`}
+          />
+        </button>
+      </div>
 
       {isCreateDropdownOpen && (
         <div className="absolute right-0 top-full mt-2 w-64 bg-card rounded-xl shadow-card border border-border py-2 z-50">
@@ -1069,7 +1092,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                 <ScheduleCard
                   events={scheduleEvents}
                   currentUserId={user.id}
-                  isUpdatingAssessment={isUpdatingAssessment}
+                  isUpdatingAssessment={isUpdatingAssessment || acceptingId !== null}
                   isDeletingAssessment={isDeletingAssessment}
                   onAccept={handleAcceptAssessment}
                   onProposeTime={openProposeTimeModal}
@@ -1269,9 +1292,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-gold" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-foreground">All Scheduled Visits</h3>
+                  <h3 className="text-lg font-bold text-foreground">Confirmed Visits</h3>
                   <p className="text-sm text-muted-foreground">
-                    {pendingAssessments.length} pending · {confirmedAssessments.length} confirmed
+                    {confirmedAssessments.length} confirmed
+                    {pendingAssessments.length > 0 && (
+                      <> · {pendingAssessments.length} awaiting under “Visits”</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -1285,92 +1311,19 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
 
             {/* Content */}
             <div className="p-6 overflow-y-auto flex-1">
-              {/* Pending Section */}
+              {/* Pending visits are handled under the "Visits" tab — this view
+                  is confirmed-only so the schedule stays a clean record of
+                  locked-in dates. */}
               {pendingAssessments.length > 0 && (
-                <div className="mb-6">
-                  <h4 className="text-sm font-semibold text-gold-700 uppercase tracking-wide mb-3">
-                    Awaiting Your Response ({pendingAssessments.length})
-                  </h4>
-                  <div className="space-y-3">
-                    {pendingAssessments.map((event) => (
-                      <div key={event.id} className="p-4 bg-gold-50 rounded-xl border border-gold-200">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 bg-card rounded-lg flex items-center justify-center shadow-sm flex-shrink-0">
-                            <FontAwesomeIcon 
-                              icon={getIssueTypeIcon(event.issue?.type)} 
-                              className="text-gold" 
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-foreground mb-1">{event.title}</div>
-                            {/* Vendor name and rating */}
-                            {event.vendor && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                                <FontAwesomeIcon icon={faUser} className="text-xs text-muted-foreground" />
-                                <span className="font-medium">{event.vendor.name || "Vendor"}</span>
-                                <span className="flex items-center gap-0.5 text-gold">
-                                  <FontAwesomeIcon icon={faStar} className="text-xs" />
-                                  <span className="text-muted-foreground">{event.vendor.rating || "New"}</span>
-                                </span>
-                              </div>
-                            )}
-                            {event.listing && (
-                              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                                <MapPin className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-                                {event.listing.address}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-3">
-                              <FontAwesomeIcon icon={faClock} className="text-xs text-muted-foreground" />
-                              {event.start.toLocaleDateString("en-US", { weekday: 'long', month: 'long', day: 'numeric' })}
-                              {' at '}
-                              {event.start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {event.user_id === user.id ? (
-                                // Client's own proposal
-                                <>
-                                  <span className="text-xs text-gold-600 font-medium bg-gold-100 px-2 py-1 rounded">
-                                    Your proposal
-                                  </span>
-                                  <button
-                                    onClick={() => handleCancelProposal(event)}
-                                    disabled={isDeletingAssessment}
-                                    className="flex items-center gap-1.5 px-4 py-2 text-red-600 bg-red-50 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
-                                  >
-                                    <FontAwesomeIcon icon={faTrash} />
-                                    {isDeletingAssessment ? "Cancelling..." : "Cancel"}
-                                  </button>
-                                </>
-                              ) : (
-                                // Vendor's proposal
-                                <>
-                                  <button
-                                    onClick={() => handleAcceptAssessment(event)}
-                                    disabled={isUpdatingAssessment}
-                                    className={`flex items-center gap-1.5 px-4 py-2 bg-foreground text-background text-sm font-semibold rounded-lg ${BUTTON_HOVER} disabled:opacity-50 disabled:cursor-not-allowed`}
-                                  >
-                                    <FontAwesomeIcon icon={faCheck} />
-                                    {isUpdatingAssessment ? "Accepting..." : "Accept"}
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setShowScheduleModal(false);
-                                      openProposeTimeModal(event);
-                                    }}
-                                    className={`flex items-center gap-1.5 px-4 py-2 bg-card text-foreground text-sm font-semibold rounded-lg border border-border ${BUTTON_HOVER}`}
-                                  >
-                                    <FontAwesomeIcon icon={faEdit} />
-                                    Propose New Time
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="mb-5 flex items-start gap-3 rounded-xl border border-gold-200 bg-gold-50 px-4 py-3">
+                  <FontAwesomeIcon icon={faClock} className="text-gold mt-0.5" />
+                  <p className="text-sm text-foreground">
+                    You have{" "}
+                    <span className="font-semibold">{pendingAssessments.length}</span>{" "}
+                    visit{pendingAssessments.length !== 1 ? "s" : ""} awaiting your
+                    response. Confirm or decline {pendingAssessments.length !== 1 ? "them" : "it"}{" "}
+                    under the <span className="font-semibold">Visits</span> tab.
+                  </p>
                 </div>
               )}
 
@@ -1406,10 +1359,10 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
               )}
 
               {/* Empty state */}
-              {calendarEvents.length === 0 && (
+              {confirmedAssessments.length === 0 && (
                 <div className="text-center py-12">
                   <FontAwesomeIcon icon={faCalendarAlt} className="text-4xl text-muted-foreground/50 mb-3" />
-                  <p className="text-muted-foreground">No scheduled visits</p>
+                  <p className="text-muted-foreground">No confirmed visits yet</p>
                 </div>
               )}
             </div>

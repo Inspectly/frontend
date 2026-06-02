@@ -10,7 +10,7 @@ import {
   faInfoCircle,
   faClock
 } from "@fortawesome/free-solid-svg-icons";
-import { IssueAddress, IssueType } from "../types";
+import { IssueAddress, IssueOffer, IssueOfferStatus, IssueType, Listing } from "../types";
 import ImageComponent from "./ImageComponent";
 import GroupedIssuesModal from "./GroupedIssuesModal";
 import { formatRelativeTime } from "../utils/dateUtils";
@@ -19,13 +19,22 @@ import { CARD_HOVER } from "../styles/shared";
 interface AddressGroupCardProps {
   address: IssueAddress;
   issues: IssueType[];
+  offerByIssueId?: Record<number, IssueOffer>;
+  /** The property listing, so the detail module can resolve the full address. */
+  listing?: Listing;
 }
 
-const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) => {
+const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues, offerByIssueId, listing }) => {
   const [currentIssueIndex, setCurrentIssueIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const currentIssue = issues[currentIssueIndex];
+
+  // The current vendor's offer on the issue currently shown in the carousel,
+  // plus how many issues in this group already have a bid.
+  const currentOffer = offerByIssueId?.[currentIssue.id];
+  const currentOfferAccepted = currentOffer?.status === IssueOfferStatus.ACCEPTED;
+  const bidCount = issues.filter((i) => offerByIssueId?.[i.id]).length;
 
   // Helper function to get severity icon and color
   const getSeverityIcon = (severity: string) => {
@@ -153,6 +162,27 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
             </div>
           </div>
         )}
+
+        {/* Offer Badge - Top Left Corner. Shows the vendor's bid on the issue
+            currently displayed, and a count of bids across the whole group. */}
+        {bidCount > 0 && (
+          <div className="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+            {currentOffer && (
+              <span
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg ${
+                  currentOfferAccepted
+                    ? "bg-green-600/90 text-white"
+                    : "bg-gold/90 text-white"
+                }`}
+              >
+                {currentOfferAccepted ? "Accepted" : "Your offer"} · ${currentOffer.price}
+              </span>
+            )}
+            <span className="text-xs font-medium px-2.5 py-1 rounded-lg bg-black/60 text-white backdrop-blur-sm shadow-lg">
+              {bidCount} bid{bidCount > 1 ? "s" : ""} placed
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content Section - Bottom 1/4 */}
@@ -192,6 +222,8 @@ const AddressGroupCard: React.FC<AddressGroupCardProps> = ({ address, issues }) 
     <GroupedIssuesModal
       address={address}
       issues={issues}
+      offerByIssueId={offerByIssueId}
+      listing={listing}
       isOpen={isModalOpen}
       onClose={() => setIsModalOpen(false)}
     />

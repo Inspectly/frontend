@@ -191,6 +191,15 @@ const OfferDetailModal: React.FC<OfferDetailModalProps> = ({
                     {vendorName}
                   </button>
                   {renderStatusPill()}
+                  {vendor?.warranty && vendor.warranty.trim() && (
+                    <span
+                      title={`${vendor.warranty} warranty`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs font-semibold"
+                    >
+                      <FontAwesomeIcon icon={faCheckCircle} className="w-3 h-3" />
+                      {vendor.warranty} warranty
+                    </span>
+                  )}
                 </div>
                 {(rating !== null && !Number.isNaN(rating)) || reviewCount > 0 ? (
                   <div className="flex items-center gap-1 mt-1 text-sm text-gray-600">

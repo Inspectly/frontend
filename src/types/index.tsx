@@ -114,6 +114,7 @@ export type Vendor = {
   profile_image_url: string;
   rating: string;
   review: string;
+  warranty?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -121,6 +122,17 @@ export type Vendor = {
 export type Vendor_Review = {
   id: number;
   vendor_user_id: number;
+  user_id: number;
+  status?: string;
+  rating: number;
+  review: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Client_Review = {
+  id: number;
+  client_user_id: number;
   user_id: number;
   status?: string;
   rating: number;
