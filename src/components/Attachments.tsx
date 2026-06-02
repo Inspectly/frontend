@@ -11,7 +11,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import { Attachment } from "../types";
-import { useMemo } from "react";
 import {
   useCreateAttachmentMutation,
   useDeleteAttachmentMutation,

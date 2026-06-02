@@ -408,7 +408,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
 
         <PostJobWizard
           open={isModalOpen}
-          onClose={() => { setIsModalOpen(false); refetch(); }}
+          onClose={() => setIsModalOpen(false)}
           listings={[]}
           currentListing={currentListing}
         />
