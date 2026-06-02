@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useEffect, useState } from "react";
-import { useGetCommentsQuery, useCreateCommentMutation } from "../features/api/commentsApi";
+import React, { useRef, useEffect, useState, useMemo } from "react";
+import { useGetCommentsByIssueIdQuery, useCreateCommentMutation } from "../features/api/commentsApi";
 import { useGetUserByIdQuery } from "../features/api/usersApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
@@ -91,16 +91,11 @@ interface CommentsProps {
 }
 
 const Comments: React.FC<CommentsProps> = ({ issueId, userId, myName = "", onCountChange }) => {
-  const { data: comments, error, isLoading } = useGetCommentsQuery();
+  const { data: issueComments = [], error, isLoading } = useGetCommentsByIssueIdQuery(issueId, { skip: !issueId });
   const [createComment] = useCreateCommentMutation();
   const [newComment, setNewComment] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const issueComments = useMemo(
-    () => comments?.filter((c) => c.issue_id === issueId) ?? [],
-    [comments, issueId]
-  );
 
   useEffect(() => {
     onCountChange?.(issueComments.length);

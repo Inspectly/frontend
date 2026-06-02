@@ -6,7 +6,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
-import { useGetReportsQuery } from "../features/api/reportsApi";
+import { useGetReportsByUserIdQuery } from "../features/api/reportsApi";
 import { useGetIssuesByListingIdQuery } from "../features/api/issuesApi";
 import { useGetTasksByReportIdQuery } from "../features/api/taskApi";
 import CreateIssueCollectionModal from "../components/CreateIssueCollectionModal";
@@ -217,9 +217,8 @@ const ExtractionRow: React.FC<ExtractionRowProps> = ({ report, onClick }) => {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const Reports: React.FC = () => {
-  const { data: reports, refetch } = useGetReportsQuery();
-
   const user = useSelector((state: RootState) => state.auth.user);
+  const { data: reports } = useGetReportsByUserIdQuery(Number(user?.id), { skip: !user?.id });
   const navigate = useNavigate();
   const { listingId } = useParams<{ listingId: string }>();
   const { data: listing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
@@ -492,15 +491,12 @@ const Reports: React.FC = () => {
         onClose={() => setIsCreateCollectionOpen(false)}
         listingId={Number(listingId)}
         userId={user?.id}
-        onCreated={() => {
-          setIsCreateCollectionOpen(false);
-          refetch();
-        }}
+        onCreated={() => setIsCreateCollectionOpen(false)}
       />
 
       <PostJobWizard
         open={isPostJobOpen}
-        onClose={() => { setIsPostJobOpen(false); refetch(); }}
+        onClose={() => setIsPostJobOpen(false)}
         listings={[]}
         reports={listingReports as any[]}
         currentListing={listing}

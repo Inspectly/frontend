@@ -7,6 +7,10 @@ export const commentsApi = api.injectEndpoints({
       query: () => "comments/",
       providesTags: [{ type: "Comments", id: "LIST" }],
     }),
+    getCommentsByIssueId: builder.query<Comment[], number>({
+      query: (issueId) => `comments/issue/${issueId}`,
+      providesTags: (_, __, issueId) => [{ type: "Comments", id: `ISSUE_${issueId}` }],
+    }),
     createComment: builder.mutation<any, { issueId: number; comment: string; userId: number }>({
       query: ({ issueId, comment, userId }) => ({
         url: "comments/",
@@ -18,9 +22,16 @@ export const commentsApi = api.injectEndpoints({
           comment,
         }),
       }),
-      invalidatesTags: ["Comments"],
+      invalidatesTags: (_, __, { issueId }) => [
+        { type: "Comments", id: "LIST" },
+        { type: "Comments", id: `ISSUE_${issueId}` },
+      ],
     }),
   }),
 });
 
-export const { useGetCommentsQuery, useCreateCommentMutation } = commentsApi;
+export const {
+  useGetCommentsQuery,
+  useGetCommentsByIssueIdQuery,
+  useCreateCommentMutation,
+} = commentsApi;

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -9,9 +10,10 @@ import {
   faAngleDoubleLeft,
   faAngleDoubleRight,
 } from "@fortawesome/free-solid-svg-icons";
-import { MapPin, Wrench } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { BUTTON_HOVER } from "../styles/shared";
 import {
+  issuesApi,
   useGetAddressesByIssueIdsMutation,
   useGetPaginatedIssuesQuery,
 } from "../features/api/issuesApi";
@@ -21,325 +23,182 @@ import IssueItem from "../components/IssueItem";
 import AddressGroupCard from "../components/AddressGroupCard";
 import IssueDetails from "../components/IssueDetails";
 import { IssueAddress, IssueType } from "../types";
-import { RootState } from "../store/store";
-import { marketplacePrefetchService } from "../services/marketplacePrefetchService";
+import { AppDispatch, RootState } from "../store/store";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 const Marketplace: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Get current user and vendor data
+  const dispatch = useDispatch<AppDispatch>();
+
   const user = useSelector((state: RootState) => state.auth.user);
   const isVendor = user?.user_type === "vendor";
   const { data: vendor } = useGetVendorByVendorUserIdQuery(String(user?.id), {
     skip: !user?.id || !isVendor,
   });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // Normalize URL type param to match dropdown values
+
   const normalizeTypeParam = (type: string | null): string => {
     if (!type) return "";
     const normalized = type.toLowerCase();
-    // Map vendor types to issue types
     const typeMapping: Record<string, string> = {
-      general: 'other',
-      electrician: 'electrical',
-      plumber: 'plumbing',
-      painter: 'painting',
-      roofer: 'roofing',
-      carpenter: 'carpentry',
-      landscaper: 'landscaping',
+      general: "other",
+      electrician: "electrical",
+      plumber: "plumbing",
+      painter: "painting",
+      roofer: "roofing",
+      carpenter: "carpentry",
+      landscaper: "landscaping",
     };
     return typeMapping[normalized] || normalized;
   };
-  
-  const [selectedType, setSelectedType] = useState(() => {
-    return normalizeTypeParam(searchParams.get('type'));
-  });
-  const [selectedCity, setSelectedCity] = useState(() => {
-    return searchParams.get('city') || "";
-  });
+
+  const [selectedType, setSelectedType] = useState(() => normalizeTypeParam(searchParams.get("type")));
+  const [selectedCity, setSelectedCity] = useState(() => searchParams.get("city") || "");
   const [selectedProvince, setSelectedProvince] = useState("");
-  const [groupByAddress, setGroupByAddress] = useState(() => {
-    return searchParams.get('grouped') === 'true';
-  });
-  
-  // Modal state
+  const [groupByAddress, setGroupByAddress] = useState(() => searchParams.get("grouped") === "true");
+
   const [selectedIssue, setSelectedIssue] = useState<IssueType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultTab, setModalDefaultTab] = useState<"details" | "offers">("details");
 
   const itemsPerPage = 12;
-  const maxFetchLimit = 100; // Backend max page size is 100
+  const maxFetchLimit = 100;
 
-  // Initialize filters from URL params on mount
-  useEffect(() => {
-    const type = searchParams.get('type');
-    const city = searchParams.get('city');
-    if (type) setSelectedType(normalizeTypeParam(type));
-    if (city) setSelectedCity(city);
-  }, []); // Only run on mount
+  // Listings — needed for city/state dropdowns and for deriving state from city
+  const { data: allListings, isLoading: isLoadingListings } = useGetListingsQuery();
 
-  // Update URL when groupByAddress changes
-  useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
-    if (groupByAddress) {
-      newParams.set('grouped', 'true');
-    } else {
-      newParams.delete('grouped');
-    }
-    setSearchParams(newParams, { replace: true });
-  }, [groupByAddress, searchParams, setSearchParams]);
-
-  // Type mapping to handle variations in issue types
-  const getTypeVariations = useCallback((selectedType: string): string[] => {
-    const typeMap: Record<string, string[]> = {
-      electrical: ['electrical', 'electrician', 'electric', 'wiring', 'outlet', 'circuit'],
-      plumbing: ['plumbing', 'plumber', 'pipe', 'pipes', 'water', 'drain', 'faucet', 'toilet'],
-      hvac: ['hvac', 'heating', 'cooling', 'furnace', 'ac', 'air conditioning', 'ventilation'],
-      roofing: ['roofing', 'roof', 'roofer', 'shingle', 'shingles', 'gutter', 'gutters'],
-      flooring: ['flooring', 'floor', 'floors', 'carpet', 'hardwood', 'tile', 'laminate'],
-      painting: ['painting', 'paint', 'painter', 'wall', 'walls', 'interior', 'exterior'],
-      landscaping: ['landscaping', 'landscape', 'landscaper', 'yard', 'garden', 'lawn', 'tree'],
-      structural: ['structural', 'structure', 'foundation', 'beam', 'support', 'framing', 'load bearing'],
-      'dry wall': ['dry wall', 'drywall', 'wall', 'sheetrock', 'gypsum', 'patching', 'texture'],
-      carpentry: ['carpentry', 'carpenter', 'wood', 'trim', 'cabinet', 'door', 'window', 'molding'],
-      other: ['other', 'misc', 'miscellaneous', 'general', 'repair', 'maintenance']
-    };
-    
-    return typeMap[selectedType] || [selectedType];
-  }, []);
-
-  // Map vendor type to issue type for filtering
+  // Auto-apply vendor specialty + city on first load (only if no URL params already set)
   const vendorTypeToIssueType: Record<string, string> = {
-    electrician: 'electrical',
-    plumber: 'plumbing',
-    painter: 'painting',
-    roofer: 'roofing',
-    carpenter: 'carpentry',
-    landscaper: 'landscaping',
-    hvac: 'hvac',
-    general: 'other',
+    electrician: "electrical", plumber: "plumbing", painter: "painting",
+    roofer: "roofing", carpenter: "carpentry", landscaper: "landscaping",
+    hvac: "hvac", general: "other",
   };
-  
-  // Get vendor's primary specialty mapped to issue type
   const vendorSpecialtyAsIssueType = useMemo(() => {
     if (!vendor?.vendor_types) return null;
-    const primaryType = vendor.vendor_types.toLowerCase().split(',')[0]?.trim();
-    return vendorTypeToIssueType[primaryType] || primaryType || null;
+    const primary = vendor.vendor_types.toLowerCase().split(",")[0]?.trim();
+    return vendorTypeToIssueType[primary] || primary || null;
   }, [vendor?.vendor_types]);
-  
-  // Auto-apply vendor's filters on first load (only if no URL params)
+
   const [hasAutoApplied, setHasAutoApplied] = useState(false);
   useEffect(() => {
     if (hasAutoApplied || !isVendor || !vendor) return;
-    
-    const urlType = searchParams.get('type');
-    const urlCity = searchParams.get('city');
-    
-    // Only auto-apply if no URL params are set
-    if (!urlType && !urlCity) {
+    if (!searchParams.get("type") && !searchParams.get("city")) {
+      const newParams = new URLSearchParams(searchParams);
       if (vendorSpecialtyAsIssueType) {
         setSelectedType(vendorSpecialtyAsIssueType);
+        newParams.set("type", vendorSpecialtyAsIssueType);
       }
       if (vendor.city) {
         setSelectedCity(vendor.city);
+        newParams.set("city", vendor.city);
       }
+      setSearchParams(newParams, { replace: true });
     }
     setHasAutoApplied(true);
-  }, [isVendor, vendor, vendorSpecialtyAsIssueType, searchParams, hasAutoApplied]);
+  }, [isVendor, vendor, vendorSpecialtyAsIssueType, searchParams, hasAutoApplied]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Determine API parameters - fetch all available data when grouping or type filtering
-  const apiParams = useMemo(() => {
-    return {
-      page: (groupByAddress || selectedType) ? 1 : currentPage,
-      size: (groupByAddress || selectedType) ? maxFetchLimit : itemsPerPage, // Use configurable limit for grouping
-      search: searchTerm.trim(),
-      type: "", // Don't send type to API, we'll filter client-side for better matching
-    city: selectedCity,
-      state: selectedProvince,
-      vendor_assigned: false,
-    };
-  }, [currentPage, itemsPerPage, searchTerm, selectedType, selectedCity, selectedProvince, groupByAddress, maxFetchLimit]);
+  // Keep URL in sync with groupByAddress toggle
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    if (groupByAddress) newParams.set("grouped", "true");
+    else newParams.delete("grouped");
+    setSearchParams(newParams, { replace: true });
+  }, [groupByAddress]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Check if we should use prefetched data (when no filters are applied)
-  const shouldUsePrefetch = useMemo(() => {
-    return !searchTerm.trim() && !selectedType && !selectedCity && !selectedProvince;
-  }, [searchTerm, selectedType, selectedCity, selectedProvince]);
+  // When a type is selected or in grouped view, fetch the full page (100 items) so
+  // the server filters efficiently. Otherwise, use server-side pagination (12 items).
+  const needsFullFetch = !!selectedType || groupByAddress;
 
-  // Try to get prefetched data
-  const prefetchedData = useMemo(() => {
-    if (shouldUsePrefetch) {
-      return marketplacePrefetchService.findCachedData(groupByAddress);
-    }
-    return null;
-  }, [shouldUsePrefetch, groupByAddress]);
-
-  // API query - skip if we have valid prefetched data; poll every 20s so vendors see new issues
-  const { data, error, isLoading } = useGetPaginatedIssuesQuery(apiParams, {
-    skip: shouldUsePrefetch && !!prefetchedData,
-  });
-
-
-  // Query for unassigned issues (for display and filtering)
-  const allUnassignedQueryParams = {
-    page: 1,
-    size: maxFetchLimit,
-    search: "",
-    type: "",
-    city: "",
-    state: "",
-    vendor_assigned: false, // Only unassigned issues
+  // The dropdown shows normalized display values ("electrical") but the backend stores
+  // vendor occupation names ("electrician"). Map back before sending to the API.
+  const issueTypeToBackendType: Record<string, string> = {
+    electrical: "electrician",
+    plumbing: "plumber",
+    painting: "painter",
+    roofing: "roofer",
+    carpentry: "carpenter",
+    landscaping: "landscaper",
+    hvac: "hvac",
+    other: "general",
   };
-  
-  const { data: allUnassignedData, isLoading: isLoadingAllUnassigned } = useGetPaginatedIssuesQuery(allUnassignedQueryParams);
+  const backendType = issueTypeToBackendType[selectedType] ?? selectedType;
 
-  // Fetch ALL listings to get all available cities/states for dropdowns
-  // This shows all locations where properties exist, regardless of issues
-  const { data: allListings, isLoading: isLoadingListings } = useGetListingsQuery();
+  const apiParams = useMemo(() => ({
+    page: needsFullFetch ? 1 : currentPage,
+    size: needsFullFetch ? maxFetchLimit : itemsPerPage,
+    search: searchTerm.trim(),
+    type: backendType,
+    city: selectedCity,
+    state: selectedProvince,
+    vendor_assigned: false as const,
+  }), [needsFullFetch, currentPage, searchTerm, backendType, selectedCity, selectedProvince]);
 
-  // Get addresses for issues
+  const { data: primaryData, isLoading, error } = useGetPaginatedIssuesQuery(apiParams);
+
+  // Fallback: if type+city returns 0, retry with city removed.
+  const needsFallback = !isLoading && (primaryData?.total ?? 0) === 0 && !!selectedType && !!selectedCity;
+  const fallbackParams = useMemo(
+    () => needsFallback ? { ...apiParams, city: "", state: "" } : skipToken,
+    [needsFallback, apiParams]
+  );
+  const { data: fallbackData } = useGetPaginatedIssuesQuery(fallbackParams as any);
+
+  const activeData = (needsFallback && (fallbackData?.total ?? 0) > 0) ? fallbackData : primaryData;
+  const currentFilterMode = needsFallback && (fallbackData?.total ?? 0) > 0 ? "type_only" : "exact";
+
+  // Background-prefetch remaining pages so pagination feels instant
+  useEffect(() => {
+    if (!activeData || activeData.pages <= 1) return;
+    const pagesToPrefetch = Math.min(activeData.pages - 1, 5);
+    for (let p = 2; p <= pagesToPrefetch + 1; p++) {
+      dispatch(issuesApi.endpoints.getPaginatedIssues.initiate({ ...apiParams, page: p }));
+    }
+  }, [activeData?.pages, activeData?.total]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Addresses — scoped to currently visible issues only (12 in ungrouped, up to 100 in grouped)
   const [getAddressesByIssueIds] = useGetAddressesByIssueIdsMutation();
   const [addresses, setAddresses] = useState<IssueAddress[]>([]);
-  const [, setIsLoadingAddresses] = useState(true);
 
+  // Filter to open + unassigned (backend handles vendor_assigned; status guard is extra safety)
+  const rawIssues = useMemo(() => (activeData?.items ?? []).filter((issue: IssueType) => {
+    const status = (issue.status || "").toLowerCase().replace("status.", "");
+    return status === "open" && !issue.vendor_id;
+  }), [activeData?.items]);
 
-  // Use prefetched data if available, otherwise use API data
-  // Filter to only show open, unassigned issues on the marketplace
-  const rawIssues = useMemo(() => {
-    const issues = prefetchedData?.items || data?.items || [];
-    return issues.filter((issue: IssueType) => {
-      // Only show open issues (status check)
-      const status = (issue.status || "").toLowerCase().replace("status.", "");
-      if (status !== "open") return false;
-      // Only show unassigned issues (no vendor assigned)
-      if (issue.vendor_id) return false;
-      return true;
-    });
-  }, [prefetchedData?.items, data?.items]);
-
-  // Apply client-side type filtering for better matching with smart fallbacks
-  const { filteredIssues, currentFilterMode } = useMemo(() => {
-    // Helper to filter by type
-    const filterByType = (issues: IssueType[], type: string) => {
-      const typeVariations = getTypeVariations(type);
-      return issues.filter((issue: IssueType) => {
-        const issueType = issue.type?.toLowerCase() || '';
-        return typeVariations.some(variation => 
-          issueType.includes(variation.toLowerCase()) || 
-          variation.toLowerCase().includes(issueType)
-        );
-      });
-    };
-    
-    // Helper to filter by city (using addresses)
-    const filterByCity = (issues: IssueType[], city: string) => {
-      return issues.filter((issue: IssueType) => {
-        const address = addresses.find(a => a.issue_id === issue.id);
-        return address?.city?.toLowerCase() === city.toLowerCase();
-      });
-    };
-    
-    // If no filters applied, return all
-    if (!selectedType && !selectedCity) {
-      return { filteredIssues: rawIssues, currentFilterMode: "all" as const };
-    }
-    
-    // Try exact match first (both type and city if both are set)
-    let result = rawIssues;
-    
-    if (selectedType) {
-      result = filterByType(result, selectedType);
-    }
-    
-    // For city filtering, we need addresses loaded
-    if (selectedCity && addresses.length > 0) {
-      const cityFiltered = filterByCity(result, selectedCity);
-      
-      // If we have results with both filters, return them
-      if (cityFiltered.length > 0) {
-        return { filteredIssues: cityFiltered, currentFilterMode: "exact" as const };
-      }
-      
-      // Fallback: If type+city returns nothing, try just type
-      if (selectedType && result.length > 0) {
-        return { 
-          filteredIssues: result, 
-          currentFilterMode: "type_only" as const 
-        };
-      }
-      
-      // Fallback: If just type returns nothing, try just city
-      if (selectedType) {
-        const cityOnly = filterByCity(rawIssues, selectedCity);
-        if (cityOnly.length > 0) {
-          return { 
-            filteredIssues: cityOnly, 
-            currentFilterMode: "city_only" as const 
-          };
-        }
-      }
-      
-      // No results with any combination - show all
-      return { 
-        filteredIssues: rawIssues, 
-        currentFilterMode: "all" as const 
-      };
-    }
-    
-    return { filteredIssues: result, currentFilterMode: "exact" as const };
-  }, [rawIssues, selectedType, selectedCity, getTypeVariations, addresses]);
-
-  // For ungrouped view, paginate the issues client-side when using prefetched data or filtering
+  // Paginate client-side when we fetched the full set (type selected or grouped view),
+  // otherwise the server already returned the correct page.
   const issues = useMemo(() => {
-    if (!groupByAddress) {
-      // Only do client-side pagination when we have prefetched data or type filtering
-      // Otherwise, the API already sent us the correct page
-      if (prefetchedData?.items || selectedType) {
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        return filteredIssues.slice(startIndex, endIndex);
-      }
-      // For API data without prefetch, return as-is (already paginated by server)
-      return filteredIssues;
+    if (groupByAddress) return rawIssues;
+    if (needsFullFetch) {
+      const start = (currentPage - 1) * itemsPerPage;
+      return rawIssues.slice(start, start + itemsPerPage);
     }
-    return filteredIssues;
-  }, [filteredIssues, groupByAddress, currentPage, itemsPerPage, prefetchedData?.items, selectedType]);
-  
-  // Calculate total items based on filtering
-  const totalItems = selectedType
-    ? filteredIssues.length  // Use filtered count when type filtering is applied
-    : (prefetchedData?.total || data?.total || 0);
+    return rawIssues;
+  }, [rawIssues, groupByAddress, needsFullFetch, currentPage, itemsPerPage]);
 
-  // Create address map for easy lookup
-  const addressMap = useMemo(() => {
-    return addresses.reduce((acc, addr) => {
-      acc[addr.issue_id] = addr;
-      return acc;
-    }, {} as Record<number, IssueAddress>);
-  }, [addresses]);
+  const totalItems = needsFullFetch ? rawIssues.length : (activeData?.total ?? 0);
 
-  // Fetch addresses for displayed issues (for showing location info on cards)
+  // Fetch addresses for the currently displayed set of issues
+  const issueIdsKey = issues.map((i) => i.id).join(",");
   useEffect(() => {
-    if (allUnassignedData?.items && allUnassignedData.items.length > 0) {
-      setIsLoadingAddresses(true);
-      const issueIds = allUnassignedData.items.map((issue) => issue.id);
-      getAddressesByIssueIds(issueIds)
-        .unwrap()
-        .then((fetchedAddresses) => {
-          setAddresses(fetchedAddresses);
-          setIsLoadingAddresses(false);
-        })
-        .catch((err) => {
-          console.error("Error fetching addresses:", err);
-          setIsLoadingAddresses(false);
-        });
-    } else if (!isLoadingAllUnassigned && (!allUnassignedData?.items || allUnassignedData.items.length === 0)) {
-      setIsLoadingAddresses(false);
-    }
-  }, [allUnassignedData?.items, getAddressesByIssueIds, isLoadingAllUnassigned]);
+    if (issues.length === 0) return;
+    getAddressesByIssueIds(issues.map((i) => i.id))
+      .unwrap()
+      .then((fetched) => setAddresses((prev) => {
+        // Merge: keep addresses for issues not in current set (grouped view may need them all)
+        const newMap = new Map(fetched.map((a) => [a.issue_id, a]));
+        const kept = prev.filter((a) => !newMap.has(a.issue_id));
+        return [...kept, ...fetched];
+      }))
+      .catch(() => {});
+  }, [issueIdsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const addressMap = useMemo(() => addresses.reduce((acc, addr) => {
+    acc[addr.issue_id] = addr;
+    return acc;
+  }, {} as Record<number, IssueAddress>), [addresses]);
 
 
   // Extract unique cities and states from ALL listings (shows all available locations)
@@ -369,40 +228,29 @@ const Marketplace: React.FC = () => {
   }, [uniqueCities, allListings, selectedProvince]);
 
 
-  // Group issues by address when grouping is enabled (works with filtered issues)
+  // Group issues by address
   const groupedIssues: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
     if (!groupByAddress || addresses.length === 0) return [];
-
-    const groups = filteredIssues.reduce((acc: Record<string, { address: IssueAddress; issues: IssueType[] }>, issue: IssueType) => {
+    const groups = rawIssues.reduce((acc: Record<string, { address: IssueAddress; issues: IssueType[] }>, issue: IssueType) => {
       const address = addressMap[issue.id];
       if (!address) return acc;
-
       const key = `${address.address}_${address.city}_${address.state}`;
-      if (!acc[key]) {
-        acc[key] = {
-          address,
-          issues: [],
-        };
-      }
+      if (!acc[key]) acc[key] = { address, issues: [] };
       acc[key].issues.push(issue);
-        return acc;
-    }, {} as Record<string, { address: IssueAddress; issues: IssueType[] }>);
-
+      return acc;
+    }, {});
     return Object.values(groups);
-  }, [filteredIssues, addressMap, groupByAddress, addresses.length]);
+  }, [rawIssues, addressMap, groupByAddress, addresses.length]);
 
-  // Calculate pagination based on view type
-  const totalPages = groupByAddress 
+  // Pagination: client-side when type filter active or grouped; server otherwise
+  const totalPages = groupByAddress
     ? Math.ceil(groupedIssues.length / itemsPerPage)
-    : Math.ceil(totalItems / itemsPerPage);
+    : Math.ceil(totalItems / itemsPerPage) || 1;
 
-  // For grouped view, paginate the groups client-side
   const paginatedGroups: { address: IssueAddress; issues: IssueType[] }[] = useMemo(() => {
     if (!groupByAddress) return groupedIssues;
-    
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage;
-    return groupedIssues.slice(startIndex, endIndex);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return groupedIssues.slice(startIndex, startIndex + itemsPerPage);
   }, [groupedIssues, groupByAddress, currentPage, itemsPerPage]);
 
   // Smart pagination: show ellipsis for large page counts
@@ -460,10 +308,7 @@ const Marketplace: React.FC = () => {
     setCurrentPage(1);
   };
 
-  // Show loading only if we don't have prefetched data and API is loading
-  const isDataLoading = isLoading && !prefetchedData;
-  
-  if (isDataLoading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gold"></div>
@@ -556,21 +401,21 @@ const Marketplace: React.FC = () => {
               onChange={(e) => {
                 const newState = e.target.value;
                 setSelectedProvince(newState);
-                
+
                 // Clear city if it's not available in the new state
                 if (selectedCity && newState && allListings) {
                   const citiesInNewState = allListings
                     .filter((listing) => listing.state === newState)
                     .map((listing) => listing.city)
                     .filter(Boolean);
-                  
+
                   const uniqueCitiesInState = [...new Set(citiesInNewState)];
-                  
+
                   if (!uniqueCitiesInState.includes(selectedCity)) {
-                    setSelectedCity(""); // Clear city if it doesn't exist in the new state
+                    setSelectedCity("");
                   }
                 }
-                
+
                 setCurrentPage(1);
               }}
               disabled={isLoadingListings}
@@ -643,29 +488,16 @@ const Marketplace: React.FC = () => {
           </div>
           </div>
 
-        {/* Smart Filter Fallback Banner */}
-        {isVendor && currentFilterMode !== "exact" && currentFilterMode !== "all" && (selectedType || selectedCity) && (
+        {/* Fallback banner: no issues found in selected city, showing results from other areas */}
+        {currentFilterMode === "type_only" && selectedCity && (
           <div className="mb-6 px-4 py-3 rounded-lg flex items-start gap-3 bg-gold-50 text-foreground border border-gold-200">
-            {currentFilterMode === "type_only"
-              ? <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-gold" />
-              : <Wrench className="w-4 h-4 mt-0.5 flex-shrink-0 text-gold" />
-            }
+            <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-gold" />
             <div>
               <p className="font-medium">
-                {currentFilterMode === "type_only" && (
-                  <>No {normalizeAndCapitalize(selectedType)} jobs found in {selectedCity}</>
-                )}
-                {currentFilterMode === "city_only" && (
-                  <>No {normalizeAndCapitalize(selectedType)} jobs available</>
-                )}
+                No {selectedType ? `${normalizeAndCapitalize(selectedType)} ` : ""}jobs found in {selectedCity}
               </p>
               <p className="text-sm mt-1 text-muted-foreground">
-                {currentFilterMode === "type_only" && (
-                  <>Showing {normalizeAndCapitalize(selectedType)} opportunities in other areas. Consider expanding your service area.</>
-                )}
-                {currentFilterMode === "city_only" && (
-                  <>Showing other job types in {selectedCity}. Consider adding more specialties to your profile.</>
-                )}
+                Showing opportunities from other areas.
               </p>
             </div>
           </div>

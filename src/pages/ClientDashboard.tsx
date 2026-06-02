@@ -66,9 +66,9 @@ import { useCreateListingMutation, useGetListingByUserIdQuery } from "../feature
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 // useGetClientsQuery removed — was fetching all clients but result was never used
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
-import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../store/store";
+import { issueOffersApi } from "../features/api/issueOffersApi";
+import { useDispatch, useSelector, shallowEqual } from "react-redux";
+import { AppDispatch, RootState } from "../store/store";
 import { useGetVendorsQuery } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
@@ -127,7 +127,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // State for full schedule modal
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
   const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
   // Bumped to push the Active Projects card to a specific tab from outside (e.g. summary card clicks)
@@ -162,30 +161,34 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     [filteredIssuesByUser]
   );
 
-  // Prefetch offers for all user issues (improves Offers page load time)
-  // Uses window-level storage so subscriptions persist across navigations
+  // Read offers from RTK Query cache — populated and kept fresh by the subscriptions below.
+  const offersByIssueId = useSelector((state: RootState) => {
+    if (filteredIssuesByUser.length === 0) return {} as Record<number, IssueOffer[]>;
+    const map: Record<number, IssueOffer[]> = {};
+    filteredIssuesByUser.forEach((issue) => {
+      const result = issueOffersApi.endpoints.getOffersByIssueId.select(issue.id)(state);
+      if (result.data) map[issue.id] = result.data;
+    });
+    return map;
+  }, shallowEqual);
+
+  // Subscribe to offers for all user issues — persists across navigations via window map.
+  // RTK Query handles polling (30s) and cache management; no manual setInterval needed.
   useEffect(() => {
     if (filteredIssuesByUser.length === 0) return;
-    
+
     const subs = getGlobalSubscriptions();
-    
-    // Check which issues already have subscriptions
-    const issuesNeedingSubscription = filteredIssuesByUser.filter(
-      issue => !subs.has(issue.id)
-    );
-    
+    const issuesNeedingSubscription = filteredIssuesByUser.filter(issue => !subs.has(issue.id));
     if (issuesNeedingSubscription.length === 0) return;
-    
-    // Initiate fetches WITH subscriptions to ensure data stays in cache
+
     issuesNeedingSubscription.forEach((issue) => {
       const subscription = dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(issue.id, {
-        forceRefetch: false,
         subscribe: true,
+        forceRefetch: false,
       }));
+      subscription.updateSubscriptionOptions({ pollingInterval: 30000 });
       subs.set(issue.id, subscription);
     });
-    
-    // NO cleanup! Subscriptions persist at module level
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueIdsForPrefetch, dispatch]);
 
@@ -260,30 +263,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       // Sort by start time ascending (nearest first)
       .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing; vendor?: Vendor })[];
   }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
-
-  // Fetch offers for user's issues
-  // Polling tick to refetch offers periodically (client sees new offers when vendor creates them)
-  const [pollTick, setPollTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setPollTick((t) => t + 1), 20000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const allIssueIds = filteredIssuesByUser.map((i) => i.id);
-        const offerResults = await Promise.all(
-          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id, { forceRefetch: true })))
-        );
-        setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
-      } catch (err) {
-        console.error("Error fetching offers:", err);
-      }
-    };
-
-    if (filteredIssuesByUser.length) run();
-  }, [dispatch, filteredIssuesByUser, pollTick]);
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
