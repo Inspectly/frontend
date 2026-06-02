@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import {
   useCreateAttachmentMutation,
   useDeleteAttachmentMutation,
-  useGetAttachmentsQuery,
+  useGetAttachmentsByIssueIdQuery,
 } from "../features/api/attachmentsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
@@ -36,20 +36,15 @@ const Attachments: React.FC<AttachmentsProps> = ({
   onDeleteComplete,
 }) => {
   const {
-    data: attachments,
+    data: issueAttachments = [],
     error,
     isLoading,
     refetch,
-  } = useGetAttachmentsQuery();
+  } = useGetAttachmentsByIssueIdQuery(issueId, { skip: !issueId });
   const [createAttachment] = useCreateAttachmentMutation();
   const [deleteAttachment, { isLoading: isDeleteLoading }] =
     useDeleteAttachmentMutation();
 
-  const issueAttachments = useMemo(() => {
-    return (
-      attachments?.filter((attachment) => attachment.issue_id === issueId) || []
-    );
-  }, [attachments, issueId]);
   useEffect(() => {
     onCountChange?.(issueAttachments.length);
   }, [issueAttachments.length, onCountChange]);
@@ -113,7 +108,7 @@ const Attachments: React.FC<AttachmentsProps> = ({
     }
 
     try {
-      await deleteAttachment(attachmentToDelete.id).unwrap();
+      await deleteAttachment({ attachmentId: attachmentToDelete.id, issueId }).unwrap();
 
       setUploadStatus("loading");
 

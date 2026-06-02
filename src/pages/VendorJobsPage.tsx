@@ -19,9 +19,8 @@ import {
 import { IssueOffer, IssueOfferStatus, IssueType, Listing } from "../types";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByIds } from "../hooks/useIssuesByIds";
 import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetReportsQuery } from "../features/api/reportsApi";
 import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { useLazyGetDisputesByIssueOfferIdQuery } from "../features/api/issueDisputesApi";
 import { IssueAssessment, IssueDispute } from "../types";
@@ -67,12 +66,17 @@ const VendorJobsPage: React.FC = () => {
 
   // Note: Backend's vendor_id field actually stores vendor_user_id, not vendor table id
   const { data: vendorOffers = [], isLoading } = useGetOffersByVendorIdQuery(
-    Number(user?.id),  // Use user.id, not vendor.id
-    { skip: !user?.id }
+    Number(user?.id),
+    { skip: !user?.id, pollingInterval: 20000 }
   );
-  const { data: issues = [] } = useGetIssuesQuery();
+  const { data: issues = [], refetch: refetchIssues } = useIssuesByIds(vendorOffers.length > 0 ? vendorOffers.map((o) => o.issue_id) : undefined);
+
+  // When offers refresh (polling detects a status change), also refresh the issue data
+  const offersKey = vendorOffers.map((o) => `${o.id}:${o.status}`).join(",");
+  useEffect(() => {
+    if (vendorOffers.length > 0) refetchIssues();
+  }, [offersKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: listings = [] } = useGetListingsQuery();
-  const { data: reports = [] } = useGetReportsQuery();
   const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
     user?.id || 0,
     { skip: !user?.id }
@@ -182,13 +186,6 @@ const VendorJobsPage: React.FC = () => {
     }, {} as Record<number, IssueType>);
   }, [issues]);
 
-  const reportsMap = useMemo(() => {
-    return reports.reduce((acc, report) => {
-      acc[report.id] = report;
-      return acc;
-    }, {} as Record<number, any>);
-  }, [reports]);
-
   const listingsMap = useMemo(() => {
     return listings.reduce((acc, listing) => {
       acc[listing.id] = listing;
@@ -267,8 +264,7 @@ const VendorJobsPage: React.FC = () => {
 
   // Selected issue for modal
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
-  const selectedIssueReport = selectedIssue ? reportsMap[selectedIssue.report_id] : null;
-  const selectedIssueListing = selectedIssueReport ? listingsMap[selectedIssueReport.listing_id] : undefined;
+  const selectedIssueListing = selectedIssue ? listingsMap[selectedIssue.listing_id] : undefined;
 
   // Modal functions
   const openIssueModal = (issueId: number) => {
@@ -585,14 +581,13 @@ const VendorJobsPage: React.FC = () => {
         ) : (
           filteredOffers.map((offer) => {
             const issue = issuesMap[offer.issue_id];
-            const report = issue ? reportsMap[issue.report_id] : null;
-            const listing = report ? listingsMap[report.listing_id] : null;
+            const listing = issue ? listingsMap[issue.listing_id] : null;
 
             return (
               <div
                 key={offer.id}
                 onClick={() => openIssueModal(offer.issue_id)}
-                className="group bg-white rounded-xl border border-gray-200 p-4 border-l-4 border-l-transparent hover:border-l-gold hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+                className="group bg-white rounded-xl border border-gray-200 p-4 border-l-4 border-l-transparent hover:border-l-gold hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
               >
                 <div className="flex gap-4">
                   {/* Property Thumbnail */}
@@ -741,7 +736,7 @@ const VendorJobsPage: React.FC = () => {
           
           {/* Modal Content */}
           <div className="relative min-h-screen flex items-start justify-center p-4 pt-16">
-            <div className="relative bg-white rounded-2xl shadow-card-hover w-full max-w-5xl max-h-[85vh] overflow-y-auto">
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-y-auto">
               {/* Close Button */}
               <button
                 onClick={closeIssueModal}

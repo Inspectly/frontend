@@ -14,7 +14,7 @@ import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
-  useGetIssuesQuery,
+  useGetIssuesByListingIdQuery,
   useUpdateIssueMutation,
 } from "../features/api/issuesApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
@@ -51,7 +51,7 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
     reportId: string;
   }>();
 
-  const { data: issues, error, isLoading, refetch } = useGetIssuesQuery();
+  const { data: issues, error, isLoading } = useGetIssuesByListingIdQuery(Number(listingId), { skip: !listingId });
 
   const [updateIssue] = useUpdateIssueMutation();
   const { data: currentListing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
@@ -95,7 +95,6 @@ const ReportTable: React.FC<ReportTableProps> = ({ openAddIssueOnMount }) => {
         return;
       }
       await updateIssue(buildIssueUpdateBody(issueToUpdate, { active: newActive }, listingId ? Number(listingId) : undefined)).unwrap();
-      refetch();
     } catch (error) {
       console.error("Error updating issue:", error);
     }

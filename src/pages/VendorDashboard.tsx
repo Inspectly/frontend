@@ -3,23 +3,21 @@ import { useNavigate, Link } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowRight,
+  faChevronRight,
   faRocket,
   faSearch,
   faTimes,
 } from "@fortawesome/free-solid-svg-icons";
-import { toast } from "react-toastify";
 import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment } from "../types";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetPaginatedIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByIds } from "../hooks/useIssuesByIds";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
-import {
-  useGetAssessmentsByUserIdQuery,
-  useLazyGetAssessmentsByUsersInteractionIdQuery,
-  useUpdateAssessmentMutation,
-  useDeleteAssessmentMutation,
-} from "../features/api/issueAssessmentsApi";
+import { useGetAssessmentsByUserIdQuery, useLazyGetAssessmentsByUsersInteractionIdQuery } from "../features/api/issueAssessmentsApi";
 import { store } from "../store/store";
+import DashboardStatCard from "../components/dashboard/DashboardStatCard";
 import CardSectionHeader from "../components/dashboard/CardSectionHeader";
 import PropertyThumbnail from "../components/dashboard/PropertyThumbnail";
 import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
@@ -27,25 +25,8 @@ import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { parseAsUTC } from "../utils/calendarUtils";
 import { getRelativeTime } from "../utils/dateUtils";
 import HomeownerIssueCard from "../components/HomeownerIssueCard";
-import { MapPin, Zap } from "lucide-react";
-import HeroBand from "../components/dashboard/HeroBand";
-import VendorActiveJobsCard from "../components/dashboard/VendorActiveJobsCard";
-import VendorSummaryCards from "../components/dashboard/VendorSummaryCards";
-import VendorEarningsCard from "../components/dashboard/VendorEarningsCard";
-import ScheduleCard, { ScheduleEvent } from "../components/dashboard/ScheduleCard";
+import { Briefcase, Calendar, CalendarCheck, MapPin, Star, TrendingUp, Zap } from "lucide-react";
 
-// Static lookup: vendor type → matching issue type keywords
-const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
-  electrician: ['electrical', 'electrician', 'electric', 'wiring'],
-  plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
-  painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
-  hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
-  roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
-  carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
-  landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
-  cleaner: ['cleaning', 'cleaner', 'janitorial'],
-  general: ['general', 'other', 'misc', 'interior', 'exterior'],
-};
 
 interface DashboardProps {
   user: User;
@@ -70,14 +51,38 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Real data queries (poll every 20s so vendor sees updates when client accepts/rejects offers, approves work, etc.)
   const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
-  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
-  const { data: issues, error: issuesError } = useGetIssuesQuery();
+  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id, pollingInterval: 20000 });
+  // Per-issue fetch for the vendor's own offer issues
+  const { data: offerIssues = [], refetch: refetchOfferIssues } = useIssuesByIds(vendorOffers.length > 0 ? vendorOffers.map((o) => o.issue_id) : undefined);
+
+  // When offers refresh (polling detects a status change), also refresh the issue data
+  const vendorOffersKey = vendorOffers.map((o) => `${o.id}:${o.status}`).join(",");
+  useEffect(() => {
+    if (vendorOffers.length > 0) refetchOfferIssues();
+  }, [vendorOffersKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // vendor_types is a comma-separated string of backend type names e.g. "electrician"
+  const vendorPrimaryType = vendor?.vendor_types?.toLowerCase().split(",")[0]?.trim() ?? "";
+
+  // Targeted opportunity query: vendor's specialty + city, backend-filtered
+  const { data: opportunityData, isLoading: isLoadingOpportunities } = useGetPaginatedIssuesQuery(
+    vendor ? { page: 1, size: 20, type: vendorPrimaryType, city: vendor.city || "", vendor_assigned: false } : skipToken
+  );
+  // Fallback: if city returns 0, retry without city
+  const needsOpportunityFallback = !isLoadingOpportunities && (opportunityData?.total ?? 0) === 0 && !!vendor?.city;
+  const { data: fallbackOpportunityData } = useGetPaginatedIssuesQuery(
+    needsOpportunityFallback ? { page: 1, size: 20, type: vendorPrimaryType, city: "", vendor_assigned: false } : skipToken
+  );
+  const activeOpportunityData = (needsOpportunityFallback && (fallbackOpportunityData?.total ?? 0) > 0)
+    ? fallbackOpportunityData : opportunityData;
   const { data: listings = [] } = useGetListingsQuery();
   const { data: vendorReviewsData = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user.id), { skip: !user.id });
 
   // Vendor assessments - use user.id since that's what's stored in the assessment records
-  const { data: vendorAssessments = [], refetch: refetchVendorAssessments } =
-    useGetAssessmentsByUserIdQuery(user.id, { skip: !user?.id });
+  const { data: vendorAssessments = [] } = useGetAssessmentsByUserIdQuery(
+    user.id,
+    { skip: !user?.id }
+  );
   const [fetchAssessmentsByInteraction] = useLazyGetAssessmentsByUsersInteractionIdQuery();
 
   // State to hold ALL assessments for vendor's interactions (including client counter-proposals)
@@ -131,76 +136,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interactionIdsKey]);
 
-  // Force-refetch every assessment list the dashboard depends on. Used by
-  // child cards after an accept/decline mutation so the UI updates without
-  // waiting for the next poll. Both the per-user list and the per-interaction
-  // fan-out need a kick — RTK Query won't re-run the lazy fan-out on its own.
-  const refetchAllAssessments = async () => {
-    try {
-      await refetchVendorAssessments();
-      await Promise.all(
-        uniqueInteractionIds.map((id) =>
-          fetchAssessmentsByInteraction(id, true).unwrap()
-        )
-      );
-    } catch (err) {
-      console.error("Failed to refetch assessments:", err);
-    }
-  };
-
-  // ── Assessment mutations (used by ScheduleCard inline actions) ────────────
-  const [updateAssessment, { isLoading: isUpdatingAssessment }] = useUpdateAssessmentMutation();
-  const [deleteAssessment, { isLoading: isDeletingAssessment }] = useDeleteAssessmentMutation();
-
-  /** Accept a client-proposed visit (counter-proposal) — flips status to ACCEPTED.
-   *  Mirrors the homeowner's handleAcceptAssessment but from the vendor's seat,
-   *  so the visit moves out of "needs action" and onto the confirmed schedule. */
-  const handleAcceptScheduleEvent = async (event: ScheduleEvent) => {
-    try {
-      await updateAssessment({
-        id: event.id,
-        issue_id: event.issue_id,
-        user_id: event.user_id,
-        user_type: event.user_type,
-        interaction_id: event.users_interaction_id,
-        users_interaction_id: event.users_interaction_id,
-        start_time: event.start_time,
-        end_time: event.end_time,
-        status: "accepted",
-        min_assessment_time: event.min_assessment_time,
-        user_last_viewed: new Date().toISOString(),
-      }).unwrap();
-      toast.success("Visit accepted");
-      await refetchAllAssessments();
-    } catch (err) {
-      console.error("Failed to accept assessment:", err);
-      toast.error("Failed to accept the visit. Please try again.");
-    }
-  };
-
-  /** Cancel the vendor's own pending proposal — deletes the assessment. */
-  const handleCancelScheduleProposal = async (event: ScheduleEvent) => {
-    try {
-      await deleteAssessment({
-        id: Number(event.id),
-        issue_id: event.issue_id,
-        interaction_id: event.users_interaction_id,
-      }).unwrap();
-      toast.success("Proposal cancelled");
-      await refetchAllAssessments();
-    } catch (err) {
-      console.error("Failed to cancel proposal:", err);
-      toast.error("Failed to cancel proposal. Please try again.");
-    }
-  };
-
-  /** "Propose new time" from the ScheduleCard — defer to the issue modal's
-   *  Assessments tab where the vendor's full propose-time UX lives. Building
-   *  a separate inline propose-time modal here would duplicate that flow. */
-  const handleProposeScheduleTime = (event: ScheduleEvent) => {
-    openIssueModal(event.issue_id, "assessments");
-  };
-
   // Listings map for lookups
   const listingsMap = useMemo(() => {
     return listings.reduce((acc, listing) => {
@@ -209,14 +144,13 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }, {} as Record<number, Listing>);
   }, [listings]);
 
-  // Issues map for lookups
+  // Issues map: vendor's own job issues + current opportunity items (so modal works for both)
   const issuesMap = useMemo(() => {
-    if (!issues) return {};
-    return issues.reduce((acc, issue) => {
-      acc[issue.id] = issue;
-      return acc;
-    }, {} as Record<number, IssueType>);
-  }, [issues]);
+    const map: Record<number, IssueType> = {};
+    offerIssues.forEach((i) => { map[i.id] = i; });
+    (activeOpportunityData?.items ?? []).forEach((i: IssueType) => { if (!map[i.id]) map[i.id] = i; });
+    return map;
+  }, [offerIssues, activeOpportunityData?.items]);
 
   // Selected issue data for modal (derived from existing data)
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
@@ -349,23 +283,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }).length;
   }, [vendorOffers, issuesMap]);
 
-  // Get vendor specialties for filtering
-  const vendorSpecialties = useMemo(() => {
-    if (!vendor?.vendor_types) return [];
-    const rawTypes = vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-
-    // Expand to include all matching issue types
-    const expanded = new Set<string>();
-    rawTypes.forEach(type => {
-      // Add the original type
-      expanded.add(type);
-      // Add mapped issue types
-      const mappedTypes = VENDOR_TO_ISSUE_TYPE_MAP[type] || [];
-      mappedTypes.forEach(t => expanded.add(t));
-    });
-
-    return Array.from(expanded);
-  }, [vendor?.vendor_types]);
 
   // Available opportunities from marketplace with bid info
   const [marketplaceJobs, setMarketplaceJobs] = useState<
@@ -380,130 +297,68 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       estimatedPrice?: number;
       distance?: string;
       created_at?: string;
-      /** Photos uploaded with the issue itself — preferred over the
-       *  listing's stock photo so the vendor previews the actual problem. */
-      image_urls?: string[];
     }>
   >([]);
 
 
-  // Helper to check if issue matches vendor specialty
-  const matchesSpecialty = (issue: IssueType) => {
-    if (vendorSpecialties.length === 0) return true;
-    const issueType = (issue.type || '').toLowerCase();
-    return vendorSpecialties.some(specialty =>
-      issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
-    );
-  };
-
-  // Helper to check if issue is in vendor's city
-  const matchesCity = (issue: IssueType) => {
-    if (!vendor?.city) return true; // If no vendor city, match all
-    const listing = listingsMap[issue.listing_id];
-    if (!listing?.city) return false;
-    return listing.city.toLowerCase() === vendor.city.toLowerCase();
-  };
-
-  // Filter and fetch marketplace opportunities with smart fallbacks
+  // Build opportunity jobs from backend-filtered query results
   useEffect(() => {
-    const fetchOpportunities = async () => {
-      if (!issues) return;
+    const items = (activeOpportunityData?.items ?? []).filter((i: IssueType) => {
+      const status = (i.status || "").toLowerCase().replace("status.", "");
+      return status === "open" && !i.vendor_id;
+    });
 
-      const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
+    const severityOrder = { high: 0, medium: 1, low: 2 };
+    const top20 = [...items]
+      .sort((a, b) =>
+        (severityOrder[a.severity as keyof typeof severityOrder] ?? 2) -
+        (severityOrder[b.severity as keyof typeof severityOrder] ?? 2)
+      )
+      .slice(0, 20);
 
-      // Try different filter combinations with fallbacks
-      let filtered: IssueType[] = [];
+    setMarketplaceJobs(top20.map((issue) => ({
+      id: issue.id,
+      type: issue.type || "General",
+      summary: issue.summary || "View details",
+      severity: issue.severity,
+      bidCount: 0,
+      listing: listingsMap[issue.listing_id],
+      isHot: issue.severity === "high",
+      created_at: issue.created_at,
+    })));
 
-      // 1. Best match: specialty + city
-      const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
+    // Fetch bid counts in background
+    top20.forEach((issue) => {
+      store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
+        .then((result) => {
+          const bidCount = result.data?.length || 0;
+          setMarketplaceJobs((prev) => {
+            const updated = [...prev];
+            const idx = updated.findIndex((j) => j.id === issue.id);
+            if (idx !== -1) updated[idx] = { ...updated[idx], bidCount, isHot: issue.severity === "high" || bidCount === 0 };
+            return updated;
+          });
+        })
+        .catch(() => {});
+    });
+  }, [activeOpportunityData?.items, listingsMap]);
 
-      if (exactMatch.length > 0) {
-        filtered = exactMatch;
-      } else {
-        // 2. Fallback A: specialty only (any location)
-        const specialtyOnly = available.filter((i) => matchesSpecialty(i));
+  // Active jobs (accepted offers)
+  const activeJobs = useMemo(() => {
+    return vendorOffers
+      .filter((o) => o.status === IssueOfferStatus.ACCEPTED)
+      .map((o) => {
+        const issue = issuesMap[o.issue_id];
+        const listing = issue ? listingsMap[issue.listing_id] : undefined;
+        return { offer: o, issue, listing };
+      })
+      .filter((j) => j.issue && j.issue.status !== "Status.COMPLETED");
+  }, [vendorOffers, issuesMap, listingsMap]);
 
-        if (specialtyOnly.length > 0) {
-          filtered = specialtyOnly;
-        } else {
-          // 3. Fallback B: city only (any specialty)
-          const cityOnly = available.filter((i) => matchesCity(i));
+  // Count available opportunities from the backend-filtered query
+  const availableCount = activeOpportunityData?.total ?? 0;
 
-          if (cityOnly.length > 0) {
-            filtered = cityOnly;
-          } else {
-            // 4. Fallback C: show all available
-            filtered = available;
-          }
-        }
-      }
-
-
-      // Sort newest-first so the dashboard surfaces the freshest opportunities.
-      // Falls back to severity (high → medium → low) only as a tiebreaker for
-      // issues created at the same instant — keeps high-severity work from
-      // sinking under low-severity work posted in the same second.
-      const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-      const sortedByRecency = [...filtered].sort((a, b) => {
-        const at = new Date(a.created_at || 0).getTime();
-        const bt = new Date(b.created_at || 0).getTime();
-        if (bt !== at) return bt - at;
-        return (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
-      });
-
-      // Show jobs immediately without waiting for bid counts
-      const top20 = sortedByRecency.slice(0, 20);
-      const jobsWithoutBids = top20.map((issue) => {
-        const listing = listingsMap[issue.listing_id];
-        return {
-          id: issue.id,
-          type: issue.type || "General",
-          summary: issue.summary || "View details",
-          severity: issue.severity,
-          bidCount: 0,
-          listing,
-          isHot: issue.severity === 'high',
-          created_at: issue.created_at,
-          image_urls: issue.image_urls,
-        };
-      });
-      setMarketplaceJobs(jobsWithoutBids);
-
-      // Fetch bid counts in background (non-blocking, progressive)
-      top20.forEach((issue) => {
-        store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
-          .then((result) => {
-            const bidCount = result.data?.length || 0;
-            setMarketplaceJobs((prev) => {
-              const updated = [...prev];
-              const jobIdx = updated.findIndex(j => j.id === issue.id);
-              if (jobIdx !== -1) {
-                updated[jobIdx] = { ...updated[jobIdx], bidCount, isHot: issue.severity === 'high' || bidCount === 0 };
-              }
-              return updated;
-            });
-          })
-          .catch(() => { });
-      });
-    };
-
-    fetchOpportunities();
-  }, [issues, vendorSpecialties, listingsMap, vendor?.city]);
-
-  // Count available jobs matching vendor specialty
-  const availableCount = useMemo(() => {
-    if (!issues) return 0;
-    const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
-    if (vendorSpecialties.length === 0) return available.length;
-
-    return available.filter((i) => {
-      const issueType = (i.type || '').toLowerCase();
-      return vendorSpecialties.some(specialty =>
-        issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
-      );
-    }).length;
-  }, [issues, vendorSpecialties]);
-
+  const winRate = vendorMetrics.totalBids > 0 ? Math.round((vendorMetrics.acceptedCount / vendorMetrics.totalBids) * 100) : 0;
   const isNewVendor = vendorMetrics.totalBids === 0;
 
   // IDs of jobs vendor has already bid on
@@ -588,9 +443,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
         endTime: parseAsUTC(primaryAssessment.end_time),
         proposalCount,
         acceptedAssessment,
-        // Expose the full assessment group so the Active Jobs card can target
-        // the specific client-proposed assessment for accept / decline.
-        allAssessments: assessments,
       };
     }).filter(Boolean) as Array<{
       id: number;
@@ -602,7 +454,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       endTime: Date;
       proposalCount: number;
       acceptedAssessment?: IssueAssessment;
-      allAssessments: IssueAssessment[];
     }>;
 
     // Filter to relevant visits - exclude past confirmed visits
@@ -642,130 +493,19 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
       .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
   }, [processedVisits]);
 
-  // Upcoming CONFIRMED visits for ScheduleCard.  Your Schedule is purely a
-  // calendar of "when am I where?" — pending / counter-proposed assessments
-  // belong in Active Jobs → Visits where the vendor can act on them.  Status
-  // string can arrive as the enum value ("Assessment_Status.ACCEPTED") or
-  // lowercase ("accepted"), so we normalize before matching.
-  const scheduleEvents = useMemo<ScheduleEvent[]>(() => {
-    const cutoff = new Date();
-    cutoff.setHours(0, 0, 0, 0);
-    const isAccepted = (status: unknown): boolean => {
-      const s = (status as string)?.toLowerCase() || "";
-      return s === "accepted" || s.includes("accepted");
-    };
-    return allAssessments
-      .filter((a) => isAccepted(a.status))
-      .map((a) => {
-        const start = parseAsUTC(a.start_time);
-        const end = parseAsUTC(a.end_time);
-        const issue = issuesMap[a.issue_id];
-        const listing = issue ? listingsMap[issue.listing_id] : undefined;
-        return {
-          ...a,
-          id: a.id,
-          title: issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Visit`,
-          start,
-          end,
-          issue,
-          listing,
-        } as ScheduleEvent;
-      })
-      .filter((e) => e.start >= cutoff)
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
-  }, [allAssessments, issuesMap, listingsMap]);
-
-  // First name for the hero greeting
-  const firstName = vendor?.name?.split(/\s+/)[0] || "";
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return "Good morning";
-    if (hour >= 12 && hour < 17) return "Good afternoon";
-    return "Good evening";
-  }, []);
-
-  // Forward-looking summary for the hero — what's on the vendor's plate.
-  const heroSummary = useMemo(() => {
-    const actionRequiredVisits = processedVisits.filter(v => v.category === "action_required").length;
-    const todaysVisits = todaysSchedule.length;
-    const pendingBids = vendorMetrics.pendingBids;
-    const newOpportunities = marketplaceJobs.filter(j => !alreadyBidOnIds.has(j.id)).length;
-
-    const parts: string[] = [];
-    if (actionRequiredVisits > 0) {
-      parts.push(`${actionRequiredVisits} visit${actionRequiredVisits === 1 ? "" : "s"} need${actionRequiredVisits === 1 ? "s" : ""} your reply`);
-    }
-    if (todaysVisits > 0) {
-      parts.push(`${todaysVisits} visit${todaysVisits === 1 ? "" : "s"} today`);
-    }
-    if (pendingBids > 0) {
-      parts.push(`${pendingBids} quote${pendingBids === 1 ? "" : "s"} awaiting client`);
-    }
-    if (parts.length === 0 && newOpportunities > 0) {
-      parts.push(`${newOpportunities} new job${newOpportunities === 1 ? "" : "s"} matching your service`);
-    }
-
-    if (parts.length === 0) {
-      if (vendorMetrics.activeJobs > 0) {
-        return `${vendorMetrics.activeJobs} project${vendorMetrics.activeJobs === 1 ? "" : "s"} in progress — keep up the great work.`;
-      }
-      return "Your plate is clear. Browse new jobs to keep the pipeline flowing.";
-    }
-
-    // Cap to first two items so the headline stays scannable.
-    return parts.slice(0, 2).join(" · ") + ".";
-  }, [processedVisits, todaysSchedule, vendorMetrics, marketplaceJobs, alreadyBidOnIds]);
-
-  const isHeroQuiet = useMemo(() => {
-    const actionRequired = processedVisits.filter(v => v.category === "action_required").length;
-    return (
-      actionRequired === 0 &&
-      todaysSchedule.length === 0 &&
-      vendorMetrics.pendingBids === 0
-    );
-  }, [processedVisits, todaysSchedule, vendorMetrics]);
-
-  // Browse Jobs CTA with gold halo + sweep animation (mirrors the homeowner's Create CTA).
-  const heroCta = (
-    <div className="relative inline-flex">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -inset-[6px] rounded-2xl bg-primary/40 blur-md animate-cta-halo"
-      />
-      <Link
-        to={marketplaceLink}
-        className="relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl
-                   bg-primary text-primary-foreground font-bold text-sm
-                   shadow-md hover:shadow-lg hover:opacity-95 transition-all
-                   overflow-hidden"
-      >
-        {/* Sweep span — 1/3 the button width, swept left→right by keyframes. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute top-0 -left-1/3 h-full w-1/3
-                     bg-gradient-to-r from-transparent via-white/40 to-transparent
-                     animate-cta-sweep"
-        />
-        <FontAwesomeIcon icon={faSearch} className="text-xs relative z-10" />
-        <span className="relative z-10">Browse Jobs</span>
-      </Link>
-    </div>
-  );
-
   // Loading/Error states - AFTER all hooks
-  if (issuesError) return <p>Error loading dashboard data</p>;
   if (isVendorLoading) {
     return (
-      <div className="min-h-screen w-full bg-dashboard p-6">
+      <div className="min-h-screen w-full bg-background p-6">
         <div className="w-full max-w-[1800px] mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-24 bg-card/60 rounded-2xl w-full shadow-card"></div>
+            <div className="h-16 bg-muted rounded-xl w-full"></div>
             <div className="grid grid-cols-4 gap-4">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-28 bg-card/60 rounded-2xl shadow-card"></div>
+                <div key={i} className="h-28 bg-muted rounded-xl"></div>
               ))}
             </div>
-            <div className="h-96 bg-card/60 rounded-2xl shadow-card"></div>
+            <div className="h-96 bg-muted rounded-xl"></div>
           </div>
         </div>
       </div>
@@ -775,21 +515,46 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   if (!vendor) return <p>Vendor not found.</p>;
 
   return (
-    <div className="min-h-screen w-full bg-dashboard">
+    <div className="min-h-screen w-full bg-background">
       <div className="w-full max-w-[1800px] mx-auto px-4 py-5 lg:px-8 lg:py-6">
 
-        {/* HERO BAND — greeting + actionable summary + animated Browse Jobs CTA */}
-        <HeroBand
-          greeting={greeting}
-          firstName={firstName}
-          summary={heroSummary}
-          cta={heroCta}
-          isQuiet={isHeroQuiet}
-        />
+        {/* Greeting Header */}
+        <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+          <div className="flex items-center gap-3">
+            {vendor?.profile_image_url ? (
+              <img src={vendor.profile_image_url} alt={vendor.name} className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
+                {(vendor?.name || "V")[0].toUpperCase()}
+              </div>
+            )}
+            <div>
+              <h1 className="text-3xl lg:text-4xl font-display font-bold text-foreground">
+                {(() => {
+                  const hour = new Date().getHours();
+                  const firstName = vendor?.name?.split(/\s+/)[0] || "";
+                  if (hour >= 5 && hour < 12) return `Good morning, ${firstName}`;
+                  if (hour >= 12 && hour < 17) return `Good afternoon, ${firstName}`;
+                  return `Good evening, ${firstName}`;
+                })()}
+              </h1>
+              <p className="text-sm text-muted-foreground">Here's what's happening today</p>
+            </div>
+          </div>
+
+          {/* Browse Jobs CTA */}
+          <Link
+            to={marketplaceLink}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-primary-foreground rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-sm flex-shrink-0"
+          >
+            <FontAwesomeIcon icon={faSearch} className="text-xs" />
+            <span>Browse Jobs</span>
+          </Link>
+        </div>
 
         {/* New Vendor Welcome Banner */}
         {isNewVendor && showWelcomeBanner && (
-          <div className="mb-6 p-5 rounded-2xl bg-gradient-to-r from-gold to-gold-400 relative shadow-hero">
+          <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-gold to-gold-400 relative">
             <div className="flex flex-col lg:flex-row items-center gap-5">
               {/* Icon */}
               <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -828,69 +593,137 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           </div>
         )}
 
-        {/* MAIN GRID — 7/5 split.  items-stretch lets the right column
-            match the left column's height; the schedule card uses flex-1 to
-            absorb whatever remains so the bottom of both columns line up. */}
-        <div className="grid grid-cols-12 gap-5 w-full min-w-0 items-stretch">
+        {/* Top Stat Cards Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <DashboardStatCard
+            iconBg="bg-amber-100"
+            icon={<Briefcase className="w-4 h-4 text-amber-600" />}
+            value={vendorMetrics.activeJobs}
+            label="Active Projects"
+            subtitle={activeProjectsThisWeek > 0 ? `+${activeProjectsThisWeek} this week` : undefined}
+            onClick={() => navigate("/vendor/jobs?tab=active")}
+          />
+          <DashboardStatCard
+            iconBg="bg-emerald-100"
+            icon={<span className="text-emerald-600 font-bold text-sm">$</span>}
+            value={`$${vendorMetrics.thisMonthEarnings.toLocaleString()}`}
+            label="This Month"
+            subtitle={(() => {
+              const last = earningsBreakdown.lastMonth;
+              const curr = vendorMetrics.thisMonthEarnings;
+              if (last === 0) return curr > 0 ? "First earnings!" : undefined;
+              const pct = Math.round(((curr - last) / last) * 100);
+              return `${pct >= 0 ? "+" : ""}${pct}% vs last month`;
+            })()}
+          />
+          <DashboardStatCard
+            iconBg="bg-orange-100"
+            icon={<Star className="w-4 h-4 text-orange-500" />}
+            value={reviewStats.rating > 0 ? reviewStats.rating.toFixed(1) : "—"}
+            label="Avg. Rating"
+            subtitle={reviewStats.count > 0 ? `${reviewStats.count} review${reviewStats.count === 1 ? "" : "s"}` : undefined}
+            onClick={() => navigate("/vendor/reviews")}
+          />
+          <DashboardStatCard
+            iconBg="bg-blue-100"
+            icon={<Zap className="w-4 h-4 text-blue-600" />}
+            value={`${winRate}%`}
+            label="Win Rate"
+          />
+        </div>
 
-          {/* LEFT COLUMN — Active Jobs (+ KPI sidebar) + Job Opportunities */}
-          <div className="col-span-12 lg:col-span-7 flex flex-col gap-5 min-w-0">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-12 gap-5">
 
-            {/* TOP ROW — Active Jobs (dominant) + Vendor KPI stack
-                xl: side-by-side (Jobs 2/3, KPIs 1/3 stacked vertically)
-                below xl: Jobs on top full-width, KPIs 4-up below
-                Height pinning at xl: the Jobs wrapper uses absolute-fill so
-                its natural height is 0 — the row sizes off the KPI stack and
-                Jobs' body scrolls within the locked height. */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-5 xl:gap-4 items-stretch">
-              {/* ACTIVE JOBS — tabbed (Awaiting Client / Visits / In Progress / Submitted)
-                  with per-row step tracker, "Needs you" badges, overdue surfacing,
-                  and inline Accept / Decline / Withdraw actions. */}
-              <div
-                id="active-jobs"
-                className="xl:col-span-2 min-w-0 scroll-mt-6 xl:relative xl:overflow-hidden"
-              >
-                <div className="xl:absolute xl:inset-0 xl:flex xl:flex-col">
-                  <VendorActiveJobsCard
-                    vendorOffers={vendorOffers}
-                    issuesMap={issuesMap}
-                    listingsMap={listingsMap}
-                    processedVisits={processedVisits}
-                    onOpenIssue={openIssueModal}
-                    onBrowseJobs={() => navigate(marketplaceLink)}
-                    refetchAssessments={refetchAllAssessments}
-                  />
-                </div>
-              </div>
+          {/* Left Column - Active Projects + Job Opportunities */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-5 min-w-0">
 
-              {/* VENDOR KPI SIDEBAR — 4 compact tiles (Active Jobs / Quotes Out /
-                  This Month / Avg Rating).  At xl they stack vertically and the
-                  natural stack height drives the row; below xl they wrap into a
-                  4-up strip underneath the jobs card. */}
-              <div className="xl:col-span-1 min-w-0">
-                <VendorSummaryCards
-                  activeJobsTotal={vendorMetrics.activeJobs}
-                  activeJobsThisWeek={activeProjectsThisWeek}
-                  quotesOutTotal={vendorMetrics.pendingBids}
-                  quotesOutAmount={vendorMetrics.outstandingBids}
-                  thisMonthEarnings={vendorMetrics.thisMonthEarnings}
-                  lastMonthEarnings={earningsBreakdown.lastMonth}
-                  avgRating={reviewStats.rating}
-                  reviewCount={reviewStats.count}
-                  onClickActiveJobs={() => {
-                    document
-                      .getElementById("active-jobs")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }}
-                  onClickQuotesOut={() => navigate("/vendor/bids?status=pending")}
-                  onClickEarnings={() => navigate("/vendor/earnings")}
-                  onClickRating={() => navigate("/vendor/reviews")}
-                />
+            {/* ACTIVE PROJECTS LIST */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-amber-100"
+                icon={<Briefcase className="w-5 h-5 text-amber-600" />}
+                title="Active Projects"
+                viewAllHref="/vendor/jobs?tab=active"
+              />
+
+              <div className="divide-y divide-border">
+                {activeJobs.length > 0 ? (
+                  activeJobs.slice(0, 5).map(({ offer, issue, listing }) => {
+                    const statusLabel =
+                      issue?.status === "Status.IN_PROGRESS"
+                        ? "In Progress"
+                        : issue?.status === "Status.REVIEW"
+                          ? "In Review"
+                          : "Active";
+                    return (
+                      <div
+                        key={offer.id}
+                        onClick={() => issue?.id && openIssueModal(issue.id, "details")}
+                        className="flex items-center gap-4 px-5 py-4 hover:bg-muted/40 cursor-pointer transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={listing?.image_url} size="lg" />
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-foreground truncate">
+                            {issue?.summary || `${normalizeAndCapitalize(issue?.type || "")} Project`}
+                          </div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            {(() => { const a = listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          </div>
+                          {/* Progress indicator */}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1.5 flex-1 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-primary rounded-full"
+                                style={{
+                                  width:
+                                    issue?.status === "Status.COMPLETED"
+                                      ? "100%"
+                                      : issue?.status === "Status.IN_PROGRESS"
+                                        ? "60%"
+                                        : issue?.status === "Status.REVIEW"
+                                          ? "85%"
+                                          : "30%",
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">{statusLabel}</span>
+                          </div>
+                        </div>
+
+                        {/* Amount */}
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-bold text-foreground">${offer.price?.toLocaleString()}</div>
+                          <FontAwesomeIcon icon={faChevronRight} className="text-muted-foreground text-xs mt-1" />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-10 text-center">
+                    <div className="w-14 h-14 bg-muted rounded-xl flex items-center justify-center mx-auto mb-3">
+                      <Briefcase className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-foreground font-semibold mb-1">No active projects yet</p>
+                    <p className="text-sm text-muted-foreground mb-4">Browse jobs and submit a bid to get started</p>
+                    <Link
+                      to={marketplaceLink}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:opacity-90 transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faSearch} />
+                      Find Your First Project
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* JOB OPPORTUNITIES */}
-            <div className="bg-card rounded-2xl overflow-hidden shadow-card border border-border/60">
+            <div className="bg-card rounded-xl overflow-hidden shadow-soft border border-border">
               <CardSectionHeader
                 iconBg="bg-gold-200"
                 icon={<Zap className="w-5 h-5 text-gold" />}
@@ -926,19 +759,8 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
                         onClick={() => openIssueModal(item.id, "details")}
                         className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/40 cursor-pointer transition-colors"
                       >
-                        {/* Thumbnail — prefer the issue's own photo when one
-                            exists (gives the vendor a real preview of the
-                            problem); fall back to the property/listing image
-                            otherwise. `ImageComponent` resolves arrays and
-                            JSON-encoded string arrays out of the box. */}
-                        <PropertyThumbnail
-                          imageUrl={
-                            item.image_urls && item.image_urls.length > 0
-                              ? item.image_urls
-                              : item.listing?.image_url
-                          }
-                          size="md"
-                        />
+                        {/* Thumbnail */}
+                        <PropertyThumbnail imageUrl={item.listing?.image_url} size="md" />
 
                         {/* Job Info */}
                         <div className="min-w-0 flex-1">
@@ -974,40 +796,87 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
           </div> {/* End LEFT COLUMN */}
 
-          {/* RIGHT COLUMN — Earnings (fixed) + Today's Schedule (flex-1 to fill).
-              `lg:h-full flex flex-col` lets the column stretch to match the left
-              side; the schedule card absorbs leftover space, so the bottom of
-              the right column lines up with the bottom of the left. */}
-          <div className="col-span-12 lg:col-span-5 flex flex-col gap-5 min-w-0 lg:h-full">
+          {/* Right Column — Earnings + Today's Schedule */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-5 min-w-0">
 
-            {/* EARNINGS — area chart with This Year / Last 12 Months toggle,
-                total earned, pending pipeline summary, and top earning categories.
-                Mirrors the homeowner's Spending Overview shape so the two dashboards
-                feel like the same product. */}
-            <div className="flex-shrink-0">
-              <VendorEarningsCard
-                vendorOffers={vendorOffers}
-                issuesMap={issuesMap}
-                paymentsHref="/vendor/earnings"
+            {/* Earnings Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-emerald-100"
+                icon={<TrendingUp className="w-5 h-5 text-emerald-600" />}
+                title="Earnings"
               />
+
+              <div className="p-5 space-y-3">
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Week</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    ${vendorMetrics.thisWeekEarnings.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-border">
+                  <span className="text-sm text-muted-foreground">This Month</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    ${vendorMetrics.thisMonthEarnings.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Total Earned</span>
+                  <span className="text-base font-bold text-foreground">
+                    ${vendorMetrics.totalEarnings.toLocaleString()}
+                  </span>
+                </div>
+
+                <Link
+                  to="/vendor/earnings"
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-border text-foreground font-semibold text-sm rounded-lg hover:bg-muted transition-colors"
+                >
+                  View Earnings Details
+                </Link>
+              </div>
             </div>
 
-            {/* SCHEDULE — list / calendar toggle, mirrors the homeowner's
-                "Your Schedule".  Wraps in `lg:flex-1 lg:min-h-0` so the
-                column's bottom lines up with the left side regardless of which
-                view (list vs. calendar) is active — the card stretches to
-                absorb whatever height remains. */}
-            <div className="lg:flex-1 lg:min-h-0 min-h-0">
-              <ScheduleCard
-                events={scheduleEvents}
-                currentUserId={user.id}
-                isUpdatingAssessment={isUpdatingAssessment}
-                isDeletingAssessment={isDeletingAssessment}
-                onAccept={handleAcceptScheduleEvent}
-                onProposeTime={handleProposeScheduleTime}
-                onCancelProposal={handleCancelScheduleProposal}
-                onViewAll={() => navigate("/vendor/schedule")}
+            {/* Today's Schedule Card */}
+            <div className="bg-card rounded-xl shadow-soft border border-border overflow-hidden">
+              <CardSectionHeader
+                iconBg="bg-blue-100"
+                icon={<CalendarCheck className="w-5 h-5 text-blue-600" />}
+                title="Today's Schedule"
               />
+
+              <div className="divide-y divide-border">
+                {todaysSchedule.length > 0 ? (
+                  todaysSchedule.map((visit) => (
+                    <div
+                      key={visit.id}
+                      onClick={() => openIssueModal(visit.issueId, "assessments")}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors"
+                    >
+                      {/* Thumbnail */}
+                      <PropertyThumbnail
+                        imageUrl={visit.listing?.image_url}
+                        size="sm"
+                        fallbackIcon={<Calendar className="w-4 h-4 text-muted-foreground" />}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground">
+                          {visit.startTime.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                          {" — "}
+                          {visit.issue?.summary || normalizeAndCapitalize(visit.issue?.type || "Visit")}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {(() => { const a = visit.listing?.address?.split(",")[0]; return (a && a !== "None") ? a : "Property"; })()}
+                          {visit.listing?.city ? ` · ${visit.listing.city}` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-sm text-muted-foreground">No confirmed visits scheduled</p>
+                  </div>
+                )}
+              </div>
             </div>
 
           </div> {/* End RIGHT COLUMN */}
@@ -1023,7 +892,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
           onClick={closeIssueModal}
         >
           <div
-            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-card-hover bg-card"
+            className="relative w-[45vw] max-w-2xl min-w-[340px] h-[85vh] overflow-hidden rounded-2xl shadow-xl bg-card"
             onClick={(e) => e.stopPropagation()}
           >
             <HomeownerIssueCard

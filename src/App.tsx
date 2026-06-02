@@ -37,7 +37,8 @@ import MarketplaceIssue from "./pages/MarketplaceIssue";
 import ReportReviewPage from "./pages/ReportReviewPage";
 import Offers from "./pages/Offers";
 import VendorCelebrationListener from "./components/VendorCelebrationListener";
-import { marketplacePrefetchService } from "./services/marketplacePrefetchService";
+import { issuesApi } from "./features/api/issuesApi";
+import { useGetVendorByVendorUserIdQuery } from "./features/api/vendorsApi";
 import LandingPage from "./pages/LandingPage";
 import AboutUs from "./pages/AboutUs";
 import Contact from "./pages/Contact";
@@ -47,7 +48,6 @@ import FAQ from "./pages/FAQ";
 import About from "./pages/About";
 import Terms from "./pages/Terms";
 import SettingsPage from "./pages/Settings";
-import Chat from "./pages/Chat";
 
 function App() {
   const location = useLocation();
@@ -69,7 +69,6 @@ function App() {
       '/vendor/earnings': 'Earnings',
       '/vendor/reviews': 'Reviews',
       '/settings': 'Settings',
-      '/chat': 'Chat',
     };
     return pathMap[pathname] || 'Dashboard';
   };
@@ -168,8 +167,6 @@ function App() {
   };
 
   useEffect(() => {
-    // Initialize prefetch service with dispatch
-    marketplacePrefetchService.initialize(dispatch);
     dispatch(checkAuthState());
   }, [dispatch]);
 
@@ -185,23 +182,34 @@ function App() {
     return () => clearTimeout(timeout);
   }, [loadingAuthState, loadingUserType, dispatch]);
 
-  // Handle marketplace prefetching - trigger when user is on dashboard
+  // Vendor-targeted marketplace prefetch: fires once after login so the vendor's
+  // specialty+city view is instant when they navigate to Marketplace.
+  const isVendor = user?.user_type === "vendor";
+  const { data: vendorProfile } = useGetVendorByVendorUserIdQuery(String(user?.id ?? ""), {
+    skip: !user?.id || !isVendor,
+  });
+
   useEffect(() => {
-    if (authenticated && user?.id && user?.user_type && userInfo && !loadingUserType) {
-      // User is fully logged in and on dashboard - trigger prefetch if not already running
-      if (!marketplacePrefetchService.isActive()) {
-        setTimeout(() => {
-          marketplacePrefetchService.startPrefetch().catch(error => {
-            console.warn("Marketplace prefetch failed:", error);
-          });
-        }, 2000); // 2 second delay to let dashboard fully load first
-      }
-    } else if (!authenticated) {
-      // User logged out - clean up prefetch
-      marketplacePrefetchService.stopPrefetch();
-      marketplacePrefetchService.clearPrefetchCache();
-    }
-  }, [authenticated, user?.id, user?.user_type, userInfo, loadingUserType]);
+    if (!authenticated || !isVendor || !vendorProfile || loadingUserType) return;
+
+    // vendor_types stores backend occupation names ("electrician"), which is also what
+    // the backend filter endpoint expects — use it directly without normalizing.
+    const primaryType = vendorProfile.vendor_types?.toLowerCase().split(",")[0]?.trim() ?? "";
+
+    // Prefetch the first page of the vendor's specialty — RTK Query caches it for 5 min.
+    // Marketplace auto-applies these same filters, so it hits the cache immediately.
+    setTimeout(() => {
+      dispatch(
+        issuesApi.endpoints.getPaginatedIssues.initiate({
+          page: 1,
+          size: 50,
+          type: primaryType,
+          city: vendorProfile.city ?? "",
+          vendor_assigned: false,
+        })
+      );
+    }, 1500);
+  }, [authenticated, isVendor, vendorProfile, loadingUserType, dispatch]);
 
   // Handle window resize to toggle sidebar visibility
   useEffect(() => {
@@ -363,10 +371,6 @@ function App() {
               <Route
                 path="/dashboard/faq"
                 element={<PrivateRoute element={<FAQ />} />}
-              />
-              <Route
-                path="/chat"
-                element={<PrivateRoute element={<Chat />} />}
               />
               <Route
                 path="*"

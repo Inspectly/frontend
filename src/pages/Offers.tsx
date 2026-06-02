@@ -142,8 +142,7 @@ const Offers: React.FC = () => {
 
   const { data: reports = [], isLoading: isLoadingReports } = useGetReportsByUserIdQuery(userId, { skip: !userId });
   const { data: listings = [] } = useGetListingByUserIdQuery(userId, { skip: !userId });
-  const { data: issues = [], isLoading: isLoadingIssues } = useIssuesByListings(listings?.map((l) => l.id));
-  const refetchIssues = () => {};
+  const { data: issues = [], isLoading: isLoadingIssues, refetch: refetchIssues } = useIssuesByListings(listings?.map((l) => l.id));
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), { skip: !userId });
   const { data: vendors = [] } = useGetVendorsQuery();
   const { data: clientAssessments = [] } = useGetAssessmentsByClientIdUsersInteractionIdQuery(
@@ -159,11 +158,20 @@ const Offers: React.FC = () => {
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
     const paymentParam = searchParams.get("payment");
-    const filterParam = searchParams.get("filter");
     const pendingPaymentStr = localStorage.getItem("pending_offer_payment");
     const pendingPayment = pendingPaymentStr ? JSON.parse(pendingPaymentStr) : null;
 
-    const shouldVerify = (sessionId || (paymentParam === "success" && filterParam === "accepted")) && pendingPayment;
+    // User cancelled or payment failed — clear pending state and clean up URL
+    if (paymentParam === "cancelled") {
+      localStorage.removeItem("pending_offer_payment");
+      searchParams.delete("payment");
+      setSearchParams(searchParams, { replace: true });
+      toast.error("Payment cancelled. Your offer has not been accepted.");
+      return;
+    }
+
+    // Trigger only on confirmed Stripe return (session_id present)
+    const shouldVerify = pendingPayment && sessionId;
 
     if (shouldVerify && !paymentVerified) {
       setPaymentVerified(true);
@@ -176,6 +184,11 @@ const Offers: React.FC = () => {
       }
 
       (async () => {
+        const issueId = Number(pendingPayment.issue_id);
+        const issue = savedIssue || issues.find((i: IssueType) => i.id === issueId);
+
+        // Idempotent: ensure offer + issue are marked accepted/in-progress
+        // (may already be done from the Accept click, but safe to retry)
         try {
           await updateOffer({
             id: pendingPayment.offer_id,
@@ -187,52 +200,42 @@ const Offers: React.FC = () => {
             comment_vendor: pendingPayment.comment_vendor || "",
             comment_client: pendingPayment.comment_client || "",
           }).unwrap();
+        } catch { /* already accepted — ignore */ }
 
-          const issueId = Number(pendingPayment.issue_id);
-          const issue = savedIssue || issues.find(i => i.id === issueId);
+        if (issue) {
+          const report = reports.find((r: any) => r.id === issue.report_id);
+          const listing = savedListing || listings.find((l: Listing) => l.id === report?.listing_id);
 
           let restoredImages: string[] | null = null;
-          try {
-            restoredImages = await getIssueImages(issueId);
-          } catch { /* ignore */ }
+          try { restoredImages = await getIssueImages(issueId); } catch { /* ignore */ }
 
-          if (issue) {
-            const report = reports.find(r => r.id === issue.report_id);
-            const listing = savedListing || listings.find(l => l.id === report?.listing_id);
-
-            let imageUrlsForUpdate = issue.image_urls || "";
-            if (restoredImages && restoredImages.length > 0) {
-              const realUrls = restoredImages.filter((url: string) => !url.startsWith("data:"));
-              if (realUrls.length > 0) {
-                imageUrlsForUpdate = realUrls.length === 1 ? realUrls[0] : JSON.stringify(realUrls);
-              }
-            }
-
-            const issueWithImages = { ...issue, image_urls: imageUrlsForUpdate };
-            try {
-              await updateIssue(buildIssueUpdateBody(issueWithImages, {
-                vendor_id: pendingPayment.vendor_id,
-                status: "in_progress",
-                active: false,
-              }, listing?.id)).unwrap();
-            } catch {
-              // Offer accepted, issue update failed silently
-            }
-
-            if (restoredImages && restoredImages.length > 0) {
-              const displayIssue = { ...issue, image_urls: restoredImages };
-              setSelectedIssue(prev => prev && prev.issue?.id === issueId ? { ...prev, issue: displayIssue } : prev);
+          let imageUrlsForUpdate = issue.image_urls || "";
+          if (restoredImages && restoredImages.length > 0) {
+            const realUrls = restoredImages.filter((url: string) => !url.startsWith("data:"));
+            if (realUrls.length > 0) {
+              imageUrlsForUpdate = realUrls.length === 1 ? realUrls[0] : JSON.stringify(realUrls);
             }
           }
 
-          try { await deleteIssueImages(issueId); } catch { /* ignore */ }
+          try {
+            await updateIssue(buildIssueUpdateBody(
+              { ...issue, image_urls: imageUrlsForUpdate },
+              { vendor_id: pendingPayment.vendor_id, status: "in_progress", active: false },
+              listing?.id
+            )).unwrap();
+          } catch { /* already in_progress — ignore */ }
 
-          toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
-          localStorage.removeItem("pending_offer_payment");
-          refetchIssues();
-        } catch {
-          toast.error("Payment completed but status update failed. Please refresh.");
+          if (restoredImages && restoredImages.length > 0) {
+            const displayIssue = { ...issue, image_urls: restoredImages };
+            setSelectedIssue(prev => prev && prev.issue?.id === issueId ? { ...prev, issue: displayIssue } : prev);
+          }
+
+          try { await deleteIssueImages(issueId); } catch { /* ignore */ }
         }
+
+        toast.success(`Offer accepted for ${issue?.summary || "issue"}!`);
+        localStorage.removeItem("pending_offer_payment");
+        refetchIssues();
 
         searchParams.delete("session_id");
         searchParams.delete("payment");
@@ -659,7 +662,7 @@ const Offers: React.FC = () => {
       <div
         key={offer.id}
         onClick={() => setSelectedOffer(row)}
-        className="flex items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-gray-300 transition-all cursor-pointer"
+        className="flex items-center gap-4 px-4 py-3 bg-white border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all cursor-pointer"
       >
         {/* Vendor avatar */}
         <div className="flex-shrink-0">
@@ -800,7 +803,7 @@ const Offers: React.FC = () => {
                   <div
                     key={`${req.issue.id}-${req.vendorUserId}`}
                     onClick={() => setSelectedIssue({ issue: req.issue, listing: req.listing, defaultTab: "assessments" })}
-                    className="flex items-center gap-4 px-4 py-3 bg-white border border-blue-200 rounded-xl shadow-card hover:shadow-card-hover hover:border-blue-300 transition-all cursor-pointer"
+                    className="flex items-center gap-4 px-4 py-3 bg-white border border-blue-200 rounded-xl hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
                   >
                     <div className="flex-shrink-0">
                       {req.vendor?.profile_image_url && req.vendor.profile_image_url !== "None" ? (
@@ -907,13 +910,13 @@ const Offers: React.FC = () => {
 
         {/* List */}
         {isLoading ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-card p-12 text-center">
+          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin mx-auto mb-4"></div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading offers...</h3>
             <p className="text-gray-500">Please wait while we fetch your offers</p>
           </div>
         ) : sortedRows.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-card p-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-8">
             {(statusFilter !== "all" || searchQuery.trim()) ? (
               <div className="text-center py-8">
                 <FontAwesomeIcon
@@ -979,7 +982,7 @@ const Offers: React.FC = () => {
                     <div className="relative">
                       <div className="absolute -top-2 -left-2 w-36 h-44 bg-gray-700/50 rounded-2xl rotate-6 border border-gray-600/30"></div>
                       <div className="absolute -top-1 -left-1 w-36 h-44 bg-gray-600/50 rounded-2xl rotate-3 border border-gray-500/30"></div>
-                      <div className="relative w-36 h-44 bg-white rounded-2xl shadow-card-hover flex flex-col items-center justify-center p-4">
+                      <div className="relative w-36 h-44 bg-white rounded-2xl shadow-2xl flex flex-col items-center justify-center p-4">
                         <div className="w-14 h-14 bg-gold-200 rounded-xl flex items-center justify-center mb-3">
                           <FontAwesomeIcon icon={faClipboardList} className="text-xl text-gold" />
                         </div>
@@ -1042,7 +1045,7 @@ const Offers: React.FC = () => {
       {showApproveModal && selectedIssueForAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowApproveModal(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-card-hover border p-6">
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full flex-shrink-0">
                 <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1086,7 +1089,7 @@ const Offers: React.FC = () => {
       {showRequestChangesModal && selectedIssueForAction && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowRequestChangesModal(false)} />
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-card-hover border p-6">
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-xl border p-6">
             <div className="flex items-start gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 bg-gold-200 rounded-full flex-shrink-0">
                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1152,7 +1155,7 @@ const Offers: React.FC = () => {
           onClick={() => setSelectedIssue(null)}
         >
           <div
-            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-card-hover bg-white"
+            className="relative w-[1100px] h-[80vh] mx-auto overflow-hidden rounded-2xl shadow-xl bg-white"
             onClick={(e) => e.stopPropagation()}
           >
             <button

@@ -11,7 +11,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
-  useGetIssuesQuery,
+  useGetIssuesByListingIdQuery,
   useUpdateIssueMutation,
   useCreateIssueMutation,
   useDeleteIssueMutation,
@@ -210,7 +210,7 @@ export default function ReportReviewPage() {
     isLoading,
     isError,
     refetch,
-  } = useGetIssuesQuery();
+  } = useGetIssuesByListingIdQuery(Number(listingId), { skip: !listingId });
 
   const [updateIssue] = useUpdateIssueMutation();
   const [createIssue] = useCreateIssueMutation();

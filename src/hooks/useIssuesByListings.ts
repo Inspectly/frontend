@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector, shallowEqual } from "react-redux";
 import { AppDispatch, RootState } from "../store/store";
 import { issuesApi } from "../features/api/issuesApi";
@@ -15,6 +15,13 @@ export function useIssuesByListings(listingIds: number[] | undefined) {
     if (ids.length === 0) return;
     ids.forEach((id) => {
       dispatch(issuesApi.endpoints.getIssuesByListingId.initiate(id));
+    });
+  }, [idsKey, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refetch = useCallback(() => {
+    if (ids.length === 0) return;
+    ids.forEach((id) => {
+      dispatch(issuesApi.endpoints.getIssuesByListingId.initiate(id, { forceRefetch: true }));
     });
   }, [idsKey, dispatch]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -56,5 +63,5 @@ export function useIssuesByListings(listingIds: number[] | undefined) {
   const issues = useSelector(issuesSelector, shallowEqual);
   const isLoading = useSelector(loadingSelector);
 
-  return { data: issues, isLoading };
+  return { data: issues, isLoading, refetch };
 }

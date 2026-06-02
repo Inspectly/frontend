@@ -66,9 +66,9 @@ import { useCreateListingMutation, useGetListingByUserIdQuery } from "../feature
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 // useGetClientsQuery removed — was fetching all clients but result was never used
 import { useGetAssessmentsByClientIdUsersInteractionIdQuery, useUpdateAssessmentMutation, useDeleteAssessmentMutation, useCreateAssessmentMutation } from "../features/api/issueAssessmentsApi";
-import { getOffersByIssueId, issueOffersApi } from "../features/api/issueOffersApi";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../store/store";
+import { issueOffersApi } from "../features/api/issueOffersApi";
+import { useDispatch, useSelector, shallowEqual } from "react-redux";
+import { AppDispatch, RootState } from "../store/store";
 import { useGetVendorsQuery } from "../features/api/vendorsApi";
 import AddListingByReportModal, { ListingByReportFormData } from "../components/AddListingByReportModal";
 import { handleAddListingWithReport } from "../utils/reportUtil";
@@ -127,7 +127,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
   // State for full schedule modal
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  const [offersByIssueId, setOffersByIssueId] = useState<Record<number, IssueOffer[]>>({});
   const [isAddListingModalOpen, setIsAddListingModalOpen] = useState<boolean>(false);
   const [isCreateIssueModalOpen, setIsCreateIssueModalOpen] = useState<boolean>(false);
   // Bumped to push the Active Projects card to a specific tab from outside (e.g. summary card clicks)
@@ -162,30 +161,34 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     [filteredIssuesByUser]
   );
 
-  // Prefetch offers for all user issues (improves Offers page load time)
-  // Uses window-level storage so subscriptions persist across navigations
+  // Read offers from RTK Query cache — populated and kept fresh by the subscriptions below.
+  const offersByIssueId = useSelector((state: RootState) => {
+    if (filteredIssuesByUser.length === 0) return {} as Record<number, IssueOffer[]>;
+    const map: Record<number, IssueOffer[]> = {};
+    filteredIssuesByUser.forEach((issue) => {
+      const result = issueOffersApi.endpoints.getOffersByIssueId.select(issue.id)(state);
+      if (result.data) map[issue.id] = result.data;
+    });
+    return map;
+  }, shallowEqual);
+
+  // Subscribe to offers for all user issues — persists across navigations via window map.
+  // RTK Query handles polling (30s) and cache management; no manual setInterval needed.
   useEffect(() => {
     if (filteredIssuesByUser.length === 0) return;
-    
+
     const subs = getGlobalSubscriptions();
-    
-    // Check which issues already have subscriptions
-    const issuesNeedingSubscription = filteredIssuesByUser.filter(
-      issue => !subs.has(issue.id)
-    );
-    
+    const issuesNeedingSubscription = filteredIssuesByUser.filter(issue => !subs.has(issue.id));
     if (issuesNeedingSubscription.length === 0) return;
-    
-    // Initiate fetches WITH subscriptions to ensure data stays in cache
+
     issuesNeedingSubscription.forEach((issue) => {
       const subscription = dispatch(issueOffersApi.endpoints.getOffersByIssueId.initiate(issue.id, {
-        forceRefetch: false,
         subscribe: true,
+        forceRefetch: false,
       }));
+      subscription.updateSubscriptionOptions({ pollingInterval: 30000 });
       subs.set(issue.id, subscription);
     });
-    
-    // NO cleanup! Subscriptions persist at module level
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [issueIdsForPrefetch, dispatch]);
 
@@ -261,29 +264,6 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
       .sort((a, b) => a.start.getTime() - b.start.getTime()) as (CalendarReadyAssessment & { issue?: IssueType; listing?: Listing; vendor?: Vendor })[];
   }, [assessments, filteredIssuesByUser, _listings, reports, allVendors]);
 
-  // Fetch offers for user's issues
-  // Polling tick to refetch offers periodically (client sees new offers when vendor creates them)
-  const [pollTick, setPollTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setPollTick((t) => t + 1), 20000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const allIssueIds = filteredIssuesByUser.map((i) => i.id);
-        const offerResults = await Promise.all(
-          allIssueIds.map((id) => dispatch(getOffersByIssueId.initiate(id, { forceRefetch: true })))
-        );
-        setOffersByIssueId(Object.fromEntries(offerResults.map((res, i) => [allIssueIds[i], (res.data as IssueOffer[]) || []])));
-      } catch (err) {
-        console.error("Error fetching offers:", err);
-      }
-    };
-
-    if (filteredIssuesByUser.length) run();
-  }, [dispatch, filteredIssuesByUser, pollTick]);
 
   // Determine user state
   const isNewUser = realMetrics.totalListings === 0;
@@ -619,24 +599,46 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
     !isNewUser;
 
   // Create dropdown — rendered as the Hero's CTA slot (replaces the previous
-  // contextual "Review your quote" / "Approve work" / etc. button).
+  // contextual "Review your quote" / "Approve work" / etc. button). The button
+  // gets a pulsing gold halo + a left-to-right gold sweep to draw the eye
+  // toward the primary action, especially on first load.
   const heroCreateCta = (
     <div className="relative" ref={createDropdownRef}>
-      <button
-        onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
-        className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-xl
-                   bg-foreground text-background font-semibold text-sm
-                   hover:bg-foreground/90 hover:-translate-y-0.5
-                   active:translate-y-0
-                   transition-all shadow-card hover:shadow-card-hover"
-      >
-        <FontAwesomeIcon icon={faPlus} className="text-xs" />
-        <span>Create</span>
-        <FontAwesomeIcon
-          icon={faChevronRight}
-          className={`text-xs transition-transform ${isCreateDropdownOpen ? "rotate-90" : ""}`}
+      {/* Inner wrapper scopes the gold halo to just the button (so it doesn't
+          balloon when the dropdown opens below). */}
+      <div className="relative inline-flex">
+        {/* Pulsing gold halo behind the button */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -inset-[6px] rounded-2xl
+                     bg-primary/40 blur-md animate-cta-halo"
         />
-      </button>
+
+        <button
+          onClick={() => setIsCreateDropdownOpen(!isCreateDropdownOpen)}
+          className="group relative overflow-hidden inline-flex items-center gap-2.5 px-5 py-3 rounded-xl
+                     bg-foreground text-background font-semibold text-sm
+                     hover:bg-foreground/90 hover:-translate-y-0.5
+                     active:translate-y-0
+                     transition-all shadow-card hover:shadow-card-hover
+                     ring-1 ring-primary/30"
+        >
+          {/* Left-to-right gold sweep (clipped by the button's overflow-hidden) */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3
+                       bg-gradient-to-r from-transparent via-primary/70 to-transparent
+                       animate-cta-sweep"
+          />
+
+          <FontAwesomeIcon icon={faPlus} className="text-xs relative z-10" />
+          <span className="relative z-10">Create</span>
+          <FontAwesomeIcon
+            icon={faChevronRight}
+            className={`text-xs transition-transform relative z-10 ${isCreateDropdownOpen ? "rotate-90" : ""}`}
+          />
+        </button>
+      </div>
 
       {isCreateDropdownOpen && (
         <div className="absolute right-0 top-full mt-2 w-64 bg-card rounded-xl shadow-card border border-border py-2 z-50">
@@ -693,8 +695,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
           <div className="mb-6">
             {/* Hero Welcome Card */}
             <div className="relative overflow-hidden rounded-2xl bg-foreground p-8 lg:p-10 shadow-lg">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+              <div className="absolute top-10 right-10 w-20 h-20 border border-primary/20 rounded-xl rotate-12"></div>
               <div className="absolute bottom-10 right-32 w-12 h-12 border border-background/10 rounded-lg -rotate-6"></div>
-
+              
               <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8">
                 <div className="flex-1 text-center lg:text-left">
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/20 text-primary rounded-full text-sm font-medium mb-4">
@@ -928,16 +934,7 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             ? Math.round((completedCount / listingIssues.length) * 100) 
                             : 0;
                           
-                          // Treat the backend-default fallback URL as "no real image"
-                          const rawImageUrl = listing.image_url?.trim() || "";
-                          const isFallbackUrl =
-                            !rawImageUrl ||
-                            rawImageUrl === PROPERTY_FALLBACK_IMAGE ||
-                            rawImageUrl.endsWith("/property_card_holder.jpg") ||
-                            rawImageUrl.endsWith("property_card_holder.png");
-                          const hasImage = !isFallbackUrl;
                           const addressShort = listing.address?.split(",")[0] || listing.address || "Property";
-                          const initial = addressShort.trim()[0]?.toUpperCase() || "H";
                           return (
                             <div
                               key={listing.id}
@@ -946,24 +943,12 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                             >
                               {/* Property image area */}
                               <div className="h-40 relative overflow-hidden bg-muted">
-                                {hasImage ? (
-                                  <>
-                                    <ImageComponent
-                                      src={listing.image_url}
-                                      fallback={PROPERTY_FALLBACK_IMAGE}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                      <div className="w-20 h-20 rounded-2xl bg-card/85 backdrop-blur flex items-center justify-center font-display text-3xl font-bold text-primary shadow-card">
-                                        {initial}
-                                      </div>
-                                    </div>
-                                  </>
-                                )}
+                                <ImageComponent
+                                  src={listing.image_url}
+                                  fallback={PROPERTY_FALLBACK_IMAGE}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
                                 {/* Open-issues badge top-right */}
                                 {openCount > 0 && (
@@ -975,30 +960,18 @@ const ClientDashboard: React.FC<DashboardProps> = ({ user }) => {
                                 )}
 
                                 {/* Address overlay */}
-                                {hasImage ? (
-                                  <div className="absolute bottom-3 left-3 right-3">
-                                    <h3 className="font-display font-bold text-white text-base leading-tight drop-shadow-lg truncate">
-                                      {addressShort}
-                                    </h3>
-                                    <p className="text-white/85 text-xs drop-shadow-md">
-                                      {listing.city}{listing.state ? `, ${listing.state}` : ""}
-                                    </p>
-                                  </div>
-                                ) : null}
+                                <div className="absolute bottom-3 left-3 right-3">
+                                  <h3 className="font-display font-bold text-white text-base leading-tight drop-shadow-lg truncate">
+                                    {addressShort}
+                                  </h3>
+                                  <p className="text-white/85 text-xs drop-shadow-md">
+                                    {listing.city}{listing.state ? `, ${listing.state}` : ""}
+                                  </p>
+                                </div>
                               </div>
 
                               {/* Body */}
                               <div className="p-3.5">
-                                {!hasImage && (
-                                  <div className="mb-2">
-                                    <div className="font-display font-bold text-foreground text-sm truncate leading-tight">
-                                      {addressShort}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground truncate">
-                                      {listing.city}{listing.state ? `, ${listing.state}` : ""}
-                                    </div>
-                                  </div>
-                                )}
                                 <div className="flex items-center justify-between gap-2">
                                   {openCount > 0 ? (
                                     <span className="text-xs font-semibold text-foreground">

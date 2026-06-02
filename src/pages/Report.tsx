@@ -12,7 +12,7 @@ import { IssueOfferStatus, IssueStatus } from "../types";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
-  useGetIssuesQuery,
+  useGetIssuesByListingIdQuery,
   useUpdateIssueMutation,
   issuesApi,
 } from "../features/api/issuesApi";
@@ -55,7 +55,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
     reportId: string;
   }>();
 
-  const { data: issues, error, isLoading } = useGetIssuesQuery();
+  const { data: issues, error, isLoading } = useGetIssuesByListingIdQuery(Number(listingId), { skip: !listingId });
 
   const [updateIssue] = useUpdateIssueMutation();
   const { data: currentListing } = useGetListingByIdQuery(Number(listingId), { skip: !listingId });
@@ -90,7 +90,7 @@ const Report: React.FC<ReportProps> = ({ openAddIssueOnMount }) => {
 
       // Also try adding to RTK cache (works if cache exists)
       dispatch(
-        issuesApi.util.updateQueryData("getIssues", undefined, (draft) => {
+        issuesApi.util.updateQueryData("getIssuesByListingId", Number(listingId), (draft) => {
           if (!draft.find((i) => i.id === openIssue.id)) {
             draft.push(openIssue);
           }
