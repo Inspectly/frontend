@@ -47,10 +47,8 @@ import {
 } from "../features/api/issueAssessmentsApi";
 import CalendarSelector from "./CalendarSelector";
 import AssessmentReview from "./AssessmentReview";
-import {
-  useGetVendorByVendorUserIdQuery,
-  useGetVendorsQuery,
-} from "../features/api/vendorsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import { useVendorsByUserIds } from "../hooks/useVendorsByUserIds";
 import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { useGetReportByIdQuery } from "../features/api/reportsApi";
 import OffersTabClient from "./OffersTabClient";
@@ -104,7 +102,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
   } = useGetOffersByIssueIdQuery(issue?.id, {
     skip: !issue?.id,
   });
-  const { data: allVendors = [] } = useGetVendorsQuery();
+  const offerVendorUserIds = useMemo(
+    () => [...new Set(offers.map((o) => o.vendor_id))],
+    [offers]
+  );
+  const offerVendors = useVendorsByUserIds(offerVendorUserIds);
   const { data: client } = useGetClientByUserIdQuery(String(userId ?? ""), {
     skip: !userId || userType !== "client",
   });
@@ -474,11 +476,11 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
 
   const vendorIdToName = useMemo(() => {
     const map: Record<number, string> = {};
-    allVendors.forEach((vendor) => {
+    offerVendors.forEach((vendor) => {
       map[vendor.id] = vendor.name;
     });
     return map;
-  }, [allVendors]);
+  }, [offerVendors]);
 
   // Sync tab state: use defaultTab when provided (e.g. modal), otherwise URL
   useEffect(() => {
@@ -961,6 +963,7 @@ const IssueDetails: React.FC<IssueDetailsProps> = ({
                   {userType === "client" && (
                     <OffersTabClient
                       offers={offers}
+                      vendors={offerVendors}
                       uniqueVendors={uniqueVendors}
                       handleOpenOfferModal={handleOpenOfferModal}
                       onOpenOfferModal={() => setIsOfferModalOpen(true)}
