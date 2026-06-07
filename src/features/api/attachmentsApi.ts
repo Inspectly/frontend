@@ -8,6 +8,10 @@ export const attachmentsApi = api.injectEndpoints({
       query: () => "attachments/",
       providesTags: [{ type: "Attachments", id: "LIST" }],
     }),
+    getAttachmentsByIssueId: builder.query<Attachment[], number>({
+      query: (issueId) => `attachments/issue/${issueId}`,
+      providesTags: (_result, _error, issueId) => [{ type: "Attachments", id: issueId }],
+    }),
     createAttachment: builder.mutation<Attachment, { issueId: number; file: File; userId: number }>({
       async queryFn({ issueId, file, userId }, _queryApi, _extraOptions, baseQuery) {
         let uploadedUrl: string;
@@ -49,16 +53,22 @@ export const attachmentsApi = api.injectEndpoints({
 
         return { error: result.error as any };
       },
-      invalidatesTags: ["Attachments"],
+      invalidatesTags: (_result, _error, { issueId }) => [
+        { type: "Attachments", id: "LIST" },
+        { type: "Attachments", id: issueId },
+      ],
     }),
-    deleteAttachment: builder.mutation({
-      query: (attachmentId: number) => ({
+    deleteAttachment: builder.mutation<void, { attachmentId: number; issueId?: number }>({
+      query: ({ attachmentId }) => ({
         url: `attachments/${attachmentId}`,
         method: "DELETE",
       }),
-      invalidatesTags: [{ type: "Attachments", id: "LIST" }],
+      invalidatesTags: (_result, _error, { issueId }) => [
+        { type: "Attachments", id: "LIST" },
+        ...(issueId ? [{ type: "Attachments" as const, id: issueId }] : []),
+      ],
     }),
   }),
 });
 
-export const { useGetAttachmentsQuery, useCreateAttachmentMutation, useDeleteAttachmentMutation } = attachmentsApi;
+export const { useGetAttachmentsQuery, useGetAttachmentsByIssueIdQuery, useCreateAttachmentMutation, useDeleteAttachmentMutation } = attachmentsApi;

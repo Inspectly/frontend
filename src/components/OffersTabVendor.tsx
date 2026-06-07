@@ -9,9 +9,8 @@ import {
   ISSUE_OFFER_STATUS_LABELS,
   IssueOffer,
   IssueOfferStatus,
-  Vendor,
 } from "../types";
-import { useGetVendorsQuery, useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
+import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useSelector } from "react-redux";
 import { RootState } from "../store/store";
 import { BUTTON_HOVER } from "../styles/shared";
@@ -44,19 +43,8 @@ const OffersTabVendor: React.FC<OffersTabVendorProps> = ({
     skip: !userId,
   });
 
-  const { data: allVendors = [] } = useGetVendorsQuery();
-
-  const vendorMap = useMemo(() => {
-    const map = new Map<string, Vendor>();
-    allVendors.forEach((v) => map.set(String(v.vendor_user_id), v));
-    return map;
-  }, [allVendors]);
-
   const formattedOffers = offers
-    .filter((b) => {
-      const vendorForBid = vendorMap.get(String(b.vendor_id));
-      return String(vendorForBid?.id) === String(vendorId);
-    })
+    .filter((b) => String(b.vendor_id) === String(currentVendor?.vendor_user_id))
     .sort(
       (a, b) =>
         new Date(b.created_at + "Z").getTime() -

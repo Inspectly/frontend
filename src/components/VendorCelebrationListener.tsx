@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
 import { IssueOfferStatus } from "../types";
 import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByIds } from "../hooks/useIssuesByIds";
 
 const isIssueCompleted = (status?: string): boolean => {
   if (!status) return false;
@@ -27,9 +27,8 @@ const VendorCelebrationListener: React.FC<VendorCelebrationListenerProps> = ({
     Number(userId),
     { skip: !userId }
   );
-  const { data: issues = [] } = useGetIssuesQuery(undefined, {
-    skip: !userId,
-  });
+  const issueIds = React.useMemo(() => vendorOffers.map((o) => o.issue_id), [vendorOffers]);
+  const { data: issues = [] } = useIssuesByIds(issueIds.length > 0 ? issueIds : undefined);
 
   const issuesMap = React.useMemo(
     () =>

@@ -9,12 +9,12 @@ import {
   faHouse,
 } from "@fortawesome/free-solid-svg-icons";
 import { RootState } from "../store/store";
-import { IssueOfferStatus, IssueType, Listing, Client } from "../types";
+import { IssueOfferStatus, IssueType, Listing } from "../types";
 import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByIds } from "../hooks/useIssuesByIds";
 import { useGetListingsQuery } from "../features/api/listingsApi";
-import { useGetClientsQuery } from "../features/api/clientsApi";
 import ImageComponent from "../components/ImageComponent";
+import UserName from "../components/UserName";
 import { normalizeAndCapitalize } from "../utils/typeNormalizer";
 
 const MONTHLY_GOAL = 6000;
@@ -28,9 +28,9 @@ const isCompleted = (status?: string) => {
 const VendorEarnings: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user?.id), { skip: !user?.id });
-  const { data: issues = [] } = useGetIssuesQuery();
+  const issueIds = useMemo(() => vendorOffers.map((o) => o.issue_id), [vendorOffers]);
+  const { data: issues = [] } = useIssuesByIds(issueIds.length > 0 ? issueIds : undefined);
   const { data: listings = [] } = useGetListingsQuery();
-  const { data: clients = [] } = useGetClientsQuery();
 
   const issuesMap = useMemo(
     () => issues.reduce((acc, i) => { acc[i.id] = i; return acc; }, {} as Record<number, IssueType>),
@@ -39,10 +39,6 @@ const VendorEarnings: React.FC = () => {
   const listingsMap = useMemo(
     () => listings.reduce((acc, l) => { acc[l.id] = l; return acc; }, {} as Record<number, Listing>),
     [listings]
-  );
-  const clientsByUserId = useMemo(
-    () => clients.reduce((acc, c) => { acc[c.user_id] = c; return acc; }, {} as Record<number, Client>),
-    [clients]
   );
 
   const metrics = useMemo(() => {
@@ -90,10 +86,9 @@ const VendorEarnings: React.FC = () => {
       .map((offer) => {
         const issue = issuesMap[offer.issue_id];
         const listing = issue ? listingsMap[issue.listing_id] : undefined;
-        const client = listing ? clientsByUserId[listing.user_id] : undefined;
-        return { offer, issue, listing, client, completed: isCompleted(issue?.status) };
+        return { offer, issue, listing, completed: isCompleted(issue?.status) };
       });
-  }, [vendorOffers, issuesMap, listingsMap, clientsByUserId]);
+  }, [vendorOffers, issuesMap, listingsMap]);
 
   return (
     <div className="min-h-screen w-full bg-gray-100">
@@ -176,13 +171,9 @@ const VendorEarnings: React.FC = () => {
               </div>
               <div className="divide-y divide-gray-100">
                 {recentTransactions.length > 0 ? (
-                  recentTransactions.map(({ offer, issue, listing, client, completed }) => {
-                    const clientName = client
-                      ? `${client.first_name || ""} ${client.last_name?.[0] ? client.last_name[0] + "." : ""}`.trim()
-                      : "Client";
+                  recentTransactions.map(({ offer, issue, listing, completed }) => {
                     const date = new Date(offer.updated_at || offer.created_at || Date.now());
                     const dateStr = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-                    const initial = (client?.first_name || "C")[0].toUpperCase();
                     return (
                       <div key={offer.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
                         <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
@@ -204,10 +195,10 @@ const VendorEarnings: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
                             <div className="w-5 h-5 rounded-full bg-gold flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                              {initial}
+                              C
                             </div>
                             <span className="truncate">
-                              {clientName} · {dateStr}
+                              {listing?.user_id ? <UserName userId={listing.user_id} /> : "Client"} · {dateStr}
                             </span>
                           </div>
                         </div>

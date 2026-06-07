@@ -9,7 +9,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { toast } from "react-toastify";
 import { User, IssueOfferStatus, IssueType, Listing, IssueAssessment } from "../types";
-import { useGetIssuesQuery } from "../features/api/issuesApi";
+import { useGetPaginatedIssuesQuery } from "../features/api/issuesApi";
+import { useIssuesByIds } from "../hooks/useIssuesByIds";
+import { skipToken } from "@reduxjs/toolkit/query/react";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetOffersByVendorIdQuery, getOffersByIssueId } from "../features/api/issueOffersApi";
 import { useGetListingsQuery } from "../features/api/listingsApi";
@@ -34,19 +36,6 @@ import VendorSummaryCards from "../components/dashboard/VendorSummaryCards";
 import VendorEarningsCard from "../components/dashboard/VendorEarningsCard";
 import ScheduleCard, { ScheduleEvent } from "../components/dashboard/ScheduleCard";
 
-// Static lookup: vendor type → matching issue type keywords
-const VENDOR_TO_ISSUE_TYPE_MAP: Record<string, string[]> = {
-  electrician: ['electrical', 'electrician', 'electric', 'wiring'],
-  plumber: ['plumbing', 'plumber', 'pipe', 'water', 'drain'],
-  painter: ['painting', 'painter', 'paint', 'interior', 'exterior'],
-  hvac: ['hvac', 'heating', 'cooling', 'ventilation', 'ac'],
-  roofer: ['roofing', 'roof', 'roofer', 'shingle', 'gutter'],
-  carpenter: ['carpentry', 'carpenter', 'wood', 'cabinet', 'trim'],
-  landscaper: ['landscaping', 'landscaper', 'lawn', 'garden', 'yard'],
-  cleaner: ['cleaning', 'cleaner', 'janitorial'],
-  general: ['general', 'other', 'misc', 'interior', 'exterior'],
-};
-
 interface DashboardProps {
   user: User;
 }
@@ -70,8 +59,33 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
 
   // Real data queries (poll every 20s so vendor sees updates when client accepts/rejects offers, approves work, etc.)
   const { data: vendor, isLoading: isVendorLoading, error: vendorError } = useGetVendorByVendorUserIdQuery(String(user.id));
-  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id });
-  const { data: issues, error: issuesError } = useGetIssuesQuery();
+  const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user.id), { skip: !user.id, pollingInterval: 20000 });
+
+  // Per-issue fetch for the vendor's own offer issues (active jobs, schedule, metrics)
+  const { data: offerIssues = [], refetch: refetchOfferIssues } = useIssuesByIds(vendorOffers.length > 0 ? vendorOffers.map((o) => o.issue_id) : undefined);
+
+  // When offers refresh (polling detects a status change), refresh the issue data too
+  const vendorOffersKey = vendorOffers.map((o) => `${o.id}:${o.status}`).join(",");
+  useEffect(() => {
+    if (vendorOffers.length > 0) refetchOfferIssues();
+  }, [vendorOffersKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // vendor_types is a comma-separated string of backend type names e.g. "electrician"
+  const vendorPrimaryType = vendor?.vendor_types?.toLowerCase().split(",")[0]?.trim() ?? "";
+
+  // Targeted opportunity query: vendor's specialty + city, backend-filtered (replaces the
+  // old fetch-all-issues-then-filter-client-side approach).
+  const { data: opportunityData, isLoading: isLoadingOpportunities } = useGetPaginatedIssuesQuery(
+    vendor ? { page: 1, size: 20, type: vendorPrimaryType, city: vendor.city || "", vendor_assigned: false } : skipToken
+  );
+  // Fallback: if specialty+city returns nothing, retry specialty-only (any city).
+  const needsOpportunityFallback = !isLoadingOpportunities && (opportunityData?.total ?? 0) === 0 && !!vendor?.city;
+  const { data: fallbackOpportunityData } = useGetPaginatedIssuesQuery(
+    needsOpportunityFallback ? { page: 1, size: 20, type: vendorPrimaryType, city: "", vendor_assigned: false } : skipToken
+  );
+  const activeOpportunityData = (needsOpportunityFallback && (fallbackOpportunityData?.total ?? 0) > 0)
+    ? fallbackOpportunityData : opportunityData;
+
   const { data: listings = [] } = useGetListingsQuery();
   const { data: vendorReviewsData = [] } = useGetVendorReviewsByVendorUserIdQuery(Number(user.id), { skip: !user.id });
 
@@ -209,14 +223,14 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }, {} as Record<number, Listing>);
   }, [listings]);
 
-  // Issues map for lookups
+  // Issues map: vendor's own job issues + current opportunity items (covers modal,
+  // metrics, schedule, and the opportunities list off a single targeted dataset).
   const issuesMap = useMemo(() => {
-    if (!issues) return {};
-    return issues.reduce((acc, issue) => {
-      acc[issue.id] = issue;
-      return acc;
-    }, {} as Record<number, IssueType>);
-  }, [issues]);
+    const map: Record<number, IssueType> = {};
+    offerIssues.forEach((i) => { map[i.id] = i; });
+    (activeOpportunityData?.items ?? []).forEach((i: IssueType) => { if (!map[i.id]) map[i.id] = i; });
+    return map;
+  }, [offerIssues, activeOpportunityData?.items]);
 
   // Selected issue data for modal (derived from existing data)
   const selectedIssue = selectedIssueId ? issuesMap[selectedIssueId] : null;
@@ -349,24 +363,6 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
     }).length;
   }, [vendorOffers, issuesMap]);
 
-  // Get vendor specialties for filtering
-  const vendorSpecialties = useMemo(() => {
-    if (!vendor?.vendor_types) return [];
-    const rawTypes = vendor.vendor_types.toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
-
-    // Expand to include all matching issue types
-    const expanded = new Set<string>();
-    rawTypes.forEach(type => {
-      // Add the original type
-      expanded.add(type);
-      // Add mapped issue types
-      const mappedTypes = VENDOR_TO_ISSUE_TYPE_MAP[type] || [];
-      mappedTypes.forEach(t => expanded.add(t));
-    });
-
-    return Array.from(expanded);
-  }, [vendor?.vendor_types]);
-
   // Available opportunities from marketplace with bid info
   const [marketplaceJobs, setMarketplaceJobs] = useState<
     Array<{
@@ -387,122 +383,60 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   >([]);
 
 
-  // Helper to check if issue matches vendor specialty
-  const matchesSpecialty = (issue: IssueType) => {
-    if (vendorSpecialties.length === 0) return true;
-    const issueType = (issue.type || '').toLowerCase();
-    return vendorSpecialties.some(specialty =>
-      issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
-    );
-  };
-
-  // Helper to check if issue is in vendor's city
-  const matchesCity = (issue: IssueType) => {
-    if (!vendor?.city) return true; // If no vendor city, match all
-    const listing = listingsMap[issue.listing_id];
-    if (!listing?.city) return false;
-    return listing.city.toLowerCase() === vendor.city.toLowerCase();
-  };
-
-  // Filter and fetch marketplace opportunities with smart fallbacks
+  // Build opportunity jobs from the backend-filtered query results. The backend already
+  // scopes to the vendor's specialty + city (with a specialty-only fallback above), so we
+  // only sort + slice here rather than filtering the whole platform client-side.
   useEffect(() => {
-    const fetchOpportunities = async () => {
-      if (!issues) return;
+    const available = (activeOpportunityData?.items ?? []).filter(
+      (i: IssueType) => i.status === "Status.OPEN" && !i.vendor_id && i.active
+    );
 
-      const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
+    // Sort newest-first so the dashboard surfaces the freshest opportunities.
+    // Severity (high → medium → low) is only a tiebreaker for same-instant posts.
+    const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    const sortedByRecency = [...available].sort((a, b) => {
+      const at = new Date(a.created_at || 0).getTime();
+      const bt = new Date(b.created_at || 0).getTime();
+      if (bt !== at) return bt - at;
+      return (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
+    });
 
-      // Try different filter combinations with fallbacks
-      let filtered: IssueType[] = [];
+    // Show jobs immediately without waiting for bid counts
+    const top20 = sortedByRecency.slice(0, 20);
+    setMarketplaceJobs(
+      top20.map((issue) => ({
+        id: issue.id,
+        type: issue.type || "General",
+        summary: issue.summary || "View details",
+        severity: issue.severity,
+        bidCount: 0,
+        listing: listingsMap[issue.listing_id],
+        isHot: issue.severity === "high",
+        created_at: issue.created_at,
+        image_urls: issue.image_urls,
+      }))
+    );
 
-      // 1. Best match: specialty + city
-      const exactMatch = available.filter((i) => matchesSpecialty(i) && matchesCity(i));
+    // Fetch bid counts in background (non-blocking, progressive)
+    top20.forEach((issue) => {
+      store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
+        .then((result) => {
+          const bidCount = result.data?.length || 0;
+          setMarketplaceJobs((prev) => {
+            const updated = [...prev];
+            const jobIdx = updated.findIndex((j) => j.id === issue.id);
+            if (jobIdx !== -1) {
+              updated[jobIdx] = { ...updated[jobIdx], bidCount, isHot: issue.severity === "high" || bidCount === 0 };
+            }
+            return updated;
+          });
+        })
+        .catch(() => { });
+    });
+  }, [activeOpportunityData?.items, listingsMap]);
 
-      if (exactMatch.length > 0) {
-        filtered = exactMatch;
-      } else {
-        // 2. Fallback A: specialty only (any location)
-        const specialtyOnly = available.filter((i) => matchesSpecialty(i));
-
-        if (specialtyOnly.length > 0) {
-          filtered = specialtyOnly;
-        } else {
-          // 3. Fallback B: city only (any specialty)
-          const cityOnly = available.filter((i) => matchesCity(i));
-
-          if (cityOnly.length > 0) {
-            filtered = cityOnly;
-          } else {
-            // 4. Fallback C: show all available
-            filtered = available;
-          }
-        }
-      }
-
-
-      // Sort newest-first so the dashboard surfaces the freshest opportunities.
-      // Falls back to severity (high → medium → low) only as a tiebreaker for
-      // issues created at the same instant — keeps high-severity work from
-      // sinking under low-severity work posted in the same second.
-      const severityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
-      const sortedByRecency = [...filtered].sort((a, b) => {
-        const at = new Date(a.created_at || 0).getTime();
-        const bt = new Date(b.created_at || 0).getTime();
-        if (bt !== at) return bt - at;
-        return (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
-      });
-
-      // Show jobs immediately without waiting for bid counts
-      const top20 = sortedByRecency.slice(0, 20);
-      const jobsWithoutBids = top20.map((issue) => {
-        const listing = listingsMap[issue.listing_id];
-        return {
-          id: issue.id,
-          type: issue.type || "General",
-          summary: issue.summary || "View details",
-          severity: issue.severity,
-          bidCount: 0,
-          listing,
-          isHot: issue.severity === 'high',
-          created_at: issue.created_at,
-          image_urls: issue.image_urls,
-        };
-      });
-      setMarketplaceJobs(jobsWithoutBids);
-
-      // Fetch bid counts in background (non-blocking, progressive)
-      top20.forEach((issue) => {
-        store.dispatch(getOffersByIssueId.initiate(issue.id, { forceRefetch: false }))
-          .then((result) => {
-            const bidCount = result.data?.length || 0;
-            setMarketplaceJobs((prev) => {
-              const updated = [...prev];
-              const jobIdx = updated.findIndex(j => j.id === issue.id);
-              if (jobIdx !== -1) {
-                updated[jobIdx] = { ...updated[jobIdx], bidCount, isHot: issue.severity === 'high' || bidCount === 0 };
-              }
-              return updated;
-            });
-          })
-          .catch(() => { });
-      });
-    };
-
-    fetchOpportunities();
-  }, [issues, vendorSpecialties, listingsMap, vendor?.city]);
-
-  // Count available jobs matching vendor specialty
-  const availableCount = useMemo(() => {
-    if (!issues) return 0;
-    const available = issues.filter((i) => i.status === "Status.OPEN" && !i.vendor_id && i.active);
-    if (vendorSpecialties.length === 0) return available.length;
-
-    return available.filter((i) => {
-      const issueType = (i.type || '').toLowerCase();
-      return vendorSpecialties.some(specialty =>
-        issueType.includes(specialty) || specialty.includes(issueType) || specialty === 'general'
-      );
-    }).length;
-  }, [issues, vendorSpecialties]);
+  // Count available opportunities from the backend-filtered query
+  const availableCount = activeOpportunityData?.total ?? 0;
 
   const isNewVendor = vendorMetrics.totalBids === 0;
 
@@ -753,7 +687,7 @@ const VendorDashboard: React.FC<DashboardProps> = ({ user }) => {
   );
 
   // Loading/Error states - AFTER all hooks
-  if (issuesError) return <p>Error loading dashboard data</p>;
+  if (vendorError) return <p>Error loading dashboard data</p>;
   if (isVendorLoading) {
     return (
       <div className="min-h-screen w-full bg-dashboard p-6">

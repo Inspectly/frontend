@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { useGetClientsQuery } from "../features/api/clientsApi";
+import { useGetClientByUserIdQuery } from "../features/api/clientsApi";
 import { useGetVendorByVendorUserIdQuery } from "../features/api/vendorsApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
 import { useSelector } from "react-redux";
@@ -38,12 +38,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
 
   const authUser = useSelector((state: RootState) => state.auth.user);
 
-  // Fetch clients from API
-  const { data: clients } = useGetClientsQuery();
+  const { data: client } = useGetClientByUserIdQuery(String(authUser?.id), { skip: !authUser?.id || userType !== "client" });
   const { data: vendor } = useGetVendorByVendorUserIdQuery(String(authUser?.id), { skip: !authUser?.id || userType !== "vendor" });
-
-  // Match client by email
-  const client = clients?.find((c) => c.email === currentUser?.email);
 
   // Derive display name and initials
   const fullName = userType === "vendor" && vendor?.name

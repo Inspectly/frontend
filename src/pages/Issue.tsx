@@ -21,7 +21,7 @@ import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import VendorName from "../components/VendorName";
 import {
   useGetIssueByIdQuery,
-  useGetIssuesQuery,
+  useGetIssuesByListingIdQuery,
   useUpdateIssueMutation,
 } from "../features/api/issuesApi";
 import { useGetListingByIdQuery } from "../features/api/listingsApi";
@@ -51,7 +51,7 @@ const Issue: React.FC = () => {
     skip: !validIssueId,
   });
 
-  const { data: issues, refetch: refetchIssues } = useGetIssuesQuery();
+  const { data: issues, refetch: refetchIssues } = useGetIssuesByListingIdQuery(Number(listingId), { skip: !listingId });
 
   const { data: listing } = useGetListingByIdQuery(Number(listingId), {
     skip: !listingId,

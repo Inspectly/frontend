@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faTimes } from "@fortawesome/free-solid-svg-icons";
 import VendorName from "./VendorName";
 import { useUpdateOfferMutation } from "../features/api/issueOffersApi";
-import { useGetVendorsQuery } from "../features/api/vendorsApi";
 import {
   ISSUE_OFFER_STATUS_LABELS,
   IssueOffer,
@@ -14,6 +13,7 @@ import { BUTTON_HOVER } from "../styles/shared";
 
 interface OffersTabClientProps {
   offers: IssueOffer[];
+  vendors?: Vendor[];
   uniqueVendors: number;
   handleOpenOfferModal: (offer: IssueOffer) => void;
   onOpenOfferModal: () => void;
@@ -24,15 +24,15 @@ interface OffersTabClientProps {
 
 const OffersTabClient: React.FC<OffersTabClientProps> = ({
   offers,
+  vendors = [],
   onOfferAccepted,
   issueVendorId,
   isProcessingPayment = false,
 }) => {
   const [updateOffer] = useUpdateOfferMutation();
-  const { data: allVendors = [] } = useGetVendorsQuery();
 
   const vendorMap = new Map<string, Vendor>();
-  allVendors.forEach((v) => vendorMap.set(String(v.vendor_user_id), v));
+  vendors.forEach((v) => vendorMap.set(String(v.vendor_user_id), v));
 
   const groupedOffers = new Map<string, IssueOffer[]>();
   offers.forEach((offer) => {

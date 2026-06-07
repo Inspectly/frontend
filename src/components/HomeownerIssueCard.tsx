@@ -21,7 +21,7 @@ import { buildIssueUpdateBody } from "../utils/issueUpdateHelper";
 import {
   useCreateAttachmentMutation,
   useDeleteAttachmentMutation,
-  useGetAttachmentsQuery,
+  useGetAttachmentsByIssueIdQuery,
 } from "../features/api/attachmentsApi";
 import Comments from "./Comments";
 import VendorName from "./VendorName";
@@ -77,8 +77,10 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const isCompleted = statusNormalized === "completed";
   const showDisputeButton = userType !== "vendor" && isCompleted;
 
-  // Fetch full issue data so image_urls are available without page refresh
-  const { data: fetchedIssue } = useGetIssueByIdQuery(String(issue?.id), { skip: !issue?.id });
+  // Fetch full issue data for image_urls only when parent didn't supply them
+  const { data: fetchedIssue } = useGetIssueByIdQuery(String(issue?.id), {
+    skip: !issue?.id || (Array.isArray(issue?.image_urls) && issue.image_urls.length > 0),
+  });
 
   const {
     data: offers = [],
@@ -181,8 +183,8 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
 
   const [commentCount, setCommentCount] = useState(0);
 
-  // Attachments
-  const { data: allAttachments = [], refetch: refetchAttachments } = useGetAttachmentsQuery();
+  // Attachments — scoped to this issue only
+  const { data: allAttachments = [], refetch: refetchAttachments } = useGetAttachmentsByIssueIdQuery(issue.id, { skip: !issue.id });
   const [createAttachment] = useCreateAttachmentMutation();
   const [deleteAttachment] = useDeleteAttachmentMutation();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,8 +222,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
   const handleDeleteAttachment = async (id: number) => {
     if (!window.confirm("Delete this attachment?")) return;
     try {
-      await deleteAttachment(id).unwrap();
-      refetchAttachments();
+      await deleteAttachment({ attachmentId: id, issueId: issue.id }).unwrap();
     } catch { /* ignore */ }
   };
 
@@ -864,6 +865,7 @@ const HomeownerIssueCard: React.FC<HomeownerIssueCardProps> = ({
               ) : userType === "client" ? (
                 <OffersTabClient
                   offers={offers}
+                  vendors={allVendors}
                   uniqueVendors={new Set(offers.map((o) => o.vendor_id)).size}
                   handleOpenOfferModal={handleOpenOfferModal}
                   onOpenOfferModal={() => setIsOfferModalOpen(true)}

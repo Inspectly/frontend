@@ -4,10 +4,10 @@ import { Star, Trophy, User } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { RootState } from "../store/store";
-import { Client, IssueOfferStatus } from "../types";
+import { IssueOfferStatus } from "../types";
 import { useGetVendorReviewsByVendorUserIdQuery } from "../features/api/vendorReviewsApi";
-import { useGetClientsQuery } from "../features/api/clientsApi";
 import { useGetOffersByVendorIdQuery } from "../features/api/issueOffersApi";
+import UserName from "../components/UserName";
 
 const VendorReviews: React.FC = () => {
   const user = useSelector((s: RootState) => s.auth.user);
@@ -19,19 +19,9 @@ const VendorReviews: React.FC = () => {
     return allReviews.filter((r: any) => r.status === "approved");
   }, [allReviews]);
 
-  const { data: clients = [] } = useGetClientsQuery();
   const { data: vendorOffers = [] } = useGetOffersByVendorIdQuery(Number(user?.id), {
     skip: !user?.id,
   });
-
-  const clientsByUserId = useMemo(
-    () =>
-      clients.reduce((acc, c) => {
-        acc[c.user_id] = c;
-        return acc;
-      }, {} as Record<number, Client>),
-    [clients]
-  );
 
   const stats = useMemo(() => {
     const count = reviews.length;
@@ -153,10 +143,6 @@ const VendorReviews: React.FC = () => {
       <div className="space-y-4">
         {sortedReviews.length > 0 ? (
           sortedReviews.map((review) => {
-            const client = clientsByUserId[review.user_id];
-            const clientName = client
-              ? `${client.first_name || ""} ${client.last_name?.[0] ? client.last_name[0] + "." : ""}`.trim()
-              : "Client";
             const date = review.created_at
               ? new Date(review.created_at).toLocaleDateString("en-US", {
                   month: "short",
@@ -164,7 +150,6 @@ const VendorReviews: React.FC = () => {
                   year: "numeric",
                 })
               : "";
-            const initial = (client?.first_name || "C")[0].toUpperCase();
             const roundedRating = Math.max(1, Math.min(5, Math.round(Number(review.rating) || 0)));
 
             return (
@@ -172,11 +157,13 @@ const VendorReviews: React.FC = () => {
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xl">
-                      {initial}
+                      C
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold text-foreground">{clientName}</span>
+                        <span className="text-sm font-semibold text-foreground">
+                          {review.user_id ? <UserName userId={review.user_id} /> : "Client"}
+                        </span>
                         <div className="flex items-center gap-0.5">
                           {[1, 2, 3, 4, 5].map((s) => (
                             <Star

@@ -60,6 +60,7 @@ export const issuesApi = api.injectEndpoints({
       }
     >({
       providesTags: ["Issues"],
+      keepUnusedDataFor: 300, // 5 minutes — supports prefetch-on-login strategy
       query: ({ page, size, search = "", type = "", city = "", state = "", vendor_assigned }) => {
         const params = new URLSearchParams({
           page: page.toString(),
@@ -176,14 +177,27 @@ export const issuesApi = api.injectEndpoints({
           })
         );
 
+        // Also patch listing-scoped cache so homeowner property pages update immediately
+        const listingId = updatedIssue.listing_id;
+        let patchListingIssues: { undo: () => void } | null = null;
+        if (listingId) {
+          patchListingIssues = dispatch(
+            issuesApi.util.updateQueryData("getIssuesByListingId", Number(listingId), (draft) => {
+              const index = draft.findIndex((issue) => issue.id === updatedIssue.id);
+              if (index !== -1) {
+                draft[index] = { ...draft[index], ...optimisticIssue };
+              }
+            })
+          );
+        }
+
         try {
           await queryFulfilled;
-          // No forceRefetch needed — optimistic update already applied above
-          // invalidatesTags handles background sync
         } catch {
           patchResult.undo();
           patchIssuesList.undo();
           patchPaginatedIssues.undo();
+          patchListingIssues?.undo();
         }
       },
       // No invalidatesTags — optimistic cache update handles sync instantly
